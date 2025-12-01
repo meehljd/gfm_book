@@ -1,13 +1,214 @@
-# DeepSEA and Ab Initio Regulatory Prediction
+# Foundational Functional Genomics Data
 
-## The DeepSEA Methodology (Zhou & Troyanskaya, 2015)
+## The Data Landscape for Genomic Deep Learning
 
-- Introduced the fundamental application of deep convolutional neural networks (CNNs) to predict the functional effects of non-coding variants directly from sequence input.
+The preceding chapters established methods for identifying genetic variants (Chapter 1), associating them with phenotypes (Chapter 2), and scoring their likely deleteriousness (Chapter 3). These approaches and the deep learning models that follow depend on large-scale public data resources spanning chromatin profiling, population genetics, clinical variant databases, expression atlases, biobanks, and experimental benchmarks.
 
-## Training Scale
+This chapter surveys the foundational data resources that underpin modern genomic machine learning. These datasets serve multiple roles: training targets for supervised models, validation benchmarks for variant effect prediction, and population references for interpreting rare variants.
 
-- Trained to predict a large number of chromatin profiles (e.g., 919 tracks).
+## Chromatin Profiling: ENCODE and Roadmap Epigenomics
 
-## Significance
+The ENCODE (Encyclopedia of DNA Elements) and Roadmap Epigenomics consortia generated genome-wide profiles of regulatory activity across hundreds of cell types, providing both biological insight and training data for sequence-to-function models.
 
-- Established the viability of using CNNs to implicitly learn the underlying regulatory code or “syntax” of the genome by recognizing local sequence patterns and motifs.
+### Data Types and Scale
+
+| Assay | Target | ENCODE Coverage | Roadmap Coverage |
+|-------|--------|-----------------|------------------|
+| DNase-seq / ATAC-seq | Open chromatin | 684 datasets | 53 samples |
+| ChIP-seq (TF) | Transcription factor binding | 2,131 datasets | — |
+| ChIP-seq (histone) | Histone modifications | 1,860 datasets | 127 samples |
+| CAGE | Transcription start sites | 638 datasets | — |
+
+The Cistrome Project systematically reprocesses public ChIP-seq data, contributing ~20,000 profiles that supplement ENCODE [@zheng_cistrome_2019]. Combined, these resources enable models like Sei to predict 21,907 chromatin targets across >1,300 cell types [@zhou_sei_2022].
+
+### Key Histone Modifications
+
+Histone modifications mark distinct regulatory states:
+
+- **H3K4me3**: Active promoters
+- **H3K4me1 + H3K27ac**: Active enhancers
+- **H3K4me1 + H3K27me3**: Poised/bivalent enhancers
+- **H3K27me3**: Polycomb-repressed regions
+- **H3K9me3**: Constitutive heterochromatin
+
+These combinatorial patterns define the training targets for models including DeepSEA, ExPecto, and Enformer (Chapters 5, 6, and 11).
+
+## Population Genetics Resources
+
+### gnomAD
+
+The Genome Aggregation Database (gnomAD) aggregates exome and genome sequencing data from large-scale projects, providing allele frequencies and constraint metrics essential for variant interpretation.
+
+**Current scale**: gnomAD v4 includes >800,000 exomes and >76,000 genomes spanning diverse global populations.
+
+**Key applications for deep learning**:
+
+- *Allele frequency filtering*: Rare variants (AF < 0.01%) are enriched for functional effects; common variants have largely survived purifying selection
+- *Constraint metrics*: pLI (probability of loss-of-function intolerance) and LOEUF (loss-of-function observed/expected upper bound fraction) quantify selective pressure on genes
+- *Training signal*: CADD's evolutionary proxy approach uses allele frequency distributions to validate that predicted deleterious variants are depleted from the population [@rentzsch_cadd_2019]
+
+### 1000 Genomes Project
+
+The 1000 Genomes Project catalogued genetic variation across 26 populations, providing:
+
+- Reference panel for genotype imputation
+- LD structure for fine-mapping and PRS construction
+- Benchmarking variants for sequence models (e.g., Sei variant effect analyses use 1000 Genomes SNPs) [@zhou_sei_2022]
+
+## Clinical Variant Databases
+
+### ClinVar
+
+ClinVar is the primary public archive for clinically interpreted genetic variants, aggregating submissions from clinical laboratories, research groups, and expert panels.
+
+**Content**: >2.5 million variant submissions covering pathogenic, likely pathogenic, benign, likely benign, and variants of uncertain significance (VUS).
+
+**Role in model development**:
+
+- *Benchmarking*: ClinVar pathogenic/benign classifications provide standard evaluation sets for variant effect predictors. CADD v1.7 reports ~1% improvement on ClinVar variants compared to previous versions [@schubach_cadd_2024].
+- *Training labels*: Some supervised approaches use ClinVar annotations as training targets, though this risks circularity if evaluated on the same database.
+
+**Limitations**: Ascertainment bias toward well-studied genes; classification criteria vary across submitters; benign variants are underrepresented relative to pathogenic.
+
+### HGMD
+
+The Human Gene Mutation Database provides curated disease-causing mutations, though access requires subscription. HGMD's "regulatory" category has been used to benchmark non-coding variant effect predictions [@zhou_sei_2022].
+
+## Expression Resources
+
+### GTEx
+
+The Genotype-Tissue Expression (GTEx) project provides RNA-seq expression profiles and eQTL maps across 54 human tissues from ~1,000 donors.
+
+**Key applications**:
+
+- *eQTL validation*: Signed linkage disequilibrium profile (SLDP) regression tests whether model-predicted variant effects correlate with measured expression changes. Enformer showed improved SLDP Z-scores relative to Basenji2 across GTEx tissues [@avsec_enformer_2021].
+- *Tissue-specific expression*: Enhancer sequence class scores correlate with tissue-specific gene expression in corresponding tissues [@zhou_sei_2022].
+- *Cross-ancestry analysis*: GTEx's population diversity enables evaluation of model generalization.
+
+### FANTOM
+
+The FANTOM consortium's CAGE atlas maps transcription start sites at single-nucleotide resolution across hundreds of human and mouse samples. CAGE data serve as direct training targets for expression-predicting models—Enformer predicts 638 CAGE tracks, enabling TSS-level activity predictions [@avsec_enformer_2021].
+
+## Biobank Resources
+
+Large-scale biobanks linking genomic data to electronic health records and phenotypic measurements are transforming genetic research. These resources enable GWAS discovery, PRS development, and validation of variant effect predictions at population scale.
+
+### UK Biobank
+
+The UK Biobank enrolled ~500,000 participants aged 40–69 from across the United Kingdom, with comprehensive phenotyping and genomic data.
+
+**Data available**:
+
+- Genotyping array data (all participants)
+- Whole exome sequencing (~470,000 participants)
+- Whole genome sequencing (~500,000 participants)
+- Electronic health records, imaging, and extensive phenotypic measurements
+
+**Applications**: UK Biobank GWAS summary statistics are used for heritability partitioning by sequence classes, revealing trait-specific regulatory architectures [@zhou_sei_2022]. Genome-wide fine-mapping of 48 UK Biobank traits identified causal variants explaining 17% of SNP-based heritability [@wu_genome-wide_2024].
+
+### All of Us Research Program
+
+The NIH All of Us Research Program aims to enroll one million diverse US participants, with explicit emphasis on historically underrepresented populations.
+
+**Current scale**: >245,000 whole genome sequences, with ~45% from participants identifying with underrepresented racial or ethnic groups. The dataset includes >1 billion genetic variants, including >275 million previously unreported variants.
+
+**Unique features**:
+
+- *Diversity*: 77% of participants are from communities historically underrepresented in biomedical research
+- *Longitudinal EHR*: Linked electronic health records with median 10+ years of data for many participants
+- *Multi-modal data*: Surveys, physical measurements, Fitbit wearable data, and genomics
+- *Rapid access*: Researcher Workbench enables data access with median 29 hours from registration
+
+All of Us addresses a critical gap: over 90% of participants in prior large genomics studies were of European descent, limiting generalizability of findings and perpetuating health disparities.
+
+### Mayo Clinic Tapestry
+
+The Tapestry study represents Mayo Clinic's largest genomics initiative, combining clinical exome sequencing with longitudinal EHR linkage.
+
+**Scale**: >98,000 enrolled participants with Exome+ sequencing (whole exome plus ~300,000 informative non-coding SNPs).
+
+**Clinical integration**: Unlike research-only biobanks, Tapestry returns actionable results directly to participants and their providers:
+
+- 1.9% of participants carry pathogenic/likely pathogenic variants in CDC Tier 1 genes
+- Results for BRCA1/2 (hereditary breast/ovarian cancer), Lynch syndrome genes, and familial hypercholesterolemia genes are entered into EHRs
+
+**Research access**: >62,000 participants' exome data are available for research, with 82 approved investigator requests delivering >1.1 million datasets.
+
+### Comparative Summary
+
+| Biobank | Participants | Sequencing | Diversity | EHR Linked |
+|---------|--------------|------------|-----------|------------|
+| UK Biobank | ~500,000 | WGS + WES | Primarily European | Yes |
+| All of Us | >245,000 WGS | WGS | 45% underrepresented | Yes |
+| Mayo Tapestry | ~98,000 | Exome+ | ~11% underrepresented | Yes |
+
+## Experimental Benchmarks
+
+### Deep Mutational Scanning
+
+Deep mutational scanning (DMS) experiments systematically measure the functional effects of thousands of variants in a single assay, providing gold-standard labels for benchmarking variant effect predictors.
+
+**ProteinGym**: A comprehensive benchmark aggregating DMS data across 217 assays covering diverse proteins. CADD v1.7 reports ~3% improvement on DMS datasets with integration of ESM-1v protein language model scores [@schubach_cadd_2024].
+
+**MaveDB**: The Multiplexed Assays of Variant Effect Database archives functional scores from MAVE experiments, enabling standardized model evaluation.
+
+**CAGI**: The Critical Assessment of Genome Interpretation organizes blinded prediction challenges using experimental data, including saturation mutagenesis of regulatory elements.
+
+### TraitGym
+
+TraitGym provides curated regulatory variant benchmarks for evaluating causal variant prediction across Mendelian and complex traits [@benegas_traitgym_2025].
+
+**Dataset composition**:
+
+- 113 Mendelian traits with known or high-confidence causal regulatory variants
+- 83 complex traits with fine-mapped candidate causal variants
+- Carefully constructed control variants matched for genomic context
+
+**Key findings**: Alignment-based models (CADD, GPN-MSA) perform favorably for Mendelian and complex disease traits, while functional-genomics-supervised models (Enformer, Borzoi) excel for complex non-disease traits. This suggests complementary information captured by evolutionary constraint versus molecular phenotype prediction.
+
+TraitGym addresses a critical gap: the field has lacked consistently curated datasets with accurate labels for non-coding variants, making comprehensive benchmarking difficult.
+
+### Massively Parallel Reporter Assays
+
+MPRAs test thousands of regulatory sequences in parallel, measuring their ability to drive reporter gene expression. MPRA data from saturation mutagenesis experiments serve as benchmarks for regulatory variant effect prediction—CADD v1.7 shows ~4% improvement on regulatory saturation mutagenesis data [@schubach_cadd_2024].
+
+## Data Quality Considerations
+
+### Technical Artifacts
+
+Functional genomics data contain systematic biases affecting model training:
+
+- **Batch effects**: Technical variation between experiments
+- **Antibody specificity**: ChIP-seq quality depends on antibody performance
+- **Peak calling thresholds**: Binary calls from continuous signals involve arbitrary cutoffs
+- **Cell line artifacts**: Immortalized lines may not reflect primary tissue biology
+
+### Ascertainment Bias
+
+Clinical databases and biobanks exhibit ascertainment biases:
+
+- ClinVar is enriched for variants in well-studied disease genes
+- Biobanks may oversample certain demographics or health-seeking populations
+- Benign variants are systematically underrepresented in clinical databases
+
+### Population Structure
+
+Ancestry-specific allele frequencies and LD patterns affect model generalization:
+
+- PRS developed in European populations transfer poorly to other ancestries
+- Rare variant interpretation depends on population-matched frequency data
+- Initiatives like All of Us explicitly address historical underrepresentation
+
+## From Data to Models
+
+The resources described in this chapter enable the supervised learning framework underlying sequence-to-function models:
+
+1. **Chromatin profiles** (ENCODE, Roadmap) → Training targets for predicting regulatory activity from sequence
+2. **Population genetics** (gnomAD, 1000 Genomes) → Evolutionary signal for constraint-based scoring
+3. **Clinical databases** (ClinVar) → Benchmarking pathogenic variant detection
+4. **Expression data** (GTEx, FANTOM) → Validation of predicted expression effects
+5. **Biobanks** (UK Biobank, All of Us, Tapestry) → GWAS discovery and phenotype prediction
+6. **Experimental benchmarks** (DMS, TraitGym, MPRA) → Ground-truth functional measurements
+
+The chapters that follow trace how deep learning models leverage these resources: CNNs learning to predict chromatin profiles (DeepSEA, Chapter 5), connecting predictions to expression (ExPecto, Chapter 6), and integrating long-range interactions (Enformer, Chapter 11).
