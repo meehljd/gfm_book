@@ -1,0 +1,446 @@
+<!-- Project configuration aligned with _quarto.yml -->
+
+::: {.content-hidden}
+NOTES:
+- Add figure: taxonomy of genomic foundation models (DNA LM, seq→function, variant-centric, multi-omic)
+- Cross-reference later chapters in Part IV once drafts exist
+- Possibly move clinical deployment content into the dedicated applications chapter
+:::
+
+# Genomic FMs: Principles & Practice   {#sec-princ}
+
+Genomic foundation models (GFMs) are the culmination of several threads developed across the earlier parts of this book: high-fidelity variant calling, regulatory sequence-to-function prediction, protein language models, and long-context transformers for DNA. They extend these ideas into models that are *general-purpose*, *pretrained at scale*, and *reusable* across a wide range of genomic and genetic tasks.
+
+This chapter steps back from individual architectures to define what it means for a model to be a genomic foundation model, organizes the emerging ecosystem into a practical taxonomy, and distills design principles that will guide the rest of Part IV.
+
+---
+
+## From Task-Specific Models to Genomic Foundation Models
+
+The earlier chapters traced a fairly linear progression:
+
+- **Hand-crafted scores and shallow models** such as CADD and early pathogenicity predictors [@rentzsch_cadd_2019; @schubach_cadd_2024].
+- **Task-specific deep models** such as DeepSEA, ExPecto, Sei, Enformer and SpliceAI, which learn regulatory or splicing effects directly from sequence [@zhou_deepsea_2015; @zhou_expecto_2018; @chen_deepsea_2022; @avsec_enformer_2021; @jaganathan_spliceai_2019].
+- **Sequence language models** over proteins and DNA (ESM, DNABERT, Nucleotide Transformer, HyenaDNA, GROVER) that learn general sequence representations via self-supervision [@rives_esm_2021; @lin_esm-2_2022; @brandes_genome-wide_2023; @ji_dnabert_2021; @dalla-torre_nucleotide_2023; @nguyen_hyenadna_2023; @sanabria_grover_2024].
+
+Foundation models build on these ingredients but change the *contract*:
+
+> The primary “product” of a GFM is not a task-specific prediction head, but a reusable representation (and sometimes a general interface) that can be adapted to many downstream tasks with modest additional supervision.
+
+HyenaDNA is a canonical example: a genomic foundation model pretrained on the human reference genome with context lengths up to 1M tokens at single-nucleotide resolution using a Hyena-based long-range architecture. DNABERT-2, Nucleotide Transformer V2, Caduceus-Ph, GROVER and related models form a parallel family of transformer-style DNA FMs. A recent benchmark comparing these five models across diverse tasks (classification, gene expression prediction, variant effect quantification, TAD recognition) illustrates both the promise and the limitations of current DNA FMs [@manzo_comparative_2025].
+
+At a high level, we can view GFMs as extending the “pretrain → finetune” paradigm from natural language and protein modeling into genomics, but with domain-specific constraints (extreme context lengths, single-nucleotide sensitivity, strong mechanistic priors).
+
+---
+
+## What Makes a Model a *Genomic Foundation Model*?
+
+The term “foundation model” is sometimes used loosely in the genomics literature. For practical purposes, it is useful to define working criteria that separate GFMs from ordinary deep models.
+
+### Working definition
+
+A **genomic foundation model** is a pre-trained model that:
+
+1. **Learns from large-scale genomic data with minimal task-specific supervision**
+
+   - Pretraining on entire genomes (or large portions) across species or populations.
+   - Objectives such as masked language modeling, next-token prediction, denoising, or multi-task sequence-to-function prediction.
+
+2. **Produces general-purpose representations**
+
+   - Embeddings of sequences, variants, loci, or genes that are useful across many downstream tasks.
+   - Representations can be extracted and reused with light adapters or linear probes.
+
+3. **Is designed for broad transfer**
+
+   - Supports many downstream tasks *without* retraining the full model.
+   - Transfer across assays (e.g., from chromatin marks to gene expression), tissues, species, or variant types.
+
+4. **Scales along at least one dimension**
+
+   - Context length (e.g., HyenaDNA’s million-token window).
+   - Parameter count (e.g., ESM and Nucleotide Transformer families).
+   - Data diversity (e.g., pan-genomic pretraining, cross-species corpora).
+
+5. **Exposes a relatively standardized interface**
+
+   - A common API for embeddings, sequence scoring, and mask-based perturbation.
+   - Often distributed via model hubs (e.g., Hugging Face) with documented downstream recipes.
+
+Many excellent deep models for genomics (e.g., early DeepSEA or SpliceAI) fail one or more of these criteria: they were trained for a specific assay or task, use narrowly scoped inputs/outputs, and are not designed for broad reuse.
+
+### GFMs vs “just big models”
+
+Scale alone does not make a model a foundation model. A very large Enformer-like model trained solely on human chromatin tracks is powerful but still strongly bound to a specific prediction interface (e.g., sequence → fixed set of chromatin tracks). By contrast, a DNA LM like HyenaDNA or DNABERT-2 is explicitly trained to model *raw sequence* using a general objective, and is naturally repurposed as an embedding engine.
+
+The distinction matters because it affects:
+
+- **Evaluation**: GFMs must be assessed across *families* of tasks (e.g., TraitGym, ProteinGym) [@benegas_traitgym_2025; @notin_proteingym_2023].
+- **Deployment**: GFMs are infrastructure that many downstream teams can reuse; task-specific models are closer to “applications.”
+
+---
+
+## Taxonomy of Genomic Foundation Models
+
+We will use a pragmatic taxonomy based on *input modality* and *pretraining objective* rather than architecture alone.
+
+### DNA language models
+
+These models treat DNA as a “language” and learn to predict masked or next tokens. Representative examples include:
+
+- **DNABERT / DNABERT-2**: k-mer and nucleotide-level transformers trained with masked language modeling on large genomic corpora [@ji_dnabert_2021; @zhou_dnabert-2_2024].
+- **Nucleotide Transformer**: large-scale transformer LMs trained across multiple species, with variants V1/V2 differing in context length and pretraining data [@dalla-torre_nucleotide_2023].
+- **HyenaDNA**: a long-range genomic FM using Hyena operators (implicit convolutions) with sub-quadratic scaling, trained on human reference with up to 1M-token contexts and single-nucleotide vocabulary [@nguyen_hyenadna_2023].
+- **GROVER**: an autoregressive DNA LM that learns rich sequence context and shows strong performance on annotation and variant tasks [@sanabria_grover_2024].
+
+**Strengths**
+
+- Natural fit for *representation learning*: the main output is a contextual embedding for each nucleotide or token.
+- Flexible adaptation: any task that can be phrased as “score a sequence or variant” can be built on top.
+- Compatible with in-context learning and soft prompting (see HyenaDNA) for some tasks.
+
+**Limitations**
+
+- Indirect modeling of quantitative functional readouts (e.g., expression, epigenetic signal).
+- Difficult to interpret mechanistically compared to sequence-to-function models that predict explicit assays.
+
+### Regulatory sequence-to-function GFMs
+
+Building on DeepSEA, ExPecto, Sei, and Enformer [@zhou_deepsea_2015; @zhou_expecto_2018; @chen_deepsea_2022; @avsec_enformer_2021], newer models aim to:
+
+- Predict hundreds to thousands of chromatin marks, TF binding profiles, and accessibility tracks from raw sequence.
+- Operate over longer context windows (100 kb or more).
+- Provide variant effect scores by computing $\Delta$-predictions between reference and alternative alleles.
+
+While some of these models were originally trained for specific assays, they approximate GFMs when:
+
+- The *output space* is sufficiently broad (e.g., a panel of assays spanning many cell types).
+- Their internal representations are reused for tasks beyond the original assay set, such as gene expression prediction, enhancer–promoter linking, or variant prioritization.
+
+Enformer is a prototypical example of a sequence-to-function model that has been widely reused as a feature extractor for downstream tasks, including gene expression prediction and fine-mapping of regulatory variants [@avsec_enformer_2021].
+
+### Variant-centric GFMs and trait models
+
+A third class of GFMs focuses not on raw sequence but on **genetic variants** as the fundamental unit. These models often:
+
+- Embed variants using contextual information from local sequence, gene structure, and external annotations.
+- Predict variant pathogenicity, molecular consequences, or trait-level effect sizes.
+
+Examples in this space include:
+
+- **CADD** and its deep-learning-enhanced successor models, which integrate annotations and sequence features for broad variant pathogenicity scoring [@rentzsch_cadd_2019; @schubach_cadd_2024].
+- **AlphaMissense**, which repurposes ESM-style protein LMs to predict missense pathogenicity at scale [@cheng_alphamissense_2023].
+- **Delphi**, **MIFM**, and related models that couple GFMs with polygenic score (PGS) estimation for complex traits [@georgantas_delphi_2024; @rakowski_mifm_2025; @wu_genome-wide_2024].
+- Emerging variant representation learning datasets and benchmarks (e.g., GV-Rep) that explicitly probe how well GFMs represent genetic variants and clinical annotations.
+
+Variant-centric GFMs blur the line between *feature extractors* and *trait models*: their predictions can be plugged directly into PGS pipelines, risk stratification tools, or rare disease interpretation workflows.
+
+### Multi-omic and cross-modal GFMs
+
+Finally, a growing set of models aim to natively integrate multiple modalities:
+
+- DNA sequence, chromatin state, and gene expression.
+- Sequence and 3D genome structure (Hi-C, Micro-C).
+- DNA with non-sequence modalities such as images or free text.
+
+Recent work (e.g., Omni-DNA) explores transformer-based auto-regressive models that jointly handle DNA and task-specific tokens, enabling multi-task learning over sequence, epigenetic marks, and even textual descriptions of function. These models move GFMs closer to a *unified interface* for genome biology, at the cost of more complex training objectives and data engineering.
+
+---
+
+## Design Dimensions of Genomic Foundation Models
+
+When designing or choosing a GFM, it is helpful to think in terms of several orthogonal design dimensions.
+
+### Data: what does the model “see”?
+
+Key data decisions include:
+
+- **Species coverage**
+
+  - *Human-only*: focused on clinical and human genetics applications.
+  - *Cross-species*: pretraining on dozens or hundreds of species (as in Nucleotide Transformer and many protein LMs) encourages discovery of conserved regulatory code and better out-of-domain generalization [@dalla-torre_nucleotide_2023; @rives_esm_2021].
+
+- **Assay diversity**
+
+  - For sequence-to-function GFMs: which epigenomic assays, cell types, and perturbation datasets are included (e.g., Cistrome-like collections [@zheng_cistrome_2019]).
+  - For variant-centric GFMs: which clinical databases, experimental screens, and population cohorts are integrated.
+
+- **Population diversity**
+
+  - Inclusion of genomes from diverse ancestries is crucial to avoid embedding population-specific biases into GFMs and downstream risk scores.
+  - Early deep PGS models such as Delphi and MIFM explicitly tackle ancestry-aware evaluation [@georgantas_delphi_2024; @rakowski_mifm_2025; @wu_genome-wide_2024].
+
+- **Context length and sampling**
+
+  - Random slicing of long chromosomes into training windows (HyenaDNA).
+  - Targeted sampling around genes, enhancers, or known variants.
+  - Warm-up schedules that gradually increase context length to stabilize training.
+
+### Architecture: how does the model process sequence?
+
+Common architectural families include:
+
+- **Transformers**
+
+  - Encoder-only (BERT-style; DNABERT, Nucleotide Transformer).
+  - Decoder-only (GPT-style; GROVER, some Omni-DNA models).
+  - Encoder–decoder hybrids for tasks requiring explicit outputs (e.g., sequence→text explanations).
+
+- **Attention-free long-range models**
+
+  - Hyena-based models (HyenaDNA): implicit convolutions with sub-quadratic complexity.
+  - State space models and related architectures that trade exact attention for scalable long-range interactions.
+
+- **Dense-attention long-range transformers**
+
+  - Models like Gene42 show that with careful engineering and context extension schedules, dense-attention transformers can also reach ~200 kb contexts at single-nucleotide resolution.
+
+- **Hybrid architectures**
+
+  - CNN + transformer stacks (e.g., local convolutions followed by global attention, as seen in some Enformer-like models [@avsec_enformer_2021]).
+  - Cross-attention between DNA and auxiliary modalities (e.g., chromatin, 3D contacts).
+
+Architecture choices primarily determine:
+
+- Maximum practical context length.
+- Memory and compute requirements.
+- Ease of adaptation (e.g., decoder-only models are often easier to use for generative tasks, transformers easier for cross-modal fusion).
+
+### Objectives: what does the model learn to predict?
+
+Typical pretraining objectives include:
+
+- **Masked token prediction**
+
+  - Randomly mask nucleotides or k-mers and predict them given context (DNABERT, DNABERT-2, many transformers) [@ji_dnabert_2021; @zhou_dnabert-2_2024].
+  - Encourages the model to capture local and medium-range dependencies.
+
+- **Next-token prediction**
+
+  - Autoregressive LM objective (GROVER, HyenaDNA).
+  - Naturally aligns with generative tasks and in-context learning, and leverages techniques from large language models.
+
+- **Denoising and span corruptions**
+
+  - Replace or permute spans of sequence and train the model to reconstruct them.
+  - Encourages robustness to small perturbations and focus on long-range structure.
+
+- **Multi-task sequence-to-function prediction**
+
+  - Predict chromatin profiles, TF binding, accessibility, expression, etc., directly from sequence (DeepSEA, Enformer, Sei) [@zhou_deepsea_2015; @avsec_enformer_2021; @chen_deepsea_2022].
+  - Functions as a powerful regularizer and a direct bridge between sequence patterns and molecular readouts.
+
+- **Cross-modal objectives**
+
+  - Jointly predict sequence, epigenetic tracks, and textual/function labels (e.g., in Omni-DNA-like architectures).
+  - Contrastive alignment between DNA slices and other modalities (e.g., 3D contacts, histone marks).
+
+### Tokenization and representations
+
+Tokenization is non-trivial for DNA:
+
+- **Character-level (single nucleotide)**: simplest and compatible with single-nucleotide resolution, used by HyenaDNA and many sequence-to-function models [@nguyen_hyenadna_2023].
+- **k-mer tokenization** (e.g., 3–6-mers) reduces sequence length and helps transformers reach longer effective contexts, at the cost of some resolution [@ji_dnabert_2021].
+- **Learned tokenization** (e.g., BioToken-style approaches) which discover sub-sequence units optimized for downstream performance [@medvedev_biotoken_2025].
+
+Internally, GFMs typically produce:
+
+- **Per-position embeddings** $h_i \in \mathbb{R}^d$ for each nucleotide or token.
+- **Pooled sequence embeddings** (mean, CLS token, learned pooling) that summarize an entire region.
+- **Variant embeddings**, constructed by contrasting reference vs alternative alleles, sometimes augmented with structural context.
+
+The choice of pooling strategy can significantly influence downstream performance; benchmarking studies have found that simple mean pooling of per-token embeddings often outperforms more elaborate strategies across many tasks [@manzo_comparative_2025].
+
+---
+
+## Evaluating Genomic Foundation Models
+
+Because GFMs are meant to be *foundations*, evaluation must be broader than single-task metrics.
+
+### Downstream task suites and benchmarks
+
+Emerging benchmark suites provide structured evaluations:
+
+- **ProteinGym**: variant effect prediction across many proteins for protein LMs [@notin_proteingym_2023].
+- **TraitGym**: trait-level performance of regulatory and genomic models across complex trait prediction tasks [@benegas_traitgym_2025].
+- **Comparative evaluations** of DNA LMs and regulatory models, such as the work by Manzo et al. comparing sequence models across regulatory genomics tasks [@manzo_comparative_2025].
+- **DNA FM benchmarks** that systematically compare models like DNABERT-2, Nucleotide Transformer V2, HyenaDNA, Caduceus-Ph, and GROVER across classification, variant effect, and TAD tasks.
+- **Variant-centric benchmarks** like GV-Rep, probing GFMs’ ability to represent clinical variants and their contexts.
+
+A key lesson from these benchmarks is that **no single model dominates all tasks**: general-purpose DNA FMs often perform well but may lag specialized architectures for gene expression and QTL prediction, while excelling for variant prioritization and regulatory element annotation.
+
+### Evaluation modes: zero-shot, linear probe, fine-tune
+
+GFMs can be evaluated in several regimes:
+
+1. **Zero-shot evaluation**
+
+   - Use frozen embeddings with simple operations (similarity, clustering) or predefined scoring rules.
+   - Example: using HyenaDNA embeddings directly for in-context learning on simple motif tasks.
+
+2. **Linear probes**
+
+   - Train shallow linear or logistic regression heads on top of frozen embeddings.
+   - Provides a quick measure of how easily information is linearly decodable from GFM representations.
+
+3. **Light-weight adaptation**
+
+   - Low-rank adaptation (LoRA), prompt tuning, or small MLP heads fine-tuned on specific tasks.
+   - Balances performance with computational cost and stability.
+
+4. **Full-model finetuning**
+
+   - Finetune all parameters for high-stakes tasks where maximal performance is critical and data is abundant.
+   - Risk of catastrophic forgetting or overfitting, especially when downstream data is limited.
+
+The right regime depends on data size, computational budget, and the sensitivity of the application (e.g., rare disease diagnosis vs exploratory motif discovery).
+
+---
+
+## Using GFMs in Practice
+
+From the vantage point of a working computational biologist, the most pressing questions are “Which model should I use?” and “How do I plug it into my pipeline?”
+
+### Typical usage patterns
+
+Common ways to use GFMs include:
+
+- **Embedding-based pipelines**
+
+  1. Extract per-base or pooled embeddings for loci of interest.
+  2. Train simple downstream models (e.g., gradient-boosted trees, small neural nets) on these embeddings.
+  3. Evaluate on held-out datasets or across cohorts.
+
+- **Variant effect scoring**
+
+  - Use sequence-to-function GFMs (Enformer-like) to compute $\Delta$-predictions between reference and alternate alleles.
+  - Feed variant-level scores into downstream calibration layers or PGS models [@avsec_enformer_2021; @georgantas_delphi_2024; @rakowski_mifm_2025].
+
+- **Feature augmentation**
+
+  - Combine GFM-derived features with classical annotations (conservation, CADD scores, functional genomics tracks) [@rentzsch_cadd_2019; @schubach_cadd_2024].
+  - Particularly useful for rare variant interpretation where each evidence source is sparse.
+
+- **Cross-modal linking**
+
+  - Use GFMs as common embedding spaces linking sequence with expression, imaging, or textual annotations (e.g., variant→phenotype descriptions).
+
+### Choosing a model for your use case
+
+A simple decision guide:
+
+- **Need long-range context (>100 kb)?**
+
+  - Consider models like HyenaDNA or long-context dense-attention models such as Gene42.
+
+- **Focus on regulatory variant interpretation near genes?**
+
+  - Start with Enformer-like or DeepSEA-like GFMs and compare against DNA LMs working via embeddings [@avsec_enformer_2021; @zhou_deepsea_2015; @chen_deepsea_2022; @ji_dnabert_2021].
+
+- **Trait-level prediction with large cohorts?**
+
+  - Explore PGS pipelines that incorporate GFM-based variant priors such as Delphi or MIFM [@georgantas_delphi_2024; @rakowski_mifm_2025; @wu_genome-wide_2024].
+
+- **Method development / benchmarking?**
+
+  - Use standardized benchmarks (TraitGym, ProteinGym, GV-Rep, DNA FM suites) to ensure your comparisons are meaningful [@benegas_traitgym_2025; @notin_proteingym_2023; @manzo_comparative_2025].
+
+---
+
+## Safety, Robustness, and Responsible Use
+
+As GFMs become infrastructure for clinical and research pipelines, safety and robustness are not optional extras.
+
+### Robustness and adversarial sensitivity
+
+Recent work such as SafeGenes highlights that genomic FMs (including ESM1b-like and other GFMs) can be surprisingly sensitive to adversarial perturbations—both at the input sequence level and through soft prompts in embedding space. Even when perturbations are hardly biologically plausible, they reveal:
+
+- Fragility of decision boundaries in high-dimensional representation space.
+- Potential failure modes where small spurious changes strongly impact pathogenicity or variant effect predictions.
+
+This suggests that:
+
+- **Adversarial testing** should become part of GFM validation, especially for clinical use cases.
+- **Robust training** (e.g., via data augmentation, adversarial objectives, or distributionally robust optimization) may be needed for high-stakes tasks.
+
+### 12.7.2 Bias, fairness, and ancestry
+
+GFMs trained predominantly on reference genomes or Euro-centric cohorts risk encoding biased priors:
+
+- Underestimation of risk in underrepresented ancestries.
+- Misclassification of benign variants that are common in certain populations but rare in training data.
+
+Deep PGS and variant interpretation pipelines that incorporate GFMs should:
+
+- Perform ancestry-stratified evaluation [@georgantas_delphi_2024; @rakowski_mifm_2025; @wu_genome-wide_2024].
+- Consider explicit debiasing (e.g., reweighting) and careful calibration.
+
+### Data governance and privacy
+
+Because GFMs are often trained on large collections of genomic sequences:
+
+- Data use agreements and privacy protections must be respected; some cohort-level datasets cannot be used for unrestricted pretraining.
+- Even when training on reference genomes, leakage from labeled clinical datasets into training may complicate downstream evaluation.
+
+To date, most published GFMs emphasize training on public reference genomes or synthetic benchmarks, but clinical deployment will require stronger guarantees.
+
+---
+
+## Open Challenges and Future Directions
+
+Genomic foundation models are still in their early days. Several open challenges stand out.
+
+### Toward unified multi-omic GFMs
+
+Current GFMs are still fragmented:
+
+- DNA-only LMs.
+- Sequence-to-function models tied to specific assays.
+- Variant-centric pathogenicity models.
+- Protein and RNA LMs.
+
+A major frontier is **unified multi-omic GFMs** that:
+
+- Jointly model DNA, RNA, protein, chromatin, and 3D genome structure.
+- Support cross-modal queries such as “given this variant, what is the likely impact on TF binding, chromatin accessibility, and gene expression in a given cell type?”
+- Provide interpretable pathways connecting sequence variation to phenotypes.
+
+Models such as Omni-DNA are first steps in this direction, showing that multi-task, cross-modal training is feasible at scale.
+
+### Integrating causal and mechanistic structure
+
+Most GFMs are trained with purely predictive objectives. Incorporating more **causal structure** could:
+
+- Improve robustness to distribution shift (e.g., between cell types or interventions).
+- Enable counterfactual reasoning (“what if we knock out this enhancer?”).
+
+Potential routes include:
+
+- Causal representation learning on top of GFM embeddings.
+- Mechanistic constraints derived from gene regulatory networks or biochemical kinetics.
+- Joint modeling of perturbation data (CRISPR screens, gene knockouts) with observational genomics.
+
+### Efficient and accessible deployment
+
+Even if GFMs train on large clusters, their deployment should be feasible in typical research labs and clinical environments:
+
+- Distillation into smaller student models.
+- Efficient inference via sparsity, quantization, and hardware-aware architectures.
+- Task-specific adapters that keep the frozen backbone small enough for on-premise use.
+
+The long-range efficiency of architectures like HyenaDNA and the emergence of dense-attention models like Gene42 suggest multiple viable paths to deployable GFMs.
+
+---
+
+## Summary
+
+In this chapter, we:
+
+- Defined what it means for a model to be a *genomic foundation model*, emphasizing scale, generality, and reusability.
+- Proposed a practical taxonomy: DNA language models, sequence-to-function GFMs, variant-centric GFMs, and emerging multi-omic models.
+- Surveyed core design dimensions: data, architecture, objectives, and tokenization.
+- Discussed evaluation regimes and benchmark suites that assess GFMs across diverse tasks.
+- Outlined how practitioners can integrate GFMs into variant interpretation, regulatory genomics, and trait prediction pipelines.
+- Highlighted emerging concerns around robustness, bias, and responsible deployment.
+
+The remaining chapters of Part IV will dive deeper into specific application domains—clinical interpretation, population-scale trait modeling, and multi-omics integration—using the conceptual framework established here to organize a rapidly evolving ecosystem of genomic foundation models.

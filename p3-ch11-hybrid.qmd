@@ -1,0 +1,387 @@
+# Long-range Hybrid Model {#sec-hybrid}
+
+## Why Expression Needs Long-Range Models
+
+ExPecto (@sec-trans) showed that gene expression can be predicted *ab initio* from sequence by combining a CNN-based chromatin model (Beluga) with a separate regression layer mapping chromatin features to expression across tissues [@zhou_expecto_2018]. This modular strategy worked surprisingly well, but it inherited two key limitations from its DeepSEA-style backbone (@sec-reg):
+
+- **Restricted context**: A 40 kb input window captures proximal promoters and some nearby enhancers, but many regulatory interactions span 100 kb or more.
+- **Two-stage learning**: Chromatin prediction and expression prediction are trained separately, leaving no opportunity for the expression objective to shape the representation of sequence.
+
+As genomic datasets grew (ENCODE, Roadmap, FANTOM, GTEx, and others; @sec-data), it became clear that:
+
+- Enhancers can regulate genes **hundreds of kilobases away**.
+- eQTLs often sit **outside promoter windows** traditionally used for expression models.
+- Chromatin conformation (loops, TADs) introduces **non-local dependencies** between DNA segments.
+
+Pure CNN architectures can expand their receptive field using dilated convolutions and pooling, but doing so at single-nucleotide resolution quickly becomes parameter- and memory-intensive. On the other hand, classic transformer architectures can model long-range dependencies via attention, but their **$O(L^2)$ runtime and memory** makes naïve application to 200 kb sequences infeasible (@sec-dna).
+
+Hybrid architectures like **Enformer** and **Borzoi** emerged as a compromise:
+
+- Use **convolutions** to extract local motif features and progressively downsample the sequence into a manageable number of latent positions.
+- Apply **self-attention** over this compressed representation to capture long-range regulatory interactions across ~100–200 kb.
+- Predict **many signals at once** (chromatin profiles, transcription start site activity, RNA-seq coverage), enabling multi-task learning and rich variant effect prediction.
+
+This chapter focuses on these hybrid designs—particularly Enformer [@avsec_enformer_2021] and Borzoi [@linder_borzoi_2025]—and how they changed what “sequence-to-expression” models can do.
+
+## Problem Setting: Sequence-to-Expression at Scale
+
+The models in this chapter tackle a demanding version of the classic problem:
+
+> Given a long DNA sequence window around a genomic locus, predict a rich set of regulatory and transcriptional readouts across many cell types.
+
+### Inputs
+
+- **DNA sequence**: One-hot encoded sequence:
+  - Length: typically **~200 kb** centered on a candidate promoter or gene.
+  - Alphabet: A/C/G/T (N masked or handled by special channels).
+- **Positional indexing**:
+  - The model must know *where* promoter-proximal bases and distal elements are, relative to each other.
+  - Positional information is encoded via **convolutional receptive fields** and/or explicit **positional embeddings** for the attention layers.
+
+### Outputs
+
+Enformer and Borzoi are both **multi-task, multi-position** sequence-to-signal models:
+
+- **Multiple assays**:
+  - DNase/ATAC-seq (chromatin accessibility)
+  - Histone marks (e.g., H3K4me3, H3K27ac, etc.)
+  - CAGE or RNA-seq signals related to transcription and expression.
+- **Multiple cell types / conditions**:
+  - Hundreds of tracks, each representing a signal in a particular cell type or experimental context.
+- **Multiple positions along the window**:
+  - Predictions are made at fixed strides across the input window (e.g., every 128 or 256 bp), yielding a **coverage track** rather than a single scalar.
+
+### Loss Functions
+
+Typical objective:
+
+- **Per-track, per-position regression**:
+  - Often a **Poisson** or **negative binomial** likelihood on read counts.
+  - Sometimes log-transformed counts with a mean-squared error loss.
+- **Multi-task weighting**:
+  - All tracks contribute to the loss.
+  - Some models tune weights to prevent abundant assays (e.g., DNase) from dominating scarce but important ones (e.g., rare histone marks).
+
+The learning problem is thus:
+
+$$
+f_\theta: \text{DNA sequence (≈200 kb)} \rightarrow \text{[Tracks × Positions] continuous outputs}
+$$
+
+with $\theta$ shared across assays, cell types, and genomic loci.
+
+## Enformer: CNN + Attention for 200 kb Context
+
+Enformer [@avsec_enformer_2021] is a landmark model that directly integrates **long-range sequence context** with **cell-type-specific expression prediction**, using a hybrid CNN–transformer architecture.
+
+### Architectural Overview
+
+Conceptually, Enformer has three stages:
+
+1. **Convolutional stem**:  
+   Extract local motifs and progressively downsample the sequence.
+2. **Transformer trunk**:  
+   Apply self-attention to model long-range dependencies between downsampled positions.
+3. **Heads for multi-task outputs**:  
+   Decode the attended representation into assay- and cell-type-specific coverage tracks.
+
+A high-level architecture table is:
+
+| Stage                | Function                                | Key Characteristics                    |
+|----------------------|------------------------------------------|----------------------------------------|
+| CNN stem             | Local motif extraction, downsampling    | Residual + dilated convs, pooling      |
+| Transformer blocks   | Long-range dependency modeling          | Multi-head self-attention, MLPs        |
+| Output heads         | Predict assays across positions & cells | Task-specific linear projections       |
+
+#### 1. Convolutional Stem
+
+The convolutional front-end:
+
+- Takes **~200 kb one-hot sequence** as input.
+- Applies stacked **conv–norm–nonlinearity–pooling** layers.
+- Expands receptive field while downsampling length by a large factor (e.g., 128–256×).
+
+The resulting representation can be viewed as:
+
+- A sequence of **$L'$ latent tokens** ($L' \ll L$), each summarizing a multi-kilobase region.
+- Each token encodes local motif configurations and short-range regulatory patterns.
+
+This step solves the “attention on raw nucleotides” problem by:
+
+- Reducing a 200,000 bp sequence into, say, **~1,000–2,000 tokens**.
+- Allowing attention to operate at a much lower effective resolution.
+
+#### 2. Transformer Trunk
+
+Enformer then applies several **transformer blocks** over the compressed sequence:
+
+- **Multi-head self-attention**:
+  - Every downsampled position can attend to every other position.
+  - Captures relationships between distant enhancers and promoters, or between multiple regulatory elements.
+- **Feed-forward networks (MLPs)**:
+  - Nonlinear mixing of information at each position.
+- **Residual connections and normalization**:
+  - Stabilize training and enable deep stacks.
+
+Intuitively:
+
+- Convolution layers answer:  
+  *“What motifs and local patterns exist in this region?”*
+- Attention layers answer:  
+  *“How do these regions interact across the 200 kb window to shape regulatory activity?”*
+
+#### 3. Multi-Task Output Heads
+
+After attention, Enformer:
+
+- Applies task-specific heads to each position in the latent sequence.
+- Produces coverage predictions for each **assay × cell type** combination.
+
+For CAGE-based transcription start site (TSS) activity:
+
+- The model predicts coverage around TSS positions.
+- Gene-level expression metrics can be obtained by **aggregating** predictions at positions near annotated TSSs (e.g., summing or averaging log counts across a small window).
+
+### Training Data and Objective
+
+Enformer is trained on a large collection of human and mouse regulatory datasets:
+
+- **Human**:
+  - DNase, histone ChIP-seq, and CAGE across many cell types.
+- **Mouse**:
+  - Analogous assays used for **cross-species learning**.
+
+Key design choices:
+
+- **Joint human–mouse training**:
+  - Encourages the model to learn regulatory principles conserved across mammals.
+  - Enables zero-shot transfer between species for some tasks.
+- **Chromosome holdout**:
+  - Entire chromosomes held out for evaluation to avoid overly optimistic performance via local sequence similarity.
+
+The loss aggregates over:
+
+- All targets (tracks).
+- All positions in the output window.
+- All training loci.
+
+### Enformer as a Variant Effect Predictor
+
+Like DeepSEA, Enformer can be used for **in silico variant effect prediction**:
+
+1. Extract a **200 kb window** around a locus from the reference genome.
+2. Run Enformer to obtain predicted coverage tracks.
+3. Introduce an alternative allele (e.g., SNP) into the window.
+4. Re-predict coverage and compute **Δ-prediction**:
+
+   $$
+   \Delta \text{signal} = f_\theta(\text{alt sequence}) - f_\theta(\text{ref sequence})
+   $$
+
+5. Aggregate Δ-predictions around TSSs to quantify **predicted expression change** for genes in each cell type.
+
+This approach allows:
+
+- Fine-grained assessment of how a variant might alter promoter-proximal signals and distal enhancer contributions.
+- Integration into downstream tools (e.g., fine-mapping pipelines) that require variant-level scores.
+
+### eQTL Validation via GTEx
+
+Enformer’s variant effect predictions were systematically evaluated using GTEx eQTL data (@sec-data):
+
+- For each gene–tissue pair:
+  - Known eQTLs (lead variants) and non-eQTL variants in LD were compared.
+- **Signed LD profile (SLDP) regression**:
+  - Correlates predicted expression effects with observed eQTL effect sizes, accounting for LD structure.
+- Findings [@avsec_enformer_2021]:
+  - Enformer’s predictions showed **stronger alignment with observed eQTLs** than prior models like Basenji2 (a purely convolutional long-range model).
+  - Improvement was especially notable at **distal regulatory variants**, where long-range attention is crucial.
+
+In practice, this means Enformer:
+
+- Can prioritize variants likely to be causal eQTLs.
+- Provides **cell-type-specific effect predictions**, which are critical for interpreting tissues with sparse experimental data.
+
+### Interpretation and Mechanistic Insight
+
+While Enformer is a complex model, several interpretation strategies provide mechanistic insight:
+
+- **Gradient-based attribution**:
+  - Compute gradients of gene-level expression predictions with respect to input sequence.
+  - Highlight bases or motifs that drive the predicted expression of a gene in a specific cell type.
+- **In silico mutagenesis**:
+  - Systematically mutate bases to estimate their impact on a target gene or track.
+  - Identify enhancers and key transcription factor binding sites controlling expression.
+- **Perturbation of attention**:
+  - Analyze which positions attend most strongly to a promoter, revealing candidate long-range enhancers.
+
+These tools have been used to:
+
+- Map **promoter–enhancer interactions** directly from sequence.
+- Suggest **causal regulatory elements** for disease-associated variants.
+
+## Borzoi: Transcriptome-Centric Hybrid Modeling
+
+Enformer is primarily trained on **chromatin and CAGE** profiles. Borzoi [@linder_borzoi_2025] extends the hybrid architecture paradigm to model the **RNA transcriptome itself**, with an emphasis on finer-grained transcriptional features.
+
+### Motivation
+
+RNA-seq data carries richer information than a single expression scalar per gene:
+
+- **Coverage along exons and introns**:
+  - Reflects transcription initiation, elongation, and termination.
+- **Splice junction usage**:
+  - Reveals alternative splicing patterns (complementing @sec-splice’s SpliceAI).
+- **Polyadenylation and 3′ UTR usage**:
+  - Impacts mRNA stability, localization, and translation.
+
+A general-purpose model that predicts **base-level RNA-seq read coverage** from DNA sequence could:
+
+- Provide a **unified framework** for transcript-level variant effect prediction (transcription, splicing, polyadenylation).
+- Offer mechanistic insight into how regulatory sequence features shape the full life cycle of transcripts.
+
+### Architectural Highlights
+
+Borzoi builds on the Enformer-style backbone:
+
+1. **Convolutional front-end**:
+   - Processes long DNA windows (on the order of ~100–200 kb).
+   - Learns local motifs and regulatory patterns at single-nucleotide or modestly downsampled resolution.
+
+2. **Hybrid long-range module**:
+   - Uses attention and/or long-range convolutions to integrate information across the entire context.
+   - Explicitly designed to capture relationships between promoters, internal exons, and distal elements.
+
+3. **Multi-layer output heads**:
+   - Predict **RNA-seq coverage tracks** across the window.
+   - Output separate tracks for:
+     - Sense vs antisense transcription.
+     - Splice junction signals.
+     - PolyA-related coverage around 3′ ends.
+
+Like Enformer, Borzoi is trained in a **multi-task** regime, but with a stronger emphasis on **RNA-related readouts**.
+
+### From Chromatin Signals to RNA Readouts
+
+Conceptually, Borzoi closes the loop:
+
+- DeepSEA/Beluga/Enformer:  
+  **Sequence → chromatin + transcription start activity**
+- Borzoi:  
+  **Sequence → full transcriptome coverage**
+
+This supports several analyses:
+
+- **Promoter usage**:
+  - Distinguish alternative promoter TSSs based on coverage patterns.
+- **Alternative splicing**:
+  - Predict differential exon inclusion or skipping, complementing specialized models like SpliceAI.
+- **3′ UTR and polyA site choice**:
+  - Model coverage drop-offs and polyA-linked patterns.
+
+Variant effect prediction follows similar steps as with Enformer:
+
+- Predict transcriptome outputs for reference and alternate sequences.
+- Compute Δ-coverage at exons, splice junctions, and 3′ ends.
+- Aggregate into variant-level scores for tasks like eQTL or sQTL prioritization.
+
+## What Hybrid Models Changed
+
+Hybrid CNN–transformer sequence models like Enformer and Borzoi introduced several conceptual advances over earlier architectures.
+
+### 1. Explicit Long-Range Modeling
+
+By combining convolutional downsampling with attention over latent tokens, these models:
+
+- Achieve **hundreds of kilobases of effective context** with manageable compute.
+- Allow **all positions in the compressed representation to interact**, approximating many possible promoter–enhancer relationships.
+
+This is crucial for:
+
+- Capturing **distal enhancers** that sit far from genes.
+- Modeling **complex regulatory architectures** where multiple enhancers and silencers integrate to control expression.
+
+### 2. Unified Multi-Task Learning Across Modalities
+
+Hybrid models jointly predict:
+
+- Chromatin accessibility.
+- Histone marks.
+- Transcriptional activity (CAGE, RNA-seq).
+
+The result:
+
+- **Shared representations** that capture general regulatory logic.
+- **Regularization** across assays and cell types, reducing overfitting to any single dataset.
+- A pathway to **transfer learning**, where a single pretrained model can be adapted to downstream tasks.
+
+### 3. Improved Variant Effect Prediction for Expression
+
+Compared to earlier CNN-only models (DeepSEA, Beluga, ExPecto, Basenji2):
+
+- Enformer demonstrated stronger **eQTL concordance** and better performance on expression-related benchmarks [@avsec_enformer_2021].
+- Hybrid designs can identify **distal causal variants** more reliably, because their architecture naturally encodes long-range dependencies.
+
+Borzoi takes this further by providing detailed transcriptome-level readouts, enabling:
+
+- Combined assessment of **transcription, splicing, and polyadenylation** for each variant.
+- A richer mechanistic understanding of how sequence variation impacts the full RNA life cycle.
+
+## Limitations and Failure Modes
+
+Despite their power, hybrid long-range models are not omniscient and introduce new challenges.
+
+### Data and Label Limitations
+
+- **Biased training data**:
+  - ENCODE/Roadmap assays focus on specific cell types, conditions, and regions.
+  - GTEx eQTLs are enriched for certain ancestries (Chapter 2).
+- **Missing modalities**:
+  - Many regulatory phenomena (e.g., RNA binding protein effects, 3D structure beyond contact frequency) are only partially captured by the available assays.
+
+As a result, the models may:
+
+- Underperform in **cell types or ancestries not well represented** in the training data.
+- Misinterpret patterns that are confounded by **technical artifacts** (batch effects, mapping biases).
+
+### Sequence Context and Generalization
+
+- Enformer and Borzoi are trained on **fixed window sizes** around annotated loci:
+  - Behavior outside those canonical windows may be less reliable.
+- Training focuses on **reference genome context**:
+  - Large indels, structural variants, or rearrangements may be poorly modeled.
+- The models assume **linear genomic context**:
+  - 3D chromatin architecture is only indirectly captured via sequence patterns correlated with looping; explicit Hi-C or Micro-C integration is limited.
+
+### Interpretability and Trust
+
+Although attribution methods exist:
+
+- Attention weights and gradient-based scores are **not direct causal evidence**.
+- Attributions can be **noisy** and sensitive to how targets are aggregated.
+- For clinical use, predictions often require **orthogonal validation**, e.g., CRISPR perturbation or allele-specific expression assays.
+
+These issues are part of the broader interpretability challenges discussed in later chapters on evaluation and confounders.
+
+## Role in the GFM Landscape
+
+Hybrid architectures like Enformer and Borzoi occupy an interesting middle ground between **task-specific CNNs** and **general-purpose genomic foundation models**:
+
+- Compared to earlier CNN systems:
+  - They model **much longer context** and support richer multi-modal outputs.
+  - They offer significantly improved **expression-related variant effect prediction**.
+- Compared to modern GFMs (Chapters 12–13):
+  - They are **specialized** and **supervised** on particular assays, not trained with broad self-supervision on raw genomes.
+  - Their architecture is **hand-crafted** for specific tasks (chromatin + expression), rather than serving as a universal pretraining backbone.
+
+In practice, they serve as:
+
+- **High-performance baselines** for variant effect prediction tasks, especially when expression or RNA readouts are primary endpoints.
+- **Pretraining sources**: Representations learned by Enformer-like trunks can be adapted for downstream tasks or combined with pretrained language models over DNA.
+- **Design templates**: Many newer architectures borrow the “conv stem + long-range module + multi-task heads” pattern, swapping attention for alternative long-range mechanisms (e.g., state space models, Hyena, Mamba; @sec-princ).
+
+As the field moves toward large, multi-modal genomic foundation models that integrate sequence, chromatin, expression, and 3D structure, **Enformer and Borzoi represent key waypoints**—demonstrating that:
+
+- Long-range context is essential for accurate expression prediction.
+- Hybrid architectures can make such context computationally tractable.
+- Multi-task supervision across regulatory layers is an effective path from raw DNA to clinically relevant variant effect predictions.

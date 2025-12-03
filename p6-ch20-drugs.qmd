@@ -1,0 +1,337 @@
+# Drug Discovery & Biotech  {#sec-drugs}
+
+Genomic foundation models (GFMs) are built to turn raw sequence and multi-omic data into *reusable biological representations* and *fine-grained predictions* (@sec-princ). In previous chapters you saw how these models improve variant effect prediction (Chapters 10, 11, 13), long-range regulatory modeling (Chapters 8, 11, 12), and disease genetics workflows (Chapters 14–16).
+
+This chapter zooms out to ask a more translational question:
+
+> How do genomic foundation models actually plug into **drug discovery and biotech workflows**?
+
+Rather than walking step-by-step through a single therapeutic program, this chapter offers a compact, high-level map of where GFMs are already useful—or plausibly soon will be. The focus is on three broad roles:
+
+1. **Target discovery and genetic validation**:  
+   Using human genetics, variant-level scores, and gene-level evidence to prioritize safer, more effective targets.
+
+2. **Functional genomics and perturbation screens**:  
+   Designing, interpreting, and iteratively improving large-scale CRISPR/perturb-seq/MPRA screens with help from GFMs.
+
+3. **Biomarkers, patient stratification, and biotech infrastructure**:  
+   Turning model outputs into biomarkers for trial design and integrating GFMs into the industrial MLOps stack.
+
+Throughout, the aim is not to promise “end-to-end AI drug discovery,” but to show pragmatic ways that genomic foundation models can **reduce risk, prioritize hypotheses, and make experiments more informative**, especially when coupled to high-quality human data.
+
+---
+
+##  Where Genomics Touches the Drug Discovery Pipeline
+
+The canonical small-molecule or biologics pipeline is often summarized as:
+
+1. **Target identification and validation**  
+2. **Hit finding and lead optimization**  
+3. **Preclinical characterization (safety, PK/PD, tox)**  
+4. **Clinical trials (Phase I–III) and post-marketing**
+
+Genomics most directly enters at three points:
+
+- **Early-stage target discovery and validation**  
+  - Human genetic associations (GWAS, rare-variant burden, somatic mutation landscapes) point to potential targets.  
+  - Variant-level effect predictions and gene-level constraint metrics help de-prioritize potentially unsafe or non-causal signals.
+
+- **Biomarker discovery and patient stratification**  
+  - Genetic risk scores, regulatory embeddings, and multi-omic signatures define patient subgroups and endpoints for trials.  
+  - Embeddings from GFMs make it easier to find *molecularly coherent* patient strata beyond traditional clinical labels.
+
+- **Mechanism-of-action (MoA) and resistance**  
+  - Functional genomics screens and perturbation assays help dissect how a compound perturbs cellular networks.  
+  - GFMs can predict which perturbations matter and suggest follow-up experiments.
+
+Other AI-for-drug-discovery efforts focus on molecular design, docking, or protein structure; those are largely beyond the scope of this book. Here we stay close to the **DNA- and RNA-centric** capabilities you’ve seen earlier: variant effect prediction, regulatory modeling, and multi-omics integration.
+
+---
+
+##  Target Discovery and Genetic Validation
+
+Human genetics provides some of the strongest evidence that modulating a particular target can safely change disease risk. GFMs don’t replace classical statistical genetics, but they provide *richer priors* and *more mechanistic features* for identifying and validating targets.
+
+### From variant-level scores to gene-level targets
+
+Variant effect prediction (VEP) models provide a natural starting point. Earlier chapters introduced:
+
+- **Genome-wide deleteriousness scores** such as CADD, which integrate diverse annotations and—more recently—deep and foundation-model features [@rentzsch_cadd_2019; @schubach_cadd_2024].
+- **Protein-centric VEP GFMs**, including AlphaMissense, GPN-MSA, and AlphaGenome, which combine protein language models, structure, and long-range context to score coding variants [@cheng_alphamissense_2023; @benegas_gpn-msa_2024; @avsec_alphagenome_2025; @brandes_genome-wide_2023].
+- **Sequence-to-function models** such as Enformer and long-context DNA LMs (e.g., Nucleic Transformer, HyenaDNA), which predict regulatory outputs from large genomic windows [@avsec_enformer_2021; @he_nucleic_2023; @nguyen_hyenadna_2023; @trop_genomics_2024].
+
+Drug target teams rarely care about *individual variants* per se; they care about **genes and pathways**. The key move is therefore to aggregate variant-level information into **gene-level evidence**:
+
+- **Coding variant aggregation**  
+  - Summarize missense and predicted loss-of-function (pLoF) variants in each gene using VEP scores.  
+  - Partition variants by predicted functional category (e.g. likely loss-of-function vs. benign missense) and by allele frequency.  
+  - Derive gene-level metrics such as “burden of predicted damaging variants in cases vs controls.”
+
+- **Noncoding and regulatory evidence**  
+  - Aggregate variant effect predictions on enhancers, promoters, and splice sites that link (via chromatin interaction maps or models like Enformer) to a candidate gene [@avsec_enformer_2021; @he_nucleic_2023].  
+  - Use long-range GFMs to connect distal regulatory elements to target loci across 100 kb–1 Mb.
+
+- **Constraint and intolerance**  
+  - Combine VEP-informed burden with gene constraint measures (as used implicitly in CADD and downstream tools) to identify genes that are highly intolerant to damaging variation [@rentzsch_cadd_2019; @schubach_cadd_2024].  
+  - Extremely constrained genes may be risky targets (essentiality/toxicity), while “dose-sensitive” but not lethal genes may present more attractive opportunities.
+
+From a GFM perspective, the core idea is to **treat gene-level evidence as an aggregation problem over high-dimensional variant embeddings**. Instead of manually defining a handful of summary statistics, teams can feed variant embeddings or predicted functional profiles into downstream models that learn which patterns matter most for disease.
+
+### Linking genetic evidence to target safety and efficacy
+
+Classical human genetics has established several now-standard heuristics for target selection:
+
+- **“Human knockout” individuals** (carrying biallelic LoF variants) provide a natural experiment on what happens when a gene is effectively inactivated.  
+- **Protective variants** that reduce disease risk suggest *directionality* of effect (e.g. partial inhibition of a protein is beneficial rather than harmful).  
+- **Pleiotropy**—associations with many unrelated traits—may signal safety liabilities.
+
+GFMs reinforce and extend these ideas by:
+
+- **Improving causal variant identification**  
+  - Fine-mapping methods and multiple-instance models like MIFM can distinguish truly causal regulatory variants from correlated passengers [@wu_genome-wide_2024; @rakowski_mifm_2025].  
+  - Combining these with regulatory GFMs tightens the map from GWAS locus → variant → target gene.
+
+- **Refining effect direction and magnitude**  
+  - VEP scores from protein and regulatory GFMs can approximate effect sizes (e.g. how “severe” a missense change is, or how strongly a regulatory variant alters expression) [@cheng_alphamissense_2023; @benegas_gpn-msa_2024; @avsec_alphagenome_2025].  
+  - This can help differentiate subtle modulators from catastrophic LoF.
+
+- **Highlighting mechanism-enriched loci**  
+  - GFMs provide multi-task predictions (chromatin marks, TF binding, expression, splicing) that make it easier to interpret *how* a risk locus affects biology [@avsec_enformer_2021; @benegas_genomic_2024].
+
+In practice, a target discovery workflow might:
+
+1. Start from GWAS summary statistics or rare variant analyses.  
+2. Apply fine-mapping (e.g. MIFM) to identify candidate causal variants [@wu_genome-wide_2024; @rakowski_mifm_2025].  
+3. Score candidate variants with VEP GFMs (both protein and regulatory).  
+4. Map variants to genes using long-range regulatory models (Enformer, Nucleic Transformer, HyenaDNA) [@avsec_enformer_2021; @he_nucleic_2023; @nguyen_hyenadna_2023].  
+5. Aggregate signals into gene-level “genetic support” scores, incorporating constraint and pleiotropy information.  
+
+The result is a **ranked list of candidate targets** with structured evidence that can be compared across diseases and programs.
+
+### Evolving from hand-curated to model-centric target triage
+
+Historically, target triage relied heavily on *manual curation*:
+
+- Experts would review GWAS hits, literature, and pathway diagrams.  
+- Limited quantitative information was available for most genes, especially in non-classical pathways.
+
+GFMs shift this towards a **model-centric, continuously updated view**:
+
+- New data (e.g. biobank sequencing, single-cell atlases) can be fed through trained GFMs to update variant and gene evidence.  
+- The same underlying model suite can support many disease programs, enabling consistent cross-portfolio comparisons.  
+- Benchmark frameworks like TraitGym emphasize standardized evaluation of genotype-phenotype modeling, helping teams choose appropriate model stacks for a given trait [@benegas_traitgym_2025].
+
+The limiting factor becomes less “do we have an annotation?” and more “can we interpret the model’s representation and connect it to biological plausibility and druggability?”—a theme echoed in Chapters 13 and 15.
+
+---
+
+##  Functional Genomics Screens in Drug Discovery
+
+While human genetics offers *observational* evidence, drug discovery also relies heavily on **perturbation experiments**:
+
+- CRISPR knockout/knockdown/activation screens.  
+- Base-editing or saturation mutagenesis around key domains.  
+- MPRA and massively parallel promoter/enhancer assays.  
+- Perturb-seq and other high-throughput transcriptomic readouts.
+
+Genomic foundation models are well positioned to both **design** and **interpret** such screens.
+
+### Designing smarter perturbation libraries
+
+Traditional pooled screens often rely on simple design rules (e.g. one sgRNA per exon, or tiling a region at fixed spacing). GFMs enable more *information-dense* designs:
+
+- **Sequence-to-function priors**  
+  - Models like DeepSEA, Enformer, and related CNN/transformer architectures predict which bases are most functionally critical for regulatory outputs [@zhou_deepsea_2015; @avsec_enformer_2021; @benegas_genomic_2024].  
+  - Library design can focus perturbations on high-sensitivity sites—predicted TF motifs, splice junctions, or enhancer “hotspots.”
+
+- **Variant prioritization for saturation mutagenesis**  
+  - Protein and DNA GFMs can prioritize substitutions expected to span a wide range of predicted fitness, enabling better estimation of quantitative genotype–phenotype maps [@cheng_alphamissense_2023; @marquet_vespag_2024].  
+  - This is especially useful for deep mutational scanning near active sites or in regulatory domains.
+
+- **Off-target and safety considerations**  
+  - Sequence models can help filter sgRNA designs with high predicted off-target binding, or prioritize guide positions that minimize unintended regulatory disruption.
+
+The overarching idea is to **maximize the information gained per experimental budget** by letting GFMs suggest *where* to perturb in sequence space.
+
+### Interpreting screen readouts with GFMs
+
+Once a screen has been run, GFMs can assist in several ways:
+
+- **Embedding perturbations and outcomes**  
+  - Encode each perturbed sequence (e.g. enhancer variant, gene knockout) using a DNA or protein GFM, and represent each experimental condition as the combination of its embedding and observed phenotype (e.g. expression profile).  
+  - This enables manifold learning over perturbations, in which clusters correspond to shared mechanism-of-action.
+
+- **Mapping hits back to pathways**  
+  - Combine GFMs with graph-based models over protein–protein interaction networks and regulatory networks to identify enriched pathways [@gao_high-ppi_2023; @yuan_linger_2025].  
+  - Learned embeddings help propagate signal to weakly observed genes or variants.
+
+- **Closing the loop with model retraining**  
+  - Use screen outcomes as labeled examples to fine-tune sequence-to-function models in the relevant cell type or context.  
+  - This “lab-in-the-loop” refinement turns generic GFMs into highly tuned models for the cell system of interest.
+
+For example, an MPRA that assays thousands of enhancer variants can yield sequence–activity pairs that dramatically improve expression-prediction GFMs in that locus or tissue. Conversely, model predictions can suggest follow-up experiments (additional variants, cell types, or perturbation strengths) that would be maximally informative given previous data.
+
+---
+
+##  Biomarker Discovery, Patient Stratification, and Trial Design
+
+Even when a target is well validated, many programs fail in late-stage trials because **the right patients, endpoints, or biomarkers were not selected**. GFMs, combined with large cohorts, offer new tools for defining and validating biomarkers.
+
+### From polygenic scores to GFM-informed biomarkers
+
+Classical **polygenic scores (PGS)** summarize the additive effect of many common variants on disease risk. Deep learning methods such as Delphi extend this idea by learning non-linear genotype–phenotype mappings directly from genome-wide data [@georgantas_delphi_2024].
+
+GFMs can enhance these approaches by:
+
+- **Providing richer genetic features**  
+  - Instead of raw genotypes, models can use VEP-derived scores, variant embeddings, or gene-level features produced by GFMs.  
+  - This can capture non-additive effects, regulatory architecture, and variant-level biology in a more compact representation.
+
+- **Transferring knowledge across traits and ancestries**  
+  - Foundation models trained across diverse genomes (e.g. Nucleotide Transformer, GENA-LM, HyenaDNA) provide features that may generalize more robustly across populations than trait-specific models [@dalla-torre_nucleotide_2023; @fishman_gena-lm_2025; @nguyen_hyenadna_2023].  
+  - Fine-mapping–aware approaches like MIFM further reduce dependence on linkage disequilibrium patterns [@wu_genome-wide_2024; @rakowski_mifm_2025].
+
+- **Distinguishing risk and progression**  
+  - By integrating regulatory and expression predictions, risk models can differentiate genetic influences on *disease onset* vs *progression*, enabling more targeted enrichment strategies.
+
+In trial design, such models can be used to:
+
+- Enrich for high-risk individuals (in prevention trials).  
+- Define genetic subtypes that may respond differently to the same mechanism.  
+- Construct composite biomarkers that mix genetics with conventional clinical features.
+
+### Multi-omic and single-cell biomarker discovery
+
+Beyond DNA variation, drug development increasingly leverages **multi-omic and single-cell readouts**:
+
+- Whole-genome/exome tumor sequencing combined with expression, methylation, and copy-number profiling.  
+- Single-cell multiome datasets (RNA + ATAC) that characterize cell-state landscapes in disease [@jurenaite_setquence_2024; @yuan_linger_2025].  
+- Microbiome sequencing for host–microbe interplay and response to therapy [@yan_recent_2025].
+
+GFMs and related architectures can help here in several ways:
+
+- **Set-based and graph-based encoders**  
+  - Models like SetQuence/SetOmic treat heterogeneous genomic features for each tumor as a set, using deep set transformers to extract predictive representations [@jurenaite_setquence_2024].  
+  - GRN inference models such as LINGER leverage atlas-scale multiome data to infer regulatory networks that can serve as biomarkers of pathway activity [@yuan_linger_2025].
+
+- **Multi-scale integration**  
+  - DNA and RNA GFMs can be combined with graph neural networks over gene and protein networks to build end-to-end predictors that map from genotype + cell state to clinical endpoints [@gao_high-ppi_2023; @benegas_genomic_2024].  
+  - Embeddings from protein LMs (e.g. ESM-2-based variant models) provide additional structure for coding variants [@brandes_genome-wide_2023; @marquet_vespag_2024].
+
+- **Biomarker discovery workflows**  
+  - Use GFMs to generate rich embeddings for patients (e.g. from tumor genomes, germline variation, or multi-omic profiles).  
+  - Cluster or perform supervised learning to identify molecular subgroups with differential prognosis or treatment response.  
+  - Validate candidate biomarkers on held-out cohorts or external datasets before deploying them in a trial.
+
+The key shift is that biomarkers are no longer limited to a handful of hand-picked variants or expression markers: they become **functions over high-dimensional genomic and multi-omic embeddings**, learned in a data-driven way yet grounded in biological priors from GFMs.
+
+---
+
+##  Biotech Workflows and Infrastructure for GFMs
+
+For pharma and biotech organizations, the primary challenge is not “can we train a big model?” so much as **“how do we integrate GFMs into existing data platforms, governance, and decision-making?”**
+
+### GFMs as shared infrastructure
+
+In a mature organization, GFMs should be treated as **shared infrastructure**, not ad hoc scripts:
+
+- **Model catalog**  
+  - DNA LMs (e.g. Nucleic Transformer, HyenaDNA, GENA-LM) [@he_nucleic_2023; @nguyen_hyenadna_2023; @fishman_gena-lm_2025].  
+  - Sequence-to-function models (e.g. Enformer, Genomic Interpreter) [@avsec_enformer_2021; @li_genomic_2023].  
+  - Variant effect predictors (AlphaMissense, GPN-MSA, AlphaGenome, CADD v1.7) [@rentzsch_cadd_2019; @schubach_cadd_2024; @cheng_alphamissense_2023; @benegas_gpn-msa_2024; @avsec_alphagenome_2025].  
+
+- **Feature services**  
+  - Centralized APIs that take as input variants, genomic intervals, or genes and return embeddings, predicted functional profiles, or risk features.  
+  - Logging and versioning so that analyses can be reproduced even as models and data evolve.
+
+- **Data governance**  
+  - Clear separation between models trained on public data vs. sensitive internal cohorts.  
+  - Guardrails around where internal data can be used for fine-tuning and how resulting models can be shared.
+
+Embedding GFMs in this way allows multiple teams—target ID, biomarker discovery, clinical genetics—to reuse the same core representations rather than each building bespoke models.
+
+### Build vs buy vs fine-tune
+
+Organizations face three strategic options:
+
+1. **Use external GFMs “as-is”**  
+   - Pros: Low up-front cost; benefits from community benchmarking (e.g. TraitGym for genotype–phenotype modeling [@benegas_traitgym_2025]).  
+   - Cons: May not capture organization-specific populations, assays, or traits.
+
+2. **Fine-tune open-source GFMs on internal data**  
+   - Pros: Retains powerful general representations while adapting to local distribution.  
+   - Cons: Requires careful privacy controls and computational investment.
+
+3. **Train bespoke internal GFMs**  
+   - Pros: Maximum control; can align pretraining exactly with available data and target use cases.  
+   - Cons: Expensive, complex MLOps; risk of overfitting to narrow datasets if not complemented by broader pretraining.
+
+In practice, many groups adopt a **hybrid strategy**:
+
+- Start with public GFMs for early exploration and non-sensitive tasks.  
+- Gradually fine-tune on internal biobank or trial data when added value is clear.  
+- Maintain lightweight model-serving infrastructure for latency-sensitive applications (e.g. clinical decision support) and heavier offline systems for large-scale research workloads.
+
+### IP, collaboration, and regulatory considerations
+
+GFMs also raise new questions around:
+
+- **Intellectual property**  
+  - Models trained on proprietary data can be valuable IP assets but are hard to patent directly.  
+  - Downstream discoveries (targets, biomarkers) derived from GFMs must be carefully documented for freedom-to-operate.
+
+- **Data sharing and federated approaches**  
+  - Joint training or evaluation across institutions may require federated learning or model-to-data paradigms, especially for patient-level data.
+
+- **Regulatory expectations**  
+  - For biomarkers used in pivotal trials, regulators will expect transparent documentation of model training, validation, and performance across subgroups.  
+  - Chapters 14 and 15 highlight confounding and interpretability challenges that become even more acute when models inform trial inclusion or primary endpoints.
+
+Overall, leveraging GFMs in biotech is as much an **organizational and regulatory engineering problem** as a technical one.
+
+---
+
+## Forward Look: Toward Lab-in-the-Loop GFMs
+
+A recurring theme across this book is moving from static models to **closed loops** that integrate:
+
+1. **Foundational representation learning** on large unlabeled datasets (genomes, multi-omics).  
+2. **Task-specific supervision** (disease status, expression, variant effects).  
+3. **Experimental feedback** from perturbation assays, functional screens, and clinical trials.
+
+In the drug discovery context, this suggests an evolution toward **lab-in-the-loop GFMs**:
+
+- **Hypothesis generation**  
+  - GFMs identify promising targets, variants, and regulatory regions.  
+  - Graph and set-based models suggest network-level interventions [@jurenaite_setquence_2024; @gao_high-ppi_2023; @yuan_linger_2025].
+
+- **Experiment design**  
+  - Models propose perturbation libraries (CRISPR, MPRA) that maximize expected information gain.  
+  - Safety and off-target predictions help filter risky designs.
+
+- **Evidence integration and model refinement**  
+  - Screen results feed back into GFMs, improving their local accuracy in disease-relevant regions of sequence space.  
+  - Clinical trial outcomes update biomarker models and risk predictors for future trials.
+
+- **Portfolio-level decision support**  
+  - Genetic and functional evidence from GFMs is combined with classical pharmacology to prioritize or deprioritize programs.  
+  - Uncertainty estimates and model critique (@sec-interp) help avoid over-confidence in purely model-driven recommendations.
+
+Realizing this vision will require:
+
+- Better **calibration and uncertainty quantification** in GFMs.  
+- Stronger **causal reasoning** to distinguish correlation from intervention-worthiness.  
+- Careful **ethical and equity considerations**, especially when models influence who gets access to trials or targeted therapies (@sec-confound).
+
+Yet even in the near term, GFMs already offer tangible value in **de-risking targets, enriching cohorts, and interpreting complex functional data**. When combined with rigorous experimental design and domain expertise, they can act not as oracle decision-makers, but as **force multipliers for human scientists and clinicians**.
+
+---
+
+In summary, this chapter has sketched how genomic foundation models extend beyond academic benchmarks into **practical levers for drug discovery and biotech**:
+
+- Turning variant and regulatory predictions into **target discovery and validation pipelines**.  
+- Designing and interpreting **functional genomics screens** that probe mechanism and vulnerability.  
+- Building richer **biomarkers and patient stratification schemes** for trials.  
+- Embedding GFMs into **industrial data platforms and MLOps**.
+
+Subsequent chapters in Part V can zoom into specific application domains—clinical risk prediction (@sec-clinical) and pathogenic variant discovery (@sec-variants)—using the conceptual toolkit laid out here.

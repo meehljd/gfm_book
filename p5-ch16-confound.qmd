@@ -1,0 +1,280 @@
+# Confounders in Model Training {#sec-confound}
+
+In previous chapters, we treated model performance curves and ROC–AUC numbers as if they transparently reflected how well a model learns biology. In practice, genomic data is riddled with structure that makes it dangerously easy for models—especially large, overparameterized ones—to exploit shortcuts.
+
+Population structure, technical batch effects, benchmark leakage, and label noise can all inflate headline metrics while leaving real-world performance and clinical reliability largely unchanged. These issues are not unique to deep learning; they affect traditional statistics and GWAS as well. But the scale, flexibility, and opacity of modern genomic foundation models (GFMs) make them particularly susceptible.
+
+This chapter surveys the main confounders that arise when training and evaluating genomic models, and outlines practical strategies to detect, mitigate, and transparently report them. We focus on five recurring themes:
+
+- Ancestry stratification and population bias  
+- Benchmark leakage and train/test overlap  
+- Technical artifacts and batch effects  
+- Label noise and ground-truth uncertainty  
+- Cross-ancestry transferability of polygenic scores (PGS) and other models  
+
+Throughout, the key message is simple: **architecture advances are only as meaningful as the datasets and evaluation protocols that support them**.
+
+---
+
+## Why Confounders Are Ubiquitous in Genomic ML
+
+A confounder is a variable that influences both the features (e.g., genotypes, readouts) and the labels (e.g., case/control status, functional effect), creating spurious associations. In genomics, confounders abound because:
+
+- **Data are observational, not randomized.** Disease labels, population sampling, and technical pipelines are all determined by real-world constraints and historical biases.  
+- **Population structure is strong and multi-layered.** Ancestry, relatedness, and local adaptation affect allele frequencies throughout the genome.  
+- **Technical pipelines are complex.** Each step—sample collection, library prep, sequencing, alignment, variant calling, QC—can introduce systematic differences between cohorts.  
+- **Labels are noisy.** Clinical databases (e.g., ClinVar) and high-throughput assays contain uncertain and sometimes incorrect annotations.
+
+Deep models are powerful pattern detectors. If confounders produce consistent patterns that correlate with labels, models will happily learn those shortcuts instead of the causal biology we care about. The result is impressive performance on held-out data that share the same hidden structure, but brittle behavior as soon as we change ancestry, institution, assay, or time period.
+
+---
+
+## Ancestry Stratification and Population Bias
+
+### How ancestry becomes a shortcut
+
+Human genetic variation is structured by ancestry: allele frequencies and haplotype patterns differ across populations due to demographic history, drift, and selection. Disease prevalence, environmental exposures, and health-care access are also ancestry- and region-dependent.
+
+This creates a classic confounding scenario:
+
+- **Features:** Genotypes or sequence variants reflect ancestry.  
+- **Labels:** Case/control status, disease subtype, or even “pathogenic vs. benign” annotations can vary with ancestry.  
+
+If a case cohort is primarily of one ancestry and controls are primarily of another, a model can achieve high predictive performance by acting as an ancestry classifier rather than a disease predictor. The same issue arises for variant effect prediction: variants common in one ancestry but rare in another can be spuriously tagged as pathogenic or benign because of how databases were curated.
+
+### Manifestations in genomic models
+
+Some common ways ancestry confounding shows up:
+
+- **Case/control imbalance across ancestries.** For example, cases over-representing individuals of European ancestry, controls over-representing other groups.  
+- **Reference database bias.** Variant annotations derived mostly from European-ancestry cohorts; “benign” often means “common in Europeans”.  
+- **Implicit ancestry markers.** Cryptic relatedness, shared haplotypes, and local LD patterns let models recover ancestry even when explicit labels are removed.
+
+For high-capacity models such as transformer-based GFMs, even subtle ancestry differences are enough to support a shortcut.
+
+### Detecting ancestry confounding
+
+Practical diagnostics include:
+
+- **PCA or UMAP of genotypes/embeddings.** If cases and controls cluster by ancestry, that’s a red flag.  
+- **Stratified performance.** Evaluate metrics separately within each ancestry group; large performance drops or reversals across groups suggest confounding.  
+- **Ancestry-only baselines.** Fit a simple classifier on ancestry PCs or self-identified ancestry alone. If this baseline approaches your model’s performance, your model is likely exploiting similar information.  
+- **Permutation tests within ancestry strata.** Shuffling labels within ancestry groups should destroy performance for a truly disease-specific signal, but not for models relying on cross-ancestry differences.
+
+### Mitigating ancestry bias
+
+Mitigation is imperfect, but several strategies help:
+
+- **Balanced study design.** Wherever possible, recruit cases and controls with similar ancestry distributions, or match controls to cases.  
+- **Within-ancestry evaluation.** Report metrics for each ancestry separately; use training–validation splits that preserve within-group structure.  
+- **Covariate adjustment.** Include ancestry PCs, kinship matrices, or mixed-model random effects in simpler models; for deep models, condition on or adversarially remove ancestry signals from learned embeddings.  
+- **Multi-ancestry training.** Train on diverse populations rather than restricting to a single ancestry, and explicitly model ancestry as a domain variable.  
+- **Fairness-aware objectives.** Introduce regularizers or constraints that penalize performance disparities across ancestry groups, especially in clinical deployment contexts.
+
+In later chapters on PGS and multi-omics, careful ancestry handling will be essential for equitable risk prediction.
+
+---
+
+## Benchmark Leakage and Train/Test Overlap
+
+Even with perfectly balanced ancestries, evaluation can be misleading if information “leaks” from training to test sets. Leakage is especially insidious in genomics because:
+
+- The genome is highly structured and redundant.  
+- Public datasets and benchmarks are heavily reused.  
+- Many papers do not fully specify how splits were constructed.
+
+### Forms of leakage
+
+Common leakage patterns include:
+
+- **Individual overlap.** The same person (or close relative) appears in both train and test sets, directly or via related cohorts.  
+- **Variant overlap.** Exact variants, or near-identical ones at the same locus, appear in both splits; this can happen when different datasets are merged.  
+- **Locus-level overlap.** Variants in the same gene, regulatory element, or LD block are split between train and test. A model may learn locus-specific idiosyncrasies instead of general rules.  
+- **Database reuse leakage.** Benchmarks constructed from ClinVar, gnomAD, or other public databases but evaluated against an external set that partially overlaps those sources.  
+- **Time-based leakage.** Models trained on data that include later submissions of the same variants or patients that are used as “future” test examples.
+
+For large models, even very small overlaps can inflate metrics, particularly when test sets are small.
+
+### Safer splitting strategies
+
+To reduce leakage:
+
+- **Individual-level splits.** Ensure that no individual (or closely related individuals, if kinship is known) appears in both train and test sets.  
+- **Locus- or gene-level splits.** For variant effect prediction, split at the gene, enhancer, or genomic region level so that test loci are unseen.  
+- **Chromosome-based splits.** For genome-wide tasks, hold out entire chromosomes or chromosome arms. This is not perfect but greatly reduces local dependency leakage.  
+- **Time-based splits.** Train on data up to a cutoff date and test on later data, mimicking realistic deployment.  
+- **Transparent data provenance.** Track the origin of each sample and variant (e.g., database version, submission ID) to avoid accidental reuse.
+
+### Evaluation design and reporting
+
+Beyond the split itself, **evaluation design** matters:
+
+- Report both **in-distribution** performance (same cohort) and **out-of-distribution** performance (new cohorts, ancestries, or technical pipelines).  
+- Whenever possible, include **cross-cohort benchmarks**: train on one cohort, test on another with different recruitment or sequencing characteristics.  
+- Share code and detailed recipes for dataset construction so that others can reproduce and critique splitting choices.
+
+---
+
+## Technical Artifacts: Batch Effects and Platform Differences
+
+While ancestry and population structure reflect biological reality, **batch effects** are artifacts of the measurement process. In genomics, differences in:
+
+- Sample collection protocols  
+- Library preparation kits  
+- Sequencing platforms and chemistry versions  
+- Read length, depth, and coverage  
+- Alignment and variant calling pipelines  
+
+can all introduce systematic shifts in feature distributions.
+
+### How batch effects confound models
+
+Technical batches often correlate with labels:
+
+- A case cohort may be sequenced at one institution on one platform, while controls are sequenced elsewhere with different protocols.  
+- A longitudinal study might switch from one capture kit or sequencer to another halfway through, coinciding with changes in enrollment criteria.  
+- Public datasets may aggregate studies with very different technical characteristics.
+
+In such settings, a model can achieve high accuracy by recognizing **batch signatures** (e.g., patterns of missingness, depth, noise spectra) rather than bona fide biological signals.
+
+### Diagnosing technical confounders
+
+Common diagnostics include:
+
+- **Embedding visualization by batch.** Project learned embeddings or expression/coverage profiles via PCA or UMAP, then color points by batch, platform, or institution. Strong clustering by these variables suggests technical structure.  
+- **Batch-only baselines.** Train a classifier using only batch labels or simple technical covariates (e.g., read depth, platform indicators). High baseline performance is a warning sign.  
+- **Negative controls.** Evaluate models on samples where labels should be uncorrelated with batch (e.g., technical replicates, randomized subsets).  
+- **Replicate consistency.** Examine consistency of predictions across technical replicates processed in different batches.
+
+### Mitigating batch effects
+
+Mitigation is an active research area; common approaches include:
+
+- **Careful study design.** Randomize cases and controls across batches whenever possible; avoid systematic alignment between batch and outcome.  
+- **Preprocessing harmonization.** Use standardized pipelines for alignment and variant calling; reprocess raw data when feasible to reduce inter-study differences.  
+- **Statistical batch correction.** Methods such as ComBat, Harmony, and related approaches can reduce batch effects in expression or chromatin data; similar ideas can be applied to embeddings from GFMs.  
+- **Domain adaptation and adversarial training.** Train representations that are predictive of labels while being invariant to batch or platform (e.g., via gradient reversal layers or distribution matching objectives).  
+- **Explicit multi-domain modeling.** Treat each batch or platform as a domain and learn domain-conditional parameters or mixture-of-experts models.
+
+Even with aggressive correction, residual batch structure typically remains; transparent reporting and robustness checks are essential.
+
+---
+
+## Label Noise and Ground-Truth Uncertainty
+
+Large-scale genomic models rely on labels from:
+
+- Clinical variant interpretation databases (e.g., pathogenic vs. benign)  
+- GWAS-derived case/control status  
+- High-throughput functional screens (e.g., MPRA, saturation mutagenesis, CRISPR screens)  
+- Curated “gold-standard” sets for VEP, splicing predictions, or PGS
+
+These labels are **not** error-free. Sources of label noise include:
+
+- **Conflicting annotations.** ClinVar often contains variants with conflicting interpretations or uncertain significance; criteria for pathogenicity change over time.  
+- **Ascertainment bias.** Variants labeled as “benign” may simply be common in some populations; variants labeled as “pathogenic” may be enriched in clinically ascertained cohorts.  
+- **Measurement noise in functional assays.** High-throughput experiments have variable reproducibility across labs, conditions, and replicates. Thresholding continuous scores into discrete classes compounds the issue.  
+- **Phenotyping noise.** Clinical case/control labels may be inaccurate due to misdiagnosis, incomplete records, or heterogeneous disease definitions.
+
+### Consequences for models
+
+Label noise can:
+
+- Limit achievable performance, especially for tasks with overlapping phenotype definitions.  
+- Encourage models to learn spurious proxies that correlate with annotation errors.  
+- Bias calibration and decision thresholds, particularly in imbalanced settings.
+
+In some scenarios, training on noisy labels still improves performance if noise is roughly symmetric or if the dataset is very large. However, for rare disease variants and high-stakes predictions, even small fractions of mislabeled examples can be problematic.
+
+### Strategies for robust learning with noisy labels
+
+Approaches to deal with label noise include:
+
+- **Curated subsets.** Restrict training and evaluation to high-confidence annotations (e.g., ClinVar “Pathogenic” and “Benign” with multiple submitters and no conflicts), even at the cost of reduced size.  
+- **Soft labels and uncertainty modeling.** Use probabilistic labels derived from inter-rater disagreement, confidence scores, or continuous assay measurements rather than hard 0/1 labels.  
+- **Robust losses.** Employ loss functions less sensitive to mislabeled points (e.g., label smoothing, margin-based losses, or methods that down-weight high-loss outliers).  
+- **Noise-aware training.** Explicitly model label noise (e.g., via a noise transition matrix or latent variable models) and jointly infer true labels.  
+- **Consensus across modalities.** Combine evidence from protein structure, evolutionary conservation, regulatory context, and clinical data; treat disagreements as signals of uncertainty.  
+
+Mechanistic interpretability can also help flag model predictions that disagree with known biology, potentially identifying mislabeled examples.
+
+---
+
+## Cross-Ancestry PGS Transferability and Model Fairness
+
+Polygenic scores (PGS) and other genome-wide predictors have gained traction as potential tools for early disease risk stratification. However, many PGS have been developed primarily in individuals of European ancestry, raising concerns about:
+
+- **Reduced predictive accuracy** in underrepresented ancestries.  
+- **Biased calibration,** where risk is systematically over- or under-estimated in certain groups.  
+- **Downstream disparities** if PGS-informed clinical decisions (e.g., screening recommendations) are applied uniformly.
+
+### Why transferability fails
+
+Reasons for poor cross-ancestry transfer include:
+
+- **Allele frequency differences.** Effect estimates calibrated in one population may not generalize when allele frequencies change.  
+- **LD pattern differences.** Tagging SNPs used in PGS may capture causal variants in one ancestry but not another.  
+- **Gene–environment interaction.** Environmental exposures and lifestyle factors that interact with genetic risk differ across populations.  
+- **Ascertainment and recruitment biases.** Early GWAS datasets often oversampled certain ancestries, clinical populations, or socioeconomic strata.
+
+These issues carry over to deep learning–based PGS and GFMs fine-tuned for disease prediction. Even if the underlying model is trained on diverse genomes in a self-supervised fashion, the **supervised fine-tuning and evaluation data** can reintroduce bias.
+
+### Towards more equitable models
+
+Approaches to improve cross-ancestry performance and fairness include:
+
+- **Multi-ancestry GWAS and training data.** Include diverse cohorts at the design stage rather than as an afterthought.  
+- **Ancestry-aware modeling.** Condition effect sizes or model parameters on ancestry, or learn ancestry-invariant representations coupled with ancestry-specific calibration.  
+- **Transfer learning and fine-tuning.** Adapt models from ancestries with large datasets to those with smaller datasets using domain adaptation techniques.  
+- **Fairness metrics.** Report group-wise calibration, sensitivity, specificity, and decision-curve analyses, not just overall AUC.  
+- **Stakeholder engagement.** Work with clinicians, ethicists, and affected communities to decide when and how PGS should be used, and what constitutes acceptable performance gaps.
+
+---
+
+## From Cautionary Tales to Best Practices
+
+Modern genomic foundation models promise impressive capabilities: genome-scale variant effect prediction, cross-species transfer, multi-omics integration, and clinically actionable risk scores. Yet without rigorous attention to confounders, these capabilities can be overstated or misapplied.
+
+Emerging work on genomic evaluation frameworks emphasizes:
+
+- **Data documentation.** Detailed datasheets for datasets and benchmarks, including recruitment, ancestry composition, technical pipelines, and label provenance.  
+- **Robust evaluation protocols.** Cross-cohort, cross-ancestry, and time-split evaluations that stress-test models beyond their training distribution.  
+- **Confounder-aware training.** Explicit modeling of ancestry, batch, and label uncertainty, and the use of adversarial or domain-adaptation techniques.  
+- **Transparent reporting.** Clear communication of limitations, potential failure modes, and groups for whom the model has not been validated.
+
+---
+
+## A Practical Checklist for Confounder-Resilient Genomic Modeling
+
+To close, here is a concise checklist you can apply when designing, training, and evaluating genomic models:
+
+1. **Population structure**
+   - Have you quantified ancestry and relatedness (e.g., via PCs or kinship)?  
+   - Are cases and controls balanced within ancestry groups?  
+   - Do you report performance stratified by ancestry?
+
+2. **Data splits and leakage**
+   - Are individuals, families, and closely related samples confined to a single split?  
+   - Do you split at the locus, gene, or chromosome level where appropriate?  
+   - Have you checked for overlap with external databases used in evaluation?
+
+3. **Batch and platform effects**
+   - Are technical variables (batch, platform, institution) correlated with labels?  
+   - Have you visualized embeddings colored by batch?  
+   - Do you use harmonization, batch correction, or domain adaptation as needed?
+
+4. **Label quality**
+   - How are labels defined, and what is their uncertainty?  
+   - Do you filter to high-confidence subsets for primary evaluation?  
+   - Do you employ robust training strategies to handle label noise?
+
+5. **Cross-group performance and fairness**
+   - Do you report metrics for each ancestry and relevant subgroup?  
+   - Are risk scores calibrated across groups, or is group-specific calibration required?  
+   - Have you considered the ethical and clinical implications of residual performance gaps?
+
+6. **Reproducibility and transparency**
+   - Are dataset construction and splitting procedures fully documented and shareable?  
+   - Are code and evaluation pipelines available for independent verification?  
+
+By systematically addressing these points, we can ensure that the gains from modern architectures—transformers, SSMs, and GFMs—translate into **trustworthy** advances in genomic science and medicine, rather than brittle models that merely reflect quirks of our data and history.

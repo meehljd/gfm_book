@@ -1,0 +1,165 @@
+# NGS & Variant Calling {#sec-ngs}
+
+## The Challenge of NGS Data
+
+Next-generation sequencing (NGS) has transformed genomics by making it routine to generate tens to hundreds of gigabases of sequence from a single individual in a few days. Modern instruments produce:
+
+- **Short reads** (e.g., 100–300 bp paired-end Illumina reads) at very high throughput  
+- With **non-trivial error profiles** (substitutions, context-specific errors, and base quality uncertainties)  
+- Aligned to **imperfect reference genomes** that omit structural variation and some segmental duplications
+
+Turning these raw reads into a reliable list of variants is therefore not just a matter of comparing strings. Variant calling pipelines must disentangle:
+
+- **Sequencing errors** (instrument noise, PCR artifacts)  
+- **Alignment artifacts** (mis-mapping in repeats, paralogous regions, pseudogenes)  
+- **Biological variation** (germline variants, somatic mutations, mosaicism)
+
+Historically, this was addressed by complex, modular pipelines combining probabilistic models and hand-crafted heuristics. Deep learning now plays an important role in simplifying and improving parts of this stack, but it is helpful to understand the classical pipeline first.
+
+## Targeted Panels, WES, and WGS
+
+NGS is not a single technology; it is deployed in different targeting strategies, each with distinct trade-offs.
+
+### Targeted and panel sequencing
+
+Targeted **gene panels** capture tens to hundreds of genes selected for a clinical indication (e.g., cardiomyopathy, hereditary cancer). They offer:
+
+- High depth in a limited region (often 200–500×)  
+- Relatively low cost per sample  
+- Simple interpretation workflows tied to well-curated gene lists
+
+However, panels miss:
+
+- Novel genes outside the panel  
+- Most structural variants and non-coding regulatory changes  
+- Opportunities for reanalysis as gene–disease knowledge evolves
+
+### Whole-exome sequencing (WES)
+
+**Whole-exome sequencing (WES)** enriches coding exons and some flanking splice regions genome-wide:
+
+- Typical coverage is 80–150× for exonic targets  
+- Capture efficiency varies across GC content and repetitive exons  
+- Non-coding regions are largely unobserved
+
+WES has been especially successful for Mendelian disease gene discovery and diagnostic workflows. At the same time, it:
+
+- Misses non-coding and structural causes  
+- Has non-uniform coverage, leading to heterogeneous sensitivity across genes  
+- Requires careful handling of capture biases and batch effects
+
+### Whole-genome sequencing (WGS)
+
+**Whole-genome sequencing (WGS)** samples nearly all bases in the genome:
+
+- Typical coverage is 30–60× across the genome, with more uniform depth than WES  
+- No capture step — fewer batch-specific artifacts  
+- Enables detection of non-coding variants, structural variants, and copy-number changes along with SNVs/indels
+
+WGS is increasingly favored for new large cohorts and rare disease diagnostics despite higher cost, because:
+
+- Data are reusable for many downstream analyses (GWAS, PGS, rare variant burden tests)  
+- It simplifies pipelines (no need to track changing capture designs)  
+- It supports more complete variant catalogs for models later in this book
+
+Throughout this text, we assume a WES/WGS-style pipeline where we start from aligned reads and aim to call high-confidence SNVs and small indels.
+
+## Classical Variant Calling Pipelines
+
+While every institution implements its own details, a “classical” short-read pipeline has several common stages:
+
+1. **Base calling and demultiplexing**  
+   - Instrument software converts fluorescent images to base calls and quality scores.  
+   - Reads are demultiplexed by barcode into sample-specific FASTQ files.
+
+2. **Read alignment**  
+   - Short reads are aligned to a reference genome (e.g., GRCh38 or T2T-CHM13) using seed-and-extend mappers such as BWA-MEM or minimap2.  
+   - Aligners must cope with mismatches, small indels, and repetitive sequence.
+
+3. **Post-alignment processing**  
+   - Marking/remove PCR duplicates  
+   - Base quality score recalibration (BQSR), which models systematic quality score errors  
+   - Local realignment around indels (in older pipelines)
+
+4. **Per-sample variant calling**  
+   - Tools like the Genome Analysis Toolkit (GATK) HaplotypeCaller fit local haplotypes using hidden Markov models, de Bruijn graphs, or other probabilistic frameworks [@mckenna_gatk_2010].  
+   - They produce candidate variants with genotype likelihoods per sample.
+
+5. **Joint genotyping and cohort refinement**  
+   - For cohorts, per-sample likelihoods are recombined to enforce a consistent set of variants across individuals.  
+   - Variant quality score recalibration (VQSR) or hard filters are used to distinguish true variants from artifacts based on features like depth, mapping quality, and strand bias.
+
+These steps are encoded in pipelines like GATK Best Practices and similar frameworks. The key point is that each step uses **hand-designed summary features** and **mechanistic models** chosen by experts, not learned end-to-end [@van_der_auwera_gatk_best_2018].
+
+## DeepVariant: CNNs for Variant Calling
+
+DeepVariant replaces much of the hand-engineered logic in classical pipelines with a deep convolutional neural network trained to classify candidate variants directly from read pileups [@poplin_deepvariant_2018].
+
+### Image-like pileup representation
+
+Around each candidate site, DeepVariant constructs an “image”:
+
+- Each row corresponds to a read overlapping the site  
+- Channels encode base identity, base quality, mapping quality, strand, and other features  
+- Reference sequence and candidate alleles are overlaid
+
+This transforms the problem into a vision task: classify the central locus as homozygous reference, heterozygous, or homozygous alternate given the pileup image.
+
+### Inception-style CNN classifier
+
+DeepVariant uses an Inception-style CNN originally developed for image classification. Trained on high-confidence truth sets (e.g., GIAB genomes), it learns to:
+
+- Recognize patterns consistent with true variants (balanced alleles, consistent qualities, clean alignments)  
+- Recognize artifacts (strand bias, mapping pileups in repeats, inconsistent quality patterns)
+
+Trained once, the same architecture generalizes across:
+
+- Whole-genome vs whole-exome data  
+- PCR-free vs PCR-amplified libraries  
+- Different instrument models and read lengths
+
+### Cohort calling with DeepVariant + GLnexus
+
+For cohort calling, DeepVariant can be combined with joint genotyping tools such as GLnexus to scale to tens or hundreds of thousands of samples while maintaining high accuracy [@yun_accurate_2021]. In this setup:
+
+- DeepVariant produces per-sample gVCFs with genotype likelihoods  
+- GLnexus merges gVCFs, harmonizes genotypes across samples, and applies cohort-level filters
+
+This combination has become a de facto standard for large WES/WGS cohorts.
+
+## Sources of Error and Uncertainty
+
+Even with modern pipelines, variant calls are imperfect. Important failure modes include:
+
+- **Mapping ambiguity**  
+  - Reads from segmental duplications, paralogous genes, and low-complexity regions may be mis-aligned.  
+  - Reference bias can favor the reference allele in ambiguous regions.
+
+- **Systematic sequencing artifacts**  
+  - Context-specific errors (e.g., homopolymers, GC-rich regions)  
+  - Batch effects across runs, instruments, or library preparations
+
+- **Low-coverage regions**  
+  - WES capture dropouts or WGS coverage dips can create false negatives for heterozygous variants.  
+  - Somatic or mosaic variants at low allele fraction can be mistaken for noise.
+
+- **Complex variants**  
+  - Small indels near homopolymers or repetitive elements  
+  - Multi-nucleotide variants decomposed into multiple SNVs depending on caller representation
+
+The deep learning models in later chapters inherit these errors as **input noise**. Understanding where variant calls are reliable — and where they are not — is essential when training sequence-to-function models, building polygenic scores, or interpreting predicted variant effects.
+
+## Significance for Genomic Deep Learning
+
+NGS and variant calling set the stage for everything else in this book:
+
+1. **They define the “atoms” we model.**  
+   - The output of WES/WGS pipelines — a VCF of SNVs and indels — is the raw material for PGS, rare variant burden tests, and variant effect prediction.
+
+2. **They constrain downstream models.**  
+   - If an assay never sees a class of variants (e.g., complex structural variation, low-frequency mosaics), deep models cannot learn about them.
+
+3. **They motivate end-to-end approaches.**  
+   - DeepVariant is an early example of replacing a hand-designed pipeline with a learned model that operates on raw-ish data and directly optimizes accuracy [@poplin_deepvariant_2018; @yun_accurate_2021].
+
+The remaining chapters in Part I describe how variant calls are aggregated into genome-wide association studies (GWAS), polygenic scores, and genome-wide deleteriousness scores that serve as baselines and inputs for the deep learning models that follow.

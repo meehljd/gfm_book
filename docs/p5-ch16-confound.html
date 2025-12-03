@@ -1,0 +1,1200 @@
+<!DOCTYPE html>
+<html xmlns="http://www.w3.org/1999/xhtml" lang="en" xml:lang="en"><head>
+
+<meta charset="utf-8">
+<meta name="generator" content="quarto-1.8.26">
+
+<meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=yes">
+
+
+<title>16&nbsp; Confounders in Model Training – Genomic Foundation Models</title>
+<style>
+code{white-space: pre-wrap;}
+span.smallcaps{font-variant: small-caps;}
+div.columns{display: flex; gap: min(4vw, 1.5em);}
+div.column{flex: auto; overflow-x: auto;}
+div.hanging-indent{margin-left: 1.5em; text-indent: -1.5em;}
+ul.task-list{list-style: none;}
+ul.task-list li input[type="checkbox"] {
+  width: 0.8em;
+  margin: 0 0.8em 0.2em -1em; /* quarto-specific, see https://github.com/quarto-dev/quarto-cli/issues/4556 */ 
+  vertical-align: middle;
+}
+</style>
+
+
+<script src="site_libs/quarto-nav/quarto-nav.js"></script>
+<script src="site_libs/quarto-nav/headroom.min.js"></script>
+<script src="site_libs/clipboard/clipboard.min.js"></script>
+<script src="site_libs/quarto-search/autocomplete.umd.js"></script>
+<script src="site_libs/quarto-search/fuse.min.js"></script>
+<script src="site_libs/quarto-search/quarto-search.js"></script>
+<meta name="quarto:offset" content="./">
+<link href="./p5-ch17-interp.html" rel="next">
+<link href="./p5-ch15-eval.html" rel="prev">
+<script src="site_libs/quarto-html/quarto.js" type="module"></script>
+<script src="site_libs/quarto-html/tabsets/tabsets.js" type="module"></script>
+<script src="site_libs/quarto-html/axe/axe-check.js" type="module"></script>
+<script src="site_libs/quarto-html/popper.min.js"></script>
+<script src="site_libs/quarto-html/tippy.umd.min.js"></script>
+<script src="site_libs/quarto-html/anchor.min.js"></script>
+<link href="site_libs/quarto-html/tippy.css" rel="stylesheet">
+<link href="site_libs/quarto-html/quarto-syntax-highlighting-587c61ba64f3a5504c4d52d930310e48.css" rel="stylesheet" id="quarto-text-highlighting-styles">
+<script src="site_libs/bootstrap/bootstrap.min.js"></script>
+<link href="site_libs/bootstrap/bootstrap-icons.css" rel="stylesheet">
+<link href="site_libs/bootstrap/bootstrap-a1553387a0f784068632030e9fbb8a3c.min.css" rel="stylesheet" append-hash="true" id="quarto-bootstrap" data-mode="light">
+<script id="quarto-search-options" type="application/json">{
+  "location": "sidebar",
+  "copy-button": false,
+  "collapse-after": 3,
+  "panel-placement": "start",
+  "type": "textbox",
+  "limit": 50,
+  "keyboard-shortcut": [
+    "f",
+    "/",
+    "s"
+  ],
+  "show-item-context": false,
+  "language": {
+    "search-no-results-text": "No results",
+    "search-matching-documents-text": "matching documents",
+    "search-copy-link-title": "Copy link to search",
+    "search-hide-matches-text": "Hide additional matches",
+    "search-more-match-text": "more match in this document",
+    "search-more-matches-text": "more matches in this document",
+    "search-clear-button-title": "Clear",
+    "search-text-placeholder": "",
+    "search-detached-cancel-button-title": "Cancel",
+    "search-submit-button-title": "Submit",
+    "search-label": "Search"
+  }
+}</script>
+
+
+<link rel="stylesheet" href="styles.css">
+</head>
+
+<body class="nav-sidebar floating quarto-light">
+
+<div id="quarto-search-results"></div>
+  <header id="quarto-header" class="headroom fixed-top">
+  <nav class="quarto-secondary-nav">
+    <div class="container-fluid d-flex">
+      <button type="button" class="quarto-btn-toggle btn" data-bs-toggle="collapse" role="button" data-bs-target=".quarto-sidebar-collapse-item" aria-controls="quarto-sidebar" aria-expanded="false" aria-label="Toggle sidebar navigation" onclick="if (window.quartoToggleHeadroom) { window.quartoToggleHeadroom(); }">
+        <i class="bi bi-layout-text-sidebar-reverse"></i>
+      </button>
+        <nav class="quarto-page-breadcrumbs" aria-label="breadcrumb"><ol class="breadcrumb"><li class="breadcrumb-item"><a href="./p5-ch15-eval.html">Part V: Reliability &amp; Interpretation</a></li><li class="breadcrumb-item"><a href="./p5-ch16-confound.html"><span class="chapter-number">16</span>&nbsp; <span class="chapter-title">Confounders in Model Training</span></a></li></ol></nav>
+        <a class="flex-grow-1" role="navigation" data-bs-toggle="collapse" data-bs-target=".quarto-sidebar-collapse-item" aria-controls="quarto-sidebar" aria-expanded="false" aria-label="Toggle sidebar navigation" onclick="if (window.quartoToggleHeadroom) { window.quartoToggleHeadroom(); }">      
+        </a>
+      <button type="button" class="btn quarto-search-button" aria-label="Search" onclick="window.quartoOpenSearch();">
+        <i class="bi bi-search"></i>
+      </button>
+    </div>
+  </nav>
+</header>
+<!-- content -->
+<div id="quarto-content" class="quarto-container page-columns page-rows-contents page-layout-article">
+<!-- sidebar -->
+  <nav id="quarto-sidebar" class="sidebar collapse collapse-horizontal quarto-sidebar-collapse-item sidebar-navigation floating overflow-auto">
+    <div class="pt-lg-2 mt-2 text-left sidebar-header">
+    <div class="sidebar-title mb-0 py-0">
+      <a href="./">Genomic Foundation Models</a> 
+    </div>
+      </div>
+        <div class="mt-2 flex-shrink-0 align-items-center">
+        <div class="sidebar-search">
+        <div id="quarto-search" class="" title="Search"></div>
+        </div>
+        </div>
+    <div class="sidebar-menu-container"> 
+    <ul class="list-unstyled mt-1">
+        <li class="sidebar-item">
+  <div class="sidebar-item-container"> 
+  <a href="./index.html" class="sidebar-item-text sidebar-link">
+ <span class="menu-text">Introduction</span></a>
+  </div>
+</li>
+        <li class="sidebar-item">
+  <div class="sidebar-item-container"> 
+  <a href="./preface.html" class="sidebar-item-text sidebar-link">
+ <span class="menu-text">Preface</span></a>
+  </div>
+</li>
+        <li class="sidebar-item sidebar-item-section">
+      <div class="sidebar-item-container"> 
+            <a class="sidebar-item-text sidebar-link text-start" data-bs-toggle="collapse" data-bs-target="#quarto-sidebar-section-1" role="navigation" aria-expanded="true">
+ <span class="menu-text">Part I: Data &amp; Pre-DL Methods</span></a>
+          <a class="sidebar-item-toggle text-start" data-bs-toggle="collapse" data-bs-target="#quarto-sidebar-section-1" role="navigation" aria-expanded="true" aria-label="Toggle section">
+            <i class="bi bi-chevron-right ms-2"></i>
+          </a> 
+      </div>
+      <ul id="quarto-sidebar-section-1" class="collapse list-unstyled sidebar-section depth1 show">  
+          <li class="sidebar-item">
+  <div class="sidebar-item-container"> 
+  <a href="./p1-ch01-ngs.html" class="sidebar-item-text sidebar-link">
+ <span class="menu-text"><span class="chapter-number">1</span>&nbsp; <span class="chapter-title">NGS &amp; Variant Calling</span></span></a>
+  </div>
+</li>
+          <li class="sidebar-item">
+  <div class="sidebar-item-container"> 
+  <a href="./p1-ch02-data.html" class="sidebar-item-text sidebar-link">
+ <span class="menu-text"><span class="chapter-number">2</span>&nbsp; <span class="chapter-title">Foundational Genomics Data</span></span></a>
+  </div>
+</li>
+          <li class="sidebar-item">
+  <div class="sidebar-item-container"> 
+  <a href="./p1-ch03-pgs.html" class="sidebar-item-text sidebar-link">
+ <span class="menu-text"><span class="chapter-number">3</span>&nbsp; <span class="chapter-title">GWAS and Polygenic Scores</span></span></a>
+  </div>
+</li>
+          <li class="sidebar-item">
+  <div class="sidebar-item-container"> 
+  <a href="./p1-ch04-cadd.html" class="sidebar-item-text sidebar-link">
+ <span class="menu-text"><span class="chapter-number">4</span>&nbsp; <span class="chapter-title">Deleteriousness Scores</span></span></a>
+  </div>
+</li>
+      </ul>
+  </li>
+        <li class="sidebar-item sidebar-item-section">
+      <div class="sidebar-item-container"> 
+            <a class="sidebar-item-text sidebar-link text-start" data-bs-toggle="collapse" data-bs-target="#quarto-sidebar-section-2" role="navigation" aria-expanded="true">
+ <span class="menu-text">Part II: CNN Seq-to-Function Models</span></a>
+          <a class="sidebar-item-toggle text-start" data-bs-toggle="collapse" data-bs-target="#quarto-sidebar-section-2" role="navigation" aria-expanded="true" aria-label="Toggle section">
+            <i class="bi bi-chevron-right ms-2"></i>
+          </a> 
+      </div>
+      <ul id="quarto-sidebar-section-2" class="collapse list-unstyled sidebar-section depth1 show">  
+          <li class="sidebar-item">
+  <div class="sidebar-item-container"> 
+  <a href="./p2-ch05-reg.html" class="sidebar-item-text sidebar-link">
+ <span class="menu-text"><span class="chapter-number">5</span>&nbsp; <span class="chapter-title">Regulatory Prediction</span></span></a>
+  </div>
+</li>
+          <li class="sidebar-item">
+  <div class="sidebar-item-container"> 
+  <a href="./p2-ch06-transc.html" class="sidebar-item-text sidebar-link">
+ <span class="menu-text"><span class="chapter-number">6</span>&nbsp; <span class="chapter-title">Transcriptional Effects</span></span></a>
+  </div>
+</li>
+          <li class="sidebar-item">
+  <div class="sidebar-item-container"> 
+  <a href="./p2-ch07-splice.html" class="sidebar-item-text sidebar-link">
+ <span class="menu-text"><span class="chapter-number">7</span>&nbsp; <span class="chapter-title">Splicing Prediction</span></span></a>
+  </div>
+</li>
+      </ul>
+  </li>
+        <li class="sidebar-item sidebar-item-section">
+      <div class="sidebar-item-container"> 
+            <a class="sidebar-item-text sidebar-link text-start" data-bs-toggle="collapse" data-bs-target="#quarto-sidebar-section-3" role="navigation" aria-expanded="true">
+ <span class="menu-text">Part III: Transformers Models</span></a>
+          <a class="sidebar-item-toggle text-start" data-bs-toggle="collapse" data-bs-target="#quarto-sidebar-section-3" role="navigation" aria-expanded="true" aria-label="Toggle section">
+            <i class="bi bi-chevron-right ms-2"></i>
+          </a> 
+      </div>
+      <ul id="quarto-sidebar-section-3" class="collapse list-unstyled sidebar-section depth1 show">  
+          <li class="sidebar-item">
+  <div class="sidebar-item-container"> 
+  <a href="./p3-ch08-tokens.html" class="sidebar-item-text sidebar-link">
+ <span class="menu-text"><span class="chapter-number">8</span>&nbsp; <span class="chapter-title">Sequence Representation &amp; Tokens</span></span></a>
+  </div>
+</li>
+          <li class="sidebar-item">
+  <div class="sidebar-item-container"> 
+  <a href="./p3-ch09-plm.html" class="sidebar-item-text sidebar-link">
+ <span class="menu-text"><span class="chapter-number">9</span>&nbsp; <span class="chapter-title">Protein Language Models</span></span></a>
+  </div>
+</li>
+          <li class="sidebar-item">
+  <div class="sidebar-item-container"> 
+  <a href="./p3-ch10-glm.html" class="sidebar-item-text sidebar-link">
+ <span class="menu-text"><span class="chapter-number">10</span>&nbsp; <span class="chapter-title">DNA Foundation Models</span></span></a>
+  </div>
+</li>
+          <li class="sidebar-item">
+  <div class="sidebar-item-container"> 
+  <a href="./p3-ch11-hybrid.html" class="sidebar-item-text sidebar-link">
+ <span class="menu-text"><span class="chapter-number">11</span>&nbsp; <span class="chapter-title">Long-range Hybrid Model</span></span></a>
+  </div>
+</li>
+      </ul>
+  </li>
+        <li class="sidebar-item sidebar-item-section">
+      <div class="sidebar-item-container"> 
+            <a class="sidebar-item-text sidebar-link text-start" data-bs-toggle="collapse" data-bs-target="#quarto-sidebar-section-4" role="navigation" aria-expanded="true">
+ <span class="menu-text">Part IV: GFMs &amp; Multi-omics</span></a>
+          <a class="sidebar-item-toggle text-start" data-bs-toggle="collapse" data-bs-target="#quarto-sidebar-section-4" role="navigation" aria-expanded="true" aria-label="Toggle section">
+            <i class="bi bi-chevron-right ms-2"></i>
+          </a> 
+      </div>
+      <ul id="quarto-sidebar-section-4" class="collapse list-unstyled sidebar-section depth1 show">  
+          <li class="sidebar-item">
+  <div class="sidebar-item-container"> 
+  <a href="./p4-ch12-principles.html" class="sidebar-item-text sidebar-link">
+ <span class="menu-text"><span class="chapter-number">12</span>&nbsp; <span class="chapter-title">Genomic FMs: Principles &amp; Practice</span></span></a>
+  </div>
+</li>
+          <li class="sidebar-item">
+  <div class="sidebar-item-container"> 
+  <a href="./p4-ch13-vep.html" class="sidebar-item-text sidebar-link">
+ <span class="menu-text"><span class="chapter-number">13</span>&nbsp; <span class="chapter-title">Variant Effect Prediction</span></span></a>
+  </div>
+</li>
+          <li class="sidebar-item">
+  <div class="sidebar-item-container"> 
+  <a href="./p4-ch14-omics.html" class="sidebar-item-text sidebar-link">
+ <span class="menu-text"><span class="chapter-number">14</span>&nbsp; <span class="chapter-title">Multi-omics &amp; Systems Context</span></span></a>
+  </div>
+</li>
+      </ul>
+  </li>
+        <li class="sidebar-item sidebar-item-section">
+      <div class="sidebar-item-container"> 
+            <a class="sidebar-item-text sidebar-link text-start" data-bs-toggle="collapse" data-bs-target="#quarto-sidebar-section-5" role="navigation" aria-expanded="true">
+ <span class="menu-text">Part V: Reliability &amp; Interpretation</span></a>
+          <a class="sidebar-item-toggle text-start" data-bs-toggle="collapse" data-bs-target="#quarto-sidebar-section-5" role="navigation" aria-expanded="true" aria-label="Toggle section">
+            <i class="bi bi-chevron-right ms-2"></i>
+          </a> 
+      </div>
+      <ul id="quarto-sidebar-section-5" class="collapse list-unstyled sidebar-section depth1 show">  
+          <li class="sidebar-item">
+  <div class="sidebar-item-container"> 
+  <a href="./p5-ch15-eval.html" class="sidebar-item-text sidebar-link">
+ <span class="menu-text"><span class="chapter-number">15</span>&nbsp; <span class="chapter-title">Model Evaluation &amp; Benchmarks</span></span></a>
+  </div>
+</li>
+          <li class="sidebar-item">
+  <div class="sidebar-item-container"> 
+  <a href="./p5-ch16-confound.html" class="sidebar-item-text sidebar-link active">
+ <span class="menu-text"><span class="chapter-number">16</span>&nbsp; <span class="chapter-title">Confounders in Model Training</span></span></a>
+  </div>
+</li>
+          <li class="sidebar-item">
+  <div class="sidebar-item-container"> 
+  <a href="./p5-ch17-interp.html" class="sidebar-item-text sidebar-link">
+ <span class="menu-text"><span class="chapter-number">17</span>&nbsp; <span class="chapter-title">Interpretability &amp; Mechanisms</span></span></a>
+  </div>
+</li>
+      </ul>
+  </li>
+        <li class="sidebar-item sidebar-item-section">
+      <div class="sidebar-item-container"> 
+            <a class="sidebar-item-text sidebar-link text-start" data-bs-toggle="collapse" data-bs-target="#quarto-sidebar-section-6" role="navigation" aria-expanded="true">
+ <span class="menu-text">Part VI: Applications</span></a>
+          <a class="sidebar-item-toggle text-start" data-bs-toggle="collapse" data-bs-target="#quarto-sidebar-section-6" role="navigation" aria-expanded="true" aria-label="Toggle section">
+            <i class="bi bi-chevron-right ms-2"></i>
+          </a> 
+      </div>
+      <ul id="quarto-sidebar-section-6" class="collapse list-unstyled sidebar-section depth1 show">  
+          <li class="sidebar-item">
+  <div class="sidebar-item-container"> 
+  <a href="./p6-ch18-clinical.html" class="sidebar-item-text sidebar-link">
+ <span class="menu-text"><span class="chapter-number">18</span>&nbsp; <span class="chapter-title">Clinical Risk Prediction</span></span></a>
+  </div>
+</li>
+          <li class="sidebar-item">
+  <div class="sidebar-item-container"> 
+  <a href="./p6-ch19-variants.html" class="sidebar-item-text sidebar-link">
+ <span class="menu-text"><span class="chapter-number">19</span>&nbsp; <span class="chapter-title">Pathogenic Variant Discovery</span></span></a>
+  </div>
+</li>
+          <li class="sidebar-item">
+  <div class="sidebar-item-container"> 
+  <a href="./p6-ch20-drugs.html" class="sidebar-item-text sidebar-link">
+ <span class="menu-text"><span class="chapter-number">20</span>&nbsp; <span class="chapter-title">Drug Discovery &amp; Biotech</span></span></a>
+  </div>
+</li>
+      </ul>
+  </li>
+        <li class="sidebar-item">
+  <div class="sidebar-item-container"> 
+  <a href="./references.html" class="sidebar-item-text sidebar-link">
+ <span class="menu-text">References</span></a>
+  </div>
+</li>
+        <li class="sidebar-item sidebar-item-section">
+      <div class="sidebar-item-container"> 
+            <a class="sidebar-item-text sidebar-link text-start" data-bs-toggle="collapse" data-bs-target="#quarto-sidebar-section-7" role="navigation" aria-expanded="true">
+ <span class="menu-text">Appendices</span></a>
+          <a class="sidebar-item-toggle text-start" data-bs-toggle="collapse" data-bs-target="#quarto-sidebar-section-7" role="navigation" aria-expanded="true" aria-label="Toggle section">
+            <i class="bi bi-chevron-right ms-2"></i>
+          </a> 
+      </div>
+      <ul id="quarto-sidebar-section-7" class="collapse list-unstyled sidebar-section depth1 show">  
+          <li class="sidebar-item">
+  <div class="sidebar-item-container"> 
+  <a href="./app-a-dl.html" class="sidebar-item-text sidebar-link">
+ <span class="menu-text"><span class="chapter-number">A</span>&nbsp; <span class="chapter-title">Deep Learning Primer for Genomics</span></span></a>
+  </div>
+</li>
+          <li class="sidebar-item">
+  <div class="sidebar-item-container"> 
+  <a href="./app-b-resources.html" class="sidebar-item-text sidebar-link">
+ <span class="menu-text"><span class="chapter-number">B</span>&nbsp; <span class="chapter-title">Additional Resources</span></span></a>
+  </div>
+</li>
+      </ul>
+  </li>
+    </ul>
+    </div>
+</nav>
+<div id="quarto-sidebar-glass" class="quarto-sidebar-collapse-item" data-bs-toggle="collapse" data-bs-target=".quarto-sidebar-collapse-item"></div>
+<!-- margin-sidebar -->
+    <div id="quarto-margin-sidebar" class="sidebar margin-sidebar">
+        <nav id="TOC" role="doc-toc" class="toc-active">
+    <h2 id="toc-title">Table of contents</h2>
+   
+  <ul>
+  <li><a href="#why-confounders-are-ubiquitous-in-genomic-ml" id="toc-why-confounders-are-ubiquitous-in-genomic-ml" class="nav-link active" data-scroll-target="#why-confounders-are-ubiquitous-in-genomic-ml"><span class="header-section-number">16.1</span> Why Confounders Are Ubiquitous in Genomic ML</a></li>
+  <li><a href="#ancestry-stratification-and-population-bias" id="toc-ancestry-stratification-and-population-bias" class="nav-link" data-scroll-target="#ancestry-stratification-and-population-bias"><span class="header-section-number">16.2</span> Ancestry Stratification and Population Bias</a>
+  <ul class="collapse">
+  <li><a href="#how-ancestry-becomes-a-shortcut" id="toc-how-ancestry-becomes-a-shortcut" class="nav-link" data-scroll-target="#how-ancestry-becomes-a-shortcut"><span class="header-section-number">16.2.1</span> How ancestry becomes a shortcut</a></li>
+  <li><a href="#manifestations-in-genomic-models" id="toc-manifestations-in-genomic-models" class="nav-link" data-scroll-target="#manifestations-in-genomic-models"><span class="header-section-number">16.2.2</span> Manifestations in genomic models</a></li>
+  <li><a href="#detecting-ancestry-confounding" id="toc-detecting-ancestry-confounding" class="nav-link" data-scroll-target="#detecting-ancestry-confounding"><span class="header-section-number">16.2.3</span> Detecting ancestry confounding</a></li>
+  <li><a href="#mitigating-ancestry-bias" id="toc-mitigating-ancestry-bias" class="nav-link" data-scroll-target="#mitigating-ancestry-bias"><span class="header-section-number">16.2.4</span> Mitigating ancestry bias</a></li>
+  </ul></li>
+  <li><a href="#benchmark-leakage-and-traintest-overlap" id="toc-benchmark-leakage-and-traintest-overlap" class="nav-link" data-scroll-target="#benchmark-leakage-and-traintest-overlap"><span class="header-section-number">16.3</span> Benchmark Leakage and Train/Test Overlap</a>
+  <ul class="collapse">
+  <li><a href="#forms-of-leakage" id="toc-forms-of-leakage" class="nav-link" data-scroll-target="#forms-of-leakage"><span class="header-section-number">16.3.1</span> Forms of leakage</a></li>
+  <li><a href="#safer-splitting-strategies" id="toc-safer-splitting-strategies" class="nav-link" data-scroll-target="#safer-splitting-strategies"><span class="header-section-number">16.3.2</span> Safer splitting strategies</a></li>
+  <li><a href="#evaluation-design-and-reporting" id="toc-evaluation-design-and-reporting" class="nav-link" data-scroll-target="#evaluation-design-and-reporting"><span class="header-section-number">16.3.3</span> Evaluation design and reporting</a></li>
+  </ul></li>
+  <li><a href="#technical-artifacts-batch-effects-and-platform-differences" id="toc-technical-artifacts-batch-effects-and-platform-differences" class="nav-link" data-scroll-target="#technical-artifacts-batch-effects-and-platform-differences"><span class="header-section-number">16.4</span> Technical Artifacts: Batch Effects and Platform Differences</a>
+  <ul class="collapse">
+  <li><a href="#how-batch-effects-confound-models" id="toc-how-batch-effects-confound-models" class="nav-link" data-scroll-target="#how-batch-effects-confound-models"><span class="header-section-number">16.4.1</span> How batch effects confound models</a></li>
+  <li><a href="#diagnosing-technical-confounders" id="toc-diagnosing-technical-confounders" class="nav-link" data-scroll-target="#diagnosing-technical-confounders"><span class="header-section-number">16.4.2</span> Diagnosing technical confounders</a></li>
+  <li><a href="#mitigating-batch-effects" id="toc-mitigating-batch-effects" class="nav-link" data-scroll-target="#mitigating-batch-effects"><span class="header-section-number">16.4.3</span> Mitigating batch effects</a></li>
+  </ul></li>
+  <li><a href="#label-noise-and-ground-truth-uncertainty" id="toc-label-noise-and-ground-truth-uncertainty" class="nav-link" data-scroll-target="#label-noise-and-ground-truth-uncertainty"><span class="header-section-number">16.5</span> Label Noise and Ground-Truth Uncertainty</a>
+  <ul class="collapse">
+  <li><a href="#consequences-for-models" id="toc-consequences-for-models" class="nav-link" data-scroll-target="#consequences-for-models"><span class="header-section-number">16.5.1</span> Consequences for models</a></li>
+  <li><a href="#strategies-for-robust-learning-with-noisy-labels" id="toc-strategies-for-robust-learning-with-noisy-labels" class="nav-link" data-scroll-target="#strategies-for-robust-learning-with-noisy-labels"><span class="header-section-number">16.5.2</span> Strategies for robust learning with noisy labels</a></li>
+  </ul></li>
+  <li><a href="#cross-ancestry-pgs-transferability-and-model-fairness" id="toc-cross-ancestry-pgs-transferability-and-model-fairness" class="nav-link" data-scroll-target="#cross-ancestry-pgs-transferability-and-model-fairness"><span class="header-section-number">16.6</span> Cross-Ancestry PGS Transferability and Model Fairness</a>
+  <ul class="collapse">
+  <li><a href="#why-transferability-fails" id="toc-why-transferability-fails" class="nav-link" data-scroll-target="#why-transferability-fails"><span class="header-section-number">16.6.1</span> Why transferability fails</a></li>
+  <li><a href="#towards-more-equitable-models" id="toc-towards-more-equitable-models" class="nav-link" data-scroll-target="#towards-more-equitable-models"><span class="header-section-number">16.6.2</span> Towards more equitable models</a></li>
+  </ul></li>
+  <li><a href="#from-cautionary-tales-to-best-practices" id="toc-from-cautionary-tales-to-best-practices" class="nav-link" data-scroll-target="#from-cautionary-tales-to-best-practices"><span class="header-section-number">16.7</span> From Cautionary Tales to Best Practices</a></li>
+  <li><a href="#a-practical-checklist-for-confounder-resilient-genomic-modeling" id="toc-a-practical-checklist-for-confounder-resilient-genomic-modeling" class="nav-link" data-scroll-target="#a-practical-checklist-for-confounder-resilient-genomic-modeling"><span class="header-section-number">16.8</span> A Practical Checklist for Confounder-Resilient Genomic Modeling</a></li>
+  </ul>
+</nav>
+    </div>
+<!-- main -->
+<main class="content" id="quarto-document-content">
+
+<header id="title-block-header" class="quarto-title-block default"><nav class="quarto-page-breadcrumbs quarto-title-breadcrumbs d-none d-lg-block" aria-label="breadcrumb"><ol class="breadcrumb"><li class="breadcrumb-item"><a href="./p5-ch15-eval.html">Part V: Reliability &amp; Interpretation</a></li><li class="breadcrumb-item"><a href="./p5-ch16-confound.html"><span class="chapter-number">16</span>&nbsp; <span class="chapter-title">Confounders in Model Training</span></a></li></ol></nav>
+<div class="quarto-title">
+<h1 class="title"><span id="sec-confound" class="quarto-section-identifier"><span class="chapter-number">16</span>&nbsp; <span class="chapter-title">Confounders in Model Training</span></span></h1>
+</div>
+
+
+
+<div class="quarto-title-meta">
+
+    
+  
+    
+  </div>
+  
+
+
+</header>
+
+
+<p>In previous chapters, we treated model performance curves and ROC–AUC numbers as if they transparently reflected how well a model learns biology. In practice, genomic data is riddled with structure that makes it dangerously easy for models—especially large, overparameterized ones—to exploit shortcuts.</p>
+<p>Population structure, technical batch effects, benchmark leakage, and label noise can all inflate headline metrics while leaving real-world performance and clinical reliability largely unchanged. These issues are not unique to deep learning; they affect traditional statistics and GWAS as well. But the scale, flexibility, and opacity of modern genomic foundation models (GFMs) make them particularly susceptible.</p>
+<p>This chapter surveys the main confounders that arise when training and evaluating genomic models, and outlines practical strategies to detect, mitigate, and transparently report them. We focus on five recurring themes:</p>
+<ul>
+<li>Ancestry stratification and population bias<br>
+</li>
+<li>Benchmark leakage and train/test overlap<br>
+</li>
+<li>Technical artifacts and batch effects<br>
+</li>
+<li>Label noise and ground-truth uncertainty<br>
+</li>
+<li>Cross-ancestry transferability of polygenic scores (PGS) and other models</li>
+</ul>
+<p>Throughout, the key message is simple: <strong>architecture advances are only as meaningful as the datasets and evaluation protocols that support them</strong>.</p>
+<hr>
+<section id="why-confounders-are-ubiquitous-in-genomic-ml" class="level2" data-number="16.1">
+<h2 data-number="16.1" class="anchored" data-anchor-id="why-confounders-are-ubiquitous-in-genomic-ml"><span class="header-section-number">16.1</span> Why Confounders Are Ubiquitous in Genomic ML</h2>
+<p>A confounder is a variable that influences both the features (e.g., genotypes, readouts) and the labels (e.g., case/control status, functional effect), creating spurious associations. In genomics, confounders abound because:</p>
+<ul>
+<li><strong>Data are observational, not randomized.</strong> Disease labels, population sampling, and technical pipelines are all determined by real-world constraints and historical biases.<br>
+</li>
+<li><strong>Population structure is strong and multi-layered.</strong> Ancestry, relatedness, and local adaptation affect allele frequencies throughout the genome.<br>
+</li>
+<li><strong>Technical pipelines are complex.</strong> Each step—sample collection, library prep, sequencing, alignment, variant calling, QC—can introduce systematic differences between cohorts.<br>
+</li>
+<li><strong>Labels are noisy.</strong> Clinical databases (e.g., ClinVar) and high-throughput assays contain uncertain and sometimes incorrect annotations.</li>
+</ul>
+<p>Deep models are powerful pattern detectors. If confounders produce consistent patterns that correlate with labels, models will happily learn those shortcuts instead of the causal biology we care about. The result is impressive performance on held-out data that share the same hidden structure, but brittle behavior as soon as we change ancestry, institution, assay, or time period.</p>
+<hr>
+</section>
+<section id="ancestry-stratification-and-population-bias" class="level2" data-number="16.2">
+<h2 data-number="16.2" class="anchored" data-anchor-id="ancestry-stratification-and-population-bias"><span class="header-section-number">16.2</span> Ancestry Stratification and Population Bias</h2>
+<section id="how-ancestry-becomes-a-shortcut" class="level3" data-number="16.2.1">
+<h3 data-number="16.2.1" class="anchored" data-anchor-id="how-ancestry-becomes-a-shortcut"><span class="header-section-number">16.2.1</span> How ancestry becomes a shortcut</h3>
+<p>Human genetic variation is structured by ancestry: allele frequencies and haplotype patterns differ across populations due to demographic history, drift, and selection. Disease prevalence, environmental exposures, and health-care access are also ancestry- and region-dependent.</p>
+<p>This creates a classic confounding scenario:</p>
+<ul>
+<li><strong>Features:</strong> Genotypes or sequence variants reflect ancestry.<br>
+</li>
+<li><strong>Labels:</strong> Case/control status, disease subtype, or even “pathogenic vs.&nbsp;benign” annotations can vary with ancestry.</li>
+</ul>
+<p>If a case cohort is primarily of one ancestry and controls are primarily of another, a model can achieve high predictive performance by acting as an ancestry classifier rather than a disease predictor. The same issue arises for variant effect prediction: variants common in one ancestry but rare in another can be spuriously tagged as pathogenic or benign because of how databases were curated.</p>
+</section>
+<section id="manifestations-in-genomic-models" class="level3" data-number="16.2.2">
+<h3 data-number="16.2.2" class="anchored" data-anchor-id="manifestations-in-genomic-models"><span class="header-section-number">16.2.2</span> Manifestations in genomic models</h3>
+<p>Some common ways ancestry confounding shows up:</p>
+<ul>
+<li><strong>Case/control imbalance across ancestries.</strong> For example, cases over-representing individuals of European ancestry, controls over-representing other groups.<br>
+</li>
+<li><strong>Reference database bias.</strong> Variant annotations derived mostly from European-ancestry cohorts; “benign” often means “common in Europeans”.<br>
+</li>
+<li><strong>Implicit ancestry markers.</strong> Cryptic relatedness, shared haplotypes, and local LD patterns let models recover ancestry even when explicit labels are removed.</li>
+</ul>
+<p>For high-capacity models such as transformer-based GFMs, even subtle ancestry differences are enough to support a shortcut.</p>
+</section>
+<section id="detecting-ancestry-confounding" class="level3" data-number="16.2.3">
+<h3 data-number="16.2.3" class="anchored" data-anchor-id="detecting-ancestry-confounding"><span class="header-section-number">16.2.3</span> Detecting ancestry confounding</h3>
+<p>Practical diagnostics include:</p>
+<ul>
+<li><strong>PCA or UMAP of genotypes/embeddings.</strong> If cases and controls cluster by ancestry, that’s a red flag.<br>
+</li>
+<li><strong>Stratified performance.</strong> Evaluate metrics separately within each ancestry group; large performance drops or reversals across groups suggest confounding.<br>
+</li>
+<li><strong>Ancestry-only baselines.</strong> Fit a simple classifier on ancestry PCs or self-identified ancestry alone. If this baseline approaches your model’s performance, your model is likely exploiting similar information.<br>
+</li>
+<li><strong>Permutation tests within ancestry strata.</strong> Shuffling labels within ancestry groups should destroy performance for a truly disease-specific signal, but not for models relying on cross-ancestry differences.</li>
+</ul>
+</section>
+<section id="mitigating-ancestry-bias" class="level3" data-number="16.2.4">
+<h3 data-number="16.2.4" class="anchored" data-anchor-id="mitigating-ancestry-bias"><span class="header-section-number">16.2.4</span> Mitigating ancestry bias</h3>
+<p>Mitigation is imperfect, but several strategies help:</p>
+<ul>
+<li><strong>Balanced study design.</strong> Wherever possible, recruit cases and controls with similar ancestry distributions, or match controls to cases.<br>
+</li>
+<li><strong>Within-ancestry evaluation.</strong> Report metrics for each ancestry separately; use training–validation splits that preserve within-group structure.<br>
+</li>
+<li><strong>Covariate adjustment.</strong> Include ancestry PCs, kinship matrices, or mixed-model random effects in simpler models; for deep models, condition on or adversarially remove ancestry signals from learned embeddings.<br>
+</li>
+<li><strong>Multi-ancestry training.</strong> Train on diverse populations rather than restricting to a single ancestry, and explicitly model ancestry as a domain variable.<br>
+</li>
+<li><strong>Fairness-aware objectives.</strong> Introduce regularizers or constraints that penalize performance disparities across ancestry groups, especially in clinical deployment contexts.</li>
+</ul>
+<p>In later chapters on PGS and multi-omics, careful ancestry handling will be essential for equitable risk prediction.</p>
+<hr>
+</section>
+</section>
+<section id="benchmark-leakage-and-traintest-overlap" class="level2" data-number="16.3">
+<h2 data-number="16.3" class="anchored" data-anchor-id="benchmark-leakage-and-traintest-overlap"><span class="header-section-number">16.3</span> Benchmark Leakage and Train/Test Overlap</h2>
+<p>Even with perfectly balanced ancestries, evaluation can be misleading if information “leaks” from training to test sets. Leakage is especially insidious in genomics because:</p>
+<ul>
+<li>The genome is highly structured and redundant.<br>
+</li>
+<li>Public datasets and benchmarks are heavily reused.<br>
+</li>
+<li>Many papers do not fully specify how splits were constructed.</li>
+</ul>
+<section id="forms-of-leakage" class="level3" data-number="16.3.1">
+<h3 data-number="16.3.1" class="anchored" data-anchor-id="forms-of-leakage"><span class="header-section-number">16.3.1</span> Forms of leakage</h3>
+<p>Common leakage patterns include:</p>
+<ul>
+<li><strong>Individual overlap.</strong> The same person (or close relative) appears in both train and test sets, directly or via related cohorts.<br>
+</li>
+<li><strong>Variant overlap.</strong> Exact variants, or near-identical ones at the same locus, appear in both splits; this can happen when different datasets are merged.<br>
+</li>
+<li><strong>Locus-level overlap.</strong> Variants in the same gene, regulatory element, or LD block are split between train and test. A model may learn locus-specific idiosyncrasies instead of general rules.<br>
+</li>
+<li><strong>Database reuse leakage.</strong> Benchmarks constructed from ClinVar, gnomAD, or other public databases but evaluated against an external set that partially overlaps those sources.<br>
+</li>
+<li><strong>Time-based leakage.</strong> Models trained on data that include later submissions of the same variants or patients that are used as “future” test examples.</li>
+</ul>
+<p>For large models, even very small overlaps can inflate metrics, particularly when test sets are small.</p>
+</section>
+<section id="safer-splitting-strategies" class="level3" data-number="16.3.2">
+<h3 data-number="16.3.2" class="anchored" data-anchor-id="safer-splitting-strategies"><span class="header-section-number">16.3.2</span> Safer splitting strategies</h3>
+<p>To reduce leakage:</p>
+<ul>
+<li><strong>Individual-level splits.</strong> Ensure that no individual (or closely related individuals, if kinship is known) appears in both train and test sets.<br>
+</li>
+<li><strong>Locus- or gene-level splits.</strong> For variant effect prediction, split at the gene, enhancer, or genomic region level so that test loci are unseen.<br>
+</li>
+<li><strong>Chromosome-based splits.</strong> For genome-wide tasks, hold out entire chromosomes or chromosome arms. This is not perfect but greatly reduces local dependency leakage.<br>
+</li>
+<li><strong>Time-based splits.</strong> Train on data up to a cutoff date and test on later data, mimicking realistic deployment.<br>
+</li>
+<li><strong>Transparent data provenance.</strong> Track the origin of each sample and variant (e.g., database version, submission ID) to avoid accidental reuse.</li>
+</ul>
+</section>
+<section id="evaluation-design-and-reporting" class="level3" data-number="16.3.3">
+<h3 data-number="16.3.3" class="anchored" data-anchor-id="evaluation-design-and-reporting"><span class="header-section-number">16.3.3</span> Evaluation design and reporting</h3>
+<p>Beyond the split itself, <strong>evaluation design</strong> matters:</p>
+<ul>
+<li>Report both <strong>in-distribution</strong> performance (same cohort) and <strong>out-of-distribution</strong> performance (new cohorts, ancestries, or technical pipelines).<br>
+</li>
+<li>Whenever possible, include <strong>cross-cohort benchmarks</strong>: train on one cohort, test on another with different recruitment or sequencing characteristics.<br>
+</li>
+<li>Share code and detailed recipes for dataset construction so that others can reproduce and critique splitting choices.</li>
+</ul>
+<hr>
+</section>
+</section>
+<section id="technical-artifacts-batch-effects-and-platform-differences" class="level2" data-number="16.4">
+<h2 data-number="16.4" class="anchored" data-anchor-id="technical-artifacts-batch-effects-and-platform-differences"><span class="header-section-number">16.4</span> Technical Artifacts: Batch Effects and Platform Differences</h2>
+<p>While ancestry and population structure reflect biological reality, <strong>batch effects</strong> are artifacts of the measurement process. In genomics, differences in:</p>
+<ul>
+<li>Sample collection protocols<br>
+</li>
+<li>Library preparation kits<br>
+</li>
+<li>Sequencing platforms and chemistry versions<br>
+</li>
+<li>Read length, depth, and coverage<br>
+</li>
+<li>Alignment and variant calling pipelines</li>
+</ul>
+<p>can all introduce systematic shifts in feature distributions.</p>
+<section id="how-batch-effects-confound-models" class="level3" data-number="16.4.1">
+<h3 data-number="16.4.1" class="anchored" data-anchor-id="how-batch-effects-confound-models"><span class="header-section-number">16.4.1</span> How batch effects confound models</h3>
+<p>Technical batches often correlate with labels:</p>
+<ul>
+<li>A case cohort may be sequenced at one institution on one platform, while controls are sequenced elsewhere with different protocols.<br>
+</li>
+<li>A longitudinal study might switch from one capture kit or sequencer to another halfway through, coinciding with changes in enrollment criteria.<br>
+</li>
+<li>Public datasets may aggregate studies with very different technical characteristics.</li>
+</ul>
+<p>In such settings, a model can achieve high accuracy by recognizing <strong>batch signatures</strong> (e.g., patterns of missingness, depth, noise spectra) rather than bona fide biological signals.</p>
+</section>
+<section id="diagnosing-technical-confounders" class="level3" data-number="16.4.2">
+<h3 data-number="16.4.2" class="anchored" data-anchor-id="diagnosing-technical-confounders"><span class="header-section-number">16.4.2</span> Diagnosing technical confounders</h3>
+<p>Common diagnostics include:</p>
+<ul>
+<li><strong>Embedding visualization by batch.</strong> Project learned embeddings or expression/coverage profiles via PCA or UMAP, then color points by batch, platform, or institution. Strong clustering by these variables suggests technical structure.<br>
+</li>
+<li><strong>Batch-only baselines.</strong> Train a classifier using only batch labels or simple technical covariates (e.g., read depth, platform indicators). High baseline performance is a warning sign.<br>
+</li>
+<li><strong>Negative controls.</strong> Evaluate models on samples where labels should be uncorrelated with batch (e.g., technical replicates, randomized subsets).<br>
+</li>
+<li><strong>Replicate consistency.</strong> Examine consistency of predictions across technical replicates processed in different batches.</li>
+</ul>
+</section>
+<section id="mitigating-batch-effects" class="level3" data-number="16.4.3">
+<h3 data-number="16.4.3" class="anchored" data-anchor-id="mitigating-batch-effects"><span class="header-section-number">16.4.3</span> Mitigating batch effects</h3>
+<p>Mitigation is an active research area; common approaches include:</p>
+<ul>
+<li><strong>Careful study design.</strong> Randomize cases and controls across batches whenever possible; avoid systematic alignment between batch and outcome.<br>
+</li>
+<li><strong>Preprocessing harmonization.</strong> Use standardized pipelines for alignment and variant calling; reprocess raw data when feasible to reduce inter-study differences.<br>
+</li>
+<li><strong>Statistical batch correction.</strong> Methods such as ComBat, Harmony, and related approaches can reduce batch effects in expression or chromatin data; similar ideas can be applied to embeddings from GFMs.<br>
+</li>
+<li><strong>Domain adaptation and adversarial training.</strong> Train representations that are predictive of labels while being invariant to batch or platform (e.g., via gradient reversal layers or distribution matching objectives).<br>
+</li>
+<li><strong>Explicit multi-domain modeling.</strong> Treat each batch or platform as a domain and learn domain-conditional parameters or mixture-of-experts models.</li>
+</ul>
+<p>Even with aggressive correction, residual batch structure typically remains; transparent reporting and robustness checks are essential.</p>
+<hr>
+</section>
+</section>
+<section id="label-noise-and-ground-truth-uncertainty" class="level2" data-number="16.5">
+<h2 data-number="16.5" class="anchored" data-anchor-id="label-noise-and-ground-truth-uncertainty"><span class="header-section-number">16.5</span> Label Noise and Ground-Truth Uncertainty</h2>
+<p>Large-scale genomic models rely on labels from:</p>
+<ul>
+<li>Clinical variant interpretation databases (e.g., pathogenic vs.&nbsp;benign)<br>
+</li>
+<li>GWAS-derived case/control status<br>
+</li>
+<li>High-throughput functional screens (e.g., MPRA, saturation mutagenesis, CRISPR screens)<br>
+</li>
+<li>Curated “gold-standard” sets for VEP, splicing predictions, or PGS</li>
+</ul>
+<p>These labels are <strong>not</strong> error-free. Sources of label noise include:</p>
+<ul>
+<li><strong>Conflicting annotations.</strong> ClinVar often contains variants with conflicting interpretations or uncertain significance; criteria for pathogenicity change over time.<br>
+</li>
+<li><strong>Ascertainment bias.</strong> Variants labeled as “benign” may simply be common in some populations; variants labeled as “pathogenic” may be enriched in clinically ascertained cohorts.<br>
+</li>
+<li><strong>Measurement noise in functional assays.</strong> High-throughput experiments have variable reproducibility across labs, conditions, and replicates. Thresholding continuous scores into discrete classes compounds the issue.<br>
+</li>
+<li><strong>Phenotyping noise.</strong> Clinical case/control labels may be inaccurate due to misdiagnosis, incomplete records, or heterogeneous disease definitions.</li>
+</ul>
+<section id="consequences-for-models" class="level3" data-number="16.5.1">
+<h3 data-number="16.5.1" class="anchored" data-anchor-id="consequences-for-models"><span class="header-section-number">16.5.1</span> Consequences for models</h3>
+<p>Label noise can:</p>
+<ul>
+<li>Limit achievable performance, especially for tasks with overlapping phenotype definitions.<br>
+</li>
+<li>Encourage models to learn spurious proxies that correlate with annotation errors.<br>
+</li>
+<li>Bias calibration and decision thresholds, particularly in imbalanced settings.</li>
+</ul>
+<p>In some scenarios, training on noisy labels still improves performance if noise is roughly symmetric or if the dataset is very large. However, for rare disease variants and high-stakes predictions, even small fractions of mislabeled examples can be problematic.</p>
+</section>
+<section id="strategies-for-robust-learning-with-noisy-labels" class="level3" data-number="16.5.2">
+<h3 data-number="16.5.2" class="anchored" data-anchor-id="strategies-for-robust-learning-with-noisy-labels"><span class="header-section-number">16.5.2</span> Strategies for robust learning with noisy labels</h3>
+<p>Approaches to deal with label noise include:</p>
+<ul>
+<li><strong>Curated subsets.</strong> Restrict training and evaluation to high-confidence annotations (e.g., ClinVar “Pathogenic” and “Benign” with multiple submitters and no conflicts), even at the cost of reduced size.<br>
+</li>
+<li><strong>Soft labels and uncertainty modeling.</strong> Use probabilistic labels derived from inter-rater disagreement, confidence scores, or continuous assay measurements rather than hard 0/1 labels.<br>
+</li>
+<li><strong>Robust losses.</strong> Employ loss functions less sensitive to mislabeled points (e.g., label smoothing, margin-based losses, or methods that down-weight high-loss outliers).<br>
+</li>
+<li><strong>Noise-aware training.</strong> Explicitly model label noise (e.g., via a noise transition matrix or latent variable models) and jointly infer true labels.<br>
+</li>
+<li><strong>Consensus across modalities.</strong> Combine evidence from protein structure, evolutionary conservation, regulatory context, and clinical data; treat disagreements as signals of uncertainty.</li>
+</ul>
+<p>Mechanistic interpretability can also help flag model predictions that disagree with known biology, potentially identifying mislabeled examples.</p>
+<hr>
+</section>
+</section>
+<section id="cross-ancestry-pgs-transferability-and-model-fairness" class="level2" data-number="16.6">
+<h2 data-number="16.6" class="anchored" data-anchor-id="cross-ancestry-pgs-transferability-and-model-fairness"><span class="header-section-number">16.6</span> Cross-Ancestry PGS Transferability and Model Fairness</h2>
+<p>Polygenic scores (PGS) and other genome-wide predictors have gained traction as potential tools for early disease risk stratification. However, many PGS have been developed primarily in individuals of European ancestry, raising concerns about:</p>
+<ul>
+<li><strong>Reduced predictive accuracy</strong> in underrepresented ancestries.<br>
+</li>
+<li><strong>Biased calibration,</strong> where risk is systematically over- or under-estimated in certain groups.<br>
+</li>
+<li><strong>Downstream disparities</strong> if PGS-informed clinical decisions (e.g., screening recommendations) are applied uniformly.</li>
+</ul>
+<section id="why-transferability-fails" class="level3" data-number="16.6.1">
+<h3 data-number="16.6.1" class="anchored" data-anchor-id="why-transferability-fails"><span class="header-section-number">16.6.1</span> Why transferability fails</h3>
+<p>Reasons for poor cross-ancestry transfer include:</p>
+<ul>
+<li><strong>Allele frequency differences.</strong> Effect estimates calibrated in one population may not generalize when allele frequencies change.<br>
+</li>
+<li><strong>LD pattern differences.</strong> Tagging SNPs used in PGS may capture causal variants in one ancestry but not another.<br>
+</li>
+<li><strong>Gene–environment interaction.</strong> Environmental exposures and lifestyle factors that interact with genetic risk differ across populations.<br>
+</li>
+<li><strong>Ascertainment and recruitment biases.</strong> Early GWAS datasets often oversampled certain ancestries, clinical populations, or socioeconomic strata.</li>
+</ul>
+<p>These issues carry over to deep learning–based PGS and GFMs fine-tuned for disease prediction. Even if the underlying model is trained on diverse genomes in a self-supervised fashion, the <strong>supervised fine-tuning and evaluation data</strong> can reintroduce bias.</p>
+</section>
+<section id="towards-more-equitable-models" class="level3" data-number="16.6.2">
+<h3 data-number="16.6.2" class="anchored" data-anchor-id="towards-more-equitable-models"><span class="header-section-number">16.6.2</span> Towards more equitable models</h3>
+<p>Approaches to improve cross-ancestry performance and fairness include:</p>
+<ul>
+<li><strong>Multi-ancestry GWAS and training data.</strong> Include diverse cohorts at the design stage rather than as an afterthought.<br>
+</li>
+<li><strong>Ancestry-aware modeling.</strong> Condition effect sizes or model parameters on ancestry, or learn ancestry-invariant representations coupled with ancestry-specific calibration.<br>
+</li>
+<li><strong>Transfer learning and fine-tuning.</strong> Adapt models from ancestries with large datasets to those with smaller datasets using domain adaptation techniques.<br>
+</li>
+<li><strong>Fairness metrics.</strong> Report group-wise calibration, sensitivity, specificity, and decision-curve analyses, not just overall AUC.<br>
+</li>
+<li><strong>Stakeholder engagement.</strong> Work with clinicians, ethicists, and affected communities to decide when and how PGS should be used, and what constitutes acceptable performance gaps.</li>
+</ul>
+<hr>
+</section>
+</section>
+<section id="from-cautionary-tales-to-best-practices" class="level2" data-number="16.7">
+<h2 data-number="16.7" class="anchored" data-anchor-id="from-cautionary-tales-to-best-practices"><span class="header-section-number">16.7</span> From Cautionary Tales to Best Practices</h2>
+<p>Modern genomic foundation models promise impressive capabilities: genome-scale variant effect prediction, cross-species transfer, multi-omics integration, and clinically actionable risk scores. Yet without rigorous attention to confounders, these capabilities can be overstated or misapplied.</p>
+<p>Emerging work on genomic evaluation frameworks emphasizes:</p>
+<ul>
+<li><strong>Data documentation.</strong> Detailed datasheets for datasets and benchmarks, including recruitment, ancestry composition, technical pipelines, and label provenance.<br>
+</li>
+<li><strong>Robust evaluation protocols.</strong> Cross-cohort, cross-ancestry, and time-split evaluations that stress-test models beyond their training distribution.<br>
+</li>
+<li><strong>Confounder-aware training.</strong> Explicit modeling of ancestry, batch, and label uncertainty, and the use of adversarial or domain-adaptation techniques.<br>
+</li>
+<li><strong>Transparent reporting.</strong> Clear communication of limitations, potential failure modes, and groups for whom the model has not been validated.</li>
+</ul>
+<hr>
+</section>
+<section id="a-practical-checklist-for-confounder-resilient-genomic-modeling" class="level2" data-number="16.8">
+<h2 data-number="16.8" class="anchored" data-anchor-id="a-practical-checklist-for-confounder-resilient-genomic-modeling"><span class="header-section-number">16.8</span> A Practical Checklist for Confounder-Resilient Genomic Modeling</h2>
+<p>To close, here is a concise checklist you can apply when designing, training, and evaluating genomic models:</p>
+<ol type="1">
+<li><strong>Population structure</strong>
+<ul>
+<li>Have you quantified ancestry and relatedness (e.g., via PCs or kinship)?<br>
+</li>
+<li>Are cases and controls balanced within ancestry groups?<br>
+</li>
+<li>Do you report performance stratified by ancestry?</li>
+</ul></li>
+<li><strong>Data splits and leakage</strong>
+<ul>
+<li>Are individuals, families, and closely related samples confined to a single split?<br>
+</li>
+<li>Do you split at the locus, gene, or chromosome level where appropriate?<br>
+</li>
+<li>Have you checked for overlap with external databases used in evaluation?</li>
+</ul></li>
+<li><strong>Batch and platform effects</strong>
+<ul>
+<li>Are technical variables (batch, platform, institution) correlated with labels?<br>
+</li>
+<li>Have you visualized embeddings colored by batch?<br>
+</li>
+<li>Do you use harmonization, batch correction, or domain adaptation as needed?</li>
+</ul></li>
+<li><strong>Label quality</strong>
+<ul>
+<li>How are labels defined, and what is their uncertainty?<br>
+</li>
+<li>Do you filter to high-confidence subsets for primary evaluation?<br>
+</li>
+<li>Do you employ robust training strategies to handle label noise?</li>
+</ul></li>
+<li><strong>Cross-group performance and fairness</strong>
+<ul>
+<li>Do you report metrics for each ancestry and relevant subgroup?<br>
+</li>
+<li>Are risk scores calibrated across groups, or is group-specific calibration required?<br>
+</li>
+<li>Have you considered the ethical and clinical implications of residual performance gaps?</li>
+</ul></li>
+<li><strong>Reproducibility and transparency</strong>
+<ul>
+<li>Are dataset construction and splitting procedures fully documented and shareable?<br>
+</li>
+<li>Are code and evaluation pipelines available for independent verification?</li>
+</ul></li>
+</ol>
+<p>By systematically addressing these points, we can ensure that the gains from modern architectures—transformers, SSMs, and GFMs—translate into <strong>trustworthy</strong> advances in genomic science and medicine, rather than brittle models that merely reflect quirks of our data and history.</p>
+
+
+</section>
+
+</main> <!-- /main -->
+<script id="quarto-html-after-body" type="application/javascript">
+  window.document.addEventListener("DOMContentLoaded", function (event) {
+    const icon = "";
+    const anchorJS = new window.AnchorJS();
+    anchorJS.options = {
+      placement: 'right',
+      icon: icon
+    };
+    anchorJS.add('.anchored');
+    const isCodeAnnotation = (el) => {
+      for (const clz of el.classList) {
+        if (clz.startsWith('code-annotation-')) {                     
+          return true;
+        }
+      }
+      return false;
+    }
+    const onCopySuccess = function(e) {
+      // button target
+      const button = e.trigger;
+      // don't keep focus
+      button.blur();
+      // flash "checked"
+      button.classList.add('code-copy-button-checked');
+      var currentTitle = button.getAttribute("title");
+      button.setAttribute("title", "Copied!");
+      let tooltip;
+      if (window.bootstrap) {
+        button.setAttribute("data-bs-toggle", "tooltip");
+        button.setAttribute("data-bs-placement", "left");
+        button.setAttribute("data-bs-title", "Copied!");
+        tooltip = new bootstrap.Tooltip(button, 
+          { trigger: "manual", 
+            customClass: "code-copy-button-tooltip",
+            offset: [0, -8]});
+        tooltip.show();    
+      }
+      setTimeout(function() {
+        if (tooltip) {
+          tooltip.hide();
+          button.removeAttribute("data-bs-title");
+          button.removeAttribute("data-bs-toggle");
+          button.removeAttribute("data-bs-placement");
+        }
+        button.setAttribute("title", currentTitle);
+        button.classList.remove('code-copy-button-checked');
+      }, 1000);
+      // clear code selection
+      e.clearSelection();
+    }
+    const getTextToCopy = function(trigger) {
+      const outerScaffold = trigger.parentElement.cloneNode(true);
+      const codeEl = outerScaffold.querySelector('code');
+      for (const childEl of codeEl.children) {
+        if (isCodeAnnotation(childEl)) {
+          childEl.remove();
+        }
+      }
+      return codeEl.innerText;
+    }
+    const clipboard = new window.ClipboardJS('.code-copy-button:not([data-in-quarto-modal])', {
+      text: getTextToCopy
+    });
+    clipboard.on('success', onCopySuccess);
+    if (window.document.getElementById('quarto-embedded-source-code-modal')) {
+      const clipboardModal = new window.ClipboardJS('.code-copy-button[data-in-quarto-modal]', {
+        text: getTextToCopy,
+        container: window.document.getElementById('quarto-embedded-source-code-modal')
+      });
+      clipboardModal.on('success', onCopySuccess);
+    }
+      var localhostRegex = new RegExp(/^(?:http|https):\/\/localhost\:?[0-9]*\//);
+      var mailtoRegex = new RegExp(/^mailto:/);
+        var filterRegex = new RegExp('/' + window.location.host + '/');
+      var isInternal = (href) => {
+          return filterRegex.test(href) || localhostRegex.test(href) || mailtoRegex.test(href);
+      }
+      // Inspect non-navigation links and adorn them if external
+     var links = window.document.querySelectorAll('a[href]:not(.nav-link):not(.navbar-brand):not(.toc-action):not(.sidebar-link):not(.sidebar-item-toggle):not(.pagination-link):not(.no-external):not([aria-hidden]):not(.dropdown-item):not(.quarto-navigation-tool):not(.about-link)');
+      for (var i=0; i<links.length; i++) {
+        const link = links[i];
+        if (!isInternal(link.href)) {
+          // undo the damage that might have been done by quarto-nav.js in the case of
+          // links that we want to consider external
+          if (link.dataset.originalHref !== undefined) {
+            link.href = link.dataset.originalHref;
+          }
+        }
+      }
+    function tippyHover(el, contentFn, onTriggerFn, onUntriggerFn) {
+      const config = {
+        allowHTML: true,
+        maxWidth: 500,
+        delay: 100,
+        arrow: false,
+        appendTo: function(el) {
+            return el.parentElement;
+        },
+        interactive: true,
+        interactiveBorder: 10,
+        theme: 'quarto',
+        placement: 'bottom-start',
+      };
+      if (contentFn) {
+        config.content = contentFn;
+      }
+      if (onTriggerFn) {
+        config.onTrigger = onTriggerFn;
+      }
+      if (onUntriggerFn) {
+        config.onUntrigger = onUntriggerFn;
+      }
+      window.tippy(el, config); 
+    }
+    const noterefs = window.document.querySelectorAll('a[role="doc-noteref"]');
+    for (var i=0; i<noterefs.length; i++) {
+      const ref = noterefs[i];
+      tippyHover(ref, function() {
+        // use id or data attribute instead here
+        let href = ref.getAttribute('data-footnote-href') || ref.getAttribute('href');
+        try { href = new URL(href).hash; } catch {}
+        const id = href.replace(/^#\/?/, "");
+        const note = window.document.getElementById(id);
+        if (note) {
+          return note.innerHTML;
+        } else {
+          return "";
+        }
+      });
+    }
+    const xrefs = window.document.querySelectorAll('a.quarto-xref');
+    const processXRef = (id, note) => {
+      // Strip column container classes
+      const stripColumnClz = (el) => {
+        el.classList.remove("page-full", "page-columns");
+        if (el.children) {
+          for (const child of el.children) {
+            stripColumnClz(child);
+          }
+        }
+      }
+      stripColumnClz(note)
+      if (id === null || id.startsWith('sec-')) {
+        // Special case sections, only their first couple elements
+        const container = document.createElement("div");
+        if (note.children && note.children.length > 2) {
+          container.appendChild(note.children[0].cloneNode(true));
+          for (let i = 1; i < note.children.length; i++) {
+            const child = note.children[i];
+            if (child.tagName === "P" && child.innerText === "") {
+              continue;
+            } else {
+              container.appendChild(child.cloneNode(true));
+              break;
+            }
+          }
+          if (window.Quarto?.typesetMath) {
+            window.Quarto.typesetMath(container);
+          }
+          return container.innerHTML
+        } else {
+          if (window.Quarto?.typesetMath) {
+            window.Quarto.typesetMath(note);
+          }
+          return note.innerHTML;
+        }
+      } else {
+        // Remove any anchor links if they are present
+        const anchorLink = note.querySelector('a.anchorjs-link');
+        if (anchorLink) {
+          anchorLink.remove();
+        }
+        if (window.Quarto?.typesetMath) {
+          window.Quarto.typesetMath(note);
+        }
+        if (note.classList.contains("callout")) {
+          return note.outerHTML;
+        } else {
+          return note.innerHTML;
+        }
+      }
+    }
+    for (var i=0; i<xrefs.length; i++) {
+      const xref = xrefs[i];
+      tippyHover(xref, undefined, function(instance) {
+        instance.disable();
+        let url = xref.getAttribute('href');
+        let hash = undefined; 
+        if (url.startsWith('#')) {
+          hash = url;
+        } else {
+          try { hash = new URL(url).hash; } catch {}
+        }
+        if (hash) {
+          const id = hash.replace(/^#\/?/, "");
+          const note = window.document.getElementById(id);
+          if (note !== null) {
+            try {
+              const html = processXRef(id, note.cloneNode(true));
+              instance.setContent(html);
+            } finally {
+              instance.enable();
+              instance.show();
+            }
+          } else {
+            // See if we can fetch this
+            fetch(url.split('#')[0])
+            .then(res => res.text())
+            .then(html => {
+              const parser = new DOMParser();
+              const htmlDoc = parser.parseFromString(html, "text/html");
+              const note = htmlDoc.getElementById(id);
+              if (note !== null) {
+                const html = processXRef(id, note);
+                instance.setContent(html);
+              } 
+            }).finally(() => {
+              instance.enable();
+              instance.show();
+            });
+          }
+        } else {
+          // See if we can fetch a full url (with no hash to target)
+          // This is a special case and we should probably do some content thinning / targeting
+          fetch(url)
+          .then(res => res.text())
+          .then(html => {
+            const parser = new DOMParser();
+            const htmlDoc = parser.parseFromString(html, "text/html");
+            const note = htmlDoc.querySelector('main.content');
+            if (note !== null) {
+              // This should only happen for chapter cross references
+              // (since there is no id in the URL)
+              // remove the first header
+              if (note.children.length > 0 && note.children[0].tagName === "HEADER") {
+                note.children[0].remove();
+              }
+              const html = processXRef(null, note);
+              instance.setContent(html);
+            } 
+          }).finally(() => {
+            instance.enable();
+            instance.show();
+          });
+        }
+      }, function(instance) {
+      });
+    }
+        let selectedAnnoteEl;
+        const selectorForAnnotation = ( cell, annotation) => {
+          let cellAttr = 'data-code-cell="' + cell + '"';
+          let lineAttr = 'data-code-annotation="' +  annotation + '"';
+          const selector = 'span[' + cellAttr + '][' + lineAttr + ']';
+          return selector;
+        }
+        const selectCodeLines = (annoteEl) => {
+          const doc = window.document;
+          const targetCell = annoteEl.getAttribute("data-target-cell");
+          const targetAnnotation = annoteEl.getAttribute("data-target-annotation");
+          const annoteSpan = window.document.querySelector(selectorForAnnotation(targetCell, targetAnnotation));
+          const lines = annoteSpan.getAttribute("data-code-lines").split(",");
+          const lineIds = lines.map((line) => {
+            return targetCell + "-" + line;
+          })
+          let top = null;
+          let height = null;
+          let parent = null;
+          if (lineIds.length > 0) {
+              //compute the position of the single el (top and bottom and make a div)
+              const el = window.document.getElementById(lineIds[0]);
+              top = el.offsetTop;
+              height = el.offsetHeight;
+              parent = el.parentElement.parentElement;
+            if (lineIds.length > 1) {
+              const lastEl = window.document.getElementById(lineIds[lineIds.length - 1]);
+              const bottom = lastEl.offsetTop + lastEl.offsetHeight;
+              height = bottom - top;
+            }
+            if (top !== null && height !== null && parent !== null) {
+              // cook up a div (if necessary) and position it 
+              let div = window.document.getElementById("code-annotation-line-highlight");
+              if (div === null) {
+                div = window.document.createElement("div");
+                div.setAttribute("id", "code-annotation-line-highlight");
+                div.style.position = 'absolute';
+                parent.appendChild(div);
+              }
+              div.style.top = top - 2 + "px";
+              div.style.height = height + 4 + "px";
+              div.style.left = 0;
+              let gutterDiv = window.document.getElementById("code-annotation-line-highlight-gutter");
+              if (gutterDiv === null) {
+                gutterDiv = window.document.createElement("div");
+                gutterDiv.setAttribute("id", "code-annotation-line-highlight-gutter");
+                gutterDiv.style.position = 'absolute';
+                const codeCell = window.document.getElementById(targetCell);
+                const gutter = codeCell.querySelector('.code-annotation-gutter');
+                gutter.appendChild(gutterDiv);
+              }
+              gutterDiv.style.top = top - 2 + "px";
+              gutterDiv.style.height = height + 4 + "px";
+            }
+            selectedAnnoteEl = annoteEl;
+          }
+        };
+        const unselectCodeLines = () => {
+          const elementsIds = ["code-annotation-line-highlight", "code-annotation-line-highlight-gutter"];
+          elementsIds.forEach((elId) => {
+            const div = window.document.getElementById(elId);
+            if (div) {
+              div.remove();
+            }
+          });
+          selectedAnnoteEl = undefined;
+        };
+          // Handle positioning of the toggle
+      window.addEventListener(
+        "resize",
+        throttle(() => {
+          elRect = undefined;
+          if (selectedAnnoteEl) {
+            selectCodeLines(selectedAnnoteEl);
+          }
+        }, 10)
+      );
+      function throttle(fn, ms) {
+      let throttle = false;
+      let timer;
+        return (...args) => {
+          if(!throttle) { // first call gets through
+              fn.apply(this, args);
+              throttle = true;
+          } else { // all the others get throttled
+              if(timer) clearTimeout(timer); // cancel #2
+              timer = setTimeout(() => {
+                fn.apply(this, args);
+                timer = throttle = false;
+              }, ms);
+          }
+        };
+      }
+        // Attach click handler to the DT
+        const annoteDls = window.document.querySelectorAll('dt[data-target-cell]');
+        for (const annoteDlNode of annoteDls) {
+          annoteDlNode.addEventListener('click', (event) => {
+            const clickedEl = event.target;
+            if (clickedEl !== selectedAnnoteEl) {
+              unselectCodeLines();
+              const activeEl = window.document.querySelector('dt[data-target-cell].code-annotation-active');
+              if (activeEl) {
+                activeEl.classList.remove('code-annotation-active');
+              }
+              selectCodeLines(clickedEl);
+              clickedEl.classList.add('code-annotation-active');
+            } else {
+              // Unselect the line
+              unselectCodeLines();
+              clickedEl.classList.remove('code-annotation-active');
+            }
+          });
+        }
+    const findCites = (el) => {
+      const parentEl = el.parentElement;
+      if (parentEl) {
+        const cites = parentEl.dataset.cites;
+        if (cites) {
+          return {
+            el,
+            cites: cites.split(' ')
+          };
+        } else {
+          return findCites(el.parentElement)
+        }
+      } else {
+        return undefined;
+      }
+    };
+    var bibliorefs = window.document.querySelectorAll('a[role="doc-biblioref"]');
+    for (var i=0; i<bibliorefs.length; i++) {
+      const ref = bibliorefs[i];
+      const citeInfo = findCites(ref);
+      if (citeInfo) {
+        tippyHover(citeInfo.el, function() {
+          var popup = window.document.createElement('div');
+          citeInfo.cites.forEach(function(cite) {
+            var citeDiv = window.document.createElement('div');
+            citeDiv.classList.add('hanging-indent');
+            citeDiv.classList.add('csl-entry');
+            var biblioDiv = window.document.getElementById('ref-' + cite);
+            if (biblioDiv) {
+              citeDiv.innerHTML = biblioDiv.innerHTML;
+            }
+            popup.appendChild(citeDiv);
+          });
+          return popup.innerHTML;
+        });
+      }
+    }
+  });
+  </script>
+<nav class="page-navigation">
+  <div class="nav-page nav-page-previous">
+      <a href="./p5-ch15-eval.html" class="pagination-link" aria-label="Model Evaluation &amp; Benchmarks">
+        <i class="bi bi-arrow-left-short"></i> <span class="nav-page-text"><span class="chapter-number">15</span>&nbsp; <span class="chapter-title">Model Evaluation &amp; Benchmarks</span></span>
+      </a>          
+  </div>
+  <div class="nav-page nav-page-next">
+      <a href="./p5-ch17-interp.html" class="pagination-link" aria-label="Interpretability &amp; Mechanisms">
+        <span class="nav-page-text"><span class="chapter-number">17</span>&nbsp; <span class="chapter-title">Interpretability &amp; Mechanisms</span></span> <i class="bi bi-arrow-right-short"></i>
+      </a>
+  </div>
+</nav>
+</div> <!-- /content -->
+<footer class="footer">
+  <div class="nav-footer">
+    <div class="nav-footer-left">
+      &nbsp;
+    </div>   
+    <div class="nav-footer-center">
+<p>Copyright 2025, Josh Meehl</p>
+</div>
+    <div class="nav-footer-right">
+      &nbsp;
+    </div>
+  </div>
+</footer>
+
+
+
+
+</body></html>

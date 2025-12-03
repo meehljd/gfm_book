@@ -1,0 +1,300 @@
+# Pathogenic Variant Discovery  {#sec-variants}
+
+Clinical genetics ultimately cares about **specific variants and genes**: which changes in a patient’s genome plausibly explain their phenotype, and which loci are compelling targets for follow-up in the lab. The previous chapters focused on **foundation models for variant effect prediction** (@sec-veps), **multi-omics integration** (@sec-multi), and **clinical risk prediction** (@sec-clinical). This chapter shifts the emphasis from prediction to **discovery workflows**.
+
+The central question is:
+
+> Given a huge space of possible variants and genes, how can genomic foundation models (GFMs) help us efficiently home in on those most likely to be causal?
+
+We will treat “pathogenic” broadly—covering both **Mendelian variants** with large effects and **complex trait variants** that modulate risk more subtly. GFMs appear at multiple stages of these pipelines:
+
+- As **variant-level effect predictors** (e.g., AlphaMissense, GPN-MSA, Evo 2, AlphaGenome) that score coding and noncoding changes [@cheng_alphamissense_2023 @benegas_gpn-msa_2024 @brixi_evo_2025 @avsec_alphagenome_2025].  
+- As **inputs or priors for fine-mapping** and rare variant association tests [@wu_genome-wide_2024 @rakowski_mifm_2025 @clarke_deeprvat_2024].  
+- As **node features in gene and network models**, including graph neural networks (GNNs) over multi-omics and knowledge graphs [@cao_glue_2022 @li_mogcn_2022 @li_cgmega_2024 @chandak_primekg_2023].  
+- As guides for **CRISPR, MPRA, and other functional assays**, closing the loop between in silico prediction and experimental validation [@avsec_enformer_2021 @linder_borzoi_2025].
+
+We will walk through these roles from locus-level variant ranking, to Mendelian disease diagnostics, to graph-based gene prioritization, and finally to **closed-loop “hypothesis factory” workflows** that blend GFMs with systematic perturbation experiments.
+
+---
+
+##  From Variant Effect Prediction to Prioritization
+
+@sec-veps surveyed state-of-the-art **variant effect prediction (VEP)** systems. Models such as AlphaMissense, GPN-MSA, Evo 2, and AlphaGenome assign each variant a score reflecting predicted impact on protein function, regulatory activity, or multi-omic phenotypes [@cheng_alphamissense_2023 @benegas_gpn-msa_2024 @brixi_evo_2025 @avsec_alphagenome_2025]. In isolation, these scores are powerful but **not yet a full prioritization pipeline**.
+
+In practice, discovery workflows require several additional steps:
+
+1. **Contextualizing the score**  
+   A raw VEP score has different implications depending on:
+   - **Variant class** (missense, splice, promoter, enhancer, UTR, intronic).  
+   - **Gene context** (constraint, tissue-specific expression, pathway membership).  
+   - **Clinical or experimental question** (dominant Mendelian disease, recessive disease, modifier of complex trait).
+
+   For example, a moderately damaging missense variant in a **highly constrained gene** expressed in the relevant tissue may be more compelling than a strongly damaging variant in a gene with no supporting biology.
+
+2. **Aggregation from variants to loci and genes**  
+   Discovery problems often operate at **locus or gene level**, requiring some aggregation of variant scores. Common strategies include:
+   - **Max or top-k pooling** – Focus on the worst predicted variant per gene or locus.  
+   - **Burden-style aggregation** – Sum or average the predicted impact of all rare variants in a gene, possibly weighted by allele frequency and predicted effect.  
+   - **Mechanism-aware aggregation** – Separate coding vs regulatory, or promoter vs distal enhancer contributions, using tissue-specific scores from models like Enformer or AlphaGenome [@avsec_enformer_2021 @avsec_alphagenome_2025].
+
+3. **Combining VEP with orthogonal evidence**  
+   VEP is rarely used alone. Modern pipelines combine:
+   - **Population data** – Allele frequency and constraint (pLI, LOEUF, missense and LoF intolerance).  
+   - **Clinical databases** – ClinVar classifications, disease-gene catalogs (OMIM, HGMD).  
+   - **Functional annotations** – Chromatin state, conservation ([PhyloP, PhastCons](https://compgen.cshl.edu/phast/)), known regulatory elements [@siepel_phastcons_2005].  
+   - **Pathway and network context** – Membership in pathways enriched for the trait, or centrality in relevant biological networks.
+
+   GFMs enter as **feature providers** in this stack, often replacing or augmenting hand-crafted features.
+
+4. **Calibration and interpretability**  
+   For prioritization, ranking may matter more than perfectly calibrated probabilities, but **interpretable risk categories** are crucial in clinical and experimental settings. This pushes towards:
+   - Score thresholds with empirical **positive predictive value (PPV)** estimates.  
+   - Qualitative explanations (e.g., “strong disruption of a conserved splice donor in a haploinsufficient gene”).  
+   - Visualizations of attention maps, saliency, or motif-level contributions (@sec-interp).
+
+In other words, GFMs provide **high-resolution local perturbation scores**, but the art of discovery is in **wiring those scores into larger decision frameworks**.
+
+---
+
+##  Integrating VEP with GWAS, Fine-Mapping, and Burden Tests
+
+Genome-wide association studies (GWAS) identify **statistical associations** between variants and traits. However, GWAS hits are often:
+
+- **Noncoding** – Located in enhancers or other regulatory elements.  
+- **In linkage disequilibrium (LD)** – Dozens of variants in a region share similar association statistics.  
+- **Mechanistically opaque** – Even the top GWAS SNP may not be truly causal.
+
+### VEP as a prior for fine-mapping
+
+Fine-mapping methods aim to assign each variant in a locus a **posterior probability of causality**, usually by combining LD patterns, effect-size estimates, and sometimes functional annotations @wu_genome-wide_2024. GFMs naturally provide **functional priors**:
+
+- Regulatory sequence models such as Enformer and AlphaGenome predict how a variant perturbs gene expression or chromatin landscapes [@avsec_enformer_2021 @avsec_alphagenome_2025].  
+- Genome-scale LMs like GPN-MSA and Evo 2 estimate the likelihood or impact of nucleotide substitutions in their genomic context [@benegas_gpn-msa_2024 @brixi_evo_2025].  
+- Specialized models like TREDNet and MIFM directly target **causal variant prediction** at GWAS loci [@hudaiberdiev_trednet_2023 @rakowski_mifm_2025].
+
+From a Bayesian perspective, these models provide a **functional prior** $ \pi_j $ for each variant $ j $ in the locus. Fine-mapping frameworks can then:
+
+- Upweight variants predicted to have large regulatory or coding effects.  
+- Downweight variants with benign or neutral predictions.  
+- Support **multi-variant configurations**, where multiple causal variants exist at the same locus.
+
+Recent benchmarks like TraitGym systematically evaluate how well various genomic LMs and VEP models serve as fine-mapping priors across traits and tissues [@benegas_traitgym_2025].
+
+### Rare variant association and DeepRVAT-style models
+
+For rare variants, single-variant tests have limited power. Instead, **gene- or region-based burden tests** aggregate rare variants across individuals to detect association. Here, VEP plays two key roles:
+
+1. **Variant weighting and filtering**  
+   Classical burden tests often restrict to “damaging” variants using simple filters (e.g., predicted LoF, CADD > threshold). GFMs provide richer filters and weights, enabling:
+
+   - Fine-grained distinctions among missense variants (e.g., using AlphaMissense scores [@cheng_alphamissense_2023]).  
+   - Inclusion of regulatory variants predicted to modulate gene expression.  
+   - Continuous weights reflecting predicted effect size, rather than binary include/exclude decisions.
+
+2. **End-to-end deep set models**  
+   DeepRVAT exemplifies a newer paradigm: instead of hand-engineered burden summaries, a **deep set network** ingests per-variant features (including GFM-derived VEP scores) and learns to aggregate them into a gene-level risk signal [@clarke_deeprvat_2024]. This approach:
+
+   - Supports **heterogeneous variant classes** within a gene.  
+   - Learns flexible aggregation functions (e.g., non-additive interactions) while preserving permutation invariance.  
+   - Accommodates multiple phenotypes and covariates within a single model.
+
+As more cohorts with whole-exome or whole-genome sequencing become available, these **GFM-enhanced burden frameworks** blur the line between GWAS and rare variant analysis, providing a continuum of variant discovery tools.
+
+---
+
+##  Mendelian Disease Gene and Variant Discovery
+
+In Mendelian disease genetics, the questions tend to be more concrete: **Which variant explains this patient’s phenotype? Which gene is implicated?** WES/WGS of trios and families produces thousands of variants per individual. The standard pipeline includes:
+
+1. **Quality control and filtering**  
+   - Remove low-quality calls and technical artifacts.  
+   - Filter by allele frequency (e.g., <0.1% in population databases), inheritance mode (de novo, recessive, X-linked), and variant type (LoF, missense, splice, structural).
+
+2. **Gene-centric ranking**  
+   - Aggregate candidate variants per gene, using constraint metrics and known disease-gene catalogs.  
+   - Integrate phenotype similarity (e.g., HPO-based matching between patient and known gene syndromes).
+
+3. **Manual curation**  
+   - Expert review of gene function, expression patterns, animal models, and literature.  
+   - Assessment of segregation in the family, de novo status, and evidence of pathogenic mechanism.
+
+### GFMs in Mendelian variant prioritization
+
+GFMs reshape several stages of this process:
+
+- **Richer coding impact scores**  
+  AlphaMissense provides proteome-wide missense pathogenicity estimates with continuous scores that often outperform traditional tools [@cheng_alphamissense_2023]. Coding-aware foundation models (cdsFM and related systems) further capture codon-level context and co-evolutionary patterns [@naghipourfar_cdsfm_2024].
+
+- **Regulatory and splice prediction**  
+  Genome-wide models like GPN-MSA, Evo 2, and AlphaGenome estimate the effect of noncoding and splice-proximal variants, filling a gap for Mendelian variants outside exons [@benegas_gpn-msa_2024 @brixi_evo_2025 @avsec_alphagenome_2025].
+
+- **Combined variant–gene scoring**  
+  For each gene, we can aggregate:
+
+  - Max or weighted VEP score across all candidate variants.  
+  - Separate tallies for LoF, missense, regulatory, and splice variants.  
+  - Gene-level features (constraint, expression, pathways) and phenotype similarity.
+
+  A simple model might compute a **composite gene score** as a learned function of these features, trained on cohorts with labeled diagnoses.
+
+### Rare disease association at scale
+
+Beyond single-family diagnostics, large consortia collect **rare disease cohorts** where the goal is to discover new gene–disease associations. DeepRVAT-style models provide one blueprint:
+
+- Represent each individual as a set of rare variants with **multi-dimensional VEP features** (from GFMs and traditional tools).  
+- Use deep set networks to map from per-variant features to **individual-level phenotype predictions** or **gene-level association signals** [@clarke_deeprvat_2024].  
+- Incorporate multi-omics context (e.g., tissue-specific expression, chromatin accessibility from GLUE-like models) as additional features [@cao_glue_2022].
+
+This pushes Mendelian discovery closer to the **foundation model paradigm**: instead of hand-designed burden statistics, we train flexible architectures that learn how to combine variant-level representations into gene- and phenotype-level insights.
+
+---
+
+## Graph-Based Prioritization of Disease Genes
+
+Many discovery problems are inherently **network-structured**. Genes interact through pathways, protein–protein interaction (PPI) networks, co-expression modules, regulatory networks, and knowledge graphs. GNNs offer a natural way to fuse:
+
+- **Node features** from GFMs (e.g., aggregated VEP scores, expression profiles).  
+- **Graph structure** capturing biological relationships.  
+- **Labels** such as disease associations, essentiality, or cancer driver status.
+
+### Multi-omics and cancer gene modules
+
+GLUE (and SCGLUE) frame multi-omics integration as a **graph-linked embedding problem**, connecting cells and features across modalities [@cao_glue_2022]. Inspired by this, GNN frameworks like MoGCN and CGMega build:
+
+- **Gene-level graphs** combining expression, methylation, copy number, and other omics layers [@li_mogcn_2022 @li_cgmega_2024].  
+- **Attention mechanisms** to highlight important neighbors and pathways in cancer gene modules.  
+- Predictive models for **cancer subtypes, driver genes, and prognostic signatures**.
+
+GFMs can enhance these systems by supplying:
+
+- **Variant-aware gene features** (e.g., aggregated predicted impact of observed somatic mutations).  
+- **Regulatory context** via sequence-based predictions of expression and chromatin (Enformer, Borzoi, AlphaGenome) [@avsec_enformer_2021 @linder_borzoi_2025 @avsec_alphagenome_2025].
+
+### Knowledge graphs and essential gene prediction
+
+Knowledge graphs like PrimeKG aggregate **heterogeneous biomedical entities**—genes, diseases, drugs, pathways, and phenotypes—into a unified relational structure [@chandak_primekg_2023]. GNNs on such graphs can be trained to:
+
+- Prioritize **disease genes** based on graph proximity to known genes.  
+- Suggest **drug repurposing candidates** by connecting genetic evidence to drug targets.  
+- Discover **modules** linked to therapeutic response or adverse effects.
+
+Bingo provides a related example, combining a **large language model (LLM)** with GNNs to predict essential genes from protein-level data [@ma_bingo-large_2023]. In principle, the node features in such systems could incorporate:
+
+- Gene-level embeddings derived from protein LMs (Chapter 9).  
+- Aggregated variant effect embeddings from genomic LMs (@sec-dna and @sec-veps).  
+- Multi-omic signatures from GLUE-like integrative models [@cao_glue_2022].
+
+Together, these approaches illustrate a broader trend: **GFMs rarely act alone**. Instead, they supply dense, information-rich features to graph-based models that reason over the **network context** where disease mechanisms actually play out.
+
+---
+
+## Experimental Follow-Up and Closed-Loop Refinement
+
+Computational prioritization is only half of discovery. Ultimately, we need **experimental validation**: does perturbing a candidate variant or gene alter the relevant molecular or cellular phenotype?
+
+### Designing CRISPR and MPRA experiments with GFMs
+
+High-throughput perturbation assays such as:
+
+- **Massively parallel reporter assays (MPRAs)** targeting many regulatory variants.  
+- **CRISPR tiling and base editing screens** across enhancers, promoters, and coding regions.  
+- **Perturb-seq** linking genetic perturbations to single-cell transcriptomes.
+
+are expensive and capacity-limited. GFMs help **prioritize and design** these experiments:
+
+- Sequence-to-expression models like Enformer and Borzoi can identify **regions and variants with large predicted regulatory effects**, guiding where to tile and which alleles to test [@avsec_enformer_2021 @linder_borzoi_2025].  
+- Genome-scale generative models like Evo 2 can propose **counterfactual edits** that maximize predicted effect, enabling focused exploration of regulatory landscapes [@brixi_evo_2025].  
+- Variant effect models can suggest **multiplexed libraries** that systematically probe key motifs, splice sites, or codon usage patterns.
+
+Instead of brute-force tiling every base pair, we can use GFMs to **bias the library toward informative perturbations**, effectively turning them into **experiment design engines**.
+
+### Using functional data to retrain and recalibrate models
+
+The feedback loop goes in the other direction as well. Functional genomics screens produce **rich labeled datasets**:
+
+- MPRA readouts of allele-specific regulatory activity.  
+- CRISPR screen scores for gene essentiality or drug sensitivity.  
+- Single-cell perturbation responses across cell states.
+
+These can be used to:
+
+- **Refine model heads** for specific tasks (e.g., fine-tune a GFM to predict MPRA outcomes in a particular cell type).  
+- **Calibrate scores** so that predicted effect magnitudes align with measured changes.  
+- **Discover failure modes**, such as motifs or chromatin contexts where current models systematically mispredict.
+
+Some recent systems explicitly design **closed-loop pipelines**, where model predictions drive experiments, which then feed back to improve the model and inform the next round of design [@benegas_traitgym_2025 @rakowski_mifm_2025]. In the limit, we approach a semi-automated **“hypothesis factory”**:
+
+1. Start from GWAS, rare variant, or tumor sequencing data.  
+2. Use GFMs plus graphs to prioritize candidate variants and genes.  
+3. Design perturbation experiments guided by model predictions.  
+4. Update the models with new functional data.  
+5. Iterate, progressively sharpening our understanding of the underlying mechanisms.
+
+---
+
+## Case Studies and Practical Considerations
+
+To ground these ideas, consider two representative application areas.
+
+### Rare disease diagnosis pipelines leveraging VEP scores
+
+Modern rare disease centers increasingly adopt **GFM-enhanced diagnostic workflows**:
+
+1. **Variant filtering and annotation**  
+   - Standard QC and frequency filters.  
+   - Annotation with GFM-based VEP scores (coding, regulatory, splice), constraint, and ClinVar evidence.
+
+2. **Gene-ranking model**  
+   - Per-gene aggregation of variant scores and features.  
+   - A trained model that predicts the likelihood of each gene being causal, based on retrospective cohorts with known diagnoses.
+
+3. **Phenotype integration**  
+   - HPO-based similarity to known gene syndromes.  
+   - Network-based propagation of phenotype associations using knowledge graphs like PrimeKG [@chandak_primekg_2023].
+
+4. **Expert review**  
+   - Geneticists and clinicians inspect the top-ranked genes and variants, cross-checking against patient phenotypes, family segregation, and literature.
+
+Compared to traditional pipelines, the GFM-enhanced version tends to:
+
+- **Surface non-obvious candidates**, such as noncoding or splice variants with strong predicted functional effects.  
+- Provide **more nuanced prioritization** among multiple missense variants in the same gene.  
+- Offer **richer mechanistic hypotheses** to guide follow-up experiments.
+
+### Cancer driver mutation discovery (coding and noncoding)
+
+In cancer genomics, the goal is to distinguish **driver mutations** from a large background of passenger mutations. GFMs and graph-based models contribute at multiple levels:
+
+- **Variant-level scoring**  
+  - Use coding VEP (e.g., AlphaMissense, cdsFM-like models) for missense drivers [@cheng_alphamissense_2023 @naghipourfar_cdsfm_2024].  
+  - Use regulatory sequence models (Enformer, AlphaGenome, TREDNet) to evaluate noncoding mutations in promoters and enhancers [@avsec_enformer_2021 @avsec_alphagenome_2025 @hudaiberdiev_trednet_2023].
+
+- **Gene- and module-level aggregation**  
+  - Aggregate somatic variants per gene, weighted by predicted functional impact.  
+  - Apply GNNs such as MoGCN and CGMega to identify **driver gene modules** that are recurrently perturbed across patients [@li_mogcn_2022 @li_cgmega_2024].  
+  - Use set-based models (akin to DeepRVAT) to relate patient-specific variant sets to tumor subtypes or outcomes [@clarke_deeprvat_2024].
+
+- **Functional follow-up**  
+  - Design focused CRISPR tiling screens around candidate regulatory elements, prioritized by GFMs.  
+  - Validate predicted driver genes in cell line or organoid models, integrating transcriptional responses with multi-omic readouts (@sec-multi).
+
+These pipelines exemplify **multi-scale integration**: GFMs for variant-level effects, GNNs for network-level reasoning, and high-throughput perturbations for experimental validation.
+
+---
+
+## Outlook: Towards End-to-End Discovery Systems
+
+Biomedical discovery of pathogenic variants is moving from **manual, hypothesis-driven workflows** toward **data- and model-driven pipelines** where GFMs act as a central substrate:
+
+- They turn raw sequence variation into **rich, context-aware variant embeddings**.  
+- They provide **priors and features** for fine-mapping, rare variant association, and gene prioritization.  
+- They guide the design of **targeted perturbation experiments**, which in turn provide new data to refine the models.
+
+At the same time, several challenges remain:
+
+- **Robustness and generalization** across ancestries, tissues, and disease cohorts.  
+- **Calibration and interpretability** suitable for clinical and experimental decision-making.  
+- **Evaluation frameworks** (like TraitGym) that fairly compare models and reveal domain gaps [@benegas_traitgym_2025].  
+- **Ethical and regulatory considerations** around automated variant classification and gene discovery in sensitive contexts.
+
+In the next chapter, we zoom out to the broader **drug discovery and biotech landscape** (@sec-drugs), where many of these discovery building blocks are embedded in industrial-scale pipelines that span from **genetic association** to **target validation**, **biomarker discovery**, and eventually **clinical translation**.

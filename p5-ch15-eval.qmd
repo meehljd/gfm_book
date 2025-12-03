@@ -1,0 +1,420 @@
+::: {.content-hidden}
+NOTES:
+- This chapter is the *canonical* home for evaluation & benchmarks across the book.
+- Keep evaluation sections in @sec-dna, @sec-princ, and @sec-clinical focused and cross-link here instead of re-explaining philosophy.
+- Emphasize:
+  - Multi-scale evaluation: molecular → variant → trait → clinical.
+  - Splits & leakage (by locus, region, individual, ancestry) vs true generalization.
+  - Relationship between benchmarks and downstream/clinical utility.
+- Defer detailed confounder mechanics to @sec-confound and model introspection to @sec-interp.
+:::
+
+# Model Evaluation & Benchmarks  {#sec-eval}
+
+By now, we have seen genomic models at almost every scale:
+
+- Variant calling from NGS reads (@sec-ngs)  
+- Polygenic scores and GWAS (@sec-pgs)  
+- Deleteriousness scores and variant effect predictors (@sec-cadd; @sec-veps)  
+- CNN-based sequence-to-function models (@sec-reg–@sec-splice)  
+- Genomic language models and foundation models (@sec-dna; @sec-princ)  
+- Clinical risk and pathogenic variant discovery (@sec-clinical; @sec-variants)  
+
+Each chapter introduced *local* metrics and benchmarks. What has been missing is a single place to answer:
+
+> What does it mean for a genomic model to “work,” and how should we **systematically** evaluate it?
+
+This chapter provides that unifying view. We:
+
+- Describe **metric families** and how they map to typical genomic tasks.  
+- Organize evaluation across **four levels**: molecular, variant, trait/individual, and clinical decision.  
+- Discuss **data splitting, leakage, and robustness**—the mechanics that make or break benchmarks.  
+- Explain how to evaluate **foundation models** in different usage regimes (zero-shot, probing, fine-tuning).  
+- Connect evaluation to **reliability**: confounders (@sec-confound) and interpretability (@sec-interp).
+
+Throughout, the theme is that **architecture and scale matter, but evaluation choices often matter more.**
+
+---
+
+## Evaluation as a Multi-Scale Problem
+
+Genomic models are deployed at very different scales. It helps to keep a simple mental pyramid in mind:
+
+- **Molecular / regulatory**  
+  - Inputs: local sequence, epigenomic context.  
+  - Outputs: chromatin accessibility, histone marks, TF binding, splicing outcomes, expression levels.  
+  - Examples: DeepSEA-style chromatin models, SpliceAI, Enformer.
+
+- **Variant-level**  
+  - Inputs: a specific variant (SNV, indel, structural variant) and its context.  
+  - Outputs: pathogenicity scores, predicted molecular impact, fine-mapping posterior probabilities.  
+  - Examples: CADD-style deleteriousness scores, AlphaMissense-like VEPs, MIFM fine-mapping posteriors.
+
+- **Trait / individual-level**  
+  - Inputs: a person’s genotype/sequence plus other features.  
+  - Outputs: risk scores for complex traits, predicted phenotypes, endophenotypes.  
+  - Examples: classical PGS, GFM-augmented risk scores (@sec-pgs; @sec-clinical).
+
+- **Clinical / decision-level**  
+  - Inputs: model predictions plus context (guidelines, utility assumptions).  
+  - Outputs: decisions (treat vs not treat, screen vs not screen), enriched cohorts, trial eligibility.  
+  - Examples: screening strategies, clinical decision support tools.
+
+Good evaluation starts from the *intended level of action*:
+
+- If the goal is **variant prioritization** in a rare disease pipeline, improvement in AUROC on a chromatin benchmark is only indirectly relevant.  
+- If the goal is **clinical risk stratification**, better perplexity on a DNA language model test set is useful only insofar as it leads to more discriminative, better calibrated risk scores.
+
+The rest of the chapter climbs this pyramid, while keeping a few core metric families in view.
+
+---
+
+## Metric Families Across Genomic Tasks
+
+Most evaluation in this book falls into four broad metric families.
+
+### Classification Metrics
+
+For binary or multi-class outputs (e.g., pathogenic vs benign; open vs closed chromatin; presence vs absence of a histone mark):
+
+- **AUROC (AUC)** – probability that a randomly chosen positive is ranked above a randomly chosen negative.  
+- **AUPRC** – precision–recall area; more informative when positives are rare (e.g., pathogenic variants among many benign ones).  
+- **Accuracy, sensitivity, specificity** – intuitive but sensitive to class imbalance and thresholds.
+
+Typical patterns:
+
+- Variant effect predictors and clinical risk models report **AUROC/AUPRC** for prioritization.  
+- Regulatory prediction models often report **per-task AUROC** averaged over hundreds of chromatin assays.
+
+### Regression and Correlation Metrics
+
+For continuous outputs (expression levels, log-odds of accessibility, quantitative traits):
+
+- **Pearson correlation $ r $** – linear association between predicted and observed values.  
+- **Spearman correlation $ \rho $** – rank-based association; robust to monotone transformations.  
+- **$ R^2 $** – fraction of variance explained; often computed against a simple baseline (e.g., mean-only model).
+
+Sequence-to-expression and multi-omics models frequently use **correlation** between predicted and observed tracks (e.g., Enformer-like evaluations), while PGS performance is often reported as **incremental $ R^2 $** over clinical covariates.
+
+### Ranking and Prioritization Metrics
+
+Many genomics workflows are fundamentally about **ranking**:
+
+- Prioritizing variants in a locus for follow-up.  
+- Ranking genes or targets for experimental validation.  
+- Selecting individuals at highest risk for screening.
+
+In addition to AUROC/AUPRC, useful ranking metrics include:
+
+- **Top-k recall / enrichment** – fraction of true positives in the top $ k $ predictions.  
+- **Enrichment over baseline** – how much more likely a high-scoring bucket is to contain true positives compared to random.  
+- **Normalized Discounted Cumulative Gain (NDCG)** – emphasizes getting highly relevant items near the top.
+
+These metrics better align with practical questions such as “how many real Mendelian variants would land in the top 20 candidates?”
+
+### Generative and Language-Model Metrics
+
+Self-supervised genomic language models (@sec-dna) introduce their own metrics:
+
+- **Perplexity / cross-entropy** on masked-token reconstruction tasks.  
+- **Bits-per-base** for next-token prediction or compression-style objectives.
+
+These are important for **representation quality** and for comparing pretraining runs, but:
+
+- They are **distribution-specific** (tied to the pretraining corpus).  
+- Improvements in perplexity **do not automatically** translate into better variant or trait predictions.
+
+As a result, generative metrics should be paired with **downstream task metrics** (classification, regression, ranking) to assess real utility.
+
+---
+
+## Levels of Evaluation: From Base Pairs to Bedside
+
+We now walk through the pyramid from molecular readouts to clinical decisions, focusing on what “good evaluation” looks like at each level.
+
+### Molecular and Regulatory-Level Evaluation
+
+Tasks:
+
+- Predicting chromatin accessibility, histone marks, TF binding profiles.  
+- Predicting splicing outcomes (e.g., psi values) or transcription start/termination sites.  
+- Predicting MPRA readouts or CRISPR perturbation effects.
+
+Common evaluation setups:
+
+- **Multi-task classification**: AUROC/AUPRC per assay, then averaged (with or without weighting).  
+- **Track-wise regression**: Pearson/Spearman correlation between predicted and observed signal profiles.  
+- **Out-of-cell-type prediction**: training on some cell types and testing on others.
+
+Key design choices:
+
+- **Granularity of labels** – base-resolution vs binning (e.g., 128 bp bins).  
+- **Context windows** – do we test long-range generalization (Enformer-like) or local contexts?  
+- **Held-out biology** – new TFs, new cell types, new loci (see splits below).
+
+Pitfalls:
+
+- Overfitting to specific assays or idiosyncratic lab protocols.  
+- Inadvertent leakage when nearby genomic regions or replicate experiments are split across train and test.
+
+### Variant-Level Evaluation
+
+Tasks:
+
+- Classifying variants as pathogenic vs benign, or damaging vs tolerated.  
+- Predicting functional impact (e.g., effect on splicing, expression, protein stability).  
+- Fine-mapping: assigning posterior probabilities of causality to variants in associated loci.
+
+Common benchmarks:
+
+- **Clinical labels**: ClinVar, HGMD, curated variant sets from diagnostic labs.  
+- **Population-based labels**: allele frequency strata (e.g., ultra-rare vs common) in gnomAD-like resources.  
+- **Functional assays**: saturation mutagenesis, MPRAs, deep mutational scanning.
+
+Metrics:
+
+- AUROC/AUPRC on binary labels (e.g., pathogenic vs benign).  
+- Correlation or rank metrics against experimental effect sizes.  
+- Calibration-style metrics for probabilistic outputs (e.g., reliability diagrams for pathogenicity probabilities or fine-mapping posteriors).
+
+Design questions:
+
+- **What is the negative class?** Common, presumably benign variants; frequency-matched controls; synonymous variants; or synthetic negatives as in CADD (@sec-cadd).  
+- **What is held out?** Genes, loci, or variant types unseen during training.  
+- **How are multiple variants per locus handled?** Evaluating top-k recall of causal variants per risk locus is often more informative than global AUC.
+
+This level is also where issues like **circularity**—scores trained on ClinVar then evaluated on overlapping variants—are especially acute; we return to this in @sec-confound.
+
+### Trait- and Individual-Level Evaluation
+
+Tasks:
+
+- Predicting quantitative traits (e.g., LDL, height, eGFR) from genotypes and other features.  
+- Case–control risk prediction for complex diseases (e.g., CAD, T2D).  
+- Multi-trait and multi-task risk modeling.
+
+Metrics:
+
+- **Incremental $ R^2 $** for quantitative traits – variance explained by genomic features over clinical covariates.  
+- **AUROC/AUPRC / C-index** for binary or time-to-event outcomes.  
+- **Net reclassification improvement (NRI)** – how often individuals are moved across clinically meaningful risk thresholds in the correct direction.
+
+Important evaluation settings:
+
+- **Within-ancestry vs cross-ancestry** performance (building on @sec-pgs).  
+- **Within-cohort vs external** validation (e.g., train in one biobank, test in another).  
+- **Joint vs marginal** contribution of genetics when combined with EHR and multi-omics (@sec-multi).
+
+Even for purely “research” models, reporting **absolute performance** (e.g., AUROC) alongside **incremental gain over strong baselines** is essential for understanding real impact.
+
+### Clinical and Decision-Level Evaluation
+
+Clinical risk models, treatment response predictors, and trial enrichment models (@sec-clinical) ultimately need to be evaluated in terms of **decisions**, not just scores.
+
+Beyond discrimination and calibration, important concepts include:
+
+- **Decision curves and net benefit** – compare different thresholds or policies by weighting true positives vs false positives based on clinical utilities.  
+- **Cost-sensitive and utility-aware evaluation** – different misclassification costs (e.g., missing a high-risk patient vs unnecessary screening).  
+- **Prospective and interventional evaluation** – randomized trials, pragmatic trials, and observational implementations with careful monitoring.
+
+This chapter gives only a high-level overview; @sec-clinical goes deeper into clinical metrics and deployment, and @sec-variants discusses evaluation of variant-centric discovery workflows.
+
+---
+
+## Data Splits, Leakage, and Robustness
+
+Metrics mean little without **well-designed splits**. In genomics, the usual “random 80/10/10” split often fails to test the generalization we care about.
+
+### Axes of Splitting
+
+Common axes along which we can (and often should) split:
+
+- **By individual** – ensure that genomes from the same person or family do not appear in both training and test sets.  
+- **By locus / region** – hold out contiguous genomic regions (e.g., specific chromosomes or megabase windows).  
+- **By gene / target** – for VEP and protein models, hold out entire genes or protein families.  
+- **By assay / cell type / tissue** – train on some contexts and test on unseen ones.  
+- **By ancestry / cohort** – train in one ancestry or cohort and evaluate on others.
+
+Different scientific questions imply different splits:
+
+- “Can this model generalize to **new loci in the same cell type**?” → locus or chromosome-based splits.  
+- “Can it generalize to **new cell types**?” → cell-type splits.  
+- “Can it generalize to **different populations or clinics**?” → ancestry and cohort splits.
+
+### Types of Leakage
+
+Leakage arises when information about the test set sneaks into training:
+
+- **Duplicate or near-duplicate sequences** across splits (e.g., overlapping windows around the same variant).  
+- **Shared individuals or families** across train and test.  
+- **Benchmark construction leakage** – when labels are derived from resources that also guided model design or pretraining.  
+- **Hyperparameter tuning leakage** – repeatedly evaluating on the test set while choosing checkpoints.
+
+@sec-confound focuses on confounders and leakage as sources of *biased* performance estimates; here, the takeaway is practical:
+
+> Always define the split to match the generalization you care about, then audit for potential linkage/dataset overlap.
+
+### Robustness and Distribution Shift
+
+Robustness is evaluated by deliberately shifting the data distribution:
+
+- **Technical shifts** – new sequencing platforms, coverage levels, or assay protocols.  
+- **Biological shifts** – new species, tissues, disease subtypes, or ancestries.  
+- **Clinical shifts** – new hospitals, care patterns, or time periods.
+
+Robustness evaluations often look like:
+
+- Training on one platform or cohort and testing on another.  
+- Comparing performance across subgroups (e.g., ancestry-stratified AUROC).  
+- Stress-testing models under label noise or missingness.
+
+These experiments often reveal that performance on **curated, i.i.d. benchmarks** overestimates usefulness in messy real-world settings, especially for high-stakes clinical decisions.
+
+A model that performs well on curated benchmarks may still struggle in real-world scenarios:
+
+- **Population diversity:** Training corpora may underrepresent certain ancestries, leading to biased variant scoring (Chapter 2).
+- **Assay heterogeneity:** Experimental conditions, labs, and technologies differ from the curated datasets used in training.
+- **Phenotypic complexity:** Many clinically relevant phenotypes involve long causal chains—from variant to molecular consequence to tissue-level effect to disease.
+
+Thus, genomic LM evaluation increasingly includes:
+
+- Cross-population robustness.
+- Out-of-distribution testing (new tissues, cell types, or species).
+- End-to-end evaluations on clinically relevant endpoints (e.g., disease risk prediction, rare disease diagnosis), often in combination with traditional statistical genetics tools.
+
+---
+
+## Benchmarks, Leaderboards, and Their Limits
+
+Benchmark suites—such as those introduced for Nucleotide Transformer and related genomic LMs—serve important roles:
+
+- Provide **standardized datasets, metrics, and splits**.  
+- Enable **apples-to-apples comparisons** between architectures.  
+- Encourage **reproducibility** and shared baselines.
+
+However, benchmark-centric culture has pitfalls:
+
+- **Overfitting to the benchmark** – models tuned aggressively on a small panel may degrade on new tasks.  
+- **Narrow task coverage** – many suites focus on chromatin and TF binding, under-representing splicing, structural variation, or clinical endpoints.  
+- **Misaligned incentives** – chasing fractional improvements in AUROC can overshadow more important gains (e.g., robustness, calibration, fairness).
+
+Good practice:
+
+- Treat benchmark scores as **necessary but not sufficient**.  
+- Complement them with **task-specific evaluations** that mirror the intended downstream usage.  
+- Periodically **refresh** benchmarks to include new assays, ancestries, and edge cases.
+
+---
+
+## Evaluating Foundation Models: Zero-Shot, Probing, and Fine-Tuning
+
+Genomic foundation models (@sec-princ) complicate evaluation because there are multiple ways to use them.
+
+### Zero-Shot and Few-Shot Evaluation
+
+In zero-shot settings, we apply the pretrained model without task-specific training, e.g.:
+
+- Using masked-token probabilities to rank variants by predicted deleteriousness.  
+- Using embedding similarities to cluster sequences or annotate motifs.  
+
+Evaluation focuses on:
+
+- How well these “raw” scores correlate with **functional** or **clinical** labels.  
+- Whether **few-shot adaptation** (e.g., small linear heads trained on limited labeled data) already yields strong performance.
+
+Zero-shot performance is a stress test of **representation quality** and inductive biases.
+
+### Probing and Linear Evaluation
+
+A common pattern is to:
+
+1. Freeze the foundation model.  
+2. Extract embeddings for sequences, variants, or loci.  
+3. Train simple probes (linear models, shallow MLPs) on downstream labels.
+
+Key evaluation questions:
+
+- How much **label efficiency** do we gain vs training from scratch?  
+- How **stable** are probe results across random seeds and small dataset variations?  
+- Do probes perform well across **diverse tasks**, or only on those similar to pretraining objectives?
+
+This regime isolates the usefulness of learned representations.
+
+### Full Fine-Tuning and Task-Specific Heads
+
+For high-value tasks, we often fine-tune the foundation model end-to-end:
+
+- Adding task-specific heads (classification, regression, ranking).  
+- Adapting to new modalities (e.g., multi-omics fusion in @sec-multi) or clinical contexts (@sec-clinical).
+
+Evaluation then looks similar to “classic” deep models, but with additional questions:
+
+- **Transfer vs from-scratch baselines:** does fine-tuning a GFM meaningfully outperform training a comparable architecture from scratch on the same data?  
+- **Catastrophic forgetting:** does fine-tuning degrade performance on other tasks, and does that matter for intended use?  
+- **Robustness and fairness:** do foundation model features inherit or amplify biases (@sec-confound)?
+
+Across all regimes, it is helpful to report:
+
+- **Absolute performance**, **delta vs strong baselines**, and **data efficiency curves** (performance vs labeled data size).  
+
+---
+
+## Uncertainty, Calibration, and Reliability
+
+Metrics like AUROC summarize ranking, but they say little about **how trustworthy** individual predictions are.
+
+Key concepts:
+
+- **Calibration** – predicted probabilities match observed frequencies (e.g., variants scored at 0.8 pathogenic are truly ~80% pathogenic).  
+- **Epistemic vs aleatoric uncertainty** – model uncertainty due to limited data vs inherent noise in the problem.  
+- **Selective prediction / abstention** – models that can say “I don’t know” when confidence is low.
+
+Evaluation tools:
+
+- **Reliability diagrams** and **Brier scores** for calibration.  
+- **Calibration curves** stratified by subgroup (ancestry, sex, site) for fairness.  
+- **Coverage vs accuracy curves** for selective prediction: “If the model only predicts on the 50% most confident samples, how accurate is it?”
+
+For clinical risk models, @sec-clinical covers calibration and uncertainty in more depth. For variant-centric tasks, similar tools apply to **pathogenicity probabilities** or **fine-mapping posteriors**, which must be interpreted cautiously in light of confounders (@sec-confound).
+
+---
+
+## Putting It All Together: An Evaluation Checklist
+
+When designing or reviewing an evaluation for a genomic model, it can help to walk through a simple checklist:
+
+1. **What level is the decision?**  
+   - Molecular assay design, variant prioritization, patient risk, or clinical action?  
+   - Ensure metrics align with that level (e.g., enrichment for variant ranking, net benefit for clinical decisions).
+
+2. **What are the baselines?**  
+   - Strong non-deep baselines (logistic regression, classical PGS).  
+   - Prior deep models (e.g., DeepSEA, SpliceAI, Enformer, earlier GFMs).  
+   - Report both absolute performance and gains over these baselines.
+
+3. **How are splits designed?**  
+   - Are individuals, loci, genes, assays, and ancestries appropriately separated?  
+   - Is there any plausible path for leakage or circularity?
+
+4. **How robust is performance?**  
+   - Across cohorts, ancestries, platforms, and time.  
+   - Under label noise or missingness.
+
+5. **Are uncertainty and calibration evaluated?**  
+   - For probabilistic outputs, are calibration and decision-level trade-offs reported?  
+   - Are subgroup-specific metrics examined?
+
+6. **How does the model behave across usage regimes?**  
+   - Zero-shot, probing, fine-tuning for GFMs.  
+   - Data efficiency: does pretraining help when labeled data are scarce?
+
+7. **What is the story beyond the benchmark?**  
+   - Does improved performance change downstream decisions or experimental design?  
+   - Are there plans for prospective or interventional evaluation when clinical deployment is envisioned?
+
+Subsequent chapters flesh out specific aspects of reliability:
+
+- @sec-confound digs into **confounders, bias, and fairness**, showing how evaluation can mislead when data are structured in problematic ways.  
+- @sec-interp focuses on **interpretability and mechanisms**, turning models from black boxes into testable biological hypotheses.  
+
+Together, these chapters aim to help you read the rest of the book—and the emerging literature on genomic foundation models—with a critical eye toward **what has really been demonstrated** and **how much you should trust it.**

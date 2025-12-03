@@ -1,0 +1,157 @@
+# Regulatory Prediction  {#sec-reg}
+
+## The Noncoding Variant Challenge
+
+The vast majority of disease-associated variants identified by GWAS lie in noncoding regions of the genome. Yet in 2015, the field lacked systematic methods to predict how these variants affect gene regulation. Existing approaches relied on overlap with known annotations—if a variant fell within a ChIP-seq peak or DNase hypersensitive site, it might be flagged as potentially functional. But this strategy offered no mechanism for predicting the *direction* or *magnitude* of effect, and it could not score variants in regions lacking experimental coverage.
+
+DeepSEA, introduced by Zhou and Troyanskaya in 2015, fundamentally changed this paradigm by learning to predict chromatin features directly from DNA sequence [@zhou_deepsea_2015]. Rather than asking "does this variant overlap a known regulatory element?", DeepSEA asks "what regulatory activities does this sequence encode, and how would a mutation change them?"
+
+## The Core Innovation: Learning Regulatory Code from Sequence
+
+DeepSEA's central insight was that deep convolutional networks could learn the sequence patterns underlying regulatory activity without explicit feature engineering. Previous methods like gapped k-mer SVMs (gkm-SVM) required defining sequence features a priori—specifying which k-mers to count and how to weight them. DeepSEA instead learned relevant sequence features automatically from data.
+
+### Architecture
+
+The original DeepSEA architecture comprised:
+
+1. **Input layer**: 1000 bp DNA sequence, one-hot encoded (4 channels × 1000 positions)
+2. **Three convolutional layers**: Each followed by ReLU activation and max pooling, learning increasingly abstract sequence features
+3. **Fully connected layer**: Integrating learned features across the sequence
+4. **Output layer**: 919 sigmoid outputs predicting chromatin profile probabilities
+
+The convolutional layers function analogously to motif scanners, but with crucial differences: they learn motifs from data rather than requiring predefined position weight matrices, and deeper layers can learn combinations of motifs (regulatory "grammar") rather than just individual binding sites.
+
+### Training Data
+
+DeepSEA was trained on 919 chromatin profiles from ENCODE and Roadmap Epigenomics:
+
+| Profile Type | Count | Examples |
+|--------------|-------|----------|
+| Transcription factor binding | 690 | CTCF, p53, GATA1 |
+| Histone modifications | 104 | H3K4me3, H3K27ac |
+| DNase I hypersensitivity | 125 | Open chromatin across cell types |
+
+For each 1000 bp sequence, the model predicts the probability that the central 200 bp region exhibits each chromatin feature. Training used sequences from the human genome with chromosome 8 held out for testing.
+
+### Multi-Task Learning
+
+A key architectural decision was predicting all 919 features simultaneously rather than training separate models. This multi-task learning approach offers several advantages:
+
+- **Shared representations**: Early convolutional layers learn general sequence features (e.g., GC content, common motifs) useful across tasks
+- **Regularization**: Jointly predicting correlated features prevents overfitting to any single task
+- **Efficiency**: One model serves all prediction tasks
+
+## Predicting Variant Effects
+
+DeepSEA enables variant effect prediction through a straightforward procedure: predict chromatin profiles for both reference and alternative allele sequences, then compute the difference. This produces a 919-dimensional vector describing how the variant is predicted to alter regulatory activity across all profiled features.
+
+### Single-Nucleotide Sensitivity
+
+The model achieves single-nucleotide sensitivity—changing one base can substantially alter predictions. This was validated using allelic imbalance data from digital genomic footprinting. For 57,407 variants showing allele-specific DNase I sensitivity across 35 cell types, DeepSEA predictions correlated strongly with the experimentally observed allelic bias.
+
+### In Silico Saturation Mutagenesis
+
+By systematically predicting effects of all possible single-nucleotide substitutions within a sequence, DeepSEA enables "in silico saturation mutagenesis" (ISM). This computational experiment reveals which positions are most critical for regulatory function—equivalent to a CRISPR tiling screen, but performed entirely computationally.
+
+ISM analysis of regulatory elements reveals sequence positions where mutations would most strongly perturb function, often corresponding to transcription factor binding motifs learned by the model.
+
+## Functional Variant Prioritization
+
+Beyond predicting chromatin effects, DeepSEA introduced a framework for prioritizing likely functional variants among large sets of candidates.
+
+### eQTL Prioritization
+
+Expression quantitative trait loci (eQTLs) represent variants associated with gene expression changes. However, most eQTL signals reflect linkage disequilibrium rather than causal variants. DeepSEA demonstrated improved ability to distinguish true eQTLs from nearby non-causal variants compared to overlap-based methods.
+
+### GWAS Variant Prioritization
+
+Similarly, for GWAS-identified disease associations, DeepSEA helped prioritize which variants in LD blocks were most likely causal. The model outperformed contemporary methods including GWAVA (which was trained on known regulatory mutations) on held-out benchmarks.
+
+### Comparison to Prior Methods
+
+DeepSEA's performance advantage over gkm-SVM was particularly notable for transcription factor binding prediction:
+
+- Deep CNN achieved higher AUC for nearly all transcription factors
+- gkm-SVM showed no improvement with increased context sequence length
+- DeepSEA performance improved substantially with context (200 bp → 500 bp → 1000 bp)
+
+This demonstrated that the deep learning architecture could exploit longer-range sequence context that simpler models could not capture.
+
+## Evolution of the DeepSEA Framework
+
+The original DeepSEA established the sequence-to-chromatin prediction paradigm. Subsequent work from the same group expanded and refined this approach.
+
+### DeepSEA Beluga (2018)
+
+ExPecto, published in 2018, included an updated chromatin prediction model nicknamed "Beluga" [@zhou_expecto_2018]. Key improvements included:
+
+- **Expanded prediction targets**: 2,002 chromatin profiles (up from 919)
+- **Deeper architecture**: Additional convolutional layers with residual connections
+- **Larger context**: 2000 bp input sequences
+- **Integration with expression prediction**: Chromatin predictions serve as intermediate features for tissue-specific expression prediction (@sec-trans)
+
+### Sei (2022)
+
+Sei represents the current state of the DeepSEA lineage, predicting 21,907 chromatin profiles—a 24-fold expansion over the original [@chen_deepsea_2022]. Architectural innovations include:
+
+- **Dual linear/nonlinear paths**: Parallel convolution blocks, one with activation functions and one without, allowing the model to learn both complex nonlinear patterns and simpler linear relationships
+- **Dilated convolutions**: Expanding receptive field without reducing spatial resolution
+- **Spatial basis functions**: Memory-efficient integration of information across positions
+
+Sei improved over Beluga by 19% on average (measured by AUROC/(1-AUROC)) on the 2,002 profiles predicted by both models.
+
+| Model | Year | Chromatin Targets | Input Length | Architecture |
+|-------|------|-------------------|--------------|--------------|
+| DeepSEA | 2015 | 919 | 1000 bp | 3 conv + FC |
+| Beluga | 2018 | 2,002 | 2000 bp | Deep residual CNN |
+| Sei | 2022 | 21,907 | 4000 bp | Dual-path + dilated conv |
+
+## What DeepSEA Learns
+
+### Motif Discovery
+
+Analysis of DeepSEA's convolutional filters reveals learned sequence patterns corresponding to known transcription factor binding motifs. First-layer filters often match canonical motifs from databases like JASPAR, while deeper layers capture more complex patterns including motif combinations.
+
+### Regulatory Grammar
+
+Beyond individual motifs, DeepSEA implicitly learns aspects of regulatory "grammar"—the rules governing how motifs combine to produce regulatory activity. This includes:
+
+- **Motif spacing**: Some TF pairs require specific distances between binding sites
+- **Motif orientation**: Directionality of certain motifs affects function
+- **Combinatorial logic**: Multiple weak motifs can synergize, or compete through overlapping sites
+
+However, the original DeepSEA architecture's limited receptive field (due to pooling operations) constrained its ability to learn long-range dependencies. This limitation motivated later architectures with expanded context windows (Enformer, @sec-hybrid).
+
+## Limitations and Considerations
+
+### Cell Type Specificity
+
+DeepSEA predicts chromatin profiles for specific cell types included in training, but the same sequence may have different regulatory activity in cell types not represented. The model cannot predict activity in novel cell types without relevant training data.
+
+### Context Independence
+
+The model treats each input sequence independently, without considering:
+
+- 3D chromatin structure (which brings distant sequences into proximity)
+- Current transcriptional state (which affects chromatin accessibility)
+- Other variants in the same individual (epistasis)
+
+### Quantitative Accuracy
+
+While DeepSEA accurately predicts binary presence/absence of chromatin features, quantitative predictions of signal strength are less reliable. Later models like Basenji addressed this by predicting continuous coverage rather than binary peaks.
+
+## Significance for the Field
+
+DeepSEA established several paradigms that shaped subsequent genomic deep learning:
+
+1. **Sequence-in, function-out**: Learning regulatory activity directly from sequence without hand-engineered features
+
+2. **Multi-task chromatin prediction**: Jointly modeling many related tasks improves both performance and efficiency
+
+3. **Variant effect prediction via comparison**: Score variants by comparing predictions for reference and alternative alleles
+
+4. **Ab initio prediction**: Make predictions for any sequence, including novel mutations never observed in training data
+
+The approach demonstrated that deep learning could extract biologically meaningful patterns from raw sequence data at scale. This opened the door to increasingly sophisticated sequence-to-function models—predicting not just chromatin state, but gene expression (ExPecto, @sec-trans), splicing (SpliceAI, @sec-splice), and eventually long-range regulatory interactions (Enformer, @sec-hybrid).
+
+DeepSEA's public web server (http://deepsea.princeton.edu/) and code release also established a model for making genomic deep learning tools accessible to the broader research community—a practice that has become standard in the field.

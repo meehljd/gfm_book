@@ -1,0 +1,409 @@
+# Deep Learning Primer for Genomics {#sec-apx-dl}
+
+This appendix gives a compact introduction to deep learning for readers who are comfortable with genomics but less familiar with modern neural networks. The goal is not to replace a full machine learning textbook, but to provide enough background to make the models in Chapters 5–19 feel intuitive rather than magical.
+
+We focus on:
+
+- How deep models are structured (layers, parameters, activations)  
+- How they are trained (loss functions, gradients, optimization)  
+- Core architectures that appear throughout the book (CNNs, Transformers)  
+- Concepts like self-supervised pretraining and transfer learning  
+
+Where possible, we connect directly to the genomic case studies in the main text (DeepSEA, ExPecto, SpliceAI, Enformer, genomic language models, and GFMs).  
+
+---
+
+## From Linear Models to Deep Networks
+
+### Models as Functions
+
+At its core, a predictive model is just a function:
+
+$$
+f_\theta: x \mapsto \hat{y}
+$$ {#eq-model}
+
+where:
+
+- $x$ is an input (e.g., a one-hot encoded DNA sequence, variant-level features, or a patient feature vector).  
+- $\hat{y}$ is a prediction (e.g., probability of a histone mark, gene expression level, disease risk).  
+- $\theta$ are the parameters (weights) of the model.
+
+In classical genomics workflows, $f_\theta$ might be:
+
+- **Logistic regression** (for case–control status)  
+- **Linear regression** (for quantitative traits)  
+- **Random forests** or **gradient boosting** (for variant pathogenicity scores)
+
+Deep learning keeps the same basic structure but allows $f_\theta$ to be a much more flexible, high-capacity function built by composing many simple operations.
+
+### Linear Models vs Neural Networks
+
+A simple linear model for classification looks like:
+
+$$
+\hat{y} = \sigma(w^\top x + b),
+$$
+
+where $w$ and $b$ are parameters and $\sigma(\cdot)$ is a squashing nonlinearity (e.g., the logistic function). The model draws a single separating hyperplane in feature space.
+
+A **neural network** generalizes this by stacking multiple linear transformations with nonlinear activation functions:
+
+$$
+\begin{aligned}
+h_1 &= \phi(W_1 x + b_1) \\
+h_2 &= \phi(W_2 h_1 + b_2) \\
+&\vdots \\
+\hat{y} &= g(W_L h_{L-1} + b_L)
+\end{aligned}
+$$
+
+where:
+
+- Each $W_\ell, b_\ell$ is a layer’s weight matrix and bias.  
+- $\phi(\cdot)$ is a nonlinear activation (e.g., ReLU).  
+- $g(\cdot)$ is a final activation (e.g., sigmoid for probabilities, identity for regression).
+
+The key idea:
+
+> By composing many simple nonlinear transformations, deep networks can approximate very complex functions.
+
+In Chapters 5–7, DeepSEA, ExPecto, and SpliceAI implement exactly this pattern, but with **convolutional** layers (Section 4) tailored to 1D DNA sequence instead of dense matrix multiplications [@zhou_deepsea_2015; @zhou_expecto_2018; @jaganathan_spliceai_2019].
+
+---
+
+## Training Deep Models
+
+### Data, Labels, and Loss Functions
+
+To train a model, we need:
+
+- A dataset of examples $\{(x_i, y_i)\}_{i=1}^N$  
+- A model $f_\theta$  
+- A **loss function** $L(\hat{y}, y)$ that measures how wrong a prediction is
+
+Common loss functions:
+
+- **Binary cross-entropy** (for yes/no labels, e.g., “is this ChIP–seq peak present?”):  
+  $$
+  L(\hat{p}, y) = -\big(y \log \hat{p} + (1-y)\log(1-\hat{p})\big)
+  $$
+- **Multiclass cross-entropy** (for one-of-K labels)  
+- **Mean squared error (MSE)** (for continuous outputs, e.g., gene expression)
+
+The **training objective** is to find $\theta$ that minimizes the average loss:
+
+$$
+\mathcal{L}(\theta) = \frac{1}{N}\sum_{i=1}^N L\big(f_\theta(x_i), y_i\big).
+$$
+
+### 2.2 Gradient-Based Optimization
+
+Deep networks may have millions to billions of parameters. We can’t search over all possibilities, but we can follow the gradient of the loss with respect to $\theta$:
+
+- **Gradient descent** updates:
+  $$
+  \theta \leftarrow \theta - \eta \nabla_\theta \mathcal{L}(\theta),
+  $$
+  where $\eta$ is the learning rate.
+
+In practice, we use:
+
+- **Mini-batch stochastic gradient descent (SGD)**: Compute gradients on small batches of examples (e.g., 128 sequences at a time) for efficiency and better generalization.
+- **Adaptive optimizers** like Adam, which adjust learning rates per parameter.
+
+You never compute gradients by hand; modern frameworks (PyTorch, JAX, TensorFlow) use **automatic differentiation** to efficiently compute $\nabla_\theta \mathcal{L}$ even for very complex architectures.
+
+### Backpropagation in One Sentence
+
+**Backpropagation** is just the chain rule of calculus applied efficiently through the layers of a network. It propagates “blame” from the output back to each weight, telling us how changing that weight would change the loss.
+
+---
+
+## Generalization, Overfitting, and Evaluation
+
+### Train / Validation / Test Splits
+
+Deep networks can memorize training data if we’re not careful. To evaluate generalization, we typically split data into:
+
+- **Training set** – used to fit parameters  
+- **Validation set** – used to tune hyperparameters (learning rate, depth, etc.) and perform early stopping  
+- **Test set** – held out until the end to estimate performance on new data
+
+In genomics, **how we split** matters as much as **how much data** we have:
+
+- Splitting by **locus or chromosome** (to test cross-locus generalization)  
+- Splitting by **individual or cohort** (to avoid leakage between related samples)  
+- Splitting by **species or ancestry** when evaluating transfer
+
+These issues are developed in more depth in the evaluation and confounding chapters (@sec-eval and @sec-confound).
+
+### Overfitting and Regularization
+
+Signs of overfitting:
+
+- Training loss keeps decreasing, but validation loss starts increasing.  
+- Metrics like AUROC or AUPRC plateau or drop on validation data even as they improve on training data.
+
+Common regularization techniques:
+
+- **Weight decay / L2 regularization** – penalize large weights.  
+- **Dropout** – randomly zero out activations during training.  
+- **Early stopping** – stop training when validation performance stops improving.  
+- **Data augmentation** – generate more training examples by transforming inputs, e.g.:
+  - Reverse-complement augmentation for DNA sequences (treat sequence and its reverse complement as equivalent).  
+  - Window jittering: randomly shifting the sequence window around a target site.
+
+### Basic Metrics
+
+You’ll encounter metrics such as:
+
+- **AUROC (Area Under the ROC Curve)** – how well the model ranks positives above negatives.  
+- **AUPRC (Area Under the Precision–Recall Curve)** – more informative when positives are rare.  
+- **Calibration metrics** (e.g., Brier score) and reliability diagrams – especially for clinical risk prediction (@sec-clinical).
+
+The model and application chapters provide details about which metrics are appropriate for which tasks.  See @sec-eval for more on evaluation metrics.
+
+---
+
+## Convolutional Networks for Genomic Sequences
+
+Convolutional neural networks (CNNs) are the workhorse architecture in early genomic deep learning models like DeepSEA, ExPecto, and SpliceAI [@zhou_deepsea_2015; @zhou_expecto_2018; @jaganathan_spliceai_2019].
+
+### 1D Convolutions as Motif Detectors
+
+For a 1D DNA sequence encoded as a matrix $X \in \mathbb{R}^{L \times 4}$ (length $L$, 4 nucleotides), a **convolutional layer** applies a set of filters (kernels) of width $k$:
+
+- Each filter is a small matrix $K \in \mathbb{R}^{k \times 4}$.  
+- At each position, the filter computes a dot product between $K$ and the corresponding $k$-length chunk of $X$.  
+- Sliding the filter along the sequence creates an activation map that is high wherever the motif encoded by $K$ is present.
+
+Intuitively:
+
+> A 1D convolutional filter learns to recognize sequence motifs (e.g., transcription factor binding sites) directly from data.
+
+### Stacking Layers and Receptive Fields
+
+Deeper convolutional layers allow the model to “see” longer-range patterns:
+
+- **First layer**: short motifs (e.g., 8–15 bp).  
+- **Higher layers**: combinations of motifs, motif spacing, and local regulatory grammar.  
+- **Pooling layers** (e.g., max pooling) reduce spatial resolution while aggregating features, increasing the **receptive field**.
+
+In DeepSEA, stacked convolutions and pooling allow the model to use hundreds of base pairs of context around a locus to predict chromatin state [@zhou_deepsea_2015]. ExPecto extends this idea by mapping sequence to tissue-specific expression predictions [@zhou_expecto_2018]. SpliceAI uses very deep dilated convolutions to reach ~10 kb of context for splicing [@jaganathan_spliceai_2019].
+
+### Multi-Task Learning
+
+Early sequence-to-function CNNs are almost always **multi-task**:
+
+- A single input sequence is used to predict many outputs simultaneously (e.g., hundreds of TF ChIP–seq peaks, histone marks, DNase hypersensitivity tracks).  
+- Shared convolutional layers learn **common features**, while the final layer has many output units (one per task).
+
+Benefits:
+
+- Efficient use of data and compute  
+- Better regularization: related tasks constrain each other  
+- Natural interface for variant effect prediction: you can see how a mutation affects many functional readouts at once
+
+---
+
+## Beyond CNNs: Recurrent Networks (Briefly)
+
+Before Transformers dominated sequence modeling, **recurrent neural networks (RNNs)**—especially LSTMs and GRUs—were the default architecture for language and time series.
+
+Conceptually:
+
+- An RNN processes a sequence one position at a time.  
+- It maintains a hidden state that is updated as it moves along the sequence.  
+- In principle, it can capture arbitrarily long-range dependencies.
+
+In practice, for genomic sequences:
+
+- Very long-range dependencies (tens to hundreds of kilobases) are difficult to learn with standard RNNs.  
+- Training can be slow and unstable on very long sequences.  
+- CNNs and attention-based models have largely displaced RNNs in genomic applications.
+
+You may still see RNNs in some multi-modal or temporal settings (e.g., modeling longitudinal clinical data), but they are not central to this book’s architectures.
+
+---
+
+## Transformers and Self-Attention
+
+Transformers, introduced in natural language processing, have become the dominant architecture for sequence modeling. In this book, they underpin protein language models, DNA language models (DNABERT and successors), and long-range models like Enformer [@ji_dnabert_2021; @avsec_enformer_2021].
+
+### The Idea of Self-Attention
+
+In a **self-attention** layer, each position in a sequence can directly “look at” and combine information from every other position.
+
+For an input sequence represented as vectors $\{x_1, \dots, x_L\}$:
+
+1. Each position is mapped to **query** ($q_i$), **key** ($k_i$), and **value** ($v_i$) vectors via learned linear projections.  
+2. The attention weight from position $i$ to position $j$ is:
+
+   $$
+   \alpha_{ij} \propto \exp\left(\frac{q_i^\top k_j}{\sqrt{d}}\right),
+   $$
+
+   followed by normalization so that $\sum_j \alpha_{ij} = 1$.
+
+3. The new representation of position $i$ is a weighted sum of all value vectors:
+
+   $$
+   z_i = \sum_{j=1}^L \alpha_{ij} v_j.
+   $$
+
+Key properties:
+
+- **Content-based**: Interactions are determined by similarity of representations, not just distance.  
+- **Global context**: Each position can, in principle, attend to any other position.  
+- **Permutation-aware via positional encodings**: Additional information (sinusoidal or learned) encodes position so the model knows order.
+
+### Multi-Head Attention and Transformer Blocks
+
+Real Transformer layers use **multi-head attention**:
+
+- The model runs self-attention in parallel with multiple sets of $(Q,K,V)$ projections (heads).  
+- Different heads can specialize in different patterns (e.g., local motif combinations, long-range enhancer–promoter contacts).
+
+A typical Transformer block has:
+
+1. Multi-head self-attention  
+2. Add & layer normalization  
+3. Position-wise feed-forward network  
+4. Another add & layer normalization
+
+Stacking many blocks yields a deep Transformer.
+
+### Computational Cost and Long-Range Genomics
+
+Naive self-attention has $O(L^2)$ cost in sequence length $L$. For genomic sequences, where we might want 100 kb–1 Mb contexts, this is expensive.
+
+Long-range genomic models like Enformer and HyenaDNA address this with:
+
+- **Hybrid designs** (CNNs + attention) to reduce sequence length before applying global attention [@avsec_enformer_2021].  
+- **Structured state space models (SSMs)** and related architectures that scale more gracefully with length [@nguyen_hyenadna_2023].
+
+These details are treated in depth in the long-range modeling chapters; here it suffices to know that Transformers give flexible global context at the cost of higher computational complexity.
+
+---
+
+## Self-Supervised Learning and Pretraining
+
+A central theme of this book is **pretraining**: training a large model once on a broad, unlabeled or weakly-labeled task, then re-using it for many downstream problems.
+
+### Supervised vs Self-Supervised
+
+- **Supervised learning**: Each input $x$ comes with a label $y$. Examples:
+  - Predicting chromatin marks from sequence (DeepSEA).  
+  - Predicting splice junctions (SpliceAI).  
+  - Predicting disease risk from features (@sec-clinical).
+
+- **Self-supervised learning**: The model learns from raw input data without explicit labels, using some **pretext task** constructed from the data itself. Examples:
+  - Masked token prediction (BERT-style): hide some nucleotides and train the model to predict them from surrounding context.  
+  - Next-token prediction (GPT-style): predict the next base given previous ones.  
+  - Denoising or reconstruction tasks.
+
+In genomics, self-supervised models treat DNA sequences as a language and learn from the vast amount of genomic sequence without needing curated labels.
+
+### Masked Language Modeling on DNA
+
+DNABERT applied BERT-style masked language modeling to DNA sequences tokenized as overlapping k-mers [@ji_dnabert_2021]. The model:
+
+- Reads sequences as k-mer tokens.  
+- Randomly masks a subset of tokens.  
+- Learns to predict the masked tokens given surrounding context.
+
+Benefits:
+
+- Uses essentially unlimited unlabeled genomic data.  
+- Learns rich representations that can be fine-tuned for tasks like promoter prediction, splice site detection, and variant effect prediction.
+
+@sec-dna generalizes this story to broader DNA foundation models, including alternative tokenization schemes and architectures.
+
+### Pretraining, Fine-Tuning, and Probing
+
+After pretraining, we can use a model in several ways:
+
+- **Fine-tuning**: Initialize with pretrained weights, then continue training on a specific downstream task with task-specific labels.  
+- **Linear probing**: Freeze the pretrained model, extract embeddings, and train a simple linear classifier on top.  
+- **Prompting / adapters**: Add small task-specific modules (adapters) while keeping most of the model fixed.
+
+These patterns reappear across protein LMs, DNA LMs, variant effect models, and GFMs in Chapters 9–16.
+
+---
+
+## Foundations for Evaluation and Reliability
+
+While the main book has dedicated chapters for evaluation (@sec-eval), confounding (@sec-confound), and clinical metrics (@sec-clinical), it’s useful to have a few basic concepts in mind.
+
+### Distribution Shift
+
+A model is trained under some data distribution (e.g., certain assays, cohorts, ancestries) and then deployed under another (e.g., a different hospital system or population). When these differ, we have **distribution shift**, which can degrade performance.
+
+Typical genomic shifts include:
+
+- New sequencing technologies or lab protocols  
+- New ancestries or populations  
+- New tissues, diseases, or phenotypes
+
+### Data Leakage
+
+**Data leakage** occurs when information from the test set “leaks” into training (e.g., through overlapping loci or related individuals), leading to overly optimistic estimates of performance. @sec-eval and @sec-confound discuss strategies for leak-resistant splits in detail.
+
+### Calibration and Uncertainty
+
+For many applications, especially in the clinic, we care not just about whether the model is *correct*, but whether its probabilities are **well calibrated** and whether we know when the model is uncertain. Calibration and uncertainty quantification are covered in @sec-clinical; here, the main takeaway is that **perfect AUROC does not imply perfect clinical utility**.
+
+---
+
+## A Minimal Recipe for a Genomic Deep Learning Project
+
+To make the abstractions more concrete, here is a lightweight “recipe” that roughly mirrors what the case-study chapters do.
+
+1. **Define the prediction problem**
+   - Input: e.g., 1 kb sequence around a variant, or patient-level features.  
+   - Output: e.g., presence of a chromatin mark, change in expression, disease risk.
+
+2. **Choose an input representation**
+   - One-hot encoding or tokenization scheme for sequences (see @sec-token).  
+   - Encodings for variants, genes, or patients (e.g., aggregate from per-variant features).
+
+3. **Pick a model family**
+   - CNN for local sequence-to-function (Chapters 5–7).  
+   - Transformer or SSM for long-range or language model-style tasks (Chapters 8–11).  
+   - Pretrained GFM + small task-specific head (Chapters 12–16).
+
+4. **Specify the loss and metrics**
+   - Cross-entropy for binary classification, MSE for regression, etc.  
+   - Metrics like AUROC, AUPRC, correlation, calibration.
+
+5. **Set up data splits and evaluation**
+   - Decide whether to split by locus, individual, cohort, or species.  
+   - Hold out a test set and use validation data to tune hyperparameters.
+
+6. **Train with regularization and monitoring**
+   - Use an optimizer (SGD or Adam-like) with a learning rate schedule.  
+   - Apply regularization (dropout, weight decay, augmentation).  
+   - Monitor training and validation curves for overfitting.
+
+7. **Inspect and stress-test**
+   - Check performance across subgroups (e.g., ancestries, assays, cohorts).  
+   - Use interpretability tools (@sec-interp) to see what patterns the model is using.  
+   - Run robustness checks and ablations.
+
+8. **Iterate**
+   - Adjust architecture, add more data, refine labels, or incorporate pretrained backbones.  
+   - Move from model-centric tuning to system-level considerations (data quality, deployment environment, feedback loops).
+
+---
+
+## How This Primer Connects to the Rest of the Book
+
+This appendix gives you the minimum vocabulary to navigate the rest of the text:
+
+- **Chapters 5–7** show how CNNs on one-hot sequence learn regulatory code, expression, and splicing.  
+- **Chapters 8–11** extend these ideas to richer sequence representations, Transformers, and long-range sequence models.  
+- **Chapters 12–16** frame these models as genomic foundation models, introduce evaluation, interpretability, and multi-omics.  
+- **Chapters 17–19** show how these ingredients are assembled into clinical, discovery, and biotech applications.
+
+You don’t need to internalize every detail here. The goal is simply that when you see terms like “convolution,” “attention,” “pretraining,” or “fine-tuning” in the main chapters, they feel like familiar tools rather than mysterious jargon.

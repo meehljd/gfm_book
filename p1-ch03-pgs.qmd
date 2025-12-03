@@ -1,0 +1,231 @@
+# GWAS and Polygenic Scores {#sec-pgs}
+
+## Terminology: PGS vs PRS
+
+The literature uses several related terms:
+
+- **Polygenic risk score (PRS)** – historically common, especially for disease endpoints  
+- **Polygenic score (PGS)** – more general, used for both disease risk and quantitative traits
+
+In this book we use **polygenic score (PGS)** as the primary term, because many of the same methods are used for quantitative traits (e.g., height, LDL cholesterol), disease incidence (e.g., coronary artery disease), and intermediate molecular traits. When we cite work that uses “PRS,” we treat PRS and PGS as synonyms unless the distinction matters.
+
+Throughout, we will:
+
+- Use **PGS** for the generic concept.  
+- Use **PRS** only when we are quoting or closely paraphrasing papers that do the same.
+
+## The GWAS Paradigm
+
+Genome-wide association studies (GWAS) test millions of variants across the genome for association with a phenotype [@marees_gwas_2018]. They rely on:
+
+- Large samples of genotyped or sequenced individuals  
+- A well-defined phenotype (binary or quantitative)  
+- Statistical models (often linear or logistic regression) that relate genotype to phenotype, typically adjusting for covariates (age, sex, ancestry PCs, etc.)
+
+At a single bi-allelic variant $j$, a standard GWAS model is
+
+$$
+y_i = \alpha + \beta_j g_{ij} + \gamma^\top c_i + \varepsilon_i,
+$$
+
+where:
+
+- $y_i$ is the phenotype for individual $i$  
+- $g_{ij}$ is the genotype dosage at variant $j$ (0, 1, 2, or imputed dosage)  
+- $c_i$ are covariates (e.g., age, sex, principal components of ancestry)  
+- $\beta_j$ is the per-allele effect size we estimate
+
+Running this regression (or an equivalent mixed model) for every variant across the genome yields:
+
+- An estimated effect size $\hat\beta_j$  
+- A standard error and p-value  
+- Optionally, per-variant measures like imputation quality
+
+Significance thresholds (e.g., $p<5\times10^{-8}$) are chosen to control false positives under heavy multiple testing. The output is a **set of associated variants and loci**, not a direct map from variant to mechanism.
+
+## Linkage Disequilibrium and Association Signals
+
+GWAS tests are performed **variant by variant**, but variants are not independent. Nearby variants on a chromosome tend to be correlated due to shared ancestry and limited recombination. This correlation structure is called **linkage disequilibrium (LD)**.
+
+Key concepts:
+
+- **LD** measures correlation between alleles at different loci. A common measure is $r^2$, the squared correlation between genotype dosages at two variants.  
+- Genomes are organized into **LD blocks**, regions within which variants are highly correlated and between which correlation decays.  
+- An association signal at one variant implies that **somewhere in the LD block** there is likely a causal factor—but not necessarily that the tested variant itself is causal.
+
+This leads to an important distinction:
+
+- A **causal variant** is one where changing the allele would (in the relevant biological context) change the phenotype.  
+- A **tag (or proxy) variant** is statistically associated with the phenotype **only because** it is correlated (in LD) with one or more causal variants.
+
+In many GWAS loci, the variant with the smallest p-value is **not** the true causal variant; it is simply the most strongly associated tag in that LD block.
+
+We will use:
+
+- **Putative causal variant** – a variant with strong statistical and/or functional evidence of being truly causal (for example, high posterior probability from fine-mapping plus supportive functional data).  
+- **Purely associative variant** – a variant that is statistically associated with the trait (often strongly), but where the weight of evidence suggests it is simply tagging underlying causal variation via LD and is unlikely to be mechanistically responsible.
+
+PGS, as usually constructed, do not distinguish between these categories: they assign weights based on statistical association, regardless of whether variants are causal or purely associative.
+
+## From Association Signals to Fine-Mapping
+
+GWAS identifies **associated loci**, not individual causal variants. Within a locus, many highly significant variants may all be tagging the same underlying signal because they share LD [@marees_gwas_2018].
+
+**Statistical fine-mapping** aims to refine these signals by:
+
+- Modeling the **joint association** of variants in a locus rather than one at a time  
+- Using the local LD structure explicitly  
+- Estimating for each variant a **posterior inclusion probability (PIP)** of being causal  
+- Constructing **credible sets** (e.g., 95% credible sets) that contain the variant or variants most likely to be causal
+
+Different fine-mapping methods make different assumptions about:
+
+- How many causal variants per locus (one vs multiple)  
+- The prior distribution of effect sizes  
+- Whether they operate on individual-level data or summary statistics
+
+Summary-statistics-based methods such as those reviewed by @pasaniuc_dissecting_2016 use GWAS effect sizes and LD estimates from a reference panel to perform Bayesian fine-mapping without needing raw genotypes. Fine-mapped PIPs can then be used to:
+
+- Define **putative causal variants** (e.g., variants with PIP > 0.9)  
+- Build **credible sets** for experimental follow-up  
+- Reweight variants when building PGS, emphasizing those more likely to be causal rather than simply more significant
+
+Large multi-ancestry GWAS and resources like Open Targets Genetics combine association signals, LD information, fine-mapping, and functional annotations to prioritize likely causal variants and genes across many traits [@mountjoy_open_2021]. Leveraging diverse ancestries is particularly helpful because LD patterns differ across populations, which can sharpen fine-mapping when consistent effects are observed across groups.
+
+Fine-mapping does not magically “solve” causality—biological experiments are still needed—but it gives us a principled way to move from:
+
+> “Something in this region is associated with the trait”
+
+to
+
+> “These one or few variants are the most plausible causal candidates.”
+
+## Constructing Polygenic Scores
+
+A polygenic score aggregates genetic effects across many variants:
+
+$$
+\text{PGS}_i = \sum_{j=1}^M w_j \, g_{ij},
+$$
+
+where:
+
+- $g_{ij}$ is the genotype for individual $i$ at variant $j$  
+- $w_j$ is a weight, typically derived from GWAS or related analyses
+
+Conceptually, $w_j$ represents our best estimate of the per-allele contribution of variant $j$ to the phenotype, under a **linear additive model**.
+
+### Clumping and Thresholding (C+T)
+
+The simplest and still widely used approach is **clumping and thresholding** [@choi_prs_2020]:
+
+1. **P-value thresholding**  
+   Select all variants with p-value below a chosen threshold (e.g., $5\times10^{-8}$ for “genome-wide significant,” or more liberal thresholds like $10^{-4}$, $10^{-2}$, or even 1.0).
+
+2. **LD clumping**  
+   Within each region, “clump” variants by LD, keeping only the most significant variant in each LD block and removing nearby variants with high $r^2$ (e.g., $r^2 > 0.1$ or $0.2$).
+
+3. **Weight assignment**  
+   Use the GWAS effect size $\hat\beta_j$ (or a transformation such as log-odds) as the weight $w_j$.
+
+4. **Score calculation**  
+   For a given individual, sum the weighted genotypes to obtain the PGS.
+
+C+T is simple, fast, and can be implemented from summary statistics alone. However, it has limitations:
+
+- It discards information about **joint effects** within LD blocks by keeping only one variant per region.  
+- It treats all retained variants as equally trustworthy, regardless of whether they are likely causal or purely associative proxies.  
+- It is sensitive to the choice of p-value threshold and LD parameters, which are often tuned in a small validation set.
+
+### LD-Aware Bayesian Methods
+
+More sophisticated methods model the PGS weights in a way that explicitly accounts for LD. A prominent example is LDpred [@vilhjalmsson_modeling_2015], which:
+
+- Uses GWAS summary statistics and an LD reference panel  
+- Assumes a prior distribution on effect sizes (e.g., that only a fraction of variants are truly non-zero)  
+- Computes posterior mean effect sizes that shrink noisy estimates toward zero while propagating LD information
+
+Conceptually, these models attempt to answer:
+
+> “Given the observed GWAS statistics and LD patterns, what is the most likely effect size for each variant?”
+
+Other methods follow similar principles (e.g., PRS-CS, SBayesR, lassosum), differing in the prior assumptions, optimization algorithms, and computational trade-offs. Compared to C+T, LD-aware methods can:
+
+- Allow multiple variants in LD to share signal  
+- Better separate causal from purely associative variants when fine-mapping information is available  
+- Improve predictive accuracy, especially when effect sizes are highly polygenic and distributed across many loci
+
+### Fine-Mapping-Informed PGS
+
+Fine-mapped posterior probabilities can be integrated into PGS construction:
+
+- **Filtering or weighting by PIP**  
+  Include only variants above a PIP threshold, or weight variants by $w_j \propto \text{PIP}_j \hat\beta_j$.  
+- **Credible-set based selection**  
+  Choose one representative variant per credible set (e.g., the one with highest PIP) or include all variants in the set with PIP-based weights.
+
+These strategies aim to emphasize **putative causal variants** and down-weight **purely associative variants** that ride along in LD. In practice, gains in prediction accuracy may be modest, but the resulting PGS are often more interpretable and potentially more robust across populations.
+
+## Interpreting Polygenic Scores
+
+### Relative vs Absolute Risk
+
+PGS are typically interpreted in **relative** terms:
+
+- Individuals in the top $K\%$ of the PGS distribution have a higher average risk than the population mean.  
+- For example, those in the top 1% may have several-fold increased odds of disease compared to the middle of the distribution.
+
+Translating PGS into **absolute risk** (e.g., “your 10-year risk is X%”) requires additional modeling using:
+
+- Baseline incidence rates in the population  
+- Non-genetic covariates (age, sex, clinical risk factors)  
+- Calibration steps to ensure predicted risks match observed risks in relevant cohorts
+
+In Chapter @sec-clinical we return to risk modeling, calibration, and clinical decision thresholds in more detail.
+
+### Ancestry, LD, and Transferability
+
+The performance of a PGS learned in one population (e.g., European-ancestry training data) often **drops substantially** when applied to others. This reflects several interconnected factors:
+
+- **Differences in LD patterns** – if a PGS relies heavily on purely associative variants that tag causal variants in one ancestry, those tags may be weaker or absent in another ancestry.  
+- **Differences in allele frequencies** – rare variants in one population may be common in another, changing both statistical power and effect estimates.  
+- **Environment and gene–environment interaction** – environmental exposures differ across populations, changing how genetic variation translates into phenotypic risk.
+
+Large, diverse resources like the Million Veteran Program have highlighted both the benefits and challenges of scaling GWAS and PGS across ancestries [@verma_diversity_2024]. A consistent theme is that PGS trained in homogeneous datasets risk **encoding ancestry-specific LD patterns** rather than biology, which can contribute to inequities in predictive performance.
+
+Fine-mapping and mechanistically informed models can help:
+
+- By identifying putative causal variants that are **shared across ancestries**, we can build PGS that rely less on ancestry-specific LD tags.  
+- By incorporating functional and regulatory annotations (e.g., from ENCODE, GTEx; see @sec-data), we can prioritize variants more likely to play a direct role in disease biology rather than simply tracking nearby causal variation.
+
+## Limitations of GWAS and PGS, and the Case for Mechanistic Models
+
+GWAS and PGS have transformed human genetics:
+
+- They provide a systematic map of associated loci for thousands of traits.  
+- PGS can achieve useful predictive power for some traits (e.g., height, lipid levels, certain common diseases).  
+- They are relatively easy to compute once GWAS summary statistics are available.
+
+However, they also have fundamental limitations:
+
+- **Association, not mechanism**  
+  Most PGS weights are driven by statistical association. They do not tell us *how* a variant alters molecular function, nor do they distinguish cleanly between causal and purely associative variants.
+
+- **LD dependence and portability**  
+  Scores trained in one ancestry can perform poorly in others because they rely heavily on LD patterns and allele frequencies in the discovery sample.
+
+- **Noncoding dominance**  
+  The majority of associated variants fall in noncoding regions with complex, context-dependent regulatory roles. Predicting their impact requires models that “understand” regulatory grammar.
+
+- **Limited clinical context**  
+  Traditional PGS treat genetic effects as static, ignoring interactions with environment, medications, or disease stage. Integrating genetics with rich clinical data (EHR, imaging, lab values) is essential for full clinical utility.
+
+These limitations motivate the sequence-to-function and foundation-model approaches that form the core of this book. CNN-based models like DeepSEA and ExPecto (Chapter @sec-reg) and splicing models (Chapter @sec-splice) learn regulatory grammars directly from sequence [@zhou_deepsea_2015; @zhou_expecto_2018]. Genomic foundation models (Part IV) further generalize this idea, aiming to capture sequence-function relationships and context at scale.
+
+In later chapters we will see how:
+
+1. **Variant effect prediction** from deep models can complement GWAS and fine-mapping to prioritize putative causal variants and genes at trait loci [@mountjoy_open_2021].  
+2. **Mechanistic predictions** can be integrated into PGS frameworks, either as priors, features, or reweighting schemes, to move from purely associative scores toward biologically grounded risk prediction.  
+3. **Multi-omics and clinical models** (@sec-multi; @sec-clinical) combine genetic, molecular, and clinical data to approach the goal of robust, equitable, and interpretable genomic prediction.
+
+For now, the key takeaway is that **PGS are powerful but fundamentally associative tools**. Understanding LD, fine-mapping, and the distinction between purely associative and putative causal variants is essential background for interpreting both classical PGS and the genomic deep learning models we explore in the rest of the book.

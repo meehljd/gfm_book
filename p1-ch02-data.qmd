@@ -1,0 +1,187 @@
+# Foundational Genomics Data {#sec-data}
+
+## Why Genomic Data Resources Matter
+
+Once we can sequence genomes and call variants, we immediately face a new problem: **interpretation**. No single dataset is sufficient to decide whether a variant is benign, pathogenic, or relevant to a trait. Instead, we lean on a mosaic of:
+
+- Reference genomes and gene annotations  
+- Population variation and allele frequency resources  
+- Cohort and biobank datasets with rich phenotypes  
+- Functional genomics and expression atlases  
+- Databases of clinically interpreted variants
+
+This chapter surveys these foundational resources. Later chapters repeatedly draw from them — either directly as model inputs or indirectly as labels, benchmarks, and priors.
+
+We deliberately start with *general genomic data* (reference, variation, cohorts) and move to *functional and expression resources* (ENCODE, GTEx-like datasets) later in the chapter.
+
+## Reference Genomes and Gene Annotations
+
+### Reference assemblies
+
+Most modern pipelines align reads to a small number of reference assemblies (e.g., GRCh38 or T2T-CHM13). A reference is:
+
+- A single, linear sequence (or a small set of contigs)  
+- With decisions about how to represent duplications, alternate haplotypes, and unresolved gaps  
+- Annotated with coordinates that downstream tools assume are stable
+
+The choice of reference affects:
+
+- Which regions are “mappable” by short reads  
+- How structural variants are represented  
+- How comparable results are across cohorts and over time
+
+Graph-based and pangenome references relax the assumption of a single linear reference, but most of the datasets used in this book are still built on GRCh37/GRCh38.
+
+### Gene models
+
+Gene annotation databases (e.g., GENCODE, RefSeq) define:
+
+- Exon–intron structures  
+- Canonical vs alternative transcripts  
+- Start/stop codons and untranslated regions
+
+These annotations are critical for:
+
+- Distinguishing coding from non-coding variants  
+- Identifying splice-disrupting variants  
+- Mapping functional genomics signals to genes
+
+Many downstream resources — from variant effect predictors to PGS pipelines — implicitly assume the gene model is correct and complete, even though new isoforms continue to be discovered.
+
+## Population Variant Catalogs and Allele Frequencies
+
+### dbSNP and the variant “universe”
+
+Historically, dbSNP aggregated known single nucleotide polymorphisms and short indels into a single catalog. It provides:
+
+- Stable identifiers (rsIDs) used across tools and publications  
+- Basic frequency information where available  
+- A convenient handle for linking to other resources
+
+Modern WES/WGS cohorts routinely discover millions of previously unseen variants, but dbSNP identifiers still serve as a common currency.
+
+### 1000 Genomes and early reference panels
+
+The 1000 Genomes Project provided one of the first widely used **multi-population** reference panels, enabling imputation and LD-based analyses on genotyping arrays. Many later efforts (e.g., DeepVariant + GLnexus cohort calling) treat 1000 Genomes samples as a benchmark for variant calling performance [@yun_accurate_2021].
+
+### Genome Aggregation Database (gnomAD)
+
+The **Genome Aggregation Database (gnomAD)** aggregates exome and genome data from a wide array of cohorts into harmonized allele frequency resources [@gnomAD]. gnomAD provides:
+
+- **High-resolution allele frequencies** for SNVs and indels across diverse ancestries  
+- **Constraint metrics**, such as pLI and LOEUF, summarizing intolerance of genes to loss-of-function variation  
+- Per-variant annotations that flag poor quality regions, low complexity, and other caveats
+
+gnomAD is indispensable for:
+
+- Filtering common variants in Mendelian disease diagnostics  
+- Distinguishing extremely rare variants (singletons) from recurrent ones  
+- Providing population genetics priors used by variant effect predictors and CADD-style scores [@rentzsch_cadd_2019; @schubach_cadd_2024]
+
+## Cohorts, Biobanks, and GWAS Summary Data
+
+### Large population cohorts
+
+Modern human genetics relies on large cohorts with genome-wide variation and rich phenotyping, such as UK Biobank and similar initiatives. These datasets enable:
+
+- GWAS for thousands of traits  
+- Polygenic score development and evaluation  
+- Fine-mapping of causal variants and genes [@marees_gwas_2018; @mountjoy_open_2021]
+
+While this book focuses on models rather than specific cohorts, it is important to remember that most GWAS and PGS methods in Chapter 3 assume:
+
+- **Array genotyping + imputation** or  
+- **WES/WGS with joint calling** as in DeepVariant/GLnexus-style pipelines [@yun_accurate_2021]
+
+### GWAS summary statistics
+
+Beyond individual-level data, many resources distribute **GWAS summary statistics** — per-variant effect sizes and p-values:
+
+- GWAS Catalog and similar repositories aggregate published results across traits.  
+- Frameworks like Open Targets Genetics compile fine-mapped signals and candidate causal genes across loci [@mountjoy_open_2021].
+
+These summary data are the raw material for many PGS methods (Chapter 3) and statistical fine-mapping algorithms.
+
+## Functional Genomics and Regulatory Landscapes
+
+### ENCODE, Roadmap, and related consortia
+
+Projects like ENCODE and Roadmap Epigenomics have produced large compendia of:
+
+- Transcription factor ChIP-seq  
+- Histone modification ChIP-seq  
+- Open chromatin assays (DNase-seq, ATAC-seq)  
+- Chromatin conformation (Hi-C and related)
+
+These datasets map regulatory elements, chromatin states, and higher-order structure across many tissues and cell lines. While ENCODE itself is not explicitly cited in your bibliography, its data are heavily reused and repackaged.
+
+### Cistrome Data Browser
+
+The **Cistrome Data Browser** aggregates thousands of human and mouse ChIP-seq and chromatin accessibility datasets into a reprocessed, searchable repository, with standardized quality control and integrative tools [@zheng_cistrome_2019]. It provides:
+
+- Uniform peak calls and signal tracks  
+- Metadata for cell type, factor, and experimental conditions  
+- Tools for motif analysis and regulatory element annotation
+
+Sequence-to-function models like DeepSEA (Chapter 5) use ENCODE/Roadmap/Cistrome-style datasets as labels: each sequence window is associated with binary or quantitative signals for many assays [@zhou_deepsea_2015; @zhou_expecto_2018].
+
+## Expression and eQTL Resources: GTEx and Beyond
+
+Expression datasets link sequence variation to transcriptional consequences.
+
+### Bulk expression atlases
+
+Projects like **GTEx** (Genotype-Tissue Expression) provide:
+
+- RNA-seq expression profiles across dozens of tissues  
+- eQTL maps linking variants to gene expression changes in cis  
+- Splicing QTLs and other regulatory QTLs
+
+Even without a specific GTEx citation in the current bibliography, GTEx-like resources underpin:
+
+- Expression prediction models  
+- Colocalization analyses between GWAS signals and eQTLs  
+- Expression-based prioritization of genes at trait loci
+
+### Single-cell and context-specific expression
+
+Single-cell RNA-seq and spatial transcriptomics further refine expression maps by:
+
+- Resolving cell-type specific expression programs  
+- Identifying rare cell populations and transitional states  
+- Enabling cell-type specific eQTL analyses in principle
+
+In this book, these resources mainly appear in later chapters on multi-omics and systems-level genomic foundation models.
+
+## Variant Interpretation Databases and Clinical Labels
+
+### ClinVar and related resources
+
+ClinVar aggregates assertions of variant pathogenicity from clinical laboratories and researchers, with supporting evidence and conflicting interpretations where relevant. Its labels are critical for:
+
+- Diagnostic pipelines  
+- Benchmarking variant effect predictors  
+- Training machine learning models in clinical genomics
+
+However, ClinVar’s labels are not collected in isolation. As discussed in the CADD chapter, they increasingly incorporate **computational scores** like CADD as one piece of evidence, which creates subtle circularity when those same labels are used to evaluate or train computational predictors [@schubach_cadd_2024].
+
+### CADD and annotation-centric resources
+
+The CADD framework (Chapter 4) integrates many of the resources above — gnomAD, conservation, regulatory tracks, and gene annotations — into a genome-wide deleteriousness score [@rentzsch_cadd_2019; @schubach_cadd_2024]. It illustrates how:
+
+- Population frequencies and constraints  
+- Functional genomics signals  
+- Clinical variant databases
+
+can be combined into a single, per-variant summary.
+
+## How Later Chapters Use These Resources
+
+The genomic deep learning models that follow are only as good as the data they are trained and evaluated on. In particular:
+
+- @sec-pgs uses GWAS and biobank-scale cohorts to define polygenic scores.  
+- @sec-cadd explores how annotation-based scores like CADD compress many of these resources into a single number.  
+- **Chapters 5–7** use ENCODE/Roadmap/Cistrome-style functional data as training labels for sequence-to-function models.  
+- **Chapters 12–16** revisit these resources as inputs, labels, and priors for genomic foundation models.
+
+By collecting the data landscape here, we can refer back to it as needed, rather than re-introducing each resource from scratch in every chapter.

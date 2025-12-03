@@ -1,0 +1,357 @@
+# Multi-omics & Systems Context  {#sec-multi}
+
+Modern genomic foundation models (GFMs) excel at learning from sequences, structures, or single-omic profiles in isolation. Yet most complex traits arise from *systems-level* interactions: genetic variants perturb molecular networks; networks span multiple omics layers; and these layers interact with environment, development, and clinical context. A model that sees only one layer rarely captures the full story.
+
+This chapter surveys how deep learning extends beyond single-omics to integrate methylation, chromatin, expression, protein, and clinical data into unified representations. Within the book structure defined by the Quarto project, this is the final chapter of Part IV and serves as a bridge from model-centric architecture design to systems-level, clinically grounded applications.
+
+We focus on several archetypal systems:
+
+- **CpGPT**: a foundation model for DNA methylation  
+- **GLUE**: a graph-linked framework for single-cell multi-omics integration (e.g., SCGLUE)  
+- **GNN-based cancer subtyping** with models such as MoGCN and CGMega  
+- **Rare variants and epistasis** with DeepRVAT, NeEDL, and the Genotype-to-Phenotype Transformer (G2PT)  
+- **DL-enhanced polygenic risk and fine-mapping**, including Delphi and MIFM  
+
+Together, these approaches illustrate emerging design patterns for *systems-aware* GFMs that move from single sequences to whole-patient representations.
+
+---
+
+## Why Single-omics Models Are Not Enough
+
+Earlier chapters emphasized how sequence-based models can predict variant effects from local DNA or protein context. These models already improve causal variant prioritization and polygenic risk scoring. However, they typically assume a narrow view of biology:
+
+- **Single layer**: A CNN or transformer may see only DNA sequence or only expression.  
+- **Additive effects**: Many downstream uses still treat variant effects as additively summing across loci.  
+- **Static context**: Models rarely account for dynamic state (cell type, developmental stage, environment).
+
+Real diseases violate all three assumptions:
+
+- *Regulation is multi-layered*: genetic variants alter chromatin accessibility and DNA methylation, which modulate transcription, splicing, translation, and protein modification.  
+- *Effects are context-dependent*: the same variant can be benign in one tissue and pathogenic in another.  
+- *Risk is combinatorial*: epistasis and pathway-level perturbations play a significant role in many complex traits.
+
+@sec-pgs highlighted the “missing heritability” and limited portability of traditional GWAS and linear PGS, motivating sequence-based deep learning. Here we take the next step: combining sequence-derived features with **multi-omics** and **systems-level models** that better reflect biological organization.
+
+---
+
+## Foundations of Multi-omics Integration
+
+Multi-omics data come in several flavors:
+
+- **Bulk-level** profiles (e.g., GWAS variants, bulk RNA-seq, bulk proteomics)  
+- **Single-cell** modalities (scRNA-seq, scATAC-seq, multiome, spatial omics)  
+- **Epigenetic** readouts (DNA methylation, histone marks, chromatin conformation)  
+- **Clinical and environmental** covariates (EHR, labs, lifestyle)
+
+Integration strategies typically fall into three categories:
+
+1. **Early fusion (feature-level)**  
+   - Concatenate normalized features from multiple omics and feed them into a single model.  
+   - Straightforward but sensitive to scaling, missing data, and modality imbalance.
+
+2. **Intermediate fusion (shared latent space)**  
+   - Learn modality-specific encoders that map each omic into a common latent space.  
+   - Align latent spaces via reconstruction losses, contrastive terms, or graph constraints.  
+   - This is the dominant design in modern multi-omics deep learning.
+
+3. **Late fusion (prediction-level)**  
+   - Train separate models per modality; combine outputs via ensemble or meta-model.  
+   - Robust to missing modalities but may underutilize cross-omic structure.
+
+Modern frameworks like GLUE and multi-omics GNNs adopt **intermediate fusion**, often with **graphs** encoding known or inferred relationships (e.g., gene–peak, gene–TF, protein–protein, or sample similarity networks). The rest of this chapter traces how these design choices implement systems-level reasoning in practice.
+
+---
+
+## CpGPT: A Foundation Model for DNA Methylation
+
+### Motivation: Methylation as a Systems Hub
+
+DNA methylation sits at a crucial junction between genotype, environment, and phenotype:
+
+- It integrates genetic, developmental, and environmental influences.  
+- It encodes *cell type* and *cell state* information.  
+- It is predictive of aging, mortality, and disease risk.
+
+Traditional methylation models are task-specific (e.g., age clocks, mortality predictors). CpGPT reframes methylation as a **foundation modeling problem**, using large-scale pretraining to unlock downstream tasks.
+
+### Architecture and Pretraining
+
+CpGPT (Cytosine-phosphate-Guanine Pretrained Transformer) is trained on large-scale collections of whole-genome and array-based methylation profiles. Conceptually, CpGPT treats methylomes as sequences or sets of CpG sites, and uses transformer-style self-attention to model:
+
+- Local CpG correlations (e.g., CpG islands)  
+- Long-range coordination across genomic regions  
+- Global sample-level variation (e.g., age, disease status)
+
+Key aspects:
+
+- **Masked modeling objectives**: Learn to reconstruct held-out CpG values from context.  
+- **Multi-task pretraining**: Auxiliary tasks like array conversion or reference mapping encourage robust representations.  
+- **Sample embeddings**: The [CLS]-like embedding for each sample acts as a compact, task-agnostic representation of its methylome.
+
+### Zero-shot and Fine-tuned Tasks
+
+Because CpGPT is trained on diverse cohorts, it exhibits *zero-shot* or few-shot generalization to new tasks:
+
+- **Imputation and array conversion**: Fill in missing CpGs or harmonize different methylation platforms.  
+- **Chronological age and mortality prediction**: Yield clocks that match or exceed specialized models.  
+- **Sample classification**: Distinguish tissues, disease states, or exposure profiles.
+
+In a multi-omics context, CpGPT-derived embeddings can serve as:
+
+- Inputs to *downstream* predictors (e.g., risk scores, prognosis models).  
+- One modality in a shared latent space (with expression, proteomics, etc.).  
+- A way to inject epigenetic state into otherwise sequence-centric GFMs.
+
+Conceptually, CpGPT is an example of a **single-omic foundation model** that is *designed* to plug into multi-omics architectures.
+
+---
+
+## GLUE: Graph-linked Unified Embedding for Single-cell Multi-omics
+
+### The Unpaired Single-cell Integration Problem
+
+Single-cell experiments often profile different modalities in different cells—for instance:
+
+- Some cells with **scRNA-seq** only  
+- Other cells with **scATAC-seq** only  
+- Sometimes a small subset with both (multiome) or additional modalities (e.g., protein, methylation)
+
+The central challenge: build a unified atlas that aligns these cells in a common space, recovers cell types and trajectories, and infers regulatory networks.
+
+GLUE (Graph-Linked Unified Embedding) addresses this by combining modality-specific encoders with a **graph of biological prior knowledge** linking features across omics.
+
+### Architecture
+
+GLUE consists of three key components:
+
+1. **Modality-specific variational autoencoders (VAEs)**  
+   - Each omic (e.g., RNA, ATAC) has its own encoder–decoder pair.  
+   - Encoders map cells to a low-dimensional latent embedding; decoders reconstruct modality-specific features.
+
+2. **Feature graph and SCGLUE**  
+   - Features (genes, peaks, motifs) form a graph whose edges capture biological relationships: e.g., a peak linked to a gene’s promoter or enhancer, or TF binding motifs affecting genes.  
+   - A graph neural network (GNN) learns feature embeddings consistent with this graph.
+
+3. **Alignment objectives**  
+   - Loss terms encourage the *cell* latent spaces to align (so RNA-only and ATAC-only cells with similar biology end up near each other).  
+   - The feature embeddings are tied to the cell latents via generative decoders, enforcing consistency between data and prior graph.
+
+The result is a **unified embedding** in which cells from multiple modalities can be jointly clustered, visualized, and used for downstream tasks.
+
+### Applications
+
+The GLUE framework has demonstrated:
+
+- **Multi-omics integration** (RNA, ATAC, methylation or protein) at single-cell resolution.  
+- **Regulatory network inference** by linking chromatin features to gene expression through the feature graph.  
+- **Atlas construction** over large cohorts, correcting earlier annotation errors and unifying datasets across labs.
+
+From the perspective of GFMs, GLUE exemplifies **graph-guided multi-modal pretraining**: modality-specific encoders learn a shared latent space regularized by biological networks, enabling reuse across tasks and tissues.
+
+---
+
+## GNN-based Multi-omics Cancer Subtyping: MoGCN, CGMega, and Beyond
+
+Cancer is inherently multi-omic: driver mutations, copy number changes, epigenetic reprogramming, and transcriptional rewiring jointly define tumor subtypes. Multi-omics cancer subtyping models increasingly rely on **graph neural networks** to capture this complexity.
+
+### MoGCN: Patient Graphs from Multi-omics
+
+MoGCN is a graph-convolutional framework for cancer subtype classification that integrates genomics, transcriptomics, and proteomics.
+
+Design:
+
+- Each **patient** is a node in a graph; edges encode similarity (e.g., based on expression or multi-omics features).  
+- For each omic, a GCN learns modality-specific latent representations.  
+- These representations are **concatenated** into a joint embedding per patient.  
+- A classifier operating on node embeddings predicts cancer subtypes (e.g., BRCA subtypes).
+
+Benefits:
+
+- Captures non-linear relationships between patients in a data-driven graph.  
+- Naturally integrates multiple omics via multi-view GCNs.  
+- Enables subtype discovery and interpretation via graph structure and learned embeddings.
+
+### CGMega: Multi-omics Cancer Gene Modules
+
+Where MoGCN focuses on *patient-level* graphs, CGMega operates on **gene-level** graphs:
+
+- Nodes represent genes; edges capture multi-omics relationships (expression, copy number, methylation, 3D genome contacts, etc.).  
+- A graph attention network learns **cancer gene modules**—subsets of genes that co-vary across omics and are associated with phenotypes.
+
+This module-centric view aligns with systems biology: instead of single-gene markers, CGMega identifies network-level signatures that better reflect pathway dysregulation.
+
+### Design Patterns and Alternatives
+
+A growing ecosystem of multi-omics subtyping methods uses related patterns:
+
+- **Contrastive learning** for multi-omics sample embeddings.  
+- **Generative models** (e.g., GAN-based subtyping) that jointly model multiple omics for unsupervised clustering.  
+- **Transformer-based hybrids** that blend MLPs and transformer blocks for high-dimensional omics.
+
+Common themes:
+
+- Modality-specific encoders with shared latent spaces  
+- Graphs capturing patient–patient or gene–gene relationships  
+- Emphasis on *interpretability* via clusters, modules, or attention over features
+
+These cancer models illustrate how multi-omics integration naturally leads to **graph-structured GFMs**, where sequences, epigenetics, and expression are all nodes in a learned biological network.
+
+---
+
+## Rare Variants and Epistasis in Systems Context
+
+@sec-pgs discussed how standard PGS methods often ignore **rare variants** and **epistasis**, despite their importance for individual-level risk and disease mechanism. Multi-omics and systems models offer a framework to incorporate these effects more effectively.
+
+### DeepRVAT: Set-based Rare Variant Burden Modeling
+
+DeepRVAT (Deep Rare Variant Association Testing) learns gene-level impairment scores from rare variant annotations and genotypes using **set neural networks**.
+
+Key properties:
+
+- Treats each gene’s rare variants as an unordered set.  
+- Learns a *trait-agnostic* gene impairment score that generalizes across traits.  
+- Improves both gene discovery and detection of high-risk individuals across many complex traits.
+
+Conceptually, DeepRVAT bridges the gap between variant-level annotations (e.g., VEP, conservation, structure-based predictions) and gene-level burden, making it naturally compatible with sequence-based variant effect models introduced earlier in the book.
+
+### NeEDL: Network-based Epistasis Detection
+
+NeEDL (Network-based Epistasis Detection via Local search) uses **network medicine and quantum-inspired optimization** to identify epistatic interactions among SNPs.
+
+Core ideas:
+
+- Build a network of SNPs and genes based on biological priors and GWAS signals.  
+- Use local search strategies to explore combinations of variants that jointly influence disease.  
+- Prioritize *interpretable* epistatic modules that map onto pathways and cellular processes.
+
+NeEDL does not yet operate as a full GFM, but it points toward **systems-level combinatorial reasoning** that future GFMs will need to support.
+
+### G2PT: Hierarchical Genotype-to-Phenotype Transformers
+
+G2PT (Genotype-to-Phenotype Transformer) explicitly models hierarchical structure:
+
+- Variant-level signals aggregate into **genes**.  
+- Genes aggregate into **systems** (e.g., pathways, tissues).  
+- Systems collectively determine phenotypes and polygenic risk.
+
+Architecturally:
+
+- Uses transformer blocks to model interactions at each level.  
+- Incorporates prior knowledge (e.g., gene–pathway membership) to structure attention patterns.  
+- Provides explanations by attributing risk to specific variants, genes, and systems.
+
+G2PT can be viewed as an early example of a **systems-aware GFM** for genotype data, unifying additive and interaction effects within a single deep model.
+
+---
+
+## Deep Learning-enhanced Polygenic Risk and Fine-mapping
+
+@sec-pgs framed PGS as linear weighted sums of SNP effects. Deep learning extends this paradigm by:
+
+- Modeling non-linear interactions and context dependence  
+- Integrating multi-omics features as priors or inputs  
+- Sharing information across ancestries and cohorts
+
+### Deep-learning PGS (e.g., Delphi-like frameworks)
+
+Deep-learning PGS frameworks learn complex functions of genotype and covariates, rather than relying on additive SNP weights.
+
+Key contributions:
+
+- Incorporate **non-genetic risk factors** alongside genome-wide variants.  
+- Learn non-linear functions that can capture dominance, epistasis, and interactions with covariates.  
+- Demonstrate improved discrimination over traditional PGS across several traits.
+
+From a systems perspective, these models represent a move toward **whole-patient risk modeling**, albeit still primarily from genotype + covariates, without explicit multi-omics integration.
+
+### MIFM and Multi-ancestry Fine-mapping
+
+Multiple-instance fine-mapping frameworks (MIFM-like methods) address a key bottleneck: lack of per-variant labels. Instead, we often know only that *some* variant(s) in a locus are causal. This is formulated as a **multiple-instance learning** problem:
+
+- Each locus is a “bag” of variants.  
+- Loci with significant GWAS signals form positive bags; others form negative bags.  
+- A deep model learns to assign high scores to causal variants within positive bags.
+
+Related methods in multi-ancestry contexts combine signals across cohorts and ancestries, leveraging divergent LD patterns to refine causal inference.
+
+Connections to earlier chapters:
+
+- Variant effect predictors (Chapters 5–7, 13) can supply per-variant features.  
+- Multi-omics models (this chapter) provide functional priors (e.g., regulatory activity, methylation, chromatin accessibility).  
+- MIFM-type frameworks integrate these priors with GWAS evidence to produce more accurate, ancestry-aware fine-mapping.
+
+---
+
+## Design Patterns for Multi-omics and Systems GFMs
+
+Pulling these examples together, several design patterns emerge for systems-level GFMs:
+
+1. **Modality-specific encoders + shared latent space**  
+   - CpGPT, GLUE, and many multi-omics subtyping models use separate encoders for each omic, aligned in a common embedding space.  
+   - This design supports flexible inference with missing modalities and incremental addition of new data types.
+
+2. **Graph-guided integration**  
+   - GLUE’s feature graph, CGMega’s gene modules, and NeEDL’s epistasis networks all use prior or learned graphs to structure learning.  
+   - GNNs, graph transformers, and attention over graph edges are natural tools for encoding biological networks.
+
+3. **Hierarchical modeling**  
+   - G2PT formalizes the hierarchy from variants → genes → systems → phenotypes.  
+   - Similar hierarchies can be defined for omics layers: sequence → chromatin → methylation → expression → protein → clinical traits.
+
+4. **Set- and bag-based learning**  
+   - DeepRVAT and MIFM treat variants or loci as sets/bags with permutation-invariant architectures.  
+   - This is crucial when sample sizes are large, labels are sparse, and order is biologically meaningless.
+
+5. **Foundation pretraining + task-specific adaptation**  
+   - CpGPT is pretrained on massive methylation datasets and then adapted to tasks like aging clocks, mortality prediction, or disease classification.  
+   - Future models may pretrain jointly on sequence, chromatin, methylation, expression, and clinical data, then specialize for specific traits.
+
+These patterns collectively point toward **general-purpose systems GFMs** that can ingest heterogeneous biological data and output risk predictions, mechanistic hypotheses, or treatment recommendations.
+
+---
+
+## Practical Pitfalls and Considerations
+
+Despite impressive progress, multi-omics and systems GFMs are especially vulnerable to confounding and overinterpretation—issues examined in depth in @sec-confound. Key challenges include:
+
+- **Batch effects and platform heterogeneity**  
+  - Different omics layers often come from different assays, labs, or time points.  
+  - Integration methods can inadvertently encode batch structure rather than biology if not properly corrected.
+
+- **Sample size and missingness**  
+  - Multi-omics datasets are typically smaller than single-omic datasets.  
+  - Many samples lack certain modalities, requiring robust handling of missing data.
+
+- **Population diversity and fairness**  
+  - As highlighted for PGS, representation of diverse ancestries is essential.  
+  - Multi-omics GFMs risk amplifying disparities if trained primarily on European-ancestry or high-resource cohorts.
+
+- **Evaluation complexity**  
+  - Multi-omics models can be evaluated at many levels: predictive performance, biological consistency, network plausibility, and clinical utility.  
+  - Overfitting to proxy metrics (e.g., clustering quality) may not translate to actionable biology.
+
+- **Interpretability and causal inference**  
+  - Attention or feature importance scores are not guarantees of causal mechanism.  
+  - Integrating deep models with perturbation data (e.g., CRISPR screens) and robust causal frameworks remains an open frontier.
+
+Careful experimental design, thoughtful validation, and transparent reporting are therefore especially crucial for multi-omics GFMs.
+
+---
+
+## Outlook: Toward Whole-patient Foundation Models
+
+The methods in this chapter sketch an endgame for genomic deep learning:
+
+- **Genome-wide variant and sequence representation** via hybrid CNN/transformer/SSM architectures (Chapters 10–13).  
+- **Multi-omics integration** through graph-guided latent spaces (CpGPT, GLUE, MoGCN, CGMega).  
+- **Systems-level reasoning** about rare variants and epistasis (DeepRVAT, NeEDL, G2PT).  
+- **Clinically oriented risk modeling** with deep PGS and fine-mapping (Delphi-like and MIFM-like frameworks).
+
+A future **whole-patient foundation model** might:
+
+- Jointly encode genotype, methylome, chromatin state, expression, proteomics, imaging, and EHR data.  
+- Provide unified representations across tissues, cell types, and time points.  
+- Offer calibrated, equitable predictions of disease risk and treatment response.  
+- Support mechanistic queries like “which pathways mediate this variant’s effect in this tissue?” or “which interventions counteract this rare variant burden in this patient?”
+
+Realizing this vision will require advances in data sharing, privacy-preserving learning, scalable architecture design, and causal validation. But the methods surveyed here show that moving beyond single-omics is not just incremental—it fundamentally changes what kinds of questions genomic models can answer, bringing us closer to truly systems-level, clinically actionable genomics.

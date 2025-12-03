@@ -1,0 +1,1347 @@
+<!DOCTYPE html>
+<html xmlns="http://www.w3.org/1999/xhtml" lang="en" xml:lang="en"><head>
+
+<meta charset="utf-8">
+<meta name="generator" content="quarto-1.8.26">
+
+<meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=yes">
+
+
+<title>15&nbsp; Model Evaluation &amp; Benchmarks – Genomic Foundation Models</title>
+<style>
+code{white-space: pre-wrap;}
+span.smallcaps{font-variant: small-caps;}
+div.columns{display: flex; gap: min(4vw, 1.5em);}
+div.column{flex: auto; overflow-x: auto;}
+div.hanging-indent{margin-left: 1.5em; text-indent: -1.5em;}
+ul.task-list{list-style: none;}
+ul.task-list li input[type="checkbox"] {
+  width: 0.8em;
+  margin: 0 0.8em 0.2em -1em; /* quarto-specific, see https://github.com/quarto-dev/quarto-cli/issues/4556 */ 
+  vertical-align: middle;
+}
+</style>
+
+
+<script src="site_libs/quarto-nav/quarto-nav.js"></script>
+<script src="site_libs/quarto-nav/headroom.min.js"></script>
+<script src="site_libs/clipboard/clipboard.min.js"></script>
+<script src="site_libs/quarto-search/autocomplete.umd.js"></script>
+<script src="site_libs/quarto-search/fuse.min.js"></script>
+<script src="site_libs/quarto-search/quarto-search.js"></script>
+<meta name="quarto:offset" content="./">
+<link href="./p5-ch16-confound.html" rel="next">
+<link href="./p4-ch14-omics.html" rel="prev">
+<script src="site_libs/quarto-html/quarto.js" type="module"></script>
+<script src="site_libs/quarto-html/tabsets/tabsets.js" type="module"></script>
+<script src="site_libs/quarto-html/axe/axe-check.js" type="module"></script>
+<script src="site_libs/quarto-html/popper.min.js"></script>
+<script src="site_libs/quarto-html/tippy.umd.min.js"></script>
+<script src="site_libs/quarto-html/anchor.min.js"></script>
+<link href="site_libs/quarto-html/tippy.css" rel="stylesheet">
+<link href="site_libs/quarto-html/quarto-syntax-highlighting-587c61ba64f3a5504c4d52d930310e48.css" rel="stylesheet" id="quarto-text-highlighting-styles">
+<script src="site_libs/bootstrap/bootstrap.min.js"></script>
+<link href="site_libs/bootstrap/bootstrap-icons.css" rel="stylesheet">
+<link href="site_libs/bootstrap/bootstrap-a1553387a0f784068632030e9fbb8a3c.min.css" rel="stylesheet" append-hash="true" id="quarto-bootstrap" data-mode="light">
+<script id="quarto-search-options" type="application/json">{
+  "location": "sidebar",
+  "copy-button": false,
+  "collapse-after": 3,
+  "panel-placement": "start",
+  "type": "textbox",
+  "limit": 50,
+  "keyboard-shortcut": [
+    "f",
+    "/",
+    "s"
+  ],
+  "show-item-context": false,
+  "language": {
+    "search-no-results-text": "No results",
+    "search-matching-documents-text": "matching documents",
+    "search-copy-link-title": "Copy link to search",
+    "search-hide-matches-text": "Hide additional matches",
+    "search-more-match-text": "more match in this document",
+    "search-more-matches-text": "more matches in this document",
+    "search-clear-button-title": "Clear",
+    "search-text-placeholder": "",
+    "search-detached-cancel-button-title": "Cancel",
+    "search-submit-button-title": "Submit",
+    "search-label": "Search"
+  }
+}</script>
+
+
+<link rel="stylesheet" href="styles.css">
+</head>
+
+<body class="nav-sidebar floating quarto-light">
+
+<div id="quarto-search-results"></div>
+  <header id="quarto-header" class="headroom fixed-top">
+  <nav class="quarto-secondary-nav">
+    <div class="container-fluid d-flex">
+      <button type="button" class="quarto-btn-toggle btn" data-bs-toggle="collapse" role="button" data-bs-target=".quarto-sidebar-collapse-item" aria-controls="quarto-sidebar" aria-expanded="false" aria-label="Toggle sidebar navigation" onclick="if (window.quartoToggleHeadroom) { window.quartoToggleHeadroom(); }">
+        <i class="bi bi-layout-text-sidebar-reverse"></i>
+      </button>
+        <nav class="quarto-page-breadcrumbs" aria-label="breadcrumb"><ol class="breadcrumb"><li class="breadcrumb-item"><a href="./p5-ch15-eval.html">Part V: Reliability &amp; Interpretation</a></li><li class="breadcrumb-item"><a href="./p5-ch15-eval.html"><span class="chapter-number">15</span>&nbsp; <span class="chapter-title">Model Evaluation &amp; Benchmarks</span></a></li></ol></nav>
+        <a class="flex-grow-1" role="navigation" data-bs-toggle="collapse" data-bs-target=".quarto-sidebar-collapse-item" aria-controls="quarto-sidebar" aria-expanded="false" aria-label="Toggle sidebar navigation" onclick="if (window.quartoToggleHeadroom) { window.quartoToggleHeadroom(); }">      
+        </a>
+      <button type="button" class="btn quarto-search-button" aria-label="Search" onclick="window.quartoOpenSearch();">
+        <i class="bi bi-search"></i>
+      </button>
+    </div>
+  </nav>
+</header>
+<!-- content -->
+<div id="quarto-content" class="quarto-container page-columns page-rows-contents page-layout-article">
+<!-- sidebar -->
+  <nav id="quarto-sidebar" class="sidebar collapse collapse-horizontal quarto-sidebar-collapse-item sidebar-navigation floating overflow-auto">
+    <div class="pt-lg-2 mt-2 text-left sidebar-header">
+    <div class="sidebar-title mb-0 py-0">
+      <a href="./">Genomic Foundation Models</a> 
+    </div>
+      </div>
+        <div class="mt-2 flex-shrink-0 align-items-center">
+        <div class="sidebar-search">
+        <div id="quarto-search" class="" title="Search"></div>
+        </div>
+        </div>
+    <div class="sidebar-menu-container"> 
+    <ul class="list-unstyled mt-1">
+        <li class="sidebar-item">
+  <div class="sidebar-item-container"> 
+  <a href="./index.html" class="sidebar-item-text sidebar-link">
+ <span class="menu-text">Introduction</span></a>
+  </div>
+</li>
+        <li class="sidebar-item">
+  <div class="sidebar-item-container"> 
+  <a href="./preface.html" class="sidebar-item-text sidebar-link">
+ <span class="menu-text">Preface</span></a>
+  </div>
+</li>
+        <li class="sidebar-item sidebar-item-section">
+      <div class="sidebar-item-container"> 
+            <a class="sidebar-item-text sidebar-link text-start" data-bs-toggle="collapse" data-bs-target="#quarto-sidebar-section-1" role="navigation" aria-expanded="true">
+ <span class="menu-text">Part I: Data &amp; Pre-DL Methods</span></a>
+          <a class="sidebar-item-toggle text-start" data-bs-toggle="collapse" data-bs-target="#quarto-sidebar-section-1" role="navigation" aria-expanded="true" aria-label="Toggle section">
+            <i class="bi bi-chevron-right ms-2"></i>
+          </a> 
+      </div>
+      <ul id="quarto-sidebar-section-1" class="collapse list-unstyled sidebar-section depth1 show">  
+          <li class="sidebar-item">
+  <div class="sidebar-item-container"> 
+  <a href="./p1-ch01-ngs.html" class="sidebar-item-text sidebar-link">
+ <span class="menu-text"><span class="chapter-number">1</span>&nbsp; <span class="chapter-title">NGS &amp; Variant Calling</span></span></a>
+  </div>
+</li>
+          <li class="sidebar-item">
+  <div class="sidebar-item-container"> 
+  <a href="./p1-ch02-data.html" class="sidebar-item-text sidebar-link">
+ <span class="menu-text"><span class="chapter-number">2</span>&nbsp; <span class="chapter-title">Foundational Genomics Data</span></span></a>
+  </div>
+</li>
+          <li class="sidebar-item">
+  <div class="sidebar-item-container"> 
+  <a href="./p1-ch03-pgs.html" class="sidebar-item-text sidebar-link">
+ <span class="menu-text"><span class="chapter-number">3</span>&nbsp; <span class="chapter-title">GWAS and Polygenic Scores</span></span></a>
+  </div>
+</li>
+          <li class="sidebar-item">
+  <div class="sidebar-item-container"> 
+  <a href="./p1-ch04-cadd.html" class="sidebar-item-text sidebar-link">
+ <span class="menu-text"><span class="chapter-number">4</span>&nbsp; <span class="chapter-title">Deleteriousness Scores</span></span></a>
+  </div>
+</li>
+      </ul>
+  </li>
+        <li class="sidebar-item sidebar-item-section">
+      <div class="sidebar-item-container"> 
+            <a class="sidebar-item-text sidebar-link text-start" data-bs-toggle="collapse" data-bs-target="#quarto-sidebar-section-2" role="navigation" aria-expanded="true">
+ <span class="menu-text">Part II: CNN Seq-to-Function Models</span></a>
+          <a class="sidebar-item-toggle text-start" data-bs-toggle="collapse" data-bs-target="#quarto-sidebar-section-2" role="navigation" aria-expanded="true" aria-label="Toggle section">
+            <i class="bi bi-chevron-right ms-2"></i>
+          </a> 
+      </div>
+      <ul id="quarto-sidebar-section-2" class="collapse list-unstyled sidebar-section depth1 show">  
+          <li class="sidebar-item">
+  <div class="sidebar-item-container"> 
+  <a href="./p2-ch05-reg.html" class="sidebar-item-text sidebar-link">
+ <span class="menu-text"><span class="chapter-number">5</span>&nbsp; <span class="chapter-title">Regulatory Prediction</span></span></a>
+  </div>
+</li>
+          <li class="sidebar-item">
+  <div class="sidebar-item-container"> 
+  <a href="./p2-ch06-transc.html" class="sidebar-item-text sidebar-link">
+ <span class="menu-text"><span class="chapter-number">6</span>&nbsp; <span class="chapter-title">Transcriptional Effects</span></span></a>
+  </div>
+</li>
+          <li class="sidebar-item">
+  <div class="sidebar-item-container"> 
+  <a href="./p2-ch07-splice.html" class="sidebar-item-text sidebar-link">
+ <span class="menu-text"><span class="chapter-number">7</span>&nbsp; <span class="chapter-title">Splicing Prediction</span></span></a>
+  </div>
+</li>
+      </ul>
+  </li>
+        <li class="sidebar-item sidebar-item-section">
+      <div class="sidebar-item-container"> 
+            <a class="sidebar-item-text sidebar-link text-start" data-bs-toggle="collapse" data-bs-target="#quarto-sidebar-section-3" role="navigation" aria-expanded="true">
+ <span class="menu-text">Part III: Transformers Models</span></a>
+          <a class="sidebar-item-toggle text-start" data-bs-toggle="collapse" data-bs-target="#quarto-sidebar-section-3" role="navigation" aria-expanded="true" aria-label="Toggle section">
+            <i class="bi bi-chevron-right ms-2"></i>
+          </a> 
+      </div>
+      <ul id="quarto-sidebar-section-3" class="collapse list-unstyled sidebar-section depth1 show">  
+          <li class="sidebar-item">
+  <div class="sidebar-item-container"> 
+  <a href="./p3-ch08-tokens.html" class="sidebar-item-text sidebar-link">
+ <span class="menu-text"><span class="chapter-number">8</span>&nbsp; <span class="chapter-title">Sequence Representation &amp; Tokens</span></span></a>
+  </div>
+</li>
+          <li class="sidebar-item">
+  <div class="sidebar-item-container"> 
+  <a href="./p3-ch09-plm.html" class="sidebar-item-text sidebar-link">
+ <span class="menu-text"><span class="chapter-number">9</span>&nbsp; <span class="chapter-title">Protein Language Models</span></span></a>
+  </div>
+</li>
+          <li class="sidebar-item">
+  <div class="sidebar-item-container"> 
+  <a href="./p3-ch10-glm.html" class="sidebar-item-text sidebar-link">
+ <span class="menu-text"><span class="chapter-number">10</span>&nbsp; <span class="chapter-title">DNA Foundation Models</span></span></a>
+  </div>
+</li>
+          <li class="sidebar-item">
+  <div class="sidebar-item-container"> 
+  <a href="./p3-ch11-hybrid.html" class="sidebar-item-text sidebar-link">
+ <span class="menu-text"><span class="chapter-number">11</span>&nbsp; <span class="chapter-title">Long-range Hybrid Model</span></span></a>
+  </div>
+</li>
+      </ul>
+  </li>
+        <li class="sidebar-item sidebar-item-section">
+      <div class="sidebar-item-container"> 
+            <a class="sidebar-item-text sidebar-link text-start" data-bs-toggle="collapse" data-bs-target="#quarto-sidebar-section-4" role="navigation" aria-expanded="true">
+ <span class="menu-text">Part IV: GFMs &amp; Multi-omics</span></a>
+          <a class="sidebar-item-toggle text-start" data-bs-toggle="collapse" data-bs-target="#quarto-sidebar-section-4" role="navigation" aria-expanded="true" aria-label="Toggle section">
+            <i class="bi bi-chevron-right ms-2"></i>
+          </a> 
+      </div>
+      <ul id="quarto-sidebar-section-4" class="collapse list-unstyled sidebar-section depth1 show">  
+          <li class="sidebar-item">
+  <div class="sidebar-item-container"> 
+  <a href="./p4-ch12-principles.html" class="sidebar-item-text sidebar-link">
+ <span class="menu-text"><span class="chapter-number">12</span>&nbsp; <span class="chapter-title">Genomic FMs: Principles &amp; Practice</span></span></a>
+  </div>
+</li>
+          <li class="sidebar-item">
+  <div class="sidebar-item-container"> 
+  <a href="./p4-ch13-vep.html" class="sidebar-item-text sidebar-link">
+ <span class="menu-text"><span class="chapter-number">13</span>&nbsp; <span class="chapter-title">Variant Effect Prediction</span></span></a>
+  </div>
+</li>
+          <li class="sidebar-item">
+  <div class="sidebar-item-container"> 
+  <a href="./p4-ch14-omics.html" class="sidebar-item-text sidebar-link">
+ <span class="menu-text"><span class="chapter-number">14</span>&nbsp; <span class="chapter-title">Multi-omics &amp; Systems Context</span></span></a>
+  </div>
+</li>
+      </ul>
+  </li>
+        <li class="sidebar-item sidebar-item-section">
+      <div class="sidebar-item-container"> 
+            <a class="sidebar-item-text sidebar-link text-start" data-bs-toggle="collapse" data-bs-target="#quarto-sidebar-section-5" role="navigation" aria-expanded="true">
+ <span class="menu-text">Part V: Reliability &amp; Interpretation</span></a>
+          <a class="sidebar-item-toggle text-start" data-bs-toggle="collapse" data-bs-target="#quarto-sidebar-section-5" role="navigation" aria-expanded="true" aria-label="Toggle section">
+            <i class="bi bi-chevron-right ms-2"></i>
+          </a> 
+      </div>
+      <ul id="quarto-sidebar-section-5" class="collapse list-unstyled sidebar-section depth1 show">  
+          <li class="sidebar-item">
+  <div class="sidebar-item-container"> 
+  <a href="./p5-ch15-eval.html" class="sidebar-item-text sidebar-link active">
+ <span class="menu-text"><span class="chapter-number">15</span>&nbsp; <span class="chapter-title">Model Evaluation &amp; Benchmarks</span></span></a>
+  </div>
+</li>
+          <li class="sidebar-item">
+  <div class="sidebar-item-container"> 
+  <a href="./p5-ch16-confound.html" class="sidebar-item-text sidebar-link">
+ <span class="menu-text"><span class="chapter-number">16</span>&nbsp; <span class="chapter-title">Confounders in Model Training</span></span></a>
+  </div>
+</li>
+          <li class="sidebar-item">
+  <div class="sidebar-item-container"> 
+  <a href="./p5-ch17-interp.html" class="sidebar-item-text sidebar-link">
+ <span class="menu-text"><span class="chapter-number">17</span>&nbsp; <span class="chapter-title">Interpretability &amp; Mechanisms</span></span></a>
+  </div>
+</li>
+      </ul>
+  </li>
+        <li class="sidebar-item sidebar-item-section">
+      <div class="sidebar-item-container"> 
+            <a class="sidebar-item-text sidebar-link text-start" data-bs-toggle="collapse" data-bs-target="#quarto-sidebar-section-6" role="navigation" aria-expanded="true">
+ <span class="menu-text">Part VI: Applications</span></a>
+          <a class="sidebar-item-toggle text-start" data-bs-toggle="collapse" data-bs-target="#quarto-sidebar-section-6" role="navigation" aria-expanded="true" aria-label="Toggle section">
+            <i class="bi bi-chevron-right ms-2"></i>
+          </a> 
+      </div>
+      <ul id="quarto-sidebar-section-6" class="collapse list-unstyled sidebar-section depth1 show">  
+          <li class="sidebar-item">
+  <div class="sidebar-item-container"> 
+  <a href="./p6-ch18-clinical.html" class="sidebar-item-text sidebar-link">
+ <span class="menu-text"><span class="chapter-number">18</span>&nbsp; <span class="chapter-title">Clinical Risk Prediction</span></span></a>
+  </div>
+</li>
+          <li class="sidebar-item">
+  <div class="sidebar-item-container"> 
+  <a href="./p6-ch19-variants.html" class="sidebar-item-text sidebar-link">
+ <span class="menu-text"><span class="chapter-number">19</span>&nbsp; <span class="chapter-title">Pathogenic Variant Discovery</span></span></a>
+  </div>
+</li>
+          <li class="sidebar-item">
+  <div class="sidebar-item-container"> 
+  <a href="./p6-ch20-drugs.html" class="sidebar-item-text sidebar-link">
+ <span class="menu-text"><span class="chapter-number">20</span>&nbsp; <span class="chapter-title">Drug Discovery &amp; Biotech</span></span></a>
+  </div>
+</li>
+      </ul>
+  </li>
+        <li class="sidebar-item">
+  <div class="sidebar-item-container"> 
+  <a href="./references.html" class="sidebar-item-text sidebar-link">
+ <span class="menu-text">References</span></a>
+  </div>
+</li>
+        <li class="sidebar-item sidebar-item-section">
+      <div class="sidebar-item-container"> 
+            <a class="sidebar-item-text sidebar-link text-start" data-bs-toggle="collapse" data-bs-target="#quarto-sidebar-section-7" role="navigation" aria-expanded="true">
+ <span class="menu-text">Appendices</span></a>
+          <a class="sidebar-item-toggle text-start" data-bs-toggle="collapse" data-bs-target="#quarto-sidebar-section-7" role="navigation" aria-expanded="true" aria-label="Toggle section">
+            <i class="bi bi-chevron-right ms-2"></i>
+          </a> 
+      </div>
+      <ul id="quarto-sidebar-section-7" class="collapse list-unstyled sidebar-section depth1 show">  
+          <li class="sidebar-item">
+  <div class="sidebar-item-container"> 
+  <a href="./app-a-dl.html" class="sidebar-item-text sidebar-link">
+ <span class="menu-text"><span class="chapter-number">A</span>&nbsp; <span class="chapter-title">Deep Learning Primer for Genomics</span></span></a>
+  </div>
+</li>
+          <li class="sidebar-item">
+  <div class="sidebar-item-container"> 
+  <a href="./app-b-resources.html" class="sidebar-item-text sidebar-link">
+ <span class="menu-text"><span class="chapter-number">B</span>&nbsp; <span class="chapter-title">Additional Resources</span></span></a>
+  </div>
+</li>
+      </ul>
+  </li>
+    </ul>
+    </div>
+</nav>
+<div id="quarto-sidebar-glass" class="quarto-sidebar-collapse-item" data-bs-toggle="collapse" data-bs-target=".quarto-sidebar-collapse-item"></div>
+<!-- margin-sidebar -->
+    <div id="quarto-margin-sidebar" class="sidebar margin-sidebar">
+        <nav id="TOC" role="doc-toc" class="toc-active">
+    <h2 id="toc-title">Table of contents</h2>
+   
+  <ul>
+  <li><a href="#evaluation-as-a-multi-scale-problem" id="toc-evaluation-as-a-multi-scale-problem" class="nav-link active" data-scroll-target="#evaluation-as-a-multi-scale-problem"><span class="header-section-number">15.1</span> Evaluation as a Multi-Scale Problem</a></li>
+  <li><a href="#metric-families-across-genomic-tasks" id="toc-metric-families-across-genomic-tasks" class="nav-link" data-scroll-target="#metric-families-across-genomic-tasks"><span class="header-section-number">15.2</span> Metric Families Across Genomic Tasks</a>
+  <ul class="collapse">
+  <li><a href="#classification-metrics" id="toc-classification-metrics" class="nav-link" data-scroll-target="#classification-metrics"><span class="header-section-number">15.2.1</span> Classification Metrics</a></li>
+  <li><a href="#regression-and-correlation-metrics" id="toc-regression-and-correlation-metrics" class="nav-link" data-scroll-target="#regression-and-correlation-metrics"><span class="header-section-number">15.2.2</span> Regression and Correlation Metrics</a></li>
+  <li><a href="#ranking-and-prioritization-metrics" id="toc-ranking-and-prioritization-metrics" class="nav-link" data-scroll-target="#ranking-and-prioritization-metrics"><span class="header-section-number">15.2.3</span> Ranking and Prioritization Metrics</a></li>
+  <li><a href="#generative-and-language-model-metrics" id="toc-generative-and-language-model-metrics" class="nav-link" data-scroll-target="#generative-and-language-model-metrics"><span class="header-section-number">15.2.4</span> Generative and Language-Model Metrics</a></li>
+  </ul></li>
+  <li><a href="#levels-of-evaluation-from-base-pairs-to-bedside" id="toc-levels-of-evaluation-from-base-pairs-to-bedside" class="nav-link" data-scroll-target="#levels-of-evaluation-from-base-pairs-to-bedside"><span class="header-section-number">15.3</span> Levels of Evaluation: From Base Pairs to Bedside</a>
+  <ul class="collapse">
+  <li><a href="#molecular-and-regulatory-level-evaluation" id="toc-molecular-and-regulatory-level-evaluation" class="nav-link" data-scroll-target="#molecular-and-regulatory-level-evaluation"><span class="header-section-number">15.3.1</span> Molecular and Regulatory-Level Evaluation</a></li>
+  <li><a href="#variant-level-evaluation" id="toc-variant-level-evaluation" class="nav-link" data-scroll-target="#variant-level-evaluation"><span class="header-section-number">15.3.2</span> Variant-Level Evaluation</a></li>
+  <li><a href="#trait--and-individual-level-evaluation" id="toc-trait--and-individual-level-evaluation" class="nav-link" data-scroll-target="#trait--and-individual-level-evaluation"><span class="header-section-number">15.3.3</span> Trait- and Individual-Level Evaluation</a></li>
+  <li><a href="#clinical-and-decision-level-evaluation" id="toc-clinical-and-decision-level-evaluation" class="nav-link" data-scroll-target="#clinical-and-decision-level-evaluation"><span class="header-section-number">15.3.4</span> Clinical and Decision-Level Evaluation</a></li>
+  </ul></li>
+  <li><a href="#data-splits-leakage-and-robustness" id="toc-data-splits-leakage-and-robustness" class="nav-link" data-scroll-target="#data-splits-leakage-and-robustness"><span class="header-section-number">15.4</span> Data Splits, Leakage, and Robustness</a>
+  <ul class="collapse">
+  <li><a href="#axes-of-splitting" id="toc-axes-of-splitting" class="nav-link" data-scroll-target="#axes-of-splitting"><span class="header-section-number">15.4.1</span> Axes of Splitting</a></li>
+  <li><a href="#types-of-leakage" id="toc-types-of-leakage" class="nav-link" data-scroll-target="#types-of-leakage"><span class="header-section-number">15.4.2</span> Types of Leakage</a></li>
+  <li><a href="#robustness-and-distribution-shift" id="toc-robustness-and-distribution-shift" class="nav-link" data-scroll-target="#robustness-and-distribution-shift"><span class="header-section-number">15.4.3</span> Robustness and Distribution Shift</a></li>
+  </ul></li>
+  <li><a href="#benchmarks-leaderboards-and-their-limits" id="toc-benchmarks-leaderboards-and-their-limits" class="nav-link" data-scroll-target="#benchmarks-leaderboards-and-their-limits"><span class="header-section-number">15.5</span> Benchmarks, Leaderboards, and Their Limits</a></li>
+  <li><a href="#evaluating-foundation-models-zero-shot-probing-and-fine-tuning" id="toc-evaluating-foundation-models-zero-shot-probing-and-fine-tuning" class="nav-link" data-scroll-target="#evaluating-foundation-models-zero-shot-probing-and-fine-tuning"><span class="header-section-number">15.6</span> Evaluating Foundation Models: Zero-Shot, Probing, and Fine-Tuning</a>
+  <ul class="collapse">
+  <li><a href="#zero-shot-and-few-shot-evaluation" id="toc-zero-shot-and-few-shot-evaluation" class="nav-link" data-scroll-target="#zero-shot-and-few-shot-evaluation"><span class="header-section-number">15.6.1</span> Zero-Shot and Few-Shot Evaluation</a></li>
+  <li><a href="#probing-and-linear-evaluation" id="toc-probing-and-linear-evaluation" class="nav-link" data-scroll-target="#probing-and-linear-evaluation"><span class="header-section-number">15.6.2</span> Probing and Linear Evaluation</a></li>
+  <li><a href="#full-fine-tuning-and-task-specific-heads" id="toc-full-fine-tuning-and-task-specific-heads" class="nav-link" data-scroll-target="#full-fine-tuning-and-task-specific-heads"><span class="header-section-number">15.6.3</span> Full Fine-Tuning and Task-Specific Heads</a></li>
+  </ul></li>
+  <li><a href="#uncertainty-calibration-and-reliability" id="toc-uncertainty-calibration-and-reliability" class="nav-link" data-scroll-target="#uncertainty-calibration-and-reliability"><span class="header-section-number">15.7</span> Uncertainty, Calibration, and Reliability</a></li>
+  <li><a href="#putting-it-all-together-an-evaluation-checklist" id="toc-putting-it-all-together-an-evaluation-checklist" class="nav-link" data-scroll-target="#putting-it-all-together-an-evaluation-checklist"><span class="header-section-number">15.8</span> Putting It All Together: An Evaluation Checklist</a></li>
+  </ul>
+</nav>
+    </div>
+<!-- main -->
+<main class="content" id="quarto-document-content">
+
+<header id="title-block-header" class="quarto-title-block default"><nav class="quarto-page-breadcrumbs quarto-title-breadcrumbs d-none d-lg-block" aria-label="breadcrumb"><ol class="breadcrumb"><li class="breadcrumb-item"><a href="./p5-ch15-eval.html">Part V: Reliability &amp; Interpretation</a></li><li class="breadcrumb-item"><a href="./p5-ch15-eval.html"><span class="chapter-number">15</span>&nbsp; <span class="chapter-title">Model Evaluation &amp; Benchmarks</span></a></li></ol></nav>
+<div class="quarto-title">
+<h1 class="title"><span id="sec-eval" class="quarto-section-identifier"><span class="chapter-number">15</span>&nbsp; <span class="chapter-title">Model Evaluation &amp; Benchmarks</span></span></h1>
+</div>
+
+
+
+<div class="quarto-title-meta">
+
+    
+  
+    
+  </div>
+  
+
+
+</header>
+
+
+<p>By now, we have seen genomic models at almost every scale:</p>
+<ul>
+<li>Variant calling from NGS reads (<a href="p1-ch01-ngs.html" class="quarto-xref"><span>Chapter 1</span></a>)<br>
+</li>
+<li>Polygenic scores and GWAS (<a href="p1-ch03-pgs.html" class="quarto-xref"><span>Chapter 3</span></a>)<br>
+</li>
+<li>Deleteriousness scores and variant effect predictors (<a href="p1-ch04-cadd.html" class="quarto-xref"><span>Chapter 4</span></a>; <a href="p4-ch13-vep.html" class="quarto-xref"><span>Chapter 13</span></a>)<br>
+</li>
+<li>CNN-based sequence-to-function models (<a href="p2-ch05-reg.html" class="quarto-xref"><span>Chapter 5</span></a>–<a href="p2-ch07-splice.html" class="quarto-xref"><span>Chapter 7</span></a>)<br>
+</li>
+<li>Genomic language models and foundation models (<a href="p3-ch10-glm.html" class="quarto-xref"><span>Chapter 10</span></a>; <a href="p4-ch12-principles.html" class="quarto-xref"><span>Chapter 12</span></a>)<br>
+</li>
+<li>Clinical risk and pathogenic variant discovery (<a href="p6-ch18-clinical.html" class="quarto-xref"><span>Chapter 18</span></a>; <a href="p6-ch19-variants.html" class="quarto-xref"><span>Chapter 19</span></a>)</li>
+</ul>
+<p>Each chapter introduced <em>local</em> metrics and benchmarks. What has been missing is a single place to answer:</p>
+<blockquote class="blockquote">
+<p>What does it mean for a genomic model to “work,” and how should we <strong>systematically</strong> evaluate it?</p>
+</blockquote>
+<p>This chapter provides that unifying view. We:</p>
+<ul>
+<li>Describe <strong>metric families</strong> and how they map to typical genomic tasks.<br>
+</li>
+<li>Organize evaluation across <strong>four levels</strong>: molecular, variant, trait/individual, and clinical decision.<br>
+</li>
+<li>Discuss <strong>data splitting, leakage, and robustness</strong>—the mechanics that make or break benchmarks.<br>
+</li>
+<li>Explain how to evaluate <strong>foundation models</strong> in different usage regimes (zero-shot, probing, fine-tuning).<br>
+</li>
+<li>Connect evaluation to <strong>reliability</strong>: confounders (<a href="p5-ch16-confound.html" class="quarto-xref"><span>Chapter 16</span></a>) and interpretability (<a href="p5-ch17-interp.html" class="quarto-xref"><span>Chapter 17</span></a>).</li>
+</ul>
+<p>Throughout, the theme is that <strong>architecture and scale matter, but evaluation choices often matter more.</strong></p>
+<hr>
+<section id="evaluation-as-a-multi-scale-problem" class="level2" data-number="15.1">
+<h2 data-number="15.1" class="anchored" data-anchor-id="evaluation-as-a-multi-scale-problem"><span class="header-section-number">15.1</span> Evaluation as a Multi-Scale Problem</h2>
+<p>Genomic models are deployed at very different scales. It helps to keep a simple mental pyramid in mind:</p>
+<ul>
+<li><strong>Molecular / regulatory</strong>
+<ul>
+<li>Inputs: local sequence, epigenomic context.<br>
+</li>
+<li>Outputs: chromatin accessibility, histone marks, TF binding, splicing outcomes, expression levels.<br>
+</li>
+<li>Examples: DeepSEA-style chromatin models, SpliceAI, Enformer.</li>
+</ul></li>
+<li><strong>Variant-level</strong>
+<ul>
+<li>Inputs: a specific variant (SNV, indel, structural variant) and its context.<br>
+</li>
+<li>Outputs: pathogenicity scores, predicted molecular impact, fine-mapping posterior probabilities.<br>
+</li>
+<li>Examples: CADD-style deleteriousness scores, AlphaMissense-like VEPs, MIFM fine-mapping posteriors.</li>
+</ul></li>
+<li><strong>Trait / individual-level</strong>
+<ul>
+<li>Inputs: a person’s genotype/sequence plus other features.<br>
+</li>
+<li>Outputs: risk scores for complex traits, predicted phenotypes, endophenotypes.<br>
+</li>
+<li>Examples: classical PGS, GFM-augmented risk scores (<a href="p1-ch03-pgs.html" class="quarto-xref"><span>Chapter 3</span></a>; <a href="p6-ch18-clinical.html" class="quarto-xref"><span>Chapter 18</span></a>).</li>
+</ul></li>
+<li><strong>Clinical / decision-level</strong>
+<ul>
+<li>Inputs: model predictions plus context (guidelines, utility assumptions).<br>
+</li>
+<li>Outputs: decisions (treat vs not treat, screen vs not screen), enriched cohorts, trial eligibility.<br>
+</li>
+<li>Examples: screening strategies, clinical decision support tools.</li>
+</ul></li>
+</ul>
+<p>Good evaluation starts from the <em>intended level of action</em>:</p>
+<ul>
+<li>If the goal is <strong>variant prioritization</strong> in a rare disease pipeline, improvement in AUROC on a chromatin benchmark is only indirectly relevant.<br>
+</li>
+<li>If the goal is <strong>clinical risk stratification</strong>, better perplexity on a DNA language model test set is useful only insofar as it leads to more discriminative, better calibrated risk scores.</li>
+</ul>
+<p>The rest of the chapter climbs this pyramid, while keeping a few core metric families in view.</p>
+<hr>
+</section>
+<section id="metric-families-across-genomic-tasks" class="level2" data-number="15.2">
+<h2 data-number="15.2" class="anchored" data-anchor-id="metric-families-across-genomic-tasks"><span class="header-section-number">15.2</span> Metric Families Across Genomic Tasks</h2>
+<p>Most evaluation in this book falls into four broad metric families.</p>
+<section id="classification-metrics" class="level3" data-number="15.2.1">
+<h3 data-number="15.2.1" class="anchored" data-anchor-id="classification-metrics"><span class="header-section-number">15.2.1</span> Classification Metrics</h3>
+<p>For binary or multi-class outputs (e.g., pathogenic vs benign; open vs closed chromatin; presence vs absence of a histone mark):</p>
+<ul>
+<li><strong>AUROC (AUC)</strong> – probability that a randomly chosen positive is ranked above a randomly chosen negative.<br>
+</li>
+<li><strong>AUPRC</strong> – precision–recall area; more informative when positives are rare (e.g., pathogenic variants among many benign ones).<br>
+</li>
+<li><strong>Accuracy, sensitivity, specificity</strong> – intuitive but sensitive to class imbalance and thresholds.</li>
+</ul>
+<p>Typical patterns:</p>
+<ul>
+<li>Variant effect predictors and clinical risk models report <strong>AUROC/AUPRC</strong> for prioritization.<br>
+</li>
+<li>Regulatory prediction models often report <strong>per-task AUROC</strong> averaged over hundreds of chromatin assays.</li>
+</ul>
+</section>
+<section id="regression-and-correlation-metrics" class="level3" data-number="15.2.2">
+<h3 data-number="15.2.2" class="anchored" data-anchor-id="regression-and-correlation-metrics"><span class="header-section-number">15.2.2</span> Regression and Correlation Metrics</h3>
+<p>For continuous outputs (expression levels, log-odds of accessibility, quantitative traits):</p>
+<ul>
+<li><strong>Pearson correlation $ r $</strong> – linear association between predicted and observed values.<br>
+</li>
+<li><strong>Spearman correlation $ $</strong> – rank-based association; robust to monotone transformations.<br>
+</li>
+<li><strong>$ R^2 $</strong> – fraction of variance explained; often computed against a simple baseline (e.g., mean-only model).</li>
+</ul>
+<p>Sequence-to-expression and multi-omics models frequently use <strong>correlation</strong> between predicted and observed tracks (e.g., Enformer-like evaluations), while PGS performance is often reported as <strong>incremental $ R^2 $</strong> over clinical covariates.</p>
+</section>
+<section id="ranking-and-prioritization-metrics" class="level3" data-number="15.2.3">
+<h3 data-number="15.2.3" class="anchored" data-anchor-id="ranking-and-prioritization-metrics"><span class="header-section-number">15.2.3</span> Ranking and Prioritization Metrics</h3>
+<p>Many genomics workflows are fundamentally about <strong>ranking</strong>:</p>
+<ul>
+<li>Prioritizing variants in a locus for follow-up.<br>
+</li>
+<li>Ranking genes or targets for experimental validation.<br>
+</li>
+<li>Selecting individuals at highest risk for screening.</li>
+</ul>
+<p>In addition to AUROC/AUPRC, useful ranking metrics include:</p>
+<ul>
+<li><strong>Top-k recall / enrichment</strong> – fraction of true positives in the top $ k $ predictions.<br>
+</li>
+<li><strong>Enrichment over baseline</strong> – how much more likely a high-scoring bucket is to contain true positives compared to random.<br>
+</li>
+<li><strong>Normalized Discounted Cumulative Gain (NDCG)</strong> – emphasizes getting highly relevant items near the top.</li>
+</ul>
+<p>These metrics better align with practical questions such as “how many real Mendelian variants would land in the top 20 candidates?”</p>
+</section>
+<section id="generative-and-language-model-metrics" class="level3" data-number="15.2.4">
+<h3 data-number="15.2.4" class="anchored" data-anchor-id="generative-and-language-model-metrics"><span class="header-section-number">15.2.4</span> Generative and Language-Model Metrics</h3>
+<p>Self-supervised genomic language models (<a href="p3-ch10-glm.html" class="quarto-xref"><span>Chapter 10</span></a>) introduce their own metrics:</p>
+<ul>
+<li><strong>Perplexity / cross-entropy</strong> on masked-token reconstruction tasks.<br>
+</li>
+<li><strong>Bits-per-base</strong> for next-token prediction or compression-style objectives.</li>
+</ul>
+<p>These are important for <strong>representation quality</strong> and for comparing pretraining runs, but:</p>
+<ul>
+<li>They are <strong>distribution-specific</strong> (tied to the pretraining corpus).<br>
+</li>
+<li>Improvements in perplexity <strong>do not automatically</strong> translate into better variant or trait predictions.</li>
+</ul>
+<p>As a result, generative metrics should be paired with <strong>downstream task metrics</strong> (classification, regression, ranking) to assess real utility.</p>
+<hr>
+</section>
+</section>
+<section id="levels-of-evaluation-from-base-pairs-to-bedside" class="level2" data-number="15.3">
+<h2 data-number="15.3" class="anchored" data-anchor-id="levels-of-evaluation-from-base-pairs-to-bedside"><span class="header-section-number">15.3</span> Levels of Evaluation: From Base Pairs to Bedside</h2>
+<p>We now walk through the pyramid from molecular readouts to clinical decisions, focusing on what “good evaluation” looks like at each level.</p>
+<section id="molecular-and-regulatory-level-evaluation" class="level3" data-number="15.3.1">
+<h3 data-number="15.3.1" class="anchored" data-anchor-id="molecular-and-regulatory-level-evaluation"><span class="header-section-number">15.3.1</span> Molecular and Regulatory-Level Evaluation</h3>
+<p>Tasks:</p>
+<ul>
+<li>Predicting chromatin accessibility, histone marks, TF binding profiles.<br>
+</li>
+<li>Predicting splicing outcomes (e.g., psi values) or transcription start/termination sites.<br>
+</li>
+<li>Predicting MPRA readouts or CRISPR perturbation effects.</li>
+</ul>
+<p>Common evaluation setups:</p>
+<ul>
+<li><strong>Multi-task classification</strong>: AUROC/AUPRC per assay, then averaged (with or without weighting).<br>
+</li>
+<li><strong>Track-wise regression</strong>: Pearson/Spearman correlation between predicted and observed signal profiles.<br>
+</li>
+<li><strong>Out-of-cell-type prediction</strong>: training on some cell types and testing on others.</li>
+</ul>
+<p>Key design choices:</p>
+<ul>
+<li><strong>Granularity of labels</strong> – base-resolution vs binning (e.g., 128 bp bins).<br>
+</li>
+<li><strong>Context windows</strong> – do we test long-range generalization (Enformer-like) or local contexts?<br>
+</li>
+<li><strong>Held-out biology</strong> – new TFs, new cell types, new loci (see splits below).</li>
+</ul>
+<p>Pitfalls:</p>
+<ul>
+<li>Overfitting to specific assays or idiosyncratic lab protocols.<br>
+</li>
+<li>Inadvertent leakage when nearby genomic regions or replicate experiments are split across train and test.</li>
+</ul>
+</section>
+<section id="variant-level-evaluation" class="level3" data-number="15.3.2">
+<h3 data-number="15.3.2" class="anchored" data-anchor-id="variant-level-evaluation"><span class="header-section-number">15.3.2</span> Variant-Level Evaluation</h3>
+<p>Tasks:</p>
+<ul>
+<li>Classifying variants as pathogenic vs benign, or damaging vs tolerated.<br>
+</li>
+<li>Predicting functional impact (e.g., effect on splicing, expression, protein stability).<br>
+</li>
+<li>Fine-mapping: assigning posterior probabilities of causality to variants in associated loci.</li>
+</ul>
+<p>Common benchmarks:</p>
+<ul>
+<li><strong>Clinical labels</strong>: ClinVar, HGMD, curated variant sets from diagnostic labs.<br>
+</li>
+<li><strong>Population-based labels</strong>: allele frequency strata (e.g., ultra-rare vs common) in gnomAD-like resources.<br>
+</li>
+<li><strong>Functional assays</strong>: saturation mutagenesis, MPRAs, deep mutational scanning.</li>
+</ul>
+<p>Metrics:</p>
+<ul>
+<li>AUROC/AUPRC on binary labels (e.g., pathogenic vs benign).<br>
+</li>
+<li>Correlation or rank metrics against experimental effect sizes.<br>
+</li>
+<li>Calibration-style metrics for probabilistic outputs (e.g., reliability diagrams for pathogenicity probabilities or fine-mapping posteriors).</li>
+</ul>
+<p>Design questions:</p>
+<ul>
+<li><strong>What is the negative class?</strong> Common, presumably benign variants; frequency-matched controls; synonymous variants; or synthetic negatives as in CADD (<a href="p1-ch04-cadd.html" class="quarto-xref"><span>Chapter 4</span></a>).<br>
+</li>
+<li><strong>What is held out?</strong> Genes, loci, or variant types unseen during training.<br>
+</li>
+<li><strong>How are multiple variants per locus handled?</strong> Evaluating top-k recall of causal variants per risk locus is often more informative than global AUC.</li>
+</ul>
+<p>This level is also where issues like <strong>circularity</strong>—scores trained on ClinVar then evaluated on overlapping variants—are especially acute; we return to this in <a href="p5-ch16-confound.html" class="quarto-xref"><span>Chapter 16</span></a>.</p>
+</section>
+<section id="trait--and-individual-level-evaluation" class="level3" data-number="15.3.3">
+<h3 data-number="15.3.3" class="anchored" data-anchor-id="trait--and-individual-level-evaluation"><span class="header-section-number">15.3.3</span> Trait- and Individual-Level Evaluation</h3>
+<p>Tasks:</p>
+<ul>
+<li>Predicting quantitative traits (e.g., LDL, height, eGFR) from genotypes and other features.<br>
+</li>
+<li>Case–control risk prediction for complex diseases (e.g., CAD, T2D).<br>
+</li>
+<li>Multi-trait and multi-task risk modeling.</li>
+</ul>
+<p>Metrics:</p>
+<ul>
+<li><strong>Incremental $ R^2 $</strong> for quantitative traits – variance explained by genomic features over clinical covariates.<br>
+</li>
+<li><strong>AUROC/AUPRC / C-index</strong> for binary or time-to-event outcomes.<br>
+</li>
+<li><strong>Net reclassification improvement (NRI)</strong> – how often individuals are moved across clinically meaningful risk thresholds in the correct direction.</li>
+</ul>
+<p>Important evaluation settings:</p>
+<ul>
+<li><strong>Within-ancestry vs cross-ancestry</strong> performance (building on <a href="p1-ch03-pgs.html" class="quarto-xref"><span>Chapter 3</span></a>).<br>
+</li>
+<li><strong>Within-cohort vs external</strong> validation (e.g., train in one biobank, test in another).<br>
+</li>
+<li><strong>Joint vs marginal</strong> contribution of genetics when combined with EHR and multi-omics (<a href="p4-ch14-omics.html" class="quarto-xref"><span>Chapter 14</span></a>).</li>
+</ul>
+<p>Even for purely “research” models, reporting <strong>absolute performance</strong> (e.g., AUROC) alongside <strong>incremental gain over strong baselines</strong> is essential for understanding real impact.</p>
+</section>
+<section id="clinical-and-decision-level-evaluation" class="level3" data-number="15.3.4">
+<h3 data-number="15.3.4" class="anchored" data-anchor-id="clinical-and-decision-level-evaluation"><span class="header-section-number">15.3.4</span> Clinical and Decision-Level Evaluation</h3>
+<p>Clinical risk models, treatment response predictors, and trial enrichment models (<a href="p6-ch18-clinical.html" class="quarto-xref"><span>Chapter 18</span></a>) ultimately need to be evaluated in terms of <strong>decisions</strong>, not just scores.</p>
+<p>Beyond discrimination and calibration, important concepts include:</p>
+<ul>
+<li><strong>Decision curves and net benefit</strong> – compare different thresholds or policies by weighting true positives vs false positives based on clinical utilities.<br>
+</li>
+<li><strong>Cost-sensitive and utility-aware evaluation</strong> – different misclassification costs (e.g., missing a high-risk patient vs unnecessary screening).<br>
+</li>
+<li><strong>Prospective and interventional evaluation</strong> – randomized trials, pragmatic trials, and observational implementations with careful monitoring.</li>
+</ul>
+<p>This chapter gives only a high-level overview; <a href="p6-ch18-clinical.html" class="quarto-xref"><span>Chapter 18</span></a> goes deeper into clinical metrics and deployment, and <a href="p6-ch19-variants.html" class="quarto-xref"><span>Chapter 19</span></a> discusses evaluation of variant-centric discovery workflows.</p>
+<hr>
+</section>
+</section>
+<section id="data-splits-leakage-and-robustness" class="level2" data-number="15.4">
+<h2 data-number="15.4" class="anchored" data-anchor-id="data-splits-leakage-and-robustness"><span class="header-section-number">15.4</span> Data Splits, Leakage, and Robustness</h2>
+<p>Metrics mean little without <strong>well-designed splits</strong>. In genomics, the usual “random 80/10/10” split often fails to test the generalization we care about.</p>
+<section id="axes-of-splitting" class="level3" data-number="15.4.1">
+<h3 data-number="15.4.1" class="anchored" data-anchor-id="axes-of-splitting"><span class="header-section-number">15.4.1</span> Axes of Splitting</h3>
+<p>Common axes along which we can (and often should) split:</p>
+<ul>
+<li><strong>By individual</strong> – ensure that genomes from the same person or family do not appear in both training and test sets.<br>
+</li>
+<li><strong>By locus / region</strong> – hold out contiguous genomic regions (e.g., specific chromosomes or megabase windows).<br>
+</li>
+<li><strong>By gene / target</strong> – for VEP and protein models, hold out entire genes or protein families.<br>
+</li>
+<li><strong>By assay / cell type / tissue</strong> – train on some contexts and test on unseen ones.<br>
+</li>
+<li><strong>By ancestry / cohort</strong> – train in one ancestry or cohort and evaluate on others.</li>
+</ul>
+<p>Different scientific questions imply different splits:</p>
+<ul>
+<li>“Can this model generalize to <strong>new loci in the same cell type</strong>?” → locus or chromosome-based splits.<br>
+</li>
+<li>“Can it generalize to <strong>new cell types</strong>?” → cell-type splits.<br>
+</li>
+<li>“Can it generalize to <strong>different populations or clinics</strong>?” → ancestry and cohort splits.</li>
+</ul>
+</section>
+<section id="types-of-leakage" class="level3" data-number="15.4.2">
+<h3 data-number="15.4.2" class="anchored" data-anchor-id="types-of-leakage"><span class="header-section-number">15.4.2</span> Types of Leakage</h3>
+<p>Leakage arises when information about the test set sneaks into training:</p>
+<ul>
+<li><strong>Duplicate or near-duplicate sequences</strong> across splits (e.g., overlapping windows around the same variant).<br>
+</li>
+<li><strong>Shared individuals or families</strong> across train and test.<br>
+</li>
+<li><strong>Benchmark construction leakage</strong> – when labels are derived from resources that also guided model design or pretraining.<br>
+</li>
+<li><strong>Hyperparameter tuning leakage</strong> – repeatedly evaluating on the test set while choosing checkpoints.</li>
+</ul>
+<p><a href="p5-ch16-confound.html" class="quarto-xref"><span>Chapter 16</span></a> focuses on confounders and leakage as sources of <em>biased</em> performance estimates; here, the takeaway is practical:</p>
+<blockquote class="blockquote">
+<p>Always define the split to match the generalization you care about, then audit for potential linkage/dataset overlap.</p>
+</blockquote>
+</section>
+<section id="robustness-and-distribution-shift" class="level3" data-number="15.4.3">
+<h3 data-number="15.4.3" class="anchored" data-anchor-id="robustness-and-distribution-shift"><span class="header-section-number">15.4.3</span> Robustness and Distribution Shift</h3>
+<p>Robustness is evaluated by deliberately shifting the data distribution:</p>
+<ul>
+<li><strong>Technical shifts</strong> – new sequencing platforms, coverage levels, or assay protocols.<br>
+</li>
+<li><strong>Biological shifts</strong> – new species, tissues, disease subtypes, or ancestries.<br>
+</li>
+<li><strong>Clinical shifts</strong> – new hospitals, care patterns, or time periods.</li>
+</ul>
+<p>Robustness evaluations often look like:</p>
+<ul>
+<li>Training on one platform or cohort and testing on another.<br>
+</li>
+<li>Comparing performance across subgroups (e.g., ancestry-stratified AUROC).<br>
+</li>
+<li>Stress-testing models under label noise or missingness.</li>
+</ul>
+<p>These experiments often reveal that performance on <strong>curated, i.i.d. benchmarks</strong> overestimates usefulness in messy real-world settings, especially for high-stakes clinical decisions.</p>
+<p>A model that performs well on curated benchmarks may still struggle in real-world scenarios:</p>
+<ul>
+<li><strong>Population diversity:</strong> Training corpora may underrepresent certain ancestries, leading to biased variant scoring (Chapter 2).</li>
+<li><strong>Assay heterogeneity:</strong> Experimental conditions, labs, and technologies differ from the curated datasets used in training.</li>
+<li><strong>Phenotypic complexity:</strong> Many clinically relevant phenotypes involve long causal chains—from variant to molecular consequence to tissue-level effect to disease.</li>
+</ul>
+<p>Thus, genomic LM evaluation increasingly includes:</p>
+<ul>
+<li>Cross-population robustness.</li>
+<li>Out-of-distribution testing (new tissues, cell types, or species).</li>
+<li>End-to-end evaluations on clinically relevant endpoints (e.g., disease risk prediction, rare disease diagnosis), often in combination with traditional statistical genetics tools.</li>
+</ul>
+<hr>
+</section>
+</section>
+<section id="benchmarks-leaderboards-and-their-limits" class="level2" data-number="15.5">
+<h2 data-number="15.5" class="anchored" data-anchor-id="benchmarks-leaderboards-and-their-limits"><span class="header-section-number">15.5</span> Benchmarks, Leaderboards, and Their Limits</h2>
+<p>Benchmark suites—such as those introduced for Nucleotide Transformer and related genomic LMs—serve important roles:</p>
+<ul>
+<li>Provide <strong>standardized datasets, metrics, and splits</strong>.<br>
+</li>
+<li>Enable <strong>apples-to-apples comparisons</strong> between architectures.<br>
+</li>
+<li>Encourage <strong>reproducibility</strong> and shared baselines.</li>
+</ul>
+<p>However, benchmark-centric culture has pitfalls:</p>
+<ul>
+<li><strong>Overfitting to the benchmark</strong> – models tuned aggressively on a small panel may degrade on new tasks.<br>
+</li>
+<li><strong>Narrow task coverage</strong> – many suites focus on chromatin and TF binding, under-representing splicing, structural variation, or clinical endpoints.<br>
+</li>
+<li><strong>Misaligned incentives</strong> – chasing fractional improvements in AUROC can overshadow more important gains (e.g., robustness, calibration, fairness).</li>
+</ul>
+<p>Good practice:</p>
+<ul>
+<li>Treat benchmark scores as <strong>necessary but not sufficient</strong>.<br>
+</li>
+<li>Complement them with <strong>task-specific evaluations</strong> that mirror the intended downstream usage.<br>
+</li>
+<li>Periodically <strong>refresh</strong> benchmarks to include new assays, ancestries, and edge cases.</li>
+</ul>
+<hr>
+</section>
+<section id="evaluating-foundation-models-zero-shot-probing-and-fine-tuning" class="level2" data-number="15.6">
+<h2 data-number="15.6" class="anchored" data-anchor-id="evaluating-foundation-models-zero-shot-probing-and-fine-tuning"><span class="header-section-number">15.6</span> Evaluating Foundation Models: Zero-Shot, Probing, and Fine-Tuning</h2>
+<p>Genomic foundation models (<a href="p4-ch12-principles.html" class="quarto-xref"><span>Chapter 12</span></a>) complicate evaluation because there are multiple ways to use them.</p>
+<section id="zero-shot-and-few-shot-evaluation" class="level3" data-number="15.6.1">
+<h3 data-number="15.6.1" class="anchored" data-anchor-id="zero-shot-and-few-shot-evaluation"><span class="header-section-number">15.6.1</span> Zero-Shot and Few-Shot Evaluation</h3>
+<p>In zero-shot settings, we apply the pretrained model without task-specific training, e.g.:</p>
+<ul>
+<li>Using masked-token probabilities to rank variants by predicted deleteriousness.<br>
+</li>
+<li>Using embedding similarities to cluster sequences or annotate motifs.</li>
+</ul>
+<p>Evaluation focuses on:</p>
+<ul>
+<li>How well these “raw” scores correlate with <strong>functional</strong> or <strong>clinical</strong> labels.<br>
+</li>
+<li>Whether <strong>few-shot adaptation</strong> (e.g., small linear heads trained on limited labeled data) already yields strong performance.</li>
+</ul>
+<p>Zero-shot performance is a stress test of <strong>representation quality</strong> and inductive biases.</p>
+</section>
+<section id="probing-and-linear-evaluation" class="level3" data-number="15.6.2">
+<h3 data-number="15.6.2" class="anchored" data-anchor-id="probing-and-linear-evaluation"><span class="header-section-number">15.6.2</span> Probing and Linear Evaluation</h3>
+<p>A common pattern is to:</p>
+<ol type="1">
+<li>Freeze the foundation model.<br>
+</li>
+<li>Extract embeddings for sequences, variants, or loci.<br>
+</li>
+<li>Train simple probes (linear models, shallow MLPs) on downstream labels.</li>
+</ol>
+<p>Key evaluation questions:</p>
+<ul>
+<li>How much <strong>label efficiency</strong> do we gain vs training from scratch?<br>
+</li>
+<li>How <strong>stable</strong> are probe results across random seeds and small dataset variations?<br>
+</li>
+<li>Do probes perform well across <strong>diverse tasks</strong>, or only on those similar to pretraining objectives?</li>
+</ul>
+<p>This regime isolates the usefulness of learned representations.</p>
+</section>
+<section id="full-fine-tuning-and-task-specific-heads" class="level3" data-number="15.6.3">
+<h3 data-number="15.6.3" class="anchored" data-anchor-id="full-fine-tuning-and-task-specific-heads"><span class="header-section-number">15.6.3</span> Full Fine-Tuning and Task-Specific Heads</h3>
+<p>For high-value tasks, we often fine-tune the foundation model end-to-end:</p>
+<ul>
+<li>Adding task-specific heads (classification, regression, ranking).<br>
+</li>
+<li>Adapting to new modalities (e.g., multi-omics fusion in <a href="p4-ch14-omics.html" class="quarto-xref"><span>Chapter 14</span></a>) or clinical contexts (<a href="p6-ch18-clinical.html" class="quarto-xref"><span>Chapter 18</span></a>).</li>
+</ul>
+<p>Evaluation then looks similar to “classic” deep models, but with additional questions:</p>
+<ul>
+<li><strong>Transfer vs from-scratch baselines:</strong> does fine-tuning a GFM meaningfully outperform training a comparable architecture from scratch on the same data?<br>
+</li>
+<li><strong>Catastrophic forgetting:</strong> does fine-tuning degrade performance on other tasks, and does that matter for intended use?<br>
+</li>
+<li><strong>Robustness and fairness:</strong> do foundation model features inherit or amplify biases (<a href="p5-ch16-confound.html" class="quarto-xref"><span>Chapter 16</span></a>)?</li>
+</ul>
+<p>Across all regimes, it is helpful to report:</p>
+<ul>
+<li><strong>Absolute performance</strong>, <strong>delta vs strong baselines</strong>, and <strong>data efficiency curves</strong> (performance vs labeled data size).</li>
+</ul>
+<hr>
+</section>
+</section>
+<section id="uncertainty-calibration-and-reliability" class="level2" data-number="15.7">
+<h2 data-number="15.7" class="anchored" data-anchor-id="uncertainty-calibration-and-reliability"><span class="header-section-number">15.7</span> Uncertainty, Calibration, and Reliability</h2>
+<p>Metrics like AUROC summarize ranking, but they say little about <strong>how trustworthy</strong> individual predictions are.</p>
+<p>Key concepts:</p>
+<ul>
+<li><strong>Calibration</strong> – predicted probabilities match observed frequencies (e.g., variants scored at 0.8 pathogenic are truly ~80% pathogenic).<br>
+</li>
+<li><strong>Epistemic vs aleatoric uncertainty</strong> – model uncertainty due to limited data vs inherent noise in the problem.<br>
+</li>
+<li><strong>Selective prediction / abstention</strong> – models that can say “I don’t know” when confidence is low.</li>
+</ul>
+<p>Evaluation tools:</p>
+<ul>
+<li><strong>Reliability diagrams</strong> and <strong>Brier scores</strong> for calibration.<br>
+</li>
+<li><strong>Calibration curves</strong> stratified by subgroup (ancestry, sex, site) for fairness.<br>
+</li>
+<li><strong>Coverage vs accuracy curves</strong> for selective prediction: “If the model only predicts on the 50% most confident samples, how accurate is it?”</li>
+</ul>
+<p>For clinical risk models, <a href="p6-ch18-clinical.html" class="quarto-xref"><span>Chapter 18</span></a> covers calibration and uncertainty in more depth. For variant-centric tasks, similar tools apply to <strong>pathogenicity probabilities</strong> or <strong>fine-mapping posteriors</strong>, which must be interpreted cautiously in light of confounders (<a href="p5-ch16-confound.html" class="quarto-xref"><span>Chapter 16</span></a>).</p>
+<hr>
+</section>
+<section id="putting-it-all-together-an-evaluation-checklist" class="level2" data-number="15.8">
+<h2 data-number="15.8" class="anchored" data-anchor-id="putting-it-all-together-an-evaluation-checklist"><span class="header-section-number">15.8</span> Putting It All Together: An Evaluation Checklist</h2>
+<p>When designing or reviewing an evaluation for a genomic model, it can help to walk through a simple checklist:</p>
+<ol type="1">
+<li><strong>What level is the decision?</strong>
+<ul>
+<li>Molecular assay design, variant prioritization, patient risk, or clinical action?<br>
+</li>
+<li>Ensure metrics align with that level (e.g., enrichment for variant ranking, net benefit for clinical decisions).</li>
+</ul></li>
+<li><strong>What are the baselines?</strong>
+<ul>
+<li>Strong non-deep baselines (logistic regression, classical PGS).<br>
+</li>
+<li>Prior deep models (e.g., DeepSEA, SpliceAI, Enformer, earlier GFMs).<br>
+</li>
+<li>Report both absolute performance and gains over these baselines.</li>
+</ul></li>
+<li><strong>How are splits designed?</strong>
+<ul>
+<li>Are individuals, loci, genes, assays, and ancestries appropriately separated?<br>
+</li>
+<li>Is there any plausible path for leakage or circularity?</li>
+</ul></li>
+<li><strong>How robust is performance?</strong>
+<ul>
+<li>Across cohorts, ancestries, platforms, and time.<br>
+</li>
+<li>Under label noise or missingness.</li>
+</ul></li>
+<li><strong>Are uncertainty and calibration evaluated?</strong>
+<ul>
+<li>For probabilistic outputs, are calibration and decision-level trade-offs reported?<br>
+</li>
+<li>Are subgroup-specific metrics examined?</li>
+</ul></li>
+<li><strong>How does the model behave across usage regimes?</strong>
+<ul>
+<li>Zero-shot, probing, fine-tuning for GFMs.<br>
+</li>
+<li>Data efficiency: does pretraining help when labeled data are scarce?</li>
+</ul></li>
+<li><strong>What is the story beyond the benchmark?</strong>
+<ul>
+<li>Does improved performance change downstream decisions or experimental design?<br>
+</li>
+<li>Are there plans for prospective or interventional evaluation when clinical deployment is envisioned?</li>
+</ul></li>
+</ol>
+<p>Subsequent chapters flesh out specific aspects of reliability:</p>
+<ul>
+<li><a href="p5-ch16-confound.html" class="quarto-xref"><span>Chapter 16</span></a> digs into <strong>confounders, bias, and fairness</strong>, showing how evaluation can mislead when data are structured in problematic ways.<br>
+</li>
+<li><a href="p5-ch17-interp.html" class="quarto-xref"><span>Chapter 17</span></a> focuses on <strong>interpretability and mechanisms</strong>, turning models from black boxes into testable biological hypotheses.</li>
+</ul>
+<p>Together, these chapters aim to help you read the rest of the book—and the emerging literature on genomic foundation models—with a critical eye toward <strong>what has really been demonstrated</strong> and <strong>how much you should trust it.</strong></p>
+
+
+</section>
+
+</main> <!-- /main -->
+<script id="quarto-html-after-body" type="application/javascript">
+  window.document.addEventListener("DOMContentLoaded", function (event) {
+    const icon = "";
+    const anchorJS = new window.AnchorJS();
+    anchorJS.options = {
+      placement: 'right',
+      icon: icon
+    };
+    anchorJS.add('.anchored');
+    const isCodeAnnotation = (el) => {
+      for (const clz of el.classList) {
+        if (clz.startsWith('code-annotation-')) {                     
+          return true;
+        }
+      }
+      return false;
+    }
+    const onCopySuccess = function(e) {
+      // button target
+      const button = e.trigger;
+      // don't keep focus
+      button.blur();
+      // flash "checked"
+      button.classList.add('code-copy-button-checked');
+      var currentTitle = button.getAttribute("title");
+      button.setAttribute("title", "Copied!");
+      let tooltip;
+      if (window.bootstrap) {
+        button.setAttribute("data-bs-toggle", "tooltip");
+        button.setAttribute("data-bs-placement", "left");
+        button.setAttribute("data-bs-title", "Copied!");
+        tooltip = new bootstrap.Tooltip(button, 
+          { trigger: "manual", 
+            customClass: "code-copy-button-tooltip",
+            offset: [0, -8]});
+        tooltip.show();    
+      }
+      setTimeout(function() {
+        if (tooltip) {
+          tooltip.hide();
+          button.removeAttribute("data-bs-title");
+          button.removeAttribute("data-bs-toggle");
+          button.removeAttribute("data-bs-placement");
+        }
+        button.setAttribute("title", currentTitle);
+        button.classList.remove('code-copy-button-checked');
+      }, 1000);
+      // clear code selection
+      e.clearSelection();
+    }
+    const getTextToCopy = function(trigger) {
+      const outerScaffold = trigger.parentElement.cloneNode(true);
+      const codeEl = outerScaffold.querySelector('code');
+      for (const childEl of codeEl.children) {
+        if (isCodeAnnotation(childEl)) {
+          childEl.remove();
+        }
+      }
+      return codeEl.innerText;
+    }
+    const clipboard = new window.ClipboardJS('.code-copy-button:not([data-in-quarto-modal])', {
+      text: getTextToCopy
+    });
+    clipboard.on('success', onCopySuccess);
+    if (window.document.getElementById('quarto-embedded-source-code-modal')) {
+      const clipboardModal = new window.ClipboardJS('.code-copy-button[data-in-quarto-modal]', {
+        text: getTextToCopy,
+        container: window.document.getElementById('quarto-embedded-source-code-modal')
+      });
+      clipboardModal.on('success', onCopySuccess);
+    }
+      var localhostRegex = new RegExp(/^(?:http|https):\/\/localhost\:?[0-9]*\//);
+      var mailtoRegex = new RegExp(/^mailto:/);
+        var filterRegex = new RegExp('/' + window.location.host + '/');
+      var isInternal = (href) => {
+          return filterRegex.test(href) || localhostRegex.test(href) || mailtoRegex.test(href);
+      }
+      // Inspect non-navigation links and adorn them if external
+     var links = window.document.querySelectorAll('a[href]:not(.nav-link):not(.navbar-brand):not(.toc-action):not(.sidebar-link):not(.sidebar-item-toggle):not(.pagination-link):not(.no-external):not([aria-hidden]):not(.dropdown-item):not(.quarto-navigation-tool):not(.about-link)');
+      for (var i=0; i<links.length; i++) {
+        const link = links[i];
+        if (!isInternal(link.href)) {
+          // undo the damage that might have been done by quarto-nav.js in the case of
+          // links that we want to consider external
+          if (link.dataset.originalHref !== undefined) {
+            link.href = link.dataset.originalHref;
+          }
+        }
+      }
+    function tippyHover(el, contentFn, onTriggerFn, onUntriggerFn) {
+      const config = {
+        allowHTML: true,
+        maxWidth: 500,
+        delay: 100,
+        arrow: false,
+        appendTo: function(el) {
+            return el.parentElement;
+        },
+        interactive: true,
+        interactiveBorder: 10,
+        theme: 'quarto',
+        placement: 'bottom-start',
+      };
+      if (contentFn) {
+        config.content = contentFn;
+      }
+      if (onTriggerFn) {
+        config.onTrigger = onTriggerFn;
+      }
+      if (onUntriggerFn) {
+        config.onUntrigger = onUntriggerFn;
+      }
+      window.tippy(el, config); 
+    }
+    const noterefs = window.document.querySelectorAll('a[role="doc-noteref"]');
+    for (var i=0; i<noterefs.length; i++) {
+      const ref = noterefs[i];
+      tippyHover(ref, function() {
+        // use id or data attribute instead here
+        let href = ref.getAttribute('data-footnote-href') || ref.getAttribute('href');
+        try { href = new URL(href).hash; } catch {}
+        const id = href.replace(/^#\/?/, "");
+        const note = window.document.getElementById(id);
+        if (note) {
+          return note.innerHTML;
+        } else {
+          return "";
+        }
+      });
+    }
+    const xrefs = window.document.querySelectorAll('a.quarto-xref');
+    const processXRef = (id, note) => {
+      // Strip column container classes
+      const stripColumnClz = (el) => {
+        el.classList.remove("page-full", "page-columns");
+        if (el.children) {
+          for (const child of el.children) {
+            stripColumnClz(child);
+          }
+        }
+      }
+      stripColumnClz(note)
+      if (id === null || id.startsWith('sec-')) {
+        // Special case sections, only their first couple elements
+        const container = document.createElement("div");
+        if (note.children && note.children.length > 2) {
+          container.appendChild(note.children[0].cloneNode(true));
+          for (let i = 1; i < note.children.length; i++) {
+            const child = note.children[i];
+            if (child.tagName === "P" && child.innerText === "") {
+              continue;
+            } else {
+              container.appendChild(child.cloneNode(true));
+              break;
+            }
+          }
+          if (window.Quarto?.typesetMath) {
+            window.Quarto.typesetMath(container);
+          }
+          return container.innerHTML
+        } else {
+          if (window.Quarto?.typesetMath) {
+            window.Quarto.typesetMath(note);
+          }
+          return note.innerHTML;
+        }
+      } else {
+        // Remove any anchor links if they are present
+        const anchorLink = note.querySelector('a.anchorjs-link');
+        if (anchorLink) {
+          anchorLink.remove();
+        }
+        if (window.Quarto?.typesetMath) {
+          window.Quarto.typesetMath(note);
+        }
+        if (note.classList.contains("callout")) {
+          return note.outerHTML;
+        } else {
+          return note.innerHTML;
+        }
+      }
+    }
+    for (var i=0; i<xrefs.length; i++) {
+      const xref = xrefs[i];
+      tippyHover(xref, undefined, function(instance) {
+        instance.disable();
+        let url = xref.getAttribute('href');
+        let hash = undefined; 
+        if (url.startsWith('#')) {
+          hash = url;
+        } else {
+          try { hash = new URL(url).hash; } catch {}
+        }
+        if (hash) {
+          const id = hash.replace(/^#\/?/, "");
+          const note = window.document.getElementById(id);
+          if (note !== null) {
+            try {
+              const html = processXRef(id, note.cloneNode(true));
+              instance.setContent(html);
+            } finally {
+              instance.enable();
+              instance.show();
+            }
+          } else {
+            // See if we can fetch this
+            fetch(url.split('#')[0])
+            .then(res => res.text())
+            .then(html => {
+              const parser = new DOMParser();
+              const htmlDoc = parser.parseFromString(html, "text/html");
+              const note = htmlDoc.getElementById(id);
+              if (note !== null) {
+                const html = processXRef(id, note);
+                instance.setContent(html);
+              } 
+            }).finally(() => {
+              instance.enable();
+              instance.show();
+            });
+          }
+        } else {
+          // See if we can fetch a full url (with no hash to target)
+          // This is a special case and we should probably do some content thinning / targeting
+          fetch(url)
+          .then(res => res.text())
+          .then(html => {
+            const parser = new DOMParser();
+            const htmlDoc = parser.parseFromString(html, "text/html");
+            const note = htmlDoc.querySelector('main.content');
+            if (note !== null) {
+              // This should only happen for chapter cross references
+              // (since there is no id in the URL)
+              // remove the first header
+              if (note.children.length > 0 && note.children[0].tagName === "HEADER") {
+                note.children[0].remove();
+              }
+              const html = processXRef(null, note);
+              instance.setContent(html);
+            } 
+          }).finally(() => {
+            instance.enable();
+            instance.show();
+          });
+        }
+      }, function(instance) {
+      });
+    }
+        let selectedAnnoteEl;
+        const selectorForAnnotation = ( cell, annotation) => {
+          let cellAttr = 'data-code-cell="' + cell + '"';
+          let lineAttr = 'data-code-annotation="' +  annotation + '"';
+          const selector = 'span[' + cellAttr + '][' + lineAttr + ']';
+          return selector;
+        }
+        const selectCodeLines = (annoteEl) => {
+          const doc = window.document;
+          const targetCell = annoteEl.getAttribute("data-target-cell");
+          const targetAnnotation = annoteEl.getAttribute("data-target-annotation");
+          const annoteSpan = window.document.querySelector(selectorForAnnotation(targetCell, targetAnnotation));
+          const lines = annoteSpan.getAttribute("data-code-lines").split(",");
+          const lineIds = lines.map((line) => {
+            return targetCell + "-" + line;
+          })
+          let top = null;
+          let height = null;
+          let parent = null;
+          if (lineIds.length > 0) {
+              //compute the position of the single el (top and bottom and make a div)
+              const el = window.document.getElementById(lineIds[0]);
+              top = el.offsetTop;
+              height = el.offsetHeight;
+              parent = el.parentElement.parentElement;
+            if (lineIds.length > 1) {
+              const lastEl = window.document.getElementById(lineIds[lineIds.length - 1]);
+              const bottom = lastEl.offsetTop + lastEl.offsetHeight;
+              height = bottom - top;
+            }
+            if (top !== null && height !== null && parent !== null) {
+              // cook up a div (if necessary) and position it 
+              let div = window.document.getElementById("code-annotation-line-highlight");
+              if (div === null) {
+                div = window.document.createElement("div");
+                div.setAttribute("id", "code-annotation-line-highlight");
+                div.style.position = 'absolute';
+                parent.appendChild(div);
+              }
+              div.style.top = top - 2 + "px";
+              div.style.height = height + 4 + "px";
+              div.style.left = 0;
+              let gutterDiv = window.document.getElementById("code-annotation-line-highlight-gutter");
+              if (gutterDiv === null) {
+                gutterDiv = window.document.createElement("div");
+                gutterDiv.setAttribute("id", "code-annotation-line-highlight-gutter");
+                gutterDiv.style.position = 'absolute';
+                const codeCell = window.document.getElementById(targetCell);
+                const gutter = codeCell.querySelector('.code-annotation-gutter');
+                gutter.appendChild(gutterDiv);
+              }
+              gutterDiv.style.top = top - 2 + "px";
+              gutterDiv.style.height = height + 4 + "px";
+            }
+            selectedAnnoteEl = annoteEl;
+          }
+        };
+        const unselectCodeLines = () => {
+          const elementsIds = ["code-annotation-line-highlight", "code-annotation-line-highlight-gutter"];
+          elementsIds.forEach((elId) => {
+            const div = window.document.getElementById(elId);
+            if (div) {
+              div.remove();
+            }
+          });
+          selectedAnnoteEl = undefined;
+        };
+          // Handle positioning of the toggle
+      window.addEventListener(
+        "resize",
+        throttle(() => {
+          elRect = undefined;
+          if (selectedAnnoteEl) {
+            selectCodeLines(selectedAnnoteEl);
+          }
+        }, 10)
+      );
+      function throttle(fn, ms) {
+      let throttle = false;
+      let timer;
+        return (...args) => {
+          if(!throttle) { // first call gets through
+              fn.apply(this, args);
+              throttle = true;
+          } else { // all the others get throttled
+              if(timer) clearTimeout(timer); // cancel #2
+              timer = setTimeout(() => {
+                fn.apply(this, args);
+                timer = throttle = false;
+              }, ms);
+          }
+        };
+      }
+        // Attach click handler to the DT
+        const annoteDls = window.document.querySelectorAll('dt[data-target-cell]');
+        for (const annoteDlNode of annoteDls) {
+          annoteDlNode.addEventListener('click', (event) => {
+            const clickedEl = event.target;
+            if (clickedEl !== selectedAnnoteEl) {
+              unselectCodeLines();
+              const activeEl = window.document.querySelector('dt[data-target-cell].code-annotation-active');
+              if (activeEl) {
+                activeEl.classList.remove('code-annotation-active');
+              }
+              selectCodeLines(clickedEl);
+              clickedEl.classList.add('code-annotation-active');
+            } else {
+              // Unselect the line
+              unselectCodeLines();
+              clickedEl.classList.remove('code-annotation-active');
+            }
+          });
+        }
+    const findCites = (el) => {
+      const parentEl = el.parentElement;
+      if (parentEl) {
+        const cites = parentEl.dataset.cites;
+        if (cites) {
+          return {
+            el,
+            cites: cites.split(' ')
+          };
+        } else {
+          return findCites(el.parentElement)
+        }
+      } else {
+        return undefined;
+      }
+    };
+    var bibliorefs = window.document.querySelectorAll('a[role="doc-biblioref"]');
+    for (var i=0; i<bibliorefs.length; i++) {
+      const ref = bibliorefs[i];
+      const citeInfo = findCites(ref);
+      if (citeInfo) {
+        tippyHover(citeInfo.el, function() {
+          var popup = window.document.createElement('div');
+          citeInfo.cites.forEach(function(cite) {
+            var citeDiv = window.document.createElement('div');
+            citeDiv.classList.add('hanging-indent');
+            citeDiv.classList.add('csl-entry');
+            var biblioDiv = window.document.getElementById('ref-' + cite);
+            if (biblioDiv) {
+              citeDiv.innerHTML = biblioDiv.innerHTML;
+            }
+            popup.appendChild(citeDiv);
+          });
+          return popup.innerHTML;
+        });
+      }
+    }
+  });
+  </script>
+<nav class="page-navigation">
+  <div class="nav-page nav-page-previous">
+      <a href="./p4-ch14-omics.html" class="pagination-link" aria-label="Multi-omics &amp; Systems Context">
+        <i class="bi bi-arrow-left-short"></i> <span class="nav-page-text"><span class="chapter-number">14</span>&nbsp; <span class="chapter-title">Multi-omics &amp; Systems Context</span></span>
+      </a>          
+  </div>
+  <div class="nav-page nav-page-next">
+      <a href="./p5-ch16-confound.html" class="pagination-link" aria-label="Confounders in Model Training">
+        <span class="nav-page-text"><span class="chapter-number">16</span>&nbsp; <span class="chapter-title">Confounders in Model Training</span></span> <i class="bi bi-arrow-right-short"></i>
+      </a>
+  </div>
+</nav>
+</div> <!-- /content -->
+<footer class="footer">
+  <div class="nav-footer">
+    <div class="nav-footer-left">
+      &nbsp;
+    </div>   
+    <div class="nav-footer-center">
+<p>Copyright 2025, Josh Meehl</p>
+</div>
+    <div class="nav-footer-right">
+      &nbsp;
+    </div>
+  </div>
+</footer>
+
+
+
+
+</body></html>

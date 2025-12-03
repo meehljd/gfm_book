@@ -1,0 +1,223 @@
+# Protein Language Models  {#sec-prot}
+
+## Evolutionary Sequences as Natural Language
+
+Before transformers revolutionized genomic sequence modeling, they first transformed our ability to model proteins. The success of protein language models (PLMs) established a paradigm that would later inspire genomic foundation models: treat biological sequences as a form of natural language, train large transformer models on massive unlabeled sequence databases, and extract functional knowledge through self-supervised learning.
+
+The analogy between protein sequences and natural language runs deeper than mere metaphor. Both encode complex information in linear strings of discrete tokens (amino acids or words). Both exhibit hierarchical structure—motifs combine into domains as words combine into phrases. Both have syntax (structural constraints) and semantics (functional meaning). And crucially, both are shaped by evolutionary pressure: natural selection filters protein sequences just as cultural selection shapes language.
+
+This chapter examines how protein language models pioneered biological foundation modeling, from the ESM family's demonstration that transformers can learn protein structure and function from sequence alone, to their application in variant effect prediction and structure determination. Understanding PLMs provides essential context for the genomic language models covered in subsequent chapters, as many architectural choices and training strategies transfer directly from proteins to DNA.
+
+## The ESM Model Family
+
+### ESM-1b: Establishing the Paradigm
+
+The Evolutionary Scale Modeling (ESM) project, developed at Meta AI Research, demonstrated that transformer language models trained on protein sequences learn biologically meaningful representations without explicit supervision [@rives_esm_2021].
+
+**Training data**: ESM-1b was trained on UniRef50, a clustered database of ~33 million protein sequences covering the known diversity of protein families. UniRef50 clusters sequences at 50% identity, providing broad coverage while reducing redundancy.
+
+**Architecture**: ESM-1b uses a BERT-style bidirectional transformer with 650 million parameters:
+
+| Component | Specification |
+|-----------|--------------|
+| Layers | 33 |
+| Hidden dimension | 1,280 |
+| Attention heads | 20 |
+| Parameters | 650M |
+| Max sequence length | 1,024 amino acids |
+
+**Training objective**: Masked language modeling (MLM)—the model learns to predict randomly masked amino acids given surrounding context. This is analogous to BERT's masked token prediction, but operating on amino acids rather than words.
+
+### What ESM Learns
+
+Despite never seeing structural or functional labels during training, ESM learns representations that capture:
+
+**Secondary structure**: Attention patterns in ESM correlate with alpha helices and beta sheets. The model implicitly learns that certain amino acid patterns form specific structural elements.
+
+**Contact prediction**: ESM's attention heads capture residue-residue contacts—amino acids that are distant in sequence but close in 3D space. This emergent capability suggests the model learns aspects of protein folding from sequence statistics alone.
+
+**Evolutionary conservation**: Masked token predictions correlate with position-specific conservation scores from multiple sequence alignments. ESM effectively learns which positions tolerate variation and which are constrained.
+
+**Functional sites**: Attention concentrates on catalytic residues, binding sites, and other functionally important positions, even without explicit functional annotation.
+
+### ESM-2: Scaling Up
+
+ESM-2 extended the ESM approach with larger models and improved training [@lin_esm-2_2022]:
+
+| Model | Parameters | Layers | Performance |
+|-------|------------|--------|-------------|
+| ESM-2 (8M) | 8M | 6 | Baseline |
+| ESM-2 (35M) | 35M | 12 | +5% contact prediction |
+| ESM-2 (150M) | 150M | 30 | +8% contact prediction |
+| ESM-2 (650M) | 650M | 33 | +12% contact prediction |
+| ESM-2 (3B) | 3B | 36 | +15% contact prediction |
+| ESM-2 (15B) | 15B | 48 | State-of-the-art |
+
+Performance scales smoothly with model size across structure prediction, contact prediction, and variant effect tasks—a phenomenon mirroring the scaling laws observed in natural language processing.
+
+## ProtTrans: Alternative Architectures
+
+The ProtTrans family explored multiple transformer architectures for protein sequences:
+
+**ProtBERT**: BERT-style bidirectional encoder trained on BFD (Big Fantastic Database), comprising ~2.1 billion protein sequences.
+
+**ProtT5**: Encoder-decoder architecture based on T5, enabling both understanding and generation tasks.
+
+**ProtXLNet**: XLNet-style permutation language modeling, capturing bidirectional context without the [MASK] token artifact.
+
+ProtTrans models demonstrated that the protein language modeling paradigm generalizes across architectures. The choice between encoder-only (BERT-style) and encoder-decoder (T5-style) models depends on the downstream application: encoders excel at classification and embedding tasks, while encoder-decoders enable sequence generation.
+
+## ESM-1v: Zero-Shot Variant Effect Prediction
+
+A critical application of protein language models is predicting the effects of amino acid substitutions—missense variants that are the most common type of protein-coding mutation.
+
+### The Zero-Shot Approach
+
+ESM-1v (2021) demonstrated that PLMs can predict variant effects without any training on variant labels. The approach exploits masked language modeling: for a variant at position $i$ changing amino acid $a$ to $b$, compute:
+
+$$\Delta \text{score} = \log P(b | \text{context}) - \log P(a | \text{context})$$
+
+If the model assigns higher probability to the mutant amino acid than the wild-type, the variant is predicted benign; if lower, deleterious. This "zero-shot" prediction requires no labeled training data—the model's evolutionary knowledge, learned from sequence databases, directly informs variant interpretation.
+
+### Genome-Wide Prediction
+
+Brandes et al. (2023) applied ESM-1b to predict effects for all ~450 million possible missense variants in the human genome [@brandes_genome-wide_2023]:
+
+**Scale**: Every position × every possible substitution across all human proteins
+
+**Performance on ClinVar**: ESM-1b outperformed existing methods in classifying ~150,000 ClinVar/HGMD missense variants as pathogenic or benign
+
+**Deep mutational scanning**: Strong correlation with experimental measurements across 28 DMS datasets
+
+**Isoform-specific effects**: ~2 million variants annotated as damaging only in specific protein isoforms, highlighting the importance of considering alternative splicing
+
+This work established PLMs as practical tools for clinical variant interpretation, capable of scoring variants that lack experimental characterization or evolutionary homologs.
+
+### Benchmarking on ProteinGym
+
+ProteinGym provides a comprehensive benchmark for variant effect predictors, aggregating 217 deep mutational scanning assays covering diverse proteins [@notin_proteingym_2023]:
+
+| Method | Mean Spearman ρ |
+|--------|-----------------|
+| ESM-1v | 0.48 |
+| EVE (evolutionary model) | 0.46 |
+| DeepSequence | 0.44 |
+| PolyPhen-2 | 0.32 |
+| SIFT | 0.30 |
+
+PLMs achieve competitive or superior performance to methods that explicitly model evolutionary conservation from multiple sequence alignments, despite using only single sequences as input.
+
+## ESMFold: Structure from Sequence
+
+### From Language Model to Structure Predictor
+
+The most dramatic demonstration of PLM capabilities came with ESMFold, which predicts protein 3D structure directly from ESM-2 embeddings [@lin_esm-2_2022].
+
+Traditional structure prediction (including AlphaFold2) relies heavily on multiple sequence alignments (MSAs)—computationally expensive searches against sequence databases that can take hours per protein. ESMFold eliminates this requirement:
+
+**Architecture**: ESMFold couples ESM-2 (15B parameters) with a structure module adapted from AlphaFold2. The language model embeddings replace MSA-derived features.
+
+**Speed**: ~60× faster than AlphaFold2 for typical proteins, enabling metagenomic-scale structure prediction
+
+**Accuracy**: Achieves atomic-level accuracy for many proteins, though slightly below AlphaFold2 for proteins that benefit from MSA information
+
+### What This Reveals About PLMs
+
+ESMFold's success demonstrates that ESM-2's internal representations encode sufficient information to determine 3D structure. The language model has learned not just local sequence patterns but global folding principles—what makes a sequence fold into a particular shape.
+
+This has profound implications: the "attention" that transformers pay to distant sequence positions during masked prediction is, in some sense, learning the physics of protein folding. Residues that need to be close in 3D space attend to each other in the transformer's attention matrices.
+
+## Transfer to Genomics: CADD and AlphaMissense
+
+### CADD v1.7: PLM Features for Variant Prioritization
+
+The Combined Annotation Dependent Depletion (CADD) framework integrates diverse annotations to score variant deleteriousness (Chapter 3). CADD v1.7 incorporated ESM-1v predictions as features [@schubach_cadd_2024]:
+
+**Integration approach**: ESM-1v scores are computed for all missense variants and included alongside conservation scores, functional annotations, and regulatory predictions.
+
+**Performance gains**:
+
+| Benchmark | CADD v1.6 | CADD v1.7 | Improvement |
+|-----------|-----------|-----------|-------------|
+| ClinVar pathogenic vs. common | 0.94 | 0.95 | +1% |
+| Deep mutational scanning (31 datasets) | 0.78 | 0.81 | +3% |
+
+The PLM features particularly improve scoring for variants in regions with limited evolutionary conservation data, where traditional methods struggle.
+
+### AlphaMissense: Combining PLM and Structure
+
+AlphaMissense represents the state-of-the-art in missense variant effect prediction, combining PLM representations with structural context [@cheng_alphamissense_2023]:
+
+**Architecture**: AlphaMissense adapts AlphaFold's architecture, fine-tuning on human and primate variant population frequency databases. The model learns to predict pathogenicity by combining:
+
+- Sequence embeddings from ESM-style language modeling
+- Structural context from predicted protein structures
+- Evolutionary information from cross-species comparisons
+
+**Training data**: Population frequency databases (gnomAD) provide weak labels—common variants are likely benign, absent variants may be deleterious. Critically, AlphaMissense never trains on clinical pathogenicity labels (ClinVar), yet achieves state-of-the-art performance on clinical benchmarks.
+
+**Scale**: Predictions for all ~71 million possible single amino acid substitutions across the human proteome
+
+**Classification**: 89% of missense variants classified as either likely benign or likely pathogenic, providing actionable predictions for the vast majority of possible variants
+
+### Performance Comparison
+
+| Method | ClinVar AUC | DMS Correlation | Training Data |
+|--------|-------------|-----------------|---------------|
+| SIFT | 0.78 | 0.30 | Conservation |
+| PolyPhen-2 | 0.82 | 0.32 | Conservation + structure |
+| CADD v1.7 | 0.95 | 0.81 | Multi-feature integration |
+| ESM-1v | 0.89 | 0.48 | Sequence only (zero-shot) |
+| AlphaMissense | 0.94 | 0.52 | PLM + structure + population |
+
+AlphaMissense achieves top performance by integrating the strengths of multiple approaches: PLM-derived sequence understanding, AlphaFold-derived structural context, and population genetics-derived evolutionary constraint signals.
+
+## Lessons for Genomic Language Models
+
+The success of protein language models established several principles that inform genomic foundation modeling:
+
+### Self-Supervision Works
+
+PLMs demonstrated that massive amounts of biological knowledge can be learned from unlabeled sequences. The same evolutionary pressures that shape proteins also shape DNA—purifying selection removes deleterious variants, leaving statistical signatures in sequence databases.
+
+### Scale Matters
+
+Performance improves predictably with model size, motivating the development of larger genomic models. The 8M → 15B parameter progression in ESM-2 showed consistent gains across tasks.
+
+### Transfer Learning is Effective
+
+Representations learned for one task (masked token prediction) transfer to other tasks (structure prediction, variant effects). This suggests that self-supervised pretraining captures fundamental biological knowledge rather than task-specific shortcuts.
+
+### Architecture Choices
+
+The BERT-style bidirectional encoder proved highly effective for proteins, where the entire sequence context is available. However, genomic sequences present different challenges: much longer lengths (genes span kilobases, genomes span gigabases), different information density (proteins are information-dense, intergenic regions less so), and different symmetries (DNA has reverse-complement structure absent in proteins).
+
+### Integration with Other Modalities
+
+AlphaMissense showed that PLM embeddings combine effectively with structural information. Similarly, genomic models benefit from integration with epigenomic data, gene annotations, and other biological context.
+
+## Limitations and Ongoing Challenges
+
+### Sequence Length
+
+Most PLMs handle sequences up to ~1,000–2,000 amino acids. While sufficient for most individual proteins, this limits modeling of large protein complexes and doesn't directly transfer to the much longer sequences in genomics.
+
+### Orphan Proteins
+
+PLMs struggle with proteins that have few homologs in training databases. "Orphan" or "dark" proteins—those unique to specific lineages—lack the evolutionary signal that PLMs exploit.
+
+### Epistasis
+
+Most variant effect predictions assume independence—the effect of mutation A doesn't depend on whether mutation B is present. Real proteins exhibit epistasis, where variant effects depend on sequence context.
+
+### Interpretability
+
+While attention patterns correlate with biological features, understanding exactly what PLMs learn remains challenging. The field is developing interpretation methods (@sec-interp), but PLMs remain partially "black box."
+
+## Significance
+
+Protein language models established that transformer architectures can learn deep biological knowledge from sequence data alone. ESM's ability to predict structure, function, and variant effects without explicit labels demonstrated the power of self-supervised learning on evolutionary data.
+
+This success directly motivated the development of genomic language models. If proteins are a language that transformers can learn, perhaps DNA is too. The genomic language models covered in @sec-dna adapt PLM architectures and training strategies to the distinct challenges of DNA sequences—longer contexts, different alphabets, and the full complexity of gene regulation.
+
+The integration path also continues: just as CADD v1.7 and AlphaMissense incorporate PLM predictions, future models will integrate genomic and proteomic language models into unified frameworks (@sec-veps, @sec-multi). The central dogma of molecular biology—DNA → RNA → protein—suggests that models capturing all three modalities may achieve the deepest understanding of how genomes encode life.
