@@ -10,260 +10,192 @@
 
 ## The Variant Prioritization Challenge
 
-Across a typical human genome there are millions of variants—most of them rare, and the vast majority functionally neutral. For any individual with a suspected genetic condition, the central interpretability problem is to identify the handful of variants that plausibly contribute to disease from this enormous background.
+A typical human genome contains approximately four to five million genetic variants relative to the reference assembly. The vast majority of these are functionally neutral, representing the accumulated diversity of human evolution and population history. For any individual with a suspected genetic condition, the central interpretive challenge is to identify the handful of variants that plausibly contribute to disease from this enormous background of benign variation.
 
-The data resources in @sec-data give us multiple, complementary views:
+The data resources surveyed in @sec-data provide multiple complementary views of variant function, each with distinct strengths and limitations. Population frequency databases such as gnomAD reveal which variants survive in large cohorts of ostensibly healthy individuals, offering a powerful filter for identifying rare, potentially deleterious alleles [@gnomAD]. Functional genomics consortia including ENCODE and the Roadmap Epigenomics Project indicate which genomic regions show evidence of biochemical activity across diverse cell types and developmental contexts. Clinical databases such as ClinVar and HGMD collect expert-curated variant classifications drawn from case reports and diagnostic laboratories, providing ground truth labels for known pathogenic and benign variants.
 
-- **Population frequency** from gnomAD and related resources tells us what variation survives in large cohorts of ostensibly healthy individuals [@gnomAD].
-- **Functional genomics** from ENCODE, Roadmap, and other consortia indicates which regions are biochemically active.
-- **Clinical databases** such as ClinVar and HGMD collect expert-curated variant classifications from case reports and diagnostic labs.
+Each of these sources is partial in important ways. Population databases are dominated by common variants, which are mostly tolerated by virtue of their high frequency. Functional genomics data is inherently noisy and often context-specific: a region active in liver hepatocytes may be quiescent in neurons, and vice versa. Clinical databases are sparse and heavily biased toward well-studied genes and variant types, leaving vast swaths of the genome without reliable clinical annotations. Moreover, the annotation density varies dramatically across the genome: protein-coding exons are densely labeled relative to deep intronic and intergenic sequences.
 
-Each source is partial. Population databases are dominated by common, mostly tolerated variants. Functional genomics data is noisy and often context-specific. Clinical databases are sparse and heavily biased toward well-studied genes and variant types.
+Before deep learning, variant effect predictors typically tackled this problem by focusing on one narrow signal. Conservation-based methods such as phyloP and GERP score each position according to its evolutionary constraint across multi-species alignments, under the logic that positions conserved over hundreds of millions of years are likely functionally important [@siepel_phastcons_2005; @davydov_gerp_2010]. Protein-level tools such as SIFT and PolyPhen predict the impact of amino acid substitutions based on sequence homology, physicochemical properties, and structural features [@ng_sift_2003; @adzhubei_polyphen_2010]. Positional annotations capture simple features like distance to splice sites or proximity to known regulatory elements. Each of these approaches captures a real biological signal, but each is also incomplete: conservation scores miss recently evolved functional elements, protein-level tools are blind to non-coding variants, and positional annotations lack the resolution to distinguish causal variants from linked neutral neighbors.
 
-Before deep learning, many variant effect predictors tackled this problem by focusing on **one narrow signal**:
+Combined Annotation-Dependent Depletion (CADD) represented a fundamental shift in this landscape [@rentzsch_cadd_2019]. Rather than relying on a single predictive signal, CADD defined a general framework for genome-wide variant prioritization that integrates dozens of heterogeneous annotations and uses evolutionary depletion as a proxy training label. The key insight was to avoid training directly on small sets of known pathogenic versus benign variants, which are scarce and biased toward certain genes and variant types. Instead, CADD contrasts variants that have survived purifying selection in the human lineage with matched simulated variants that could have occurred but did not. This evolutionary proxy strategy yields an enormous training set, enables genome-wide coverage, and produces scores that generalize across coding and non-coding regions alike.
 
-- Sequence conservation (e.g., phyloP (@siepel_phastcons_2005), GERP (@davydov_gerp_2010))
-- Protein-level features (e.g., SIFT (@ng_sift_2003), PolyPhen (@adzhubei_polyphen_2010))
-- Simple positional annotations (e.g., distance to splice sites)
-
-[Combined Annotation-Dependent Depletion (CADD)](https://cadd.gs.washington.edu/) was a step change: it defined a **general framework** for genome-wide variant prioritization that integrates dozens of heterogeneous annotations and uses **evolutionary depletion as a proxy label** [@rentzsch_cadd_2019]. Rather than training directly on small sets of known pathogenic vs benign variants, CADD contrasts variants that survived purifying selection in humans with matched simulated variants that “could have occurred but did not.”
-
-This chapter focuses on the CADD framework because it establishes design patterns that show up repeatedly in later deep learning models: proxy labels, large-scale training, integration of diverse features, and genome-wide coverage.
+This chapter focuses on the CADD framework because it establishes design patterns that recur throughout the deep learning models covered in subsequent chapters: proxy labels derived from evolutionary signals, large-scale training on millions of examples, integration of diverse features into unified scores, and genome-wide precomputation for downstream reuse.
 
 ## The Evolutionary Proxy Training Strategy
 
-CADD’s most important conceptual move was to avoid the scarcity and bias of curated pathogenic variants by constructing a **synthetic classification problem**:
+CADD's most important conceptual contribution was to reframe variant effect prediction as a large-scale machine learning problem with labels derived from evolutionary signal rather than clinical curation. The scarcity and bias of known pathogenic variants has long limited supervised approaches to variant interpretation. ClinVar and similar databases contain tens of thousands of labeled variants, but these are concentrated in a small fraction of genes, skewed toward certain variant types (nonsense, frameshift, canonical splice site), and subject to ascertainment bias from clinical referral patterns. Training directly on such labels tends to produce models that perform well on variants similar to the training set but generalize poorly to the broader genome.
 
-> “How different do the annotations of observed human variants look from those of matched, simulated variants that have *not* survived evolution?”
+CADD sidesteps this problem by constructing a synthetic classification task: can a model distinguish variants that are actually observed in human populations from matched simulated variants that have not survived evolution? The observed variants serve as proxies for tolerated alleles, while the simulated variants serve as proxies for potentially deleterious alleles. This framing yields a training set of tens of millions of examples, far exceeding what clinical curation can provide, and covers the full spectrum of variant types and genomic contexts.
 
 ### Proxy-Neutral Variants
 
-CADD defines a **proxy-neutral** class from variants that are actually observed in human populations:
+The proxy-neutral class consists of variants that are actually observed in human populations. CADD draws these from large sequencing datasets such as the 1000 Genomes Project and early gnomAD-like resources, including both single nucleotide variants (SNVs) and short insertions and deletions (indels). The selection criteria typically favor variants with high derived allele frequency, reflecting the assumption that alleles which have drifted to appreciable frequency in human populations are unlikely to be strongly deleterious over recent evolutionary timescales.
 
-- Single nucleotide variants (SNVs) and short indels from large sequencing datasets such as the 1000 Genomes Project and early gnomAD-like resources.
-- Typically restricted to variants with high derived allele frequency (DAF), under the assumption that alleles that have drifted to high frequency are unlikely to be strongly deleterious over recent human evolutionary time.
-
-These variants are not guaranteed to be benign, but, on average, they are **enriched for tolerated alleles** that have survived purifying selection.
+This is not a perfect proxy for benign variants. Some observed alleles are genuinely pathogenic, particularly those with incomplete penetrance, late onset, or context-dependent effects. Variants under weak negative selection may persist at low to moderate frequencies for thousands of generations before eventual elimination. Population-specific bottlenecks and founder effects can elevate the frequency of otherwise deleterious alleles in particular groups. Despite these caveats, the proxy-neutral class is, on average, substantially enriched for tolerated alleles relative to a random sample of possible mutations. The key statistical insight is that systematic enrichment, even if imperfect at the individual variant level, provides a useful training signal when aggregated across millions of examples.
 
 ### Proxy-Deleterious Variants
 
-To construct the opposing class, CADD **simulates mutations** across the genome:
+The proxy-deleterious class is constructed by simulating mutations across the genome according to realistic mutational processes. The simulation matches local sequence context, typically using trinucleotide frequencies to capture the strong dependence of mutation rates on the identity of flanking bases. CpG dinucleotides, for example, have elevated mutation rates due to spontaneous deamination of methylated cytosines, and the simulation accounts for this by generating more CpG transitions in the proxy-deleterious set. Regional variation in mutation rates, driven by factors including replication timing, chromatin state, and local sequence composition, is similarly incorporated by scaling mutation counts within genomic windows [@rentzsch_cadd_2019; @schubach_cadd_2024].
 
-- The simulation matches local trinucleotide (or more complex) sequence context so that the spectrum of simulated mutations reflects realistic mutation processes.
-- Mutation rates are scaled in local genomic windows to approximate heterogeneous mutation rates (e.g., elevated at CpGs) [@rentzsch_cadd_2019; @schubach_cadd_2024].
-- The key idea is that simulated variants represent changes that *could* occur but are generally *not* observed at high frequency in large cohorts.
-
-These simulated variants are treated as **proxy-deleterious**: enriched for potential alleles that are disfavored by selection, even though many individual simulated variants will in fact be neutral.
+The logic underlying this construction is subtle but powerful. Simulated variants represent changes that could plausibly occur under human mutational processes but are generally not observed at high frequency in population databases. Many of these simulated variants would in fact be neutral if they were to arise; the simulation makes no attempt to identify truly deleterious mutations at the individual level. However, the proxy-deleterious class as a whole is enriched for alleles that are disfavored by selection, because the set of possible mutations includes many that disrupt conserved elements, alter protein function, or perturb regulatory sequences. By contrasting this set with the proxy-neutral class, CADD learns to recognize the annotation signatures that distinguish variants under purifying selection from those that have been tolerated.
 
 ### Training Objective
 
-With proxy-neutral and proxy-deleterious sets in hand, CADD trains a **binary classifier**:
+With proxy-neutral and proxy-deleterious classes in hand, CADD trains a binary classifier to distinguish between them. The input to this classifier is a feature vector describing each variant, encompassing the diverse annotations surveyed in the following section: gene model features, conservation scores, epigenetic signals, protein-level predictions, and more. The label is simply whether the variant was simulated (proxy-deleterious) or observed (proxy-neutral). The objective is to learn a scoring function that assigns higher values to simulated variants, reflecting their predicted deleteriousness.
 
-- Input: a vector of annotations describing each variant (Section “Integration of Diverse Annotations”).
-- Label: simulated (proxy-deleterious) vs observed (proxy-neutral).
-- Objective: learn a scoring function that assigns higher scores to simulated variants.
+Early CADD versions employed linear support vector machines trained on approximately 30 million simulated versus observed variants with 63 annotation features plus selected interaction terms [@rentzsch_cadd_2019]. This relatively simple architecture was sufficient to capture the main structure of the problem, in part because the features themselves encode substantial biological knowledge. Later versions, including CADD v1.7, employ logistic regression-style models with expanded feature sets, retaining the same fundamental paradigm of contrasting simulated and observed variants while accommodating richer annotations [@schubach_cadd_2024].
 
-Early CADD models used linear support vector machines trained on millions of simulated vs observed variants with dozens of annotations [@rentzsch_cadd_2019]. Later versions, including CADD v1.7, use a **logistic regression–style machine learning model** over an expanded feature set to assign numerical deleteriousness scores to all possible SNVs and small indels [@schubach_cadd_2024].
-
-This “evolutionary depletion” setup is conceptually similar to modern self-supervised learning:
-
-- The labels are **not clinical** (pathogenic vs benign) but derived from a **proxy signal** (survival under selection).
-- The training set is extremely large (tens of millions of variants), enabling complex models and rich decision boundaries.
-- The resulting scores are then **re-used downstream** for many different tasks—rare disease gene discovery, variant filtration pipelines, and evaluation baselines.
+This evolutionary depletion framework anticipates several themes that recur in modern self-supervised learning. The labels are not clinical ground truth but derived from a proxy signal (survival under selection) that is abundant and covers the entire genome. The training set is extremely large, enabling complex decision boundaries and robust generalization. The resulting scores are precomputed genome-wide and reused for diverse downstream tasks, from rare disease gene discovery to variant filtration pipelines to evaluation baselines for newer models. In this sense, CADD can be understood as an early example of pretraining on a large-scale proxy task followed by transfer to clinical applications, a pattern that defines modern foundation models.
 
 ## Integration of Diverse Annotations
 
-CADD’s second pillar is **integrating many weak, noisy annotations into a single composite score**. Where earlier tools might rely on one or a few scores, CADD combines more than 60 features in its original incarnation and substantially more in v1.7 [@rentzsch_cadd_2019; @schubach_cadd_2024].
+CADD's second conceptual pillar is the integration of many weak, noisy annotations into a single composite score. Where earlier variant effect predictors typically relied on one or a few signals, CADD combines more than 60 features in its original incarnation and substantially more in version 1.7 [@rentzsch_cadd_2019; @schubach_cadd_2024]. This integrative approach recognizes that no single annotation captures the full complexity of variant function. Conservation scores miss recently evolved functional elements. Protein-level predictions are uninformative for non-coding variants. Regulatory annotations are noisy and incomplete. By learning optimal weights for combining these diverse signals, CADD achieves performance that exceeds any individual component.
 
-Because @sec-data already surveys the underlying resources, we focus here on the *categories* of features and how they function in CADD. For details on individual databases (ENCODE, Roadmap, gnomAD, ClinVar, etc.), see @sec-data.
+Because @sec-data already surveys the underlying data resources in detail, this section focuses on the categories of features and how they function within the CADD framework. For specifics on individual databases such as ENCODE, Roadmap, gnomAD, and ClinVar, readers should consult the earlier chapter.
 
 ### Gene Model Annotations
 
-These features describe the **local gene and transcript context** of each variant:
+Gene model annotations describe the local transcript and coding context of each variant. The most fundamental is the predicted sequence consequence: whether a variant is synonymous, missense, nonsense, frameshift, splice-site disrupting, or located in untranslated or intronic regions. These consequence categories capture qualitatively different modes of disruption, from silent changes that preserve protein sequence to truncating mutations that eliminate large portions of the gene product.
 
-- Sequence consequence (e.g., synonymous, missense, nonsense, frameshift, splice site).
-- Distance to exon–intron boundaries and untranslated regions.
-- Gene-level attributes, such as known disease associations or gene constraint metrics (e.g., pLI, LOEUF), derived from population data [@gnomAD].
+Beyond simple consequence, CADD incorporates positional features such as distance to exon-intron boundaries and proximity to canonical splice sites. Variants near splice junctions have elevated potential to disrupt splicing even if they do not directly alter the canonical GT-AG dinucleotides. Distance to the start and stop codons provides additional context, as does the position within the reading frame for coding variants.
 
-These annotations allow CADD to distinguish, for example, a synonymous variant in a tolerant gene from a truncating variant in a highly constrained gene.
+Gene-level attributes further enrich the annotation set. Constraint metrics derived from population data, such as the probability of loss-of-function intolerance (pLI) and the loss-of-function observed/expected upper bound fraction (LOEUF), quantify how tolerant each gene is to damaging variation [@gnomAD]. Variants in highly constrained genes receive elevated deleteriousness scores, reflecting the empirical observation that such genes are enriched for disease associations. Known disease gene status from OMIM and similar resources provides complementary information about genes with established pathogenic roles.
+
+These gene model features allow CADD to make biologically meaningful distinctions. A synonymous variant in a tolerant gene with high LOEUF receives a very different score than a truncating variant in a highly constrained developmental regulator. The model learns these distinctions from the differential representation of variant types across the proxy-neutral and proxy-deleterious training classes.
 
 ### Conservation and Constraint
 
-A major feature block captures **evolutionary conservation**:
+Evolutionary conservation provides some of the strongest signals for variant deleteriousness, particularly in non-coding regions where direct functional labels are scarce. CADD incorporates multiple conservation metrics computed from multi-species alignments spanning mammals, vertebrates, and more distant taxa.
 
-- Base-level conservation metrics such as GERP, phastCons, and phyloP, computed over multi-species alignments  (@siepel_phastcons_2005, @davydov_gerp_2010).
-- Regional measures of evolutionary constraint and mutation rate.
+Base-level conservation scores such as GERP (Genomic Evolutionary Rate Profiling) and phyloP quantify the deviation of observed substitution rates from neutral expectation [@davydov_gerp_2010; @siepel_phastcons_2005]. Positions with strong negative GERP scores show substitution rates far below neutral, indicating purifying selection has maintained these bases across tens or hundreds of millions of years of evolution. PhastCons provides a complementary view by identifying conserved elements, contiguous regions with elevated conservation that likely correspond to functional units. PhyloP scores individual positions without the smoothing implicit in element-based approaches, capturing both conservation (slow evolution) and acceleration (fast evolution) relative to neutral models.
 
-Highly conserved positions tend to be functionally important. CADD uses these conservation scores as some of its strongest signals that a variant may be deleterious, particularly in non-coding regions where direct functional labels are scarce [@rentzsch_cadd_2019].
+Regional measures of constraint complement base-level scores. These capture broader patterns of evolutionary pressure that may not be evident at single positions but emerge when considering larger windows. Mutation rate estimates, derived from substitution patterns in presumably neutral regions such as ancestral repeats, allow the model to distinguish true constraint from low mutation rate.
+
+Conservation features are particularly valuable for non-coding variant interpretation, where biochemical annotations are often incomplete or absent. A deeply conserved non-coding position is likely functional even if no enhancer or promoter annotation overlaps it. Conversely, lack of conservation provides evidence (though not proof) that a position is tolerant to variation.
 
 ### Epigenetic and Regulatory Activity
 
-CADD also incorporates **regulatory annotations** derived from functional genomics:
+CADD incorporates regulatory annotations derived from functional genomics assays to capture the chromatin and regulatory context of each variant. These features draw primarily from large-scale consortium efforts including ENCODE and the Roadmap Epigenomics Project, which have profiled chromatin accessibility, histone modifications, and transcription factor binding across hundreds of cell types and tissues.
 
-- DNase I hypersensitivity and ATAC-seq peaks.
-- ChIP–seq signals for histone marks and transcription factors (from ENCODE, Roadmap, and related efforts).
-- Chromatin state segmentations that summarize combinatorial patterns of marks.
+DNase I hypersensitivity and ATAC-seq peaks identify regions of open chromatin, marking active regulatory elements including promoters, enhancers, and insulators. ChIP-seq signals for histone modifications provide additional context: H3K4me3 marks active promoters, H3K27ac marks active enhancers, H3K36me3 spans transcribed gene bodies, and H3K27me3 marks polycomb-repressed regions. Transcription factor ChIP-seq directly identifies binding sites for specific regulators, though coverage varies considerably across factors and cell types.
 
-These features provide a view of whether a variant lies in an active enhancer, promoter, or other regulatory element, and help prioritize non-coding variants that disrupt regulatory regions.
+Chromatin state segmentations integrate multiple histone marks and accessibility signals into discrete functional categories. These segmentations, produced by algorithms such as ChromHMM, assign each genomic position to states like "active promoter," "strong enhancer," "weak enhancer," "transcribed region," or "heterochromatin." By including these aggregate states alongside raw signals, CADD can capture combinatorial patterns that distinguish functional regulatory elements from background.
+
+These epigenomic features help prioritize non-coding variants that disrupt active regulatory regions. A variant falling within an active enhancer marked by H3K27ac and DNase hypersensitivity in a relevant tissue receives elevated deleteriousness scores, even if its conservation is modest. The tissue specificity of regulatory annotations presents both opportunity and challenge: a variant may be highly consequential in one cellular context while neutral in another, and CADD's genome-wide scores necessarily average across this heterogeneity.
 
 ### Additional Features
 
-Additional features capture **sequence and genomic context**:
+Beyond the major annotation categories, CADD incorporates features capturing local sequence context and genomic architecture. GC content and CpG dinucleotide density affect mutation rates, chromatin structure, and gene regulation. Segmental duplications and low-complexity regions flag positions where mapping uncertainty may confound variant calls or where duplicated sequences complicate interpretation. Distance to telomeres and centromeres provides coarse chromosomal context.
 
-- Local GC content and CpG dinucleotide context.
-- Segmental duplications and low-complexity regions.
-- Protein-level features for coding variants, such as amino acid properties and legacy scores like SIFT and PolyPhen [@ng_sift_2003, @adzhubei_polyphen_2010].
+For coding variants, CADD includes protein-level features beyond simple consequence. Amino acid physicochemical properties, including size, charge, hydrophobicity, and polarity, inform predictions about whether a substitution is conservative or radical. Legacy variant effect scores such as SIFT and PolyPhen are included as features, allowing CADD to leverage decades of prior work on protein variant interpretation [@ng_sift_2003; @adzhubei_polyphen_2010]. Grantham distances quantify the biochemical dissimilarity between amino acid pairs, while secondary structure and domain annotations from databases like Pfam provide structural context.
 
-Not every individual annotation is informative in isolation. The power of CADD lies in learning **how to weight and combine** these heterogeneous signals.
+Not every individual annotation is informative in isolation. Many features are noisy, incomplete, or redundant with one another. The power of CADD lies in learning how to weight and combine these heterogeneous signals, up-weighting annotations that distinguish proxy-deleterious from proxy-neutral variants and down-weighting those that do not. This learned integration is more powerful than any manually specified combination rule and adapts automatically as new features are added in subsequent versions.
 
 ## Model Architecture and Scoring
 
 ### Machine Learning Framework
 
-CADD’s classifier operates on a high-dimensional feature vector $x$ for each variant:
+CADD's classifier operates on a high-dimensional feature vector assembled for each variant. The input representation concatenates all annotations described in the previous section: gene model features, conservation scores, epigenomic signals, sequence context, and protein-level predictions where applicable. For a typical variant, this yields a vector of several dozen to over a hundred features, depending on the CADD version and whether the variant falls in coding or non-coding sequence.
 
-- In early versions, a **linear SVM** was trained on ~30 million observed and simulated variants with 63 annotations, plus some interaction terms [@rentzsch_cadd_2019; @rentzsch_cadd_2019].
-- In CADD v1.7, the framework uses a logistic regression–style model and an expanded annotation set but retains the same basic paradigm of contrasting simulated and observed variants [@schubach_cadd_2024].
+Early CADD versions employed a linear support vector machine (SVM) trained on approximately 30 million observed and simulated variants with 63 annotation features plus selected interaction terms [@rentzsch_cadd_2019]. The choice of a linear model was deliberate: with tens of millions of training examples and dozens of features, a linear SVM is computationally tractable while still capturing the main structure of the classification problem. The linearity also provides some interpretability, as feature weights indicate which annotations most strongly distinguish the proxy classes.
 
-Conceptually, the classifier learns a score $s(x)$ such that:
+In CADD v1.7, the framework transitions to a logistic regression-style model with an expanded annotation set exceeding 100 features [@schubach_cadd_2024]. The fundamental paradigm remains unchanged: contrast simulated and observed variants using a discriminative classifier. The expanded feature set incorporates new annotations including protein language model scores and regulatory CNN predictions (discussed in the following section), while the logistic formulation provides well-calibrated probability estimates that facilitate downstream score transformations.
 
-- Large positive values indicate variants whose annotation profiles resemble the **proxy-deleterious** class.
-- Large negative values indicate variants whose profiles resemble the **proxy-neutral** class.
-
-The raw output of this classifier is often referred to as the **C-score** or **raw CADD score**.
+Conceptually, the classifier learns a scoring function $s(x)$ such that large positive values indicate variants whose annotation profiles resemble the proxy-deleterious class, while large negative values indicate profiles resembling the proxy-neutral class. Variants with intermediate scores occupy an ambiguous middle ground where the annotation evidence does not clearly favor either class. The raw output of this classifier is often referred to as the C-score or raw CADD score.
 
 ### PHRED-Scaled Scores
 
-Raw CADD scores are not directly interpretable as probabilities or effect sizes. To provide a more intuitive scale, CADD defines **PHRED-like scaled scores** based on the rank of each variant among all possible single-nucleotide substitutions in the reference genome [@rentzsch_cadd_2019; @schubach_cadd_2024]:
+Raw CADD scores are not directly interpretable as probabilities or biological effect sizes. The scale depends on model architecture, feature normalization, and training set composition, all of which vary across CADD versions. To provide a more intuitive and stable scoring system, CADD defines PHRED-like scaled scores based on the rank of each variant among all possible single-nucleotide substitutions in the reference genome [@rentzsch_cadd_2019; @schubach_cadd_2024].
 
-- Scaled score 10 ≈ variant is in the **top 10%** most deleterious predicted substitutions.
-- Scaled score 20 ≈ **top 1%**.
-- Scaled score 30 ≈ **top 0.1%**.
+The PHRED scaling follows the same logarithmic convention used in sequencing quality scores. A scaled score of 10 indicates that a variant falls in the top 10% of predicted deleteriousness among all possible substitutions. A score of 20 indicates the top 1%, and a score of 30 indicates the top 0.1%. More generally, a scaled score of $n$ corresponds to the top $10^{-n/10}$ fraction of the deleteriousness distribution. This transformation compresses the raw scores into a 1-99 range that reflects percentile rank rather than absolute effect size.
 
-In other words, the scaled score compresses the raw scores into a 1–99 range that reflects **percentile rank** rather than an absolute effect size. This has several practical consequences:
+This rank-based transformation has several practical consequences. First, it provides a simple interpretation: users can immediately understand that a variant with scaled score 20 is predicted to be more deleterious than 99% of possible substitutions. Second, it ensures comparability across CADD versions. Because the scaled score is defined relative to the full distribution of possible variants, a score of 20 always means "top 1%" even as the underlying model, features, and raw score distributions change between releases. Third, it sacrifices resolution in the bulk of the distribution. Most variants are predicted to be relatively benign, and these cluster in the low-score range where differences are difficult to interpret. The scaling concentrates dynamic range in the high-score tail where clinical interpretation typically focuses.
 
-- A simple, rank-based interpretation (“is this variant in the top x% of predicted deleteriousness?”).
-- Comparability across CADD versions: a score of 20 always means “top 1%” even if the underlying model and features change.
-- Coarser resolution in the bulk of the distribution: many common or mildly deleterious variants share similar scaled scores.
-
-In rare disease pipelines, it is common to apply basic **CADD filters**—e.g., focusing on variants with scaled scores ≥ 15 or ≥ 20—to enrich for potentially deleterious hits before more detailed interpretation.
+In rare disease pipelines, CADD scaled scores are commonly used as filters to enrich for potentially pathogenic variants before detailed interpretation. Typical thresholds range from 15 (top 3%) to 20 (top 1%) or higher, depending on the stringency required and the downstream analysis workflow. These filters are not intended as definitive pathogenicity calls but rather as prioritization tools that reduce the variant burden to a manageable number for expert review.
 
 ## CADD v1.7: Integration of Deep Learning Predictions
 
-CADD v1.7 illustrates how the original framework naturally accommodates **deep learning outputs and modern sequence models** [@schubach_cadd_2024].
+CADD v1.7 demonstrates how the original annotation-integration framework naturally accommodates deep learning outputs and modern sequence models [@schubach_cadd_2024]. Rather than replacing CADD's architecture with an end-to-end neural network, the developers adopted a pragmatic strategy: treat deep learning predictions as additional features within the existing integrative framework. This approach preserves CADD's interpretable structure while benefiting from the representational power of large pretrained models.
 
 ### Protein Language Model Features
 
-For protein-coding variants, CADD v1.7 integrates scores from **protein language models** such as ESM-1v [@meier_esm-1v_2021]. These models:
+For protein-coding variants, CADD v1.7 integrates variant effect scores from protein language models (PLMs), particularly ESM-1v [@meier_esm-1v_2021]. These models represent a paradigm shift in protein sequence analysis. Trained self-supervised on hundreds of millions of protein sequences using masked language modeling objectives, PLMs learn contextual embeddings that capture the evolutionary constraints and functional requirements shaping protein sequences. The resulting representations encode information about secondary structure, domain boundaries, binding interfaces, and catalytic sites without explicit supervision on any of these properties.
 
-- Are trained self-supervised on hundreds of millions of protein sequences.
-- Learn contextual embeddings and per-residue “likelihoods” that reflect evolutionary plausibility and functional constraints.
-- Provide powerful per-variant scores for missense, nonsense, and frameshift events.
+ESM-1v provides per-variant scores by comparing the log-likelihood of the reference and alternate amino acids at each position. Positions where the model confidently predicts the reference residue and assigns low probability to the alternate receive large effect scores, indicating the substitution violates learned sequence constraints. These scores correlate strongly with experimental measurements of variant effects from deep mutational scanning assays, demonstrating that PLMs capture genuine functional information.
 
-By embedding ESM-1v–derived features into its annotation set, CADD v1.7 effectively **delegates part of the representation learning to a large foundational protein model**, then uses its own classifier to recalibrate and integrate these signals with other annotations [@schubach_cadd_2024].
+By embedding ESM-1v-derived features into its annotation set, CADD v1.7 effectively delegates part of the representation learning to a large foundational protein model, then uses its own classifier to recalibrate and integrate these signals with other annotations [@schubach_cadd_2024]. This division of labor plays to each model's strengths: the PLM learns rich sequence representations from massive protein databases, while CADD's integrative framework combines these representations with genomic context, conservation, and regulatory features that protein-only models cannot access.
 
 ### Regulatory CNN Predictions
 
-For non-coding variants, CADD v1.7 incorporates **regulatory variant effect predictions** from sequence-based convolutional neural networks trained on chromatin accessibility and related assays [@zhou_deepsea_2015; @schubach_cadd_2024]. These CNNs:
+For non-coding variants, CADD v1.7 incorporates regulatory variant effect predictions from sequence-based convolutional neural networks trained on chromatin accessibility and related assays [@zhou_deepsea_2015; @schubach_cadd_2024]. These CNNs, exemplified by DeepSEA and similar architectures covered in Chapters 5 and 6, take raw DNA sequence as input and predict a battery of chromatin features including transcription factor binding, histone modifications, and DNase hypersensitivity across diverse cell types.
 
-- Take raw DNA sequence as input.
-- Predict a battery of chromatin features (e.g., TF binding, histone marks).
-- Provide per-variant delta scores reflecting the predicted impact of a mutation on these regulatory readouts.
+The variant effect predictions are computed as delta scores: the difference in predicted regulatory activity between reference and alternate alleles. Large magnitude deltas indicate variants predicted to substantially alter local chromatin state or transcription factor occupancy. These predictions provide a learned, sequence-based view of regulatory impact that complements the annotation-based epigenomic features derived from experimental data.
 
-In this way, CADD v1.7 uses early sequence-to-function CNNs (like those discussed in Chapters 5 and 6) as **feature generators** in its broader integrative framework.
+By incorporating CNN-derived regulatory predictions, CADD v1.7 uses early sequence-to-function deep learning models as feature generators within its broader integrative framework. This represents an important architectural pattern that recurs throughout genomic deep learning: pretrained sequence models provide representations or predictions that are then combined with other information sources in downstream tasks. The pretrained models capture sequence-intrinsic patterns, while the integrative framework adds genomic context and cross-annotation calibration.
 
 ### Extended Conservation Scores
 
-CADD v1.7 also updates its conservation and mutation-rate features to include:
+CADD v1.7 updates its conservation and mutation-rate features to incorporate advances in comparative genomics and population genetics. Deeper mammalian alignments from projects like Zoonomia, which sequenced over 200 mammalian species, provide substantially improved resolution for identifying constrained positions, particularly in non-coding regions where earlier alignments had limited power [@schubach_cadd_2024]. The expanded phylogenetic scope allows detection of constraint that is specific to mammals or particular mammalian clades, complementing the broader vertebrate and eukaryotic conservation captured by earlier alignments.
 
-- Deeper mammalian alignments from projects like Zoonomia.
-- Improved models of genome-wide mutation rates and regional constraint [@schubach_cadd_2024].
+Improved models of genome-wide mutation rates sharpen the distinction between true evolutionary constraint and regions with inherently low mutation rates. Earlier approaches sometimes conflated these signals: a region might appear conserved simply because few mutations arise there rather than because mutations are selectively removed. By incorporating refined mutation rate estimates derived from de novo mutation studies and population polymorphism patterns, CADD v1.7 can better distinguish these scenarios and assign appropriate deleteriousness scores.
 
-These updates help sharpen the evolutionary signal, particularly in non-coding regions and for variant types that were under-represented in earlier releases.
+These updates are particularly valuable for non-coding variant interpretation, where conservation signals are often the strongest available evidence for function. Improved detection of mammal-specific regulatory elements and better calibration against local mutation rates help identify pathogenic non-coding variants that earlier versions might have missed.
 
 ### Performance Improvements
 
-CADD v1.7 is evaluated on several benchmark sets [@schubach_cadd_2024]:
+CADD v1.7 is evaluated on several benchmark datasets that span different variant types and functional readouts [@schubach_cadd_2024]. Clinical variant benchmarks drawn from ClinVar and gnomAD compare pathogenic and benign variant sets, providing a coarse approximation of the clinical classification task that motivates CADD's development. Deep mutational scanning (DMS) assays, summarized in resources like ProteinGym, offer experimentally measured variant effects for thousands of mutations across dozens of proteins, enabling evaluation against direct functional measurements rather than clinical labels [@notin_proteingym_2023]. Saturation mutagenesis reporter assays for promoters and enhancers capture regulatory variant effects with nucleotide resolution, testing CADD's performance on the non-coding variants that are often most challenging to interpret.
 
-- **ClinVar and gnomAD/ExAC variants**, where pathogenic vs benign labels provide a coarse clinical ground truth.
-- **Deep mutational scanning (DMS)** assays for coding variants, summarized in ProteinGym [@notin_proteingym_2023].
-- Saturation mutagenesis reporter assays for promoters and enhancers, capturing regulatory variant effects.
-
-Across these benchmarks, incorporating PLM scores, regulatory CNN predictions, and updated conservation features yields **consistent improvements in classification and ranking performance** compared to earlier CADD versions.
+Across these benchmarks, incorporating PLM scores, regulatory CNN predictions, and updated conservation features yields consistent improvements in classification and ranking performance compared to earlier CADD versions. The gains are particularly pronounced for missense variants, where ESM-1v features provide substantial additional signal, and for non-coding variants in active regulatory regions, where CNN predictions complement annotation-based features. These improvements validate the strategy of incorporating deep learning outputs as features while maintaining CADD's interpretable integrative framework.
 
 ## Benchmarking Against Alternative Approaches
 
 ### Coding Variants
 
-For coding variants, CADD is one among many deleteriousness scores:
+For coding variants, CADD exists within a crowded landscape of deleteriousness predictors spanning four decades of methodological development. Legacy tools such as SIFT and PolyPhen pioneered sequence-based and structure-based prediction of amino acid substitution effects, using evolutionary conservation and physicochemical properties to identify potentially damaging missense variants [@ng_sift_2003; @adzhubei_polyphen_2010]. Ensemble methods such as REVEL, MetaLR, and M-CAP combine predictions from multiple individual tools, using machine learning to weight and integrate their outputs. Modern deep learning approaches exploit protein language models, structure prediction from AlphaFold, and end-to-end neural architectures that learn directly from sequence.
 
-- Legacy tools such as SIFT and PolyPhen focus on protein sequence and structure (@ng_sift_2003, @adzhubei_polyphen_2010).
-- Ensemble scores (e.g., REVEL, MetaLR) combine multiple predictors.
-- Modern methods exploit PLMs, structure prediction (AlphaFold), and other deep learning architectures.
+In systematic benchmarks across clinically annotated variants and deep mutational scanning datasets, CADD's combination of evolutionary, protein-level, and gene-context features yields performance that is competitive with or superior to many specialized scores for Mendelian disease variant prioritization [@rentzsch_cadd_2019; @schubach_cadd_2024]. The integration of ESM-1v features in version 1.7 closes much of the gap with pure PLM-based methods while retaining CADD's advantages in interpretability and genome-wide coverage. CADD's performance is particularly strong when variants must be ranked across diverse genes and consequence types, a setting that favors integrative approaches over methods tuned for specific protein families or variant classes.
 
-In many comparisons, CADD’s **combination of evolutionary, protein, and gene-context features** yields performance that is competitive with or superior to specialized scores for Mendelian disease variant prioritization, especially when used as part of a broader interpretation pipeline [@rentzsch_cadd_2019; @schubach_cadd_2024].
+However, for focused applications within specific protein families or functional classes, specialized methods may outperform CADD. Tools optimized for loss-of-function variant interpretation may capture nuances that CADD's genome-wide training misses. Structure-based methods incorporating AlphaFold predictions can model three-dimensional context that sequence-based features cannot fully capture. The appropriate choice of variant effect predictor depends on the specific application, available data, and interpretability requirements.
 
 ### Non-coding Variants
 
-Non-coding variant interpretation is inherently more challenging:
+Non-coding variant interpretation presents fundamentally greater challenges than coding variant prediction. Ground-truth pathogenic non-coding variants are far rarer in clinical databases and heavily biased toward a small number of well-studied regulatory elements, particularly canonical splice sites and a handful of characterized enhancers. The vast majority of the non-coding genome lacks reliable pathogenicity labels, making supervised approaches difficult and benchmark construction problematic.
 
-- Ground-truth pathogenic variants are rarer and more biased toward specific genes and regulatory elements.
-- Functional genomics assays often provide noisy, context-specific readouts.
+Functional genomics assays provide an alternative view of non-coding function, but their interpretation is complicated by noise, cell-type specificity, and the uncertain relationship between biochemical activity and phenotypic consequence. A variant may alter transcription factor binding in a reporter assay yet have no detectable effect on gene expression or organismal phenotype. Conversely, subtle regulatory perturbations may have profound effects in specific developmental contexts that are not captured by standard assays.
 
-Here, CADD’s integration of regulatory annotations and conservation allows it to **rank plausible non-coding candidates genome-wide**, particularly in promoters and enhancers covered by ENCODE/Roadmap-like data [@rentzsch_cadd_2019]. However, its performance depends heavily on the availability and quality of underlying annotations.
+Within this challenging landscape, CADD's integration of regulatory annotations and conservation allows it to rank plausible non-coding candidates genome-wide, particularly in promoters and enhancers covered by ENCODE and Roadmap data [@rentzsch_cadd_2019]. The addition of regulatory CNN predictions in version 1.7 provides learned sequence-based features that extend beyond annotation coverage. However, CADD's performance on non-coding variants depends heavily on the availability and quality of underlying annotations. Variants in poorly annotated regions, including many distal enhancers and non-coding RNAs, receive scores driven primarily by conservation, which may miss recently evolved or lineage-specific functional elements.
 
 ### Population Frequency Correlation
 
-Because CADD uses evolution as a training signal, its scores naturally correlate with **population allele frequencies**:
+Because CADD uses evolutionary depletion as its training signal, its scores naturally correlate with population allele frequencies. Common variants in gnomAD tend to have low CADD scores, reflecting the expectation that alleles reaching high frequency have survived purifying selection. Very rare variants, particularly singletons observed in only one individual, show a broad distribution of scores with a substantial fraction in the high-score tail [@rentzsch_cadd_2019; @gnomAD].
 
-- Common variants in gnomAD tend to have low CADD scores.
-- Very rare variants (especially singletons) show a broad distribution, with a subset in the extreme high-score tail [@rentzsch_cadd_2019; @gnomAD].
+This correlation is useful for many applications. High CADD scores often highlight variants under purifying selection, which are enriched for functional and potentially pathogenic alleles. The relationship provides a sanity check: if CADD assigned high scores to common variants, something would be wrong with either the model or the frequency data.
 
-This correlation is useful—high CADD scores often highlight variants under purifying selection—but it also means that **CADD partially recapitulates frequency filtering**. In downstream pipelines, it is important not to double-count this signal (e.g., by applying both aggressive frequency cutoffs and strict CADD thresholds).
+However, this correlation also means that CADD partially recapitulates frequency-based filtering. In downstream pipelines, it is important not to double-count this signal by applying both aggressive frequency cutoffs and strict CADD thresholds. Such redundant filtering can exclude variants that fail one criterion but might be genuinely pathogenic. The optimal strategy depends on the application: for highly penetrant Mendelian variants, frequency filtering alone may suffice; for variants with incomplete penetrance or population-specific effects, CADD provides complementary information beyond frequency.
 
 ### Limitations and Circularity with ClinVar
 
-CADD is now deeply embedded in variant interpretation workflows, and this success raises an important methodological issue: **circularity between CADD and clinical databases such as ClinVar.**
+CADD is now deeply embedded in variant interpretation workflows worldwide, used by clinical laboratories, research groups, and diagnostic pipelines as a standard prioritization tool. This success raises an important methodological concern: potential circularity between CADD scores and clinical databases such as ClinVar.
 
-Two forms of circularity are particularly relevant:
+Two forms of circularity are particularly relevant. First, evaluation circularity arises when CADD is assessed on benchmark datasets that were themselves influenced by CADD. ClinVar submissions increasingly incorporate in silico evidence, including CADD scores, as part of their classification process. When we evaluate CADD on post-2014 ClinVar variants after clinical curation has already used CADD, we risk overestimating performance because the model is partially being judged against labels it helped create [@schubach_cadd_2024]. Variants with high CADD scores are more likely to be classified as pathogenic, and variants classified as pathogenic form the positive evaluation set, creating a feedback loop that inflates apparent performance.
 
-1. **Evaluation circularity**
+Second, broader sociotechnical feedback affects model development even if CADD's core training labels derive from simulated versus observed variants rather than clinical databases. ClinVar and related resources still influence feature engineering, threshold selection, and choice of evaluation benchmarks. Over time, variants consistently prioritized by CADD are more likely to receive follow-up investigation, be published, and enter ClinVar as likely pathogenic, reinforcing the underlying signal. This feedback is not unique to CADD but affects any widely used predictive tool in genomics and medicine.
 
-   - CADD v1.7 is evaluated in part on datasets derived from ClinVar, ExAC/gnomAD, and 1000 Genomes variants [@schubach_cadd_2024].
-   - However, ClinVar submissions increasingly incorporate in silico evidence, including CADD scores, as part of their classification process.
-   - When we evaluate CADD on ClinVar after ClinVar curation has already used CADD, we risk **overestimating performance**, because the model is partially being judged against labels that it helped create.
+These circularity concerns motivate several best practices for evaluation. Benchmarks should include datasets independent of clinical curation pipelines, such as deep mutational scanning experiments, reporter assays, and population-based burden tests where labels derive from experimental measurement rather than clinical judgment. Performance should be reported separately on pre-CADD and post-CADD ClinVar subsets when temporal stratification is possible. ClinVar-based evaluation should be treated as a sanity check confirming that CADD captures clinically relevant signals, not as the primary or sole measure of model quality.
 
-2. **Feedback into training and model development**
-
-   - Although the core CADD training labels are based on simulated vs observed variants, ClinVar and related resources still influence model development: they guide feature engineering, threshold selection, and choice of evaluation benchmarks.
-   - Over time, variants that are consistently prioritized by CADD are more likely to receive follow-up, be published, and enter ClinVar as “likely pathogenic,” reinforcing the underlying signal.
-
-This kind of **sociotechnical feedback loop** is not unique to CADD; it is a general challenge for widely-used predictive tools in genomics and medicine. For CADD and successor models, it motivates several best practices:
-
-- Include evaluation datasets that are **independent of clinical curation pipelines**, such as DMS experiments, reporter assays, and population-based burden tests.
-- Report performance separately on **pre-CADD** and **post-CADD** ClinVar subsets when possible.
-- Treat performance on ClinVar as a **sanity check**, not the sole or primary measure of model quality.
-
-These concerns foreshadow similar issues we will encounter later in the book when genomic foundation models are evaluated on benchmarks that themselves rely on older predictive tools.
+These concerns foreshadow similar issues we will encounter in later chapters when genomic foundation models are evaluated on benchmarks that themselves rely on older predictive tools or clinical databases shaped by those tools.
 
 ## Significance for Genomic Deep Learning
 
-CADD sits at an important historical junction between **hand-crafted feature integration** and modern **deep, self-supervised representation learning**. Several aspects of its design resonate throughout the rest of this book:
+CADD occupies an important historical position at the junction between hand-crafted feature integration and modern deep, self-supervised representation learning. Several aspects of its design resonate throughout the models and methods covered in subsequent chapters, making it a valuable conceptual anchor for understanding the field's evolution.
 
-1. **Annotation integration as a precursor to multi-task deep models**
+The first connection is between annotation integration and multi-task deep models. CADD's strategy of combining dozens of heterogeneous annotations into a single score anticipates the multi-task learning frameworks that define modern genomic deep learning. Models like DeepSEA, Basset, and Enformer, covered in Chapters 5 through 7 and revisited in Chapter 11, predict hundreds of functional genomics readouts from sequence and then reuse these predictions as building blocks for downstream tasks. The conceptual structure is similar: learn to predict many weak signals, then combine them for variant interpretation. In CADD v1.7, the boundary between these approaches blurs as deep networks including ESM-1v and regulatory CNNs provide features that CADD integrates [@meier_esm-1v_2021; @zhou_deepsea_2015; @schubach_cadd_2024]. The distinction between "annotation-based" and "deep learning-based" methods becomes one of degree rather than kind.
 
-   CADD’s integration of dozens of annotations into a single score anticipates later deep learning models that predict many functional genomics readouts from sequence and then reuse these as building blocks (Chapters 5–7 and 11). In CADD v1.7, the boundary blurs: deep networks (ESM-1v, regulatory CNNs) now *provide* features that CADD integrates [@meier_esm-1v_2021; @zhou_deepsea_2015; @schubach_cadd_2024].
+The second connection is between evolutionary proxy labels and self-supervised learning. CADD's training on simulated versus observed variants uses the signature of selection as a rich, weak supervisory signal available across the entire genome [@rentzsch_cadd_2019]. This strategy is conceptually parallel to the masked language modeling objectives that define modern protein and DNA language models. In both cases, the labels derive not from expert curation but from statistical regularities in large datasets: which tokens (amino acids, nucleotides, or variants) are observed versus which are plausible but absent. The resulting models learn representations that transfer to diverse downstream tasks, from variant effect prediction to structure determination to regulatory sequence design. Chapters 8 through 10 develop this connection in detail for transformer-based foundation models.
 
-2. **Evolutionary proxy labels as a template for self-supervision**
+The third connection concerns genome-wide coverage and scalability. By precomputing scores for all possible single-nucleotide substitutions in the reference genome, CADD demonstrated the feasibility and utility of generating genome-wide variant annotations for downstream reuse. Users need not run the full model for each query; they simply look up precomputed scores from distributed files. Many genomic foundation models now follow an analogous pattern, precomputing embeddings or predictions for every base or variant and exposing them as reusable resources. The infrastructure for distributing and querying such precomputed annotations has become a standard component of genomic analysis pipelines.
 
-   Training on simulated vs observed variants uses the **signature of selection** as a rich, weak supervisory signal [@rentzsch_cadd_2019]. This is conceptually similar to masked language modeling and other self-supervised tasks that exploit abundant unlabeled data (Chapters 8–10).
+The fourth connection is composability with deep learning. CADD is not a direct competitor to modern sequence-based deep models but rather an integrative framework that increasingly incorporates them as features. This "deep features plus shallow integrator" pattern appears repeatedly in practical deployments where interpretability, calibration, or computational constraints favor hybrid approaches over end-to-end neural networks. Clinical variant interpretation pipelines, in particular, often combine CADD-style integrative scores with deep learning predictions and expert review, leveraging the strengths of each approach.
 
-3. **Genome-wide coverage and scalability**
-
-   By scoring all possible SNVs in the reference genome, CADD demonstrated the feasibility and utility of **precomputing genome-wide variant scores** for use in downstream analyses. Many genomic foundation models now do something analogous: precompute embeddings or predictions for every base or variant and expose them as reusable resources.
-
-4. **Composable with deep learning**
-
-   CADD is not a direct competitor to modern sequence-based deep models; instead, it increasingly **incorporates them as features** while providing a stable, interpretable interface (PHRED-like scores) to end users. This “deep features + shallow integrator” pattern appears repeatedly in practical deployments.
-
-As we move into the CNN-based sequence-to-function models of Part II and the Transformer-based genomic foundation models of Parts III and IV, it is helpful to remember that CADD solved a difficult problem—variant prioritization under data scarcity and heterogeneity—using tools that were available at the time. The models that follow expand on CADD’s core ideas by learning representations directly from sequence and by tying those representations to richer experimental readouts, but they still rely on many of the same data resources and confront many of the same challenges around evaluation, bias, and circularity.
+As we move into the CNN-based sequence-to-function models of Part II and the transformer-based genomic foundation models of Parts III and IV, it is helpful to remember that CADD solved a difficult problem using tools available at the time. The challenge of variant prioritization under data scarcity and annotation heterogeneity does not disappear with more powerful models. The deep learning systems that follow expand on CADD's core ideas by learning representations directly from sequence and tying those representations to richer experimental readouts. Yet they still rely on many of the same data resources surveyed in @sec-data and confront many of the same challenges around evaluation bias, label circularity, and the fundamental difficulty of inferring causality from correlation. Understanding CADD's solutions and limitations provides essential context for appreciating both the advances and the persistent challenges in genomic deep learning.
