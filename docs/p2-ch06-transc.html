@@ -646,23 +646,23 @@ Warning
 <div class="callout-body-container callout-body">
 <p><strong>TODO:</strong></p>
 <ul>
-<li>…</li>
-<li>…</li>
+<li>Citations: verify all citations are in bibliography</li>
+<li>Consider adding figure showing ExPecto architecture diagram</li>
 </ul>
 </div>
 </div>
 <section id="from-chromatin-to-expression" class="level2" data-number="6.1">
 <h2 data-number="6.1" class="anchored" data-anchor-id="from-chromatin-to-expression"><span class="header-section-number">6.1</span> From Chromatin to Expression</h2>
-<p>DeepSEA (<a href="p2-ch05-reg.html" class="quarto-xref"><span>Chapter 5</span></a>) demonstrated that deep learning could predict chromatin features from DNA sequence alone. Yet chromatin accessibility and transcription factor binding are intermediate phenotypes—the ultimate functional readout for most regulatory variants is their effect on gene expression. A variant might disrupt a transcription factor binding site, but does that binding site actually regulate a nearby gene? In which tissues? By how much?</p>
-<p>ExPecto, introduced by Zhou et al.&nbsp;in 2018, addressed these questions by extending the sequence-to-chromatin paradigm to predict tissue-specific gene expression levels <span class="citation" data-cites="zhou_expecto_2018">(<a href="references.html#ref-zhou_expecto_2018" role="doc-biblioref">Zhou et al. 2018</a>)</span>. The framework’s name reflects its core capability: <strong>Ex</strong>pression prediction. Rather than stopping at chromatin predictions, ExPecto integrates predicted regulatory signals across a 40 kb promoter-proximal region to predict absolute expression levels in 218 tissues and cell types.</p>
-<p>Critically, ExPecto predicts expression effects <em>ab initio</em> from sequence—without training on any variant data. This enables scoring of rare variants, <em>de novo</em> mutations, and even hypothetical mutations never observed in any population.</p>
+<p>DeepSEA (<a href="p2-ch05-reg.html" class="quarto-xref"><span>Chapter 5</span></a>) demonstrated that deep learning could predict chromatin features from DNA sequence alone. Yet chromatin accessibility and transcription factor binding are intermediate phenotypes. The ultimate functional readout for most regulatory variants is their effect on gene expression. A variant might disrupt a transcription factor binding site, but does that binding site actually regulate a nearby gene? In which tissues? By how much?</p>
+<p>ExPecto, introduced by Zhou et al.&nbsp;in 2018, addressed these questions by extending the sequence-to-chromatin paradigm to predict tissue-specific gene expression levels <span class="citation" data-cites="zhou_expecto_2018">(<a href="references.html#ref-zhou_expecto_2018" role="doc-biblioref">Zhou et al. 2018</a>)</span>. The framework’s name reflects its core capability: expression prediction. Rather than stopping at chromatin predictions, ExPecto integrates predicted regulatory signals across a 40 kb promoter-proximal region to predict absolute expression levels in 218 tissues and cell types.</p>
+<p>Critically, ExPecto predicts expression effects ab initio from sequence, without training on any variant data. This enables scoring of rare variants, de novo mutations, and even hypothetical mutations never observed in any population.</p>
 </section>
 <section id="the-modular-architecture" class="level2" data-number="6.2">
 <h2 data-number="6.2" class="anchored" data-anchor-id="the-modular-architecture"><span class="header-section-number">6.2</span> The Modular Architecture</h2>
 <p>ExPecto comprises three sequential components, each addressing a distinct computational challenge.</p>
 <section id="component-1-epigenomic-effects-model-beluga-cnn" class="level3" data-number="6.2.1">
 <h3 data-number="6.2.1" class="anchored" data-anchor-id="component-1-epigenomic-effects-model-beluga-cnn"><span class="header-section-number">6.2.1</span> Component 1: Epigenomic Effects Model (Beluga CNN)</h3>
-<p>The first component is an enhanced version of DeepSEA, predicting 2,002 chromatin profiles (histone marks, transcription factor binding, and DNase hypersensitivity) across &gt;200 cell types. Key architectural improvements over the original DeepSEA include:</p>
+<p>The first component is an enhanced version of DeepSEA, predicting 2,002 chromatin profiles (histone marks, transcription factor binding, and DNase hypersensitivity) across more than 200 cell types. Key architectural improvements over the original DeepSEA include expanded chromatin targets (from 919 to 2,002), a wider input window (from 1,000 bp to 2,000 bp), deeper architecture (six convolutional layers with residual connections rather than three), and broader cell type coverage (over 200 cell types compared to approximately 125).</p>
 <table class="caption-top table">
 <thead>
 <tr class="header">
@@ -698,13 +698,13 @@ Warning
 </section>
 <section id="component-2-spatial-feature-transformation" class="level3" data-number="6.2.2">
 <h3 data-number="6.2.2" class="anchored" data-anchor-id="component-2-spatial-feature-transformation"><span class="header-section-number">6.2.2</span> Component 2: Spatial Feature Transformation</h3>
-<p>The 400,400-dimensional feature space poses optimization challenges for downstream expression prediction. ExPecto addresses this through spatial transformation—a biologically motivated dimensionality reduction that captures the known distance-dependent relationship between regulatory elements and their target promoters.</p>
+<p>The 400,400-dimensional feature space poses optimization challenges for downstream expression prediction. ExPecto addresses this through spatial transformation, a biologically motivated dimensionality reduction that captures the known distance-dependent relationship between regulatory elements and their target promoters.</p>
 <p>The transformation applies ten exponential decay functions separately to upstream and downstream regions. The full model specification is:</p>
 <p><span class="math display">\[
 \text{expression} = \sum_{i,k} \left( \beta_{ik}^{\text{up}} \cdot \mathbf{1}(t_d &lt; 0) + \beta_{ik}^{\text{down}} \cdot \mathbf{1}(t_d &gt; 0) \right) \cdot \sum_{d \in D} p_{id} \cdot e^{-a_k \cdot |t_d|}
 \]</span></p>
 <p>where <span class="math inline">\(p_{id}\)</span> is the predicted probability for chromatin feature <span class="math inline">\(i\)</span> at spatial bin <span class="math inline">\(d\)</span>, <span class="math inline">\(t_d\)</span> is the mean distance to TSS for bin <span class="math inline">\(d\)</span>, and <span class="math inline">\(a_k\)</span> represents decay constants (0.01, 0.02, 0.05, 0.1, 0.2). The indicator functions <span class="math inline">\(\mathbf{1}(\cdot)\)</span> allow separate coefficients for upstream (<span class="math inline">\(\beta^{\text{up}}\)</span>) and downstream (<span class="math inline">\(\beta^{\text{down}}\)</span>) regions.</p>
-<p>This transformation reduces dimensionality 20-fold (to 20,020 features) while preserving spatial information—features with higher decay rates are concentrated near the TSS, while lower decay rates capture more distal signals. The transformation is not learned but prespecified, equivalent to constraining the model to learn smooth spatial patterns as linear combinations of basis functions.</p>
+<p>This transformation reduces dimensionality 20-fold (to 20,020 features) while preserving spatial information. Features with higher decay rates are concentrated near the TSS, while lower decay rates capture more distal signals. The transformation is not learned but prespecified, equivalent to constraining the model to learn smooth spatial patterns as linear combinations of basis functions.</p>
 </section>
 <section id="component-3-tissue-specific-linear-models" class="level3" data-number="6.2.3">
 <h3 data-number="6.2.3" class="anchored" data-anchor-id="component-3-tissue-specific-linear-models"><span class="header-section-number">6.2.3</span> Component 3: Tissue-Specific Linear Models</h3>
@@ -714,29 +714,20 @@ Warning
 </section>
 <section id="expression-prediction-performance" class="level2" data-number="6.3">
 <h2 data-number="6.3" class="anchored" data-anchor-id="expression-prediction-performance"><span class="header-section-number">6.3</span> Expression Prediction Performance</h2>
-<p>ExPecto achieved 0.819 median Spearman correlation between predicted and observed expression (log RPKM) across 218 tissues and cell types—a substantial improvement over prior sequence-based expression models, which were typically limited to narrower regulatory regions (&lt;2 kb) and fewer cell types.</p>
+<p>ExPecto achieved 0.819 median Spearman correlation between predicted and observed expression (log RPKM) across 218 tissues and cell types, a substantial improvement over prior sequence-based expression models, which were typically limited to narrower regulatory regions (&lt;2 kb) and fewer cell types.</p>
 <section id="tissue-specificity" class="level3" data-number="6.3.1">
 <h3 data-number="6.3.1" class="anchored" data-anchor-id="tissue-specificity"><span class="header-section-number">6.3.1</span> Tissue Specificity</h3>
 <p>Beyond predicting absolute expression levels, ExPecto captures tissue-specific expression patterns. Expression predictions correlate more strongly with experimental measurements from the matching tissue than from other tissues, indicating the model learns tissue-specific regulatory logic rather than generic sequence features.</p>
-<p>Analysis of model coefficients reveals automatic learning of cell-type-relevant features without explicit tissue labels:</p>
-<ul>
-<li><strong>Liver model</strong>: Top weighted features correspond to seven transcription factors in HepG2 (liver-derived) cells</li>
-<li><strong>Breast model</strong>: All top five positive features are estrogen receptor (ER-α) and glucocorticoid receptor (GR) in breast cancer cell lines T-47D and ECC-1</li>
-<li><strong>Blood model</strong>: All top five features derive from blood cell lines and erythroblast cells</li>
-</ul>
+<p>Analysis of model coefficients reveals automatic learning of cell-type-relevant features without explicit tissue labels. The liver expression model assigns top weights to seven transcription factors profiled in HepG2 (liver-derived) cells. The breast tissue model weights estrogen receptor (ER-α) and glucocorticoid receptor (GR) features from breast cancer cell lines T-47D and ECC-1 most heavily among its positive coefficients. Blood cell expression models derive their top five predictive features from blood cell lines and erythroblast cells. These patterns emerge purely from learning to predict expression, without any tissue identity information provided to the chromatin features.</p>
 </section>
 <section id="feature-importance" class="level3" data-number="6.3.2">
 <h3 data-number="6.3.2" class="anchored" data-anchor-id="feature-importance"><span class="header-section-number">6.3.2</span> Feature Importance</h3>
-<p>Model coefficients reveal the relative contributions of different chromatin feature types:</p>
-<ul>
-<li><strong>Transcription factors and histone marks</strong> receive consistently higher weights, reflecting their direct mechanistic roles in transcriptional regulation</li>
-<li><strong>DNase I features</strong> receive significantly lower weights (p = 6.9×10⁻²⁵, Wilcoxon rank sum test) despite indicating regulatory activity—likely because DNase hypersensitivity marks <em>presence</em> of regulatory activity without specifying <em>type</em> (activating vs.&nbsp;repressing) or <em>causal</em> relationship to expression</li>
-</ul>
+<p>Model coefficients also reveal the relative contributions of different chromatin feature types to expression prediction. Transcription factors and histone marks receive consistently higher weights, reflecting their direct mechanistic roles in transcriptional regulation. DNase I features receive significantly lower weights (p = 6.9×10⁻²⁵, Wilcoxon rank sum test) despite indicating regulatory activity. This discrepancy likely reflects that DNase hypersensitivity marks the presence of regulatory activity without specifying its type (activating versus repressing) or its causal relationship to expression.</p>
 </section>
 </section>
 <section id="variant-effect-prediction" class="level2" data-number="6.4">
 <h2 data-number="6.4" class="anchored" data-anchor-id="variant-effect-prediction"><span class="header-section-number">6.4</span> Variant Effect Prediction</h2>
-<p>ExPecto’s expression predictions enable scoring variant effects through <em>in silico</em> mutagenesis: predict expression with reference allele, predict with alternative allele, and compute the difference. Because the model never trains on variant data, predictions are unconfounded by linkage disequilibrium—a fundamental advantage over statistical eQTL approaches.</p>
+<p>ExPecto’s expression predictions enable scoring variant effects through in silico mutagenesis: predict expression with reference allele, predict with alternative allele, and compute the difference. Because the model never trains on variant data, predictions are unconfounded by linkage disequilibrium, a fundamental advantage over statistical eQTL approaches.</p>
 <section id="computing-variant-effects" class="level3" data-number="6.4.1">
 <h3 data-number="6.4.1" class="anchored" data-anchor-id="computing-variant-effects"><span class="header-section-number">6.4.1</span> Computing Variant Effects</h3>
 <p>For any variant, ExPecto computes effects by comparing predictions:</p>
@@ -752,13 +743,8 @@ Warning
 </section>
 <section id="advantages-over-eqtl-mapping" class="level3" data-number="6.4.3">
 <h3 data-number="6.4.3" class="anchored" data-anchor-id="advantages-over-eqtl-mapping"><span class="header-section-number">6.4.3</span> Advantages Over eQTL Mapping</h3>
-<p>Traditional eQTL studies face fundamental limitations:</p>
-<ul>
-<li><strong>LD confounding</strong>: Only 3.5–11.7% of GTEx lead variants are estimated to be truly causal, meaning &lt;1% of all reported eQTL variants directly affect expression</li>
-<li><strong>Allele frequency bias</strong>: Rare variants lack statistical power for detection</li>
-<li><strong>Tissue availability</strong>: eQTL mapping requires large sample sizes in the tissue of interest</li>
-</ul>
-<p>ExPecto’s sequence-based predictions sidestep all three limitations: they score based on predicted functional impact rather than population associations, work identically for any allele frequency, and leverage expression training data from many tissues even when eQTL data is unavailable.</p>
+<p>Traditional eQTL studies face fundamental limitations. Linkage disequilibrium confounds causal inference: only 3.5 to 11.7% of GTEx lead variants are estimated to be truly causal, meaning fewer than 1% of all reported eQTL variants directly affect expression. Allele frequency creates power imbalances, as rare variants lack the sample sizes required for detection. Tissue availability constrains what can be studied, since eQTL mapping requires large sample sizes in the tissue of interest.</p>
+<p>ExPecto’s sequence-based predictions sidestep all three limitations. The model scores variants based on predicted functional impact rather than population associations, works identically for any allele frequency, and leverages expression training data from many tissues even when eQTL data is unavailable.</p>
 </section>
 </section>
 <section id="gwas-causal-variant-prioritization" class="level2" data-number="6.5">
@@ -766,16 +752,12 @@ Warning
 <p>A major application of ExPecto is prioritizing causal variants within GWAS-identified loci, where LD typically prevents identification of the true functional variant.</p>
 <section id="systematic-prioritization" class="level3" data-number="6.5.1">
 <h3 data-number="6.5.1" class="anchored" data-anchor-id="systematic-prioritization"><span class="header-section-number">6.5.1</span> Systematic Prioritization</h3>
-<p>Zhou et al.&nbsp;applied ExPecto to prioritize variants from ~3,000 GWAS studies. Key findings:</p>
-<ul>
-<li>GWAS loci with stronger predicted effect variants were significantly more likely to replicate in independent studies (p = 6.3×10⁻¹⁸⁹, Wald test with logistic regression)</li>
-<li>Stronger predicted effect variants were more likely to be the exact replicated variant (p = 5.6×10⁻¹⁴)</li>
-</ul>
-<p>For example, an early venous thromboembolism GWAS identified rs3756008 as the lead variant near the F11 locus. ExPecto prioritized a different LD variant, rs4253399, which was subsequently discovered as the true association in a larger cohort study.</p>
+<p>Zhou et al.&nbsp;applied ExPecto to prioritize variants from approximately 3,000 GWAS studies. GWAS loci with stronger predicted effect variants were significantly more likely to replicate in independent studies (p = 6.3×10⁻¹⁸⁹, Wald test with logistic regression). Stronger predicted effect variants were also more likely to be the exact replicated variant (p = 5.6×10⁻¹⁴).</p>
+<p>The framework can identify causal variants that statistical association alone cannot distinguish. For example, an early venous thromboembolism GWAS identified rs3756008 as the lead variant near the F11 locus. ExPecto prioritized a different LD variant, rs4253399, which was subsequently discovered as the true association in a larger cohort study.</p>
 </section>
 <section id="experimental-validation" class="level3" data-number="6.5.2">
 <h3 data-number="6.5.2" class="anchored" data-anchor-id="experimental-validation"><span class="header-section-number">6.5.2</span> Experimental Validation</h3>
-<p>The authors experimentally validated three top-ranked ExPecto predictions for immune-related diseases using luciferase reporter assays. In all cases, the ExPecto-prioritized variants showed significant allele-specific regulatory activity, while the original GWAS lead variants showed no differential activity:</p>
+<p>The authors experimentally validated three top-ranked ExPecto predictions for immune-related diseases using luciferase reporter assays. In all cases, the ExPecto-prioritized variants showed significant allele-specific regulatory activity, while the original GWAS lead variants showed no differential activity.</p>
 <table class="caption-top table">
 <colgroup>
 <col style="width: 11%">
@@ -827,38 +809,26 @@ Warning
 </section>
 <section id="in-silico-saturation-mutagenesis" class="level2" data-number="6.6">
 <h2 data-number="6.6" class="anchored" data-anchor-id="in-silico-saturation-mutagenesis"><span class="header-section-number">6.6</span> In Silico Saturation Mutagenesis</h2>
-<p>The computational efficiency of ExPecto enables exhaustive characterization of the regulatory mutation space. The authors computed predicted effects for all possible single nucleotide substitutions within ±1 kb of each TSS—over 140 million mutations across 23,779 human Pol II-transcribed genes. This identified &gt;1.1 million mutations with strong predicted expression effects.</p>
+<p>The computational efficiency of ExPecto enables exhaustive characterization of the regulatory mutation space. The authors computed predicted effects for all possible single nucleotide substitutions within ±1 kb of each TSS, covering over 140 million mutations across 23,779 human Pol II-transcribed genes. This identified more than 1.1 million mutations with strong predicted expression effects.</p>
 <section id="variation-potential" class="level3" data-number="6.6.1">
 <h3 data-number="6.6.1" class="anchored" data-anchor-id="variation-potential"><span class="header-section-number">6.6.1</span> Variation Potential</h3>
-<p>For each gene, the comprehensive mutagenesis profile defines its “variation potential” (VP)—the collective effects of all possible mutations on that gene’s expression. VP reflects the regulatory sensitivity of each gene:</p>
-<ul>
-<li><strong>High VP genes</strong>: Expression easily perturbed by sequence changes; regulatory regions densely packed with functional elements</li>
-<li><strong>Low VP genes</strong>: Expression robust to mutations; potentially fewer regulatory constraints or more redundant regulatory architecture</li>
-</ul>
+<p>For each gene, the comprehensive mutagenesis profile defines its “variation potential” (VP), the collective effects of all possible mutations on that gene’s expression. VP reflects the regulatory sensitivity of each gene. Genes with high VP have expression that is easily perturbed by sequence changes, with regulatory regions densely packed with functional elements. Genes with low VP show expression robust to mutations, potentially indicating fewer regulatory constraints or more redundant regulatory architecture.</p>
 <p>VP correlates with known biological properties: tissue-specific genes show lower VP than broadly expressed genes, and genes under stronger evolutionary constraint tend to have higher VP.</p>
 </section>
 <section id="constraint-violation-scores" class="level3" data-number="6.6.2">
 <h3 data-number="6.6.2" class="anchored" data-anchor-id="constraint-violation-scores"><span class="header-section-number">6.6.2</span> Constraint Violation Scores</h3>
-<p>By comparing predicted mutational effects to observed population variation, ExPecto enables inference of evolutionary constraints. A “constraint violation score” measures whether observed variants push expression in the “wrong” direction relative to inferred evolutionary constraint:</p>
-<ul>
-<li>Genes with negative VP directionality (mutations tend to reduce expression) are typically actively expressed—loss-of-function mutations are deleterious</li>
-<li>Genes with positive VP directionality (mutations tend to increase expression) are typically repressed—gain-of-expression mutations are deleterious</li>
-</ul>
+<p>By comparing predicted mutational effects to observed population variation, ExPecto enables inference of evolutionary constraints. A “constraint violation score” measures whether observed variants push expression in the “wrong” direction relative to inferred evolutionary constraint. Genes with negative VP directionality (mutations tend to reduce expression) are typically actively expressed, where loss-of-function mutations are deleterious. Genes with positive VP directionality (mutations tend to increase expression) are typically repressed, where gain-of-expression mutations are deleterious.</p>
 <p>This framework successfully predicts GWAS risk alleles without any prior variant-disease association data. Positive violation scores are significantly associated with alternative alleles being risk alleles (p = 0.002, Wilcoxon rank sum test, AUC = 0.67), demonstrating potential for ab initio disease variant identification.</p>
 </section>
 </section>
 <section id="the-40-kb-regulatory-window" class="level2" data-number="6.7">
 <h2 data-number="6.7" class="anchored" data-anchor-id="the-40-kb-regulatory-window"><span class="header-section-number">6.7</span> The 40 kb Regulatory Window</h2>
-<p>ExPecto’s ±20 kb window around each TSS represents an empirically optimized trade-off:</p>
-<ul>
-<li><strong>Smaller windows</strong>: Decreased prediction performance</li>
-<li><strong>Larger windows (50–200 kb)</strong>: Negligible performance improvement</li>
-</ul>
-<p>This suggests that most regulatory information for promoter-proximal expression lies within 40 kb of the TSS—at least within the linear modeling framework employed by ExPecto. Distal enhancers beyond this window, while biologically important, likely require more sophisticated integration approaches to capture (addressed by Enformer, <a href="p3-ch11-hybrid.html" class="quarto-xref"><span>Chapter 11</span></a>, with its 200 kb effective receptive field).</p>
+<p>ExPecto’s ±20 kb window around each TSS represents an empirically optimized trade-off. Smaller windows decreased prediction performance, while larger windows (50 to 200 kb) showed negligible performance improvement.</p>
+<p>This suggests that most regulatory information for promoter-proximal expression lies within 40 kb of the TSS, at least within the linear modeling framework employed by ExPecto. Distal enhancers beyond this window, while biologically important, likely require more sophisticated integration approaches to capture. Enformer (<a href="p3-ch11-hybrid.html" class="quarto-xref"><span>Chapter 11</span></a>), with its 200 kb effective receptive field, addresses this limitation.</p>
 </section>
 <section id="relationship-to-the-deepsea-lineage" class="level2" data-number="6.8">
 <h2 data-number="6.8" class="anchored" data-anchor-id="relationship-to-the-deepsea-lineage"><span class="header-section-number">6.8</span> Relationship to the DeepSEA Lineage</h2>
-<p>ExPecto represents a conceptual extension of the DeepSEA framework:</p>
+<p>ExPecto represents a conceptual extension of the DeepSEA framework. DeepSEA (2015) predicts 919 chromatin profiles from a 1 kb context window. ExPecto/Beluga (2018) predicts gene expression across 218 tissues from a 40 kb context window. Sei (2022) predicts 21,907 chromatin profiles plus sequence classes from a 4 kb window.</p>
 <table class="caption-top table">
 <thead>
 <tr class="header">
@@ -889,60 +859,37 @@ Warning
 </tr>
 </tbody>
 </table>
-<p>While DeepSEA predicts regulatory intermediate phenotypes, ExPecto predicts the downstream transcriptional consequence. For GWAS variant prioritization, ExPecto predictions proved more effective than DeepSEA alone—variants may alter chromatin features without affecting expression, but expression effects are more directly tied to phenotypic consequences.</p>
+<p>While DeepSEA predicts regulatory intermediate phenotypes, ExPecto predicts the downstream transcriptional consequence. For GWAS variant prioritization, ExPecto predictions proved more effective than DeepSEA alone. Variants may alter chromatin features without affecting expression, but expression effects are more directly tied to phenotypic consequences.</p>
 <p>The chromatin prediction component of ExPecto (Beluga) became the foundation for Sei (discussed in <a href="p2-ch05-reg.html" class="quarto-xref"><span>Chapter 5</span></a>), which expanded chromatin targets to 21,907 profiles and introduced sequence class annotations for interpretability.</p>
 </section>
 <section id="limitations-and-considerations" class="level2" data-number="6.9">
 <h2 data-number="6.9" class="anchored" data-anchor-id="limitations-and-considerations"><span class="header-section-number">6.9</span> Limitations and Considerations</h2>
 <section id="linear-expression-model" class="level3" data-number="6.9.1">
 <h3 data-number="6.9.1" class="anchored" data-anchor-id="linear-expression-model"><span class="header-section-number">6.9.1</span> Linear Expression Model</h3>
-<p>While the chromatin CNN captures nonlinear sequence patterns, the final expression model is linear. This prevents modeling of complex regulatory logic:</p>
-<ul>
-<li>Synergistic interactions between elements</li>
-<li>Competitive binding or mutual exclusion</li>
-<li>Threshold effects where element contributions are context-dependent</li>
-</ul>
-<p>The choice was pragmatic—linear models require less data and offer interpretability—but may sacrifice predictive power for genes with complex regulatory logic.</p>
+<p>While the chromatin CNN captures nonlinear sequence patterns, the final expression model is linear. This prevents modeling of complex regulatory logic such as synergistic interactions between elements, competitive binding or mutual exclusion, and threshold effects where element contributions are context-dependent. The choice was pragmatic: linear models require less data and offer interpretability, but may sacrifice predictive power for genes with complex regulatory logic.</p>
 </section>
 <section id="context-window-constraints" class="level3" data-number="6.9.2">
 <h3 data-number="6.9.2" class="anchored" data-anchor-id="context-window-constraints"><span class="header-section-number">6.9.2</span> Context Window Constraints</h3>
-<p>The 40 kb promoter-proximal window misses:</p>
-<ul>
-<li>Distal enhancers operating over hundreds of kilobases</li>
-<li>3D chromatin interactions that bring distant elements into proximity</li>
-<li>Enhancer-promoter specificity (which enhancer regulates which gene among nearby alternatives)</li>
-</ul>
+<p>The 40 kb promoter-proximal window misses distal enhancers operating over hundreds of kilobases, three-dimensional chromatin interactions that bring distant elements into proximity, and enhancer-promoter specificity (which enhancer regulates which gene among nearby alternatives).</p>
 </section>
 <section id="tss-centric-framework" class="level3" data-number="6.9.3">
 <h3 data-number="6.9.3" class="anchored" data-anchor-id="tss-centric-framework"><span class="header-section-number">6.9.3</span> TSS-Centric Framework</h3>
-<p>ExPecto requires a defined TSS for each gene, potentially limiting predictions for:</p>
-<ul>
-<li>Genes with multiple alternative promoters</li>
-<li>Novel or unannotated transcription start sites</li>
-<li>Tissue-specific promoter usage</li>
-</ul>
+<p>ExPecto requires a defined TSS for each gene, potentially limiting predictions for genes with multiple alternative promoters, novel or unannotated transcription start sites, and tissue-specific promoter usage.</p>
 </section>
 <section id="training-data-biases" class="level3" data-number="6.9.4">
 <h3 data-number="6.9.4" class="anchored" data-anchor-id="training-data-biases"><span class="header-section-number">6.9.4</span> Training Data Biases</h3>
-<p>Expression models trained on GTEx, Roadmap, and ENCODE data inherit their biases:</p>
-<ul>
-<li>Ancestry composition (GTEx is primarily European)</li>
-<li>Tissue representation (some tissues well-covered, others sparse)</li>
-<li>Cell line artifacts (immortalized cells may not reflect primary tissue biology)</li>
-</ul>
+<p>Expression models trained on GTEx, Roadmap, and ENCODE data inherit their biases. These include ancestry composition (GTEx is primarily European), tissue representation (some tissues well-covered, others sparse), and cell line artifacts (immortalized cells may not reflect primary tissue biology).</p>
 </section>
 </section>
 <section id="significance-for-the-field" class="level2" data-number="6.10">
 <h2 data-number="6.10" class="anchored" data-anchor-id="significance-for-the-field"><span class="header-section-number">6.10</span> Significance for the Field</h2>
-<p>ExPecto established several paradigms that influenced subsequent genomic deep learning:</p>
-<ol type="1">
-<li><p><strong>Modular sequence-to-expression prediction</strong>: Decomposing the problem into chromatin prediction, spatial integration, and expression modeling enables interpretability and component-wise improvement</p></li>
-<li><p><strong>Ab initio variant effect prediction</strong>: Training without variant data avoids LD confounding, enabling causal inference rather than association</p></li>
-<li><p><strong>Scalable in silico mutagenesis</strong>: Computational efficiency enables exhaustive characterization of mutational effects at genome scale</p></li>
-<li><p><strong>Tissue-specific regulatory learning</strong>: The framework learns tissue-relevant regulatory features without explicit tissue labels for chromatin inputs</p></li>
-<li><p><strong>Experimental validation standard</strong>: Demonstrating functional validation of computational predictions with reporter assays</p></li>
-</ol>
-<p>The framework demonstrated that deep learning could move beyond predicting intermediate molecular phenotypes (chromatin state) to predict cellular phenotypes (expression levels) directly from sequence. This progression—from sequence to chromatin to expression to disease—prefigured the increasingly ambitious goals of later genomic foundation models.</p>
+<p>ExPecto established several paradigms that influenced subsequent genomic deep learning.</p>
+<p>The modular sequence-to-expression prediction architecture demonstrated the value of decomposing the problem into chromatin prediction, spatial integration, and expression modeling. This separation enables interpretability and component-wise improvement.</p>
+<p>Ab initio variant effect prediction, achieved by training without variant data, avoids LD confounding and enables causal inference rather than mere association. This principle carries forward to later expression and variant effect models.</p>
+<p>Scalable in silico mutagenesis showed that computational efficiency enables exhaustive characterization of mutational effects at genome scale, a capability that would be impossible experimentally.</p>
+<p>The framework’s tissue-specific regulatory learning demonstrated that models can learn tissue-relevant regulatory features without explicit tissue labels for chromatin inputs, relying instead on the structure of expression data.</p>
+<p>Finally, the experimental validation standard set by ExPecto, demonstrating functional validation of computational predictions with reporter assays, established expectations for the field.</p>
+<p>The framework demonstrated that deep learning could move beyond predicting intermediate molecular phenotypes (chromatin state) to predict cellular phenotypes (expression levels) directly from sequence. This progression from sequence to chromatin to expression to disease prefigured the increasingly ambitious goals of later genomic foundation models.</p>
 <p>ExPecto’s public web portal (http://hb.flatironinstitute.org/expecto) and code release (https://github.com/FunctionLab/ExPecto) maintained the field’s norm of open tool availability established by DeepSEA. The framework continues to serve as a baseline for expression prediction methods and as a component in variant prioritization pipelines.</p>
 
 
