@@ -1,349 +1,178 @@
 ::: {.callout-warning .content-visible when-profile="draft"}
 **TODO:**
 
-- ...
-- ...
+- Add figure: AlphaMissense architecture diagram showing integration of MSA-based language modeling with AlphaFold2 structural context
+- Add figure: GPN-MSA input representation showing multi-species alignment stack and masked language modeling objective
+- Add figure: Evo 2 architecture overview showing StripedHyena 2 with context length scaling
+- Add figure: AlphaGenome unified architecture diagram showing convolutional encoder, transformer blocks, and multi-task prediction heads
+- Add visualization: comparative variant effect prediction across models (coding vs noncoding performance)
+- Consider adding schematic of practical VEP workflow integrating multiple tools
+- Add benchmark performance table across ClinVar, MAVE, and regulatory variant datasets
 :::
+
 
 # Variant Effect Prediction  {#sec-veps}
 
 ## From Handcrafted Scores to Foundation Models
 
-Variant effect prediction (VEP) sits at the heart of modern genomics. Most variants discovered in clinical sequencing are rare and lack direct experimental evidence; yet clinicians still need to decide whether they’re benign, pathogenic, or somewhere in between. Earlier in this book we saw:
+Variant effect prediction sits at the heart of modern genomics. Most variants discovered in clinical sequencing are rare and lack direct experimental evidence, yet clinicians still need to decide whether they are benign, pathogenic, or somewhere in between. Earlier in this book we encountered several approaches to this problem. Conservation and heuristic scores such as SIFT, PolyPhen, and CADD combine evolutionary constraint with manually engineered features to estimate deleteriousness (@sec-deleteriousness) [@ng_sift_2003; @adzhubei_polyphen_2010; @rentzsch_cadd_2019]. Sequence-to-function CNNs like DeepSEA and ExPecto predict chromatin and expression effects that can serve as proxies for regulatory impact (@sec-reg; @sec-trans). Specialized architectures like SpliceAI target specific molecular mechanisms such as splicing disruption (@sec-splice). Protein language models trained on massive sequence databases learn representations that correlate with fitness and can be adapted for missense variant effect prediction (@sec-prot).
 
-- **Conservation and heuristic scores** (e.g., traditional tools like SIFT (@ng_sift_2003), PolyPhen (@adzhubei_polyphen_2010), CADD (@rentzsch_cadd_2019)), which combine evolutionary constraint and manually engineered features.
-- **Sequence-to-function CNNs** like DeepSEA and ExPecto (Chapters 5–6), which predict chromatin and expression to estimate regulatory effects.
-- **Specialized architectures** like SpliceAI (@sec-splice), which target specific mechanisms such as splicing.
-- **Protein language models** (Chapter 9), which learn rich representations from large-scale protein sequences and can be adapted for missense VEP.
+The frontier today is shaped by foundation models that combine massive pretraining at proteome or genome scale, long-range context spanning kilobases to megabases, and multiple sources of information including sequence, structure, multi-species alignments, and multi-omic outputs. These systems represent a qualitative shift from the feature engineering paradigm of earlier methods. Rather than defining relevant features a priori and training classifiers on those features, foundation models learn rich representations from data and then apply those representations to variant interpretation tasks.
 
-The frontier today is shaped by **foundation models** that combine:
+This chapter surveys four landmark systems that define the current state of the art: AlphaMissense for proteome-wide missense pathogenicity prediction, GPN-MSA for genome-wide variant effect prediction from multi-species alignments, Evo 2 as a generalist genomic language model spanning all domains of life, and AlphaGenome as a unified megabase-scale sequence-to-function model with state-of-the-art regulatory variant effect prediction. Together, they preview what genomic foundation models look like when specialized for variant interpretation.
 
-- **Massive pretraining** (proteome- or genome-scale),
-- **Long-range context** (from kilobases to megabases),
-- **Multiple sources of information** (sequence, structure, multi-species alignments, multi-omic outputs).
-
-This chapter surveys four landmark systems:
-
-- **AlphaMissense** – proteome-wide missense pathogenicity predictions.
-- **GPN-MSA** – a DNA language model over multi-species alignments for genome-wide VEP.
-- **Evo 2** – a generalist genomic language model spanning all domains of life.
-- **AlphaGenome** – a unified, megabase-scale sequence-to-function model with state-of-the-art regulatory VEP.
-
-Together, they preview what “Genomic Foundation Models” look like when specialized for variant interpretation.
-
----
 
 ## AlphaMissense: Proteome-Wide Missense Pathogenicity
 
-AlphaMissense, developed by DeepMind, provides **precomputed pathogenicity scores for ~71 million possible human missense variants**, covering almost every single–amino acid change in the proteome.
+AlphaMissense, developed by DeepMind, provides precomputed pathogenicity scores for approximately 71 million possible human missense variants, covering almost every single amino acid change in the proteome [@cheng_alphamissense_2023]. This comprehensive scoring emerged from combining two powerful sources of information: the evolutionary constraints captured by protein language models and the structural context provided by AlphaFold2.
 
-### Inputs: Combining Sequence and Structure
+### Combining Sequence and Structure
 
-AlphaMissense builds on two pillars:
+The model builds on two complementary pillars. The first is protein language modeling, where a transformer-based model is trained on massive multiple sequence alignments to learn which amino acids tend to appear at each position across evolution. From this training, the model infers how surprising a given amino acid substitution is in its evolutionary context. Positions that are highly conserved across species receive confident predictions that alternative amino acids are deleterious, while positions that vary freely across evolution are predicted to tolerate substitutions.
 
-1. **Protein language modeling**  
-   - A transformer-based model is trained on massive multiple sequence alignments (MSAs), learning which amino acids tend to appear at each position across evolution.  
-   - From this, the model infers how “surprising” a given amino acid substitution is in its evolutionary context.
+The second pillar is predicted three-dimensional structure from AlphaFold2. Structural context helps distinguish tolerated changes from disruptive ones in ways that sequence alone cannot capture. A substitution on a solvent-exposed loop may be well tolerated even if the position is somewhat conserved, while a substitution in a tightly packed hydrophobic core may be disruptive even at a position with some evolutionary variability. The structural environment, including local secondary structure, packing density, and proximity to functional sites, provides crucial information about the consequences of amino acid changes.
 
-2. **Predicted 3D structure from AlphaFold2**  
-   - Structural context (packing, secondary structure, local interactions) helps distinguish tolerated changes (e.g., on solvent-exposed loops) from disruptive ones (e.g., in tightly packed cores or active sites).
-
-For each variant, AlphaMissense ingests:
-
-- The **wild-type sequence**,
-- The **substitution position** and amino-acid change,
-- **Sequence context** from the MSA,
-- **Structural environment** derived from AlphaFold2.
-
-These features are fed into a neural network that outputs a **pathogenicity probability** between 0 and 1.
+For each variant, AlphaMissense ingests the wild-type sequence, the substitution position and amino acid change, sequence context from the MSA, and structural environment derived from AlphaFold2. These features are fed into a neural network that outputs a pathogenicity probability between 0 and 1.
 
 ### Training and Calibration
 
-AlphaMissense’s training is hybrid:
+AlphaMissense employs a hybrid training strategy. Self-supervised pretraining learns general sequence and structural representations from evolutionary data, building on the foundational representations developed for AlphaFold2 and protein language modeling. Supervised calibration then uses ClinVar and similar databases for labeled pathogenic and benign variants, along with population frequency information from gnomAD under the assumption that common variants are more likely benign.
 
-- **Self-supervised pretraining** learns general sequence and structural representations from evolutionary data.
-- **Supervised calibration** uses:
-  - **ClinVar** and similar databases for labeled pathogenic/benign variants,
-  - **Population frequencies** (e.g., gnomAD) under the assumption that common variants are more likely benign.
-
-The model’s raw scores are calibrated so that:
-
-- Scores near **0** behave like “likely benign,”  
-- Scores near **1** behave like “likely pathogenic,”  
-- Intermediate scores capture uncertainty and ambiguous cases.
-
-In practice, AlphaMissense adopts score cutoffs that approximately map to **“likely benign,” “uncertain,” and “likely pathogenic”** categories used in clinical interpretation frameworks.
+The model's raw scores are calibrated so that scores near 0 correspond to likely benign variants, scores near 1 correspond to likely pathogenic variants, and intermediate scores capture uncertainty and ambiguous cases. In practice, AlphaMissense adopts score cutoffs that approximately map to the "likely benign," "uncertain," and "likely pathogenic" categories used in clinical interpretation frameworks such as ACMG guidelines.
 
 ### Performance and Clinical Utility
 
-Across diverse benchmarks—ClinVar, curated expert panels, and multiplexed assays of variant effect (MAVEs)—AlphaMissense:
+Across diverse benchmarks including ClinVar, curated expert panels, and multiplexed assays of variant effect (MAVEs), AlphaMissense achieves state-of-the-art AUROC and AUPRC for missense variant effect prediction. The model generalizes across many genes, including those with little prior annotation, and produces scores that correlate more consistently with experimental functional readouts than many earlier predictors.
 
-- Achieves **state-of-the-art AUROC and AUPRC** for missense VEP.
-- Generalizes across many genes, including those with little prior annotation.
-- Produces scores that are **more consistent with experimental functional readouts** than many earlier predictors.
-
-As a result, AlphaMissense scores have already been integrated into:
-
-- Clinical re-annotation of exomes,  
-- Reclassification of variants of uncertain significance (VUS),  
-- Gene-specific studies where high-throughput functional assays are impractical.
+These properties have led to rapid adoption. AlphaMissense scores have been integrated into clinical re-annotation of exomes, reclassification of variants of uncertain significance (VUS), and gene-specific studies where high-throughput functional assays are impractical. The precomputed nature of the predictions, covering essentially all possible missense variants, eliminates the need for users to run inference themselves.
 
 ### Limitations and Caveats
 
-Despite its impressive performance, AlphaMissense has important limitations:
+Despite its impressive performance, AlphaMissense has important limitations that users must understand. The model handles missense variants only and does not natively score nonsense, frameshift, regulatory, or deep intronic variants. It operates on single variants at a time, ignoring combinations of variants such as compound heterozygosity or epistatic interactions. The training depends on labels from ClinVar and population databases, meaning that any biases in those resources, including ancestry representation biases, can propagate into scores. Finally, while attention maps and feature attributions can be examined, the reasoning underlying a particular score is often opaque.
 
-- **Missense-only**: It does not natively handle nonsense, frameshift, regulatory, or deep intronic variants.
-- **Single-variant focus**: It scores one substitution at a time, ignoring **combinations of variants** (compound heterozygosity, epistasis).
-- **Dependent on training labels**: Any biases in ClinVar or population data (e.g., ancestry representation) can propagate into scores.
-- **Interpretability**: While attention maps and feature attributions can be examined, the reasoning for a particular score is often opaque.
+For these reasons, clinical guidelines recommend treating AlphaMissense as supporting evidence to be combined with segregation data, functional assays, and population frequencies rather than as a standalone decision-maker.
 
-For these reasons, guidelines recommend treating AlphaMissense as **supporting evidence** to be combined with segregation, functional data, and population frequencies—not as a standalone decision-maker.
 
----
+## GPN-MSA: Genome-Wide Variant Effect Prediction from Alignments
 
-## GPN-MSA: Genome-Wide Variant Effect Prediction from MSAs
+While AlphaMissense focuses on proteins, GPN-MSA tackles the harder problem of genome-wide variant effect prediction directly at the DNA level [@benegas_gpn-msa_2024]. This expansion is critical because most disease-associated variants discovered through GWAS and clinical sequencing fall in noncoding regions where protein-based methods provide no information.
 
-While AlphaMissense focuses on proteins, **GPN-MSA** tackles the harder problem of **genome-wide variant effect prediction in complex genomes such as human**, directly at the DNA level.
+### An Alignment-Based DNA Language Model
 
-### Alignment-Based DNA Language Model
+GPN-MSA extends earlier Genomic Pre-trained Network (GPN) models by operating on multi-species genome alignments. The input is a stack of aligned sequences from multiple species, for example human plus dozens of mammals. The model sees both the reference sequence and auxiliary features encoding how each aligned species matches, mismatches, or gaps at each base.
 
-GPN-MSA extends earlier Genomic Pre-trained Network (GPN) models by operating on **multi-species genome alignments**:
-
-- Input: a **stack of aligned sequences** from multiple species (e.g., human plus dozens of mammals).
-- Representation: the model sees both:
-  - The **reference sequence** (e.g., human), and  
-  - **Auxiliary features** encoding how each aligned species matches, mismatches, or gaps at each base.
-
-The model is trained with a **masked language modeling (MLM) objective**:
-
-- Randomly mask nucleotides in the reference sequence,
-- Predict the masked base given the surrounding context and the aligned sequences.
-
-This encourages the model to learn **evolutionary constraints**: positions where substitutions are strongly disfavored across species get very confident predictions; unconstrained positions allow more flexibility.
+Training uses a masked language modeling objective analogous to BERT in natural language processing. The model randomly masks nucleotides in the reference sequence and predicts the masked base given the surrounding context and the aligned sequences. This objective encourages the model to learn evolutionary constraints: positions where substitutions are strongly disfavored across species receive confident predictions for the reference base, while unconstrained positions allow more flexibility.
 
 ### Variant Scoring Strategies
 
-GPN-MSA supports several ways to derive variant effect scores:
+GPN-MSA supports several approaches to deriving variant effect scores. Likelihood-based scoring compares the model's log-likelihood or probability of the reference versus alternate allele at the variant position. Variants that substantially reduce the model's confidence in the sequence are inferred to be more disruptive. Embedding distance computes representations for reference and alternate sequences and uses their difference, for example Euclidean distance, as an effect magnitude. Influence scores quantify how much a variant perturbs the model's outputs across the surrounding genomic context.
 
-- **Likelihood-based scoring**: compare the model’s log-likelihood (or probability) of the reference vs. alternate allele at the variant position.
-- **Embedding distance**: compute embeddings for reference and alternate sequences and use their difference (e.g., Euclidean distance) as an effect magnitude.
-- **Influence scores**: quantify how much a variant perturbs the model’s outputs across the surrounding genomic context.
-
-Because the model operates on **whole-genome alignments**, it can score:
-
-- Coding and noncoding variants,
-- Regulatory elements, introns, UTRs, and intergenic regions,
-- Variants in regions with **complex conservation patterns**, where simple phyloP-like scores @siepel_phastcons_2005 struggle.
+Because the model operates on whole-genome alignments, it can score coding and noncoding variants, regulatory elements, introns, UTRs, and intergenic regions. It performs particularly well in regions with complex conservation patterns where simple phyloP-like scores struggle, capturing dependencies that go beyond position-by-position conservation.
 
 ### Benchmarking and Applications
 
-GPN-MSA demonstrates strong performance on:
+GPN-MSA demonstrates strong performance on genome-wide pathogenic versus benign classification datasets, variant sets from genome-wide association studies, and functional readouts from high-throughput reporter assays. Its primary utility lies in genome-wide prefiltering, where it can prioritize candidate causal variants in regulatory regions, and in complementing protein-focused tools by supplying information in regions where AlphaMissense is blind.
 
-- Genome-wide pathogenic vs. benign classification datasets,
-- Variant sets from genome-wide association studies,
-- Functional readouts from high-throughput reporter assays.
+The key limitation is dependency on high-quality multi-species alignments. Coverage and quality drop in repetitive regions, structurally complex regions, or poorly aligned segments of the genome. For variants in such regions, GPN-MSA predictions should be interpreted with caution or supplemented with other methods.
 
-Practically, GPN-MSA is useful for:
-
-- **Genome-wide prefiltering**: prioritizing candidate causal variants in regulatory regions.
-- **Complementing protein-focused tools**: supplying information where AlphaMissense is blind (deep noncoding, intronic, intergenic).
-
-Its key limitation is dependency on **high-quality multi-species alignments**; coverage and quality drop in repetitive, structurally complex, or poorly aligned regions.
-
----
 
 ## Evo 2: A Generalist Genomic Language Model
 
-**Evo 2** pushes the foundation-model paradigm to the extreme: it is a **genome-scale language model** trained across all domains of life—bacteria, archaea, eukaryotes, and phages—on **>9 trillion DNA tokens**.
+Evo 2 pushes the foundation model paradigm to an extreme: it is a genome-scale language model trained across all domains of life, including bacteria, archaea, eukaryotes, and phages, on more than 9 trillion DNA tokens [@brixi_evo_2025]. Rather than specializing for any particular organism or task, Evo 2 aims to be a general-purpose genomic foundation model analogous to large language models in natural language processing.
 
 ### Scale and Architecture
 
-Key features of Evo 2 include:
+Several features distinguish Evo 2 from earlier genomic models. The model uses autoregressive training on DNA, predicting the next base given the preceding context, analogous to next-token prediction in GPT-style text language models. The architecture is StripedHyena 2, which blends convolutional and attention mechanisms to support context windows up to 1 million base pairs while remaining computationally tractable. Multiple model sizes are available, including 7 billion and 40 billion parameter variants, with open-source weights, training code, and the OpenGenome2 dataset.
 
-- **Autoregressive training** on DNA: predict the next base given the preceding context, analogous to next-token prediction in text LLMs.
-- A **StripedHyena 2** architecture, blending convolutional and attention mechanisms to support:
-  - Context windows up to **1 million base pairs**,  
-  - Efficient long-range modeling.
-- Multiple model sizes (e.g., 7B and 40B parameters) with open-source weights, training code, and the OpenGenome2 dataset.
-
-Evo 2 is designed as a **generalist**: it is not trained specifically for VEP, but rather to model genomic sequences broadly.
+The cross-species training corpus is critical. By learning from genomes across the tree of life, Evo 2 captures evolutionary patterns that span far longer timescales than human-only or mammal-only models. This breadth comes at the cost of human-specific optimization, but the trade-off enables applications in non-model organisms and provides a distinctive view of sequence constraint.
 
 ### Zero-Shot Variant Effect Scoring
 
-Remarkably, Evo 2 can be used for **zero-shot variant interpretation**:
+Remarkably, Evo 2 can be used for zero-shot variant interpretation without any supervised training on variant labels. For a given locus, one computes the model's sequence likelihood for the reference allele, then computes the likelihood for the alternate allele or the sequence containing it. The difference in likelihood provides a variant effect score, with variants that strongly reduce probability inferred to be more disruptive.
 
-- For a given locus, compute the model’s sequence likelihood (or log-probability) for the **reference** allele.
-- Then compute the likelihood for the **alternate** allele (or sequence containing it).
-- The difference in likelihood provides a **variant effect score**—variants that strongly reduce probability are inferred to be more disruptive.
-
-In benchmarks reported in the preprint and follow-up analyses:
-
-- Evo 2 achieves **competitive or state-of-the-art accuracy** for pathogenic vs. benign classification across multiple variant types (coding and noncoding), even without variant-specific supervised training.
-- A simple supervised classifier built on Evo 2 embeddings reaches **state-of-the-art performance** on tasks like BRCA1 VUS classification.
+In benchmarks reported in the preprint and follow-up analyses, Evo 2 achieves competitive or state-of-the-art accuracy for pathogenic versus benign classification across multiple variant types, including both coding and noncoding, even without variant-specific supervised training. When a simple supervised classifier is built on Evo 2 embeddings, it reaches state-of-the-art performance on tasks like BRCA1 VUS classification.
 
 ### Cross-Species Variant Interpretation
 
-Because Evo 2 is trained across diverse species:
+Because Evo 2 is trained across diverse species, it naturally supports variant effect prediction in non-model organisms such as livestock and crops. It can help quantify mutation load, prioritize variants for breeding programs, and guide genome editing designs across species. However, its generality comes with trade-offs. Domain-specific models like AlphaMissense for human missense or AlphaGenome for regulatory variants may still outperform Evo 2 on certain human-centric tasks, and careful calibration and benchmarking are required before any clinical application.
 
-- It naturally supports **variant effect prediction in non-model organisms** (e.g., livestock, crops).
-- It can help quantify **mutation load**, prioritize variants for breeding programs, and guide **genome editing** designs across species.
-
-However, its generality comes with trade-offs:
-
-- Domain-specific models (like AlphaMissense for human missense or AlphaGenome for regulatory variants) may still outperform Evo 2 on certain human-centric tasks.
-- Careful calibration and benchmarking are required before clinical use.
-
----
 
 ## AlphaGenome: Unified Megabase-Scale Regulatory Modeling
 
-Where Evo 2 is generalist and sequence-only, **AlphaGenome** is explicitly designed as a **multimodal regulatory model** of the human genome, with a focus on **variant effect prediction across many functional readouts**.
+Where Evo 2 is generalist and sequence-only, AlphaGenome is explicitly designed as a multimodal regulatory model of the human genome, with a focus on variant effect prediction across many functional readouts [@avsec_alphagenome_2025]. It represents the current frontier in regulatory variant effect prediction.
 
-### Architecture: CNNs + Transformers over 1 Mbp
+### Architecture: Convolutions and Transformers over 1 Megabase
 
-AlphaGenome takes as input **1 megabase (1 Mb) of DNA sequence** and produces predictions at **single-base resolution** for a large set of genomic “tracks,” including:
+AlphaGenome takes as input 1 megabase of DNA sequence and produces predictions at single-base resolution for a large set of genomic tracks. These tracks include chromatin accessibility and histone marks, transcription factor binding, gene expression measured by CAGE-like signals, three-dimensional genome contacts, and splicing features including junctions and splice site usage.
 
-- Chromatin accessibility and histone marks,
-- Transcription factor binding,
-- Gene expression (e.g., CAGE-like signals),
-- 3D genome contacts,
-- Splicing features (junctions and splice-site usage).
-
-Architecturally:
-
-- **Convolutional layers** detect local sequence motifs.
-- **Transformer blocks** propagate information across the full megabase context.
-- **Task-specific heads** output different experimental modalities across many tissues and cell types.
-
-This design generalizes earlier models like Basenji/Enformer (for regulatory tracks) and SpliceAI (for splicing) into a **single, unified model**.
+The architecture combines complementary components. Convolutional layers detect local sequence motifs, analogous to the early layers of DeepSEA and its successors. Transformer blocks propagate information across the full megabase context, capturing the long-range dependencies that CNNs struggle to model. Task-specific heads output different experimental modalities across many tissues and cell types. This design generalizes earlier models like Basenji, Enformer (for regulatory tracks), and SpliceAI (for splicing) into a single unified model (@sec-hybrid; @sec-splice).
 
 ### Variant Effect Prediction Across Modalities
 
-Given a reference sequence and a candidate variant, AlphaGenome scores variant effects by:
+Given a reference sequence and a candidate variant, AlphaGenome scores variant effects by predicting genome-wide functional tracks for the reference sequence, predicting the same tracks for the sequence bearing the variant, and comparing predictions to obtain delta signals across regulatory elements, splicing patterns, gene expression levels, and three-dimensional contact maps affecting enhancer-promoter communication.
 
-1. Predicting genome-wide functional tracks for the reference sequence.
-2. Predicting the same tracks for the sequence bearing the variant.
-3. Comparing predictions to obtain **delta signals** across:
+On extensive benchmarks, AlphaGenome achieves state-of-the-art accuracy in predicting unseen functional genomics tracks and shows strong performance on diverse variant effect tasks including noncoding disease variants, splicing disruptions, and regulatory MPRA data. Critically, it provides mechanistic hypotheses about which tracks and tissues are disrupted rather than only a single scalar risk score. An API makes AlphaGenome accessible to the research community, enabling large-scale variant scoring without local training infrastructure.
 
-   - Regulatory elements (promoters, enhancers, insulators),
-   - Splicing patterns (gain/loss of splice junctions),
-   - Gene expression levels,
-   - 3D contact maps affecting enhancer–promoter communication.
-
-On extensive benchmarks, AlphaGenome:
-
-- Achieves **state-of-the-art accuracy** in predicting unseen functional genomics tracks.
-- Shows strong performance on diverse variant effect tasks (e.g., noncoding disease variants, splicing disruptions, regulatory MPRA data).
-- Provides **mechanistic hypotheses** (which tracks/tissues are disrupted) rather than only a single scalar risk score.
-
-An API makes AlphaGenome accessible to the research community, enabling large-scale variant scoring without local training infrastructure.
-
----
 
 ## Comparing Design Choices Across Modern VEP Models
 
-The models in this chapter span different points in the design space:
+The models surveyed in this chapter span different points in a multidimensional design space. Understanding these differences helps practitioners choose appropriate tools for their applications.
 
-| Model         | Input Modality               | Context Length      | Pretraining Data                    | Variant Types       | Primary Outputs                     |
-|--------------|------------------------------|---------------------|-------------------------------------|---------------------|-------------------------------------|
-| AlphaMissense| Protein sequence + structure | Protein-length      | MSAs + structural environment       | Missense only       | Pathogenicity probability           |
-| GPN-MSA      | Multi-species DNA alignments | kb-scale windows    | Whole-genome MSAs (multiple species)| Coding + noncoding  | Likelihood / embedding-based scores |
-| Evo 2        | Raw DNA sequence             | Up to ~1 Mb         | OpenGenome2 (all domains of life)   | All variant types   | Zero-shot likelihood-based scores   |
-| AlphaGenome  | Raw DNA sequence             | 1 Mb                | Human genome + multi-omic tracks    | All variant types   | Multi-omic tracks + delta effects   |
+| Model | Input Modality | Context Length | Pretraining Data | Variant Types | Primary Outputs |
+|-------|----------------|----------------|------------------|---------------|-----------------|
+| AlphaMissense | Protein sequence + structure | Protein-length | MSAs + structural environment | Missense only | Pathogenicity probability |
+| GPN-MSA | Multi-species DNA alignments | kb-scale windows | Whole-genome MSAs (multiple species) | Coding + noncoding | Likelihood / embedding-based scores |
+| Evo 2 | Raw DNA sequence | Up to ~1 Mb | OpenGenome2 (all domains of life) | All variant types | Zero-shot likelihood-based scores |
+| AlphaGenome | Raw DNA sequence | 1 Mb | Human genome + multi-omic tracks | All variant types | Multi-omic tracks + delta effects |
 
-Key contrasts:
+Several key contrasts emerge from this comparison. In terms of scope, AlphaMissense is human-missense-specific with deep clinical calibration, GPN-MSA and AlphaGenome are human-genome-centric and span coding and regulatory variants, while Evo 2 is cross-species and general-purpose. For context and long-range effects, AlphaMissense operates at protein scale, GPN-MSA uses modest windows centered on the variant, and Evo 2 and AlphaGenome support megabase-scale context capable of capturing long-range regulatory interactions. Regarding outputs, AlphaMissense and GPN-MSA primarily produce scalar scores, Evo 2 outputs likelihoods and embeddings that require task-specific postprocessing, and AlphaGenome outputs rich functional profiles that enable mechanistic hypotheses about variant effects.
 
-- **Scope**  
-  - AlphaMissense is **human-missense-specific**, with deep clinical calibration.  
-  - GPN-MSA and AlphaGenome are **human-genome-centric**, spanning coding and regulatory variants.  
-  - Evo 2 is **cross-species and general-purpose**.
-
-- **Context and long-range effects**  
-  - AlphaMissense operates at **protein scale**.  
-  - GPN-MSA uses modest windows centered on the variant.  
-  - Evo 2 and AlphaGenome support **megabase-scale context**, capturing long-range regulatory interactions.
-
-- **Outputs**  
-  - AlphaMissense and GPN-MSA primarily output **scalar scores**.  
-  - Evo 2 outputs **likelihoods/embeddings** that require task-specific postprocessing.  
-  - AlphaGenome outputs **rich functional profiles**, enabling mechanistic hypotheses.
-
----
 
 ## Practical Use: Choosing and Interpreting Modern VEP Tools
 
-In realistic workflows, these models are complementary rather than competing.
+In realistic workflows, these models are complementary rather than competing. The choice of tool depends on the variant type, the available resources, and the downstream application.
 
 ### Coding Missense Variants
 
-For human missense variants:
-
-- Use **AlphaMissense** as a high-coverage, clinically calibrated score.
-- Complement with:
-  - **Protein language model embeddings** (Chapter 9) for gene- or domain-specific modeling,
-  - **Conservation and population data** (e.g., GPN-MSA in coding regions, gnomAD frequencies),
-  - **Gene-level context** (constraint metrics, disease association).
+For human missense variants, AlphaMissense provides a high-coverage, clinically calibrated score that serves as an excellent starting point. This should be complemented with protein language model embeddings from ESM or related systems for gene-specific or domain-specific modeling (@sec-prot), conservation and population data including GPN-MSA scores in coding regions and gnomAD frequencies, and gene-level context such as constraint metrics and disease association history.
 
 ### Noncoding and Regulatory Variants
 
-For regulatory variation (promoters, enhancers, introns, intergenic):
-
-- Use **AlphaGenome** to obtain:
-  - Tissue-specific changes in chromatin and expression,
-  - Splicing consequences (especially for intronic and exonic variants),
-  - Potential disruption of long-range enhancer–promoter interactions.
-- Use **GPN-MSA** when:
-  - You want a **conservation-grounded score**,
-  - High-quality multi-species alignments are available,
-  - You’re scanning broad regions genome-wide.
+For regulatory variation in promoters, enhancers, introns, and intergenic regions, AlphaGenome is currently the most comprehensive option. It provides tissue-specific changes in chromatin and expression, splicing consequences for intronic and exonic variants, and potential disruption of long-range enhancer-promoter interactions. GPN-MSA serves as a valuable complement when a conservation-grounded score is desired, when high-quality multi-species alignments are available, or when scanning broad regions genome-wide without requiring the full multi-omic output that AlphaGenome provides.
 
 ### Cross-Species and Large-Scale Modeling
 
-For non-human organisms, or when building general-purpose genomic tools:
-
-- Leverage **Evo 2** for:
-  - Zero-shot variant scoring in poorly annotated species,
-  - Designing or screening edits (e.g., CRISPR designs),
-  - Serving as a feature extractor feeding downstream supervised models.
+For non-human organisms or when building general-purpose genomic tools, Evo 2 is the natural choice. Its zero-shot variant scoring works in poorly annotated species, it can guide the design and screening of genome edits, and it can serve as a feature extractor feeding downstream supervised models trained on organism-specific labels.
 
 ### Score Interpretation and Calibration
 
-Regardless of the model:
+Regardless of the model, variant effect scores should be treated as probabilistic evidence rather than binary labels. Calibration is essential: does a score of 0.9 truly correspond to approximately 90% pathogenic variants, or is the score distribution shifted? The distribution of scores within a gene matters, since outliers relative to the gene's typical score distribution are more suspect. Consistency across tools strengthens confidence, and agreement between AlphaMissense, GPN-MSA, AlphaGenome, Evo 2, and simpler conservation metrics provides more reliable evidence than any single score.
 
-- Treat scores as **probabilistic evidence**, not binary labels.
-- Consider:
-  - **Calibration** (does a score of 0.9 truly correspond to ~90% pathogenic variants?),
-  - **Distribution of scores within a gene** (outliers are more suspect),
-  - **Consistency across tools** (agreement between AlphaMissense, GPN-MSA, AlphaGenome, Evo 2, and simpler conservation metrics strengthens confidence).
+Where possible, predictions should be tied back to mechanistic hypotheses such as splice site disruption or enhancer-promoter rewiring, and experimental follow-up through targeted assays, MPRA, or CRISPR screens should be considered for variants of high clinical interest.
 
-Where possible, tie predictions back to:
-
-- **Mechanistic hypotheses** (splice site disruption, enhancer–promoter rewiring),
-- **Experimental follow-up** (targeted assays, MPRA, CRISPR screens).
-
----
 
 ## Open Challenges and Future Directions
 
-Even these state-of-the-art systems leave major gaps:
+Even these state-of-the-art systems leave major gaps that define the frontier of variant effect prediction research.
 
-- **Ancestry and population bias**  
-  Training data and labels remain skewed toward certain ancestries, raising concerns about performance and calibration in underrepresented populations.
+### Ancestry and Population Bias
 
-- **Complex variant patterns**  
-  Most models focus on **single-base or single-amino-acid changes**. Systematic handling of:
-  - Haplotypes,  
-  - Indels and structural variants,  
-  - Epistatic interactions across distant loci  
-  is still in its infancy.
+Training data and labels remain skewed toward certain ancestries, raising concerns about performance and calibration in underrepresented populations. ClinVar submissions are predominantly from European-ancestry individuals, and population frequency databases like gnomAD have similar biases. Models trained on these data may systematically misclassify variants that are common in non-European populations but rare in training data. Addressing this bias requires both more diverse data collection and explicit modeling of population structure in variant effect prediction frameworks.
 
-- **Integrating multi-omics and longitudinal data**  
-  AlphaGenome marks a step toward unified multi-omic prediction, but dynamic phenomena (developmental trajectories, environment, time-series responses) are only lightly modeled.
+### Complex Variant Patterns
 
-- **Interpretability and clinical communication**  
-  Translating high-dimensional predictions into explanations that clinicians and patients can understand—and that map onto emerging guidelines for AI-assisted variant interpretation—remains a human-factor challenge.
+Most models focus on single-base or single-amino-acid changes. Systematic handling of haplotypes, where multiple variants on the same chromosome may interact; indels and structural variants, which can have complex functional consequences; and epistatic interactions across distant loci remains in its infancy. The combinatorial explosion of possible multi-variant genotypes makes exhaustive scoring impractical, and the training data for multi-variant effects is sparse.
 
-- **Safe deployment and continual learning**  
-  As more functional datasets and clinical labels accumulate, models will need **continual updating** without catastrophic forgetting, along with governance frameworks to track model versions and provenance.
+### Integrating Multi-Omics and Longitudinal Data
 
-In the next chapters, we will connect these VEP systems to broader issues in evaluation, bias, and multi-omics integration, positioning them within the broader landscape of **Genomic Foundation Models**. This chapter’s models illustrate how the building blocks from earlier chapters—NGS, functional genomics, CNNs, transformers, protein and DNA language models—coalesce into powerful, end-to-end systems for variant interpretation.
+AlphaGenome marks a step toward unified multi-omic prediction, but dynamic phenomena including developmental trajectories, environmental responses, and time-series measurements are only lightly modeled. The static nature of current variant effect predictions misses the reality that variant effects can be highly context-dependent, varying across cell types, developmental stages, and environmental conditions.
+
+### Interpretability and Clinical Communication
+
+Translating high-dimensional predictions into explanations that clinicians and patients can understand, and that map onto emerging guidelines for AI-assisted variant interpretation, remains a human-factor challenge. A score alone, no matter how accurate, is often insufficient for clinical decision-making. Clinicians need to understand why a variant is predicted to be pathogenic, which aspects of the prediction are most certain, and how the prediction relates to the specific clinical question at hand.
+
+### Safe Deployment and Continual Learning
+
+As more functional datasets and clinical labels accumulate, models will need continual updating without catastrophic forgetting, along with governance frameworks to track model versions and provenance. The rapid pace of model development creates challenges for clinical integration, where stability and reproducibility are paramount.
+
+In subsequent chapters, we will connect these VEP systems to broader issues in evaluation (@sec-eval), confounding and bias (@sec-confound), and interpretability (@sec-interp), positioning them within the broader landscape of genomic foundation models. The models described here illustrate how the building blocks from earlier chapters, including NGS data, functional genomics, CNNs, transformers, and protein and DNA language models, coalesce into powerful end-to-end systems for variant interpretation.
