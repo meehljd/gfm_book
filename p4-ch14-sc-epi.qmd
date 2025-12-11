@@ -1,0 +1,179 @@
+::: {.callout-warning .content-visible when-profile="draft"}
+**TODO:**
+
+- Add figure: CpGPT architecture schematic showing masked modeling objective, sample embeddings, and downstream task adaptation
+- Add figure: GLUE framework diagram illustrating modality-specific VAEs, feature graph structure, and alignment objectives
+- Add figure: Single-cell foundation model comparison showing scGPT, Geneformer, and scBERT architectures with their tokenization strategies
+- Add figure: 3D genome prediction model comparison showing Akita, Orca, and C.Origami encoder-decoder architectures
+- Add table: Comparison of single-cell foundation models with columns for pretraining corpus size, tokenization strategy, downstream tasks, and key innovations
+- Add table: 3D genome prediction methods comparing input context, output resolution, and validated applications
+:::
+
+
+# Single-Cell & Epigenomic Foundation Models  {#sec-epi}
+
+The preceding chapters traced how genomic foundation models evolved from sequence-only representations to multi-task predictors of regulatory function. This chapter examines two frontiers where foundation model principles are reshaping our understanding of cellular identity: single-cell transcriptomics and epigenomics, and the three-dimensional organization of chromatin. Both domains present unique challenges for deep learning, from the sparsity and noise of single-cell measurements to the combinatorial complexity of genome folding, yet both have seen rapid progress as foundation model architectures adapt to their particular data characteristics.
+
+Single-cell sequencing has transformed our view of tissues from averaged bulk profiles to rich landscapes of cellular diversity. Millions of cells across thousands of experiments now populate public repositories, creating training corpora comparable in scale to those that enabled large language models. Epigenomic assays, particularly DNA methylation, occupy a privileged position in the regulatory hierarchy by integrating genetic, developmental, and environmental influences into stable molecular marks that define cellular identity. Meanwhile, the three-dimensional folding of chromatin brings distal regulatory elements into contact with their target genes, creating another layer of regulatory logic that sequence-only models cannot fully capture.
+
+This chapter surveys foundation models that address these challenges. We examine CpGPT and related methylation models that treat the methylome as a sequence-like object amenable to transformer-based pretraining. We explore single-cell foundation models including scGPT, Geneformer, and related architectures that learn cellular representations from massive transcriptomic corpora. We trace how GLUE and SCGLUE enable integration across modalities when different omics are measured in different cells. Finally, we examine models like Akita, Orca, and C.Origami that predict three-dimensional chromatin contacts from DNA sequence alone.
+
+## CpGPT: A Foundation Model for DNA Methylation
+
+### Methylation as a Systems Hub
+
+DNA methylation occupies a privileged position in the regulatory hierarchy, sitting at a junction between genotype, environment, and phenotype. Methylation patterns integrate genetic influences, since sequence context affects which CpG sites can be methylated and polymorphisms can create or destroy CpG dinucleotides. They also integrate developmental programs, since methylation landscapes are extensively remodeled during differentiation and establish cell-type-specific regulatory states. Environmental exposures including diet, smoking, toxins, and stress leave lasting methylation signatures that persist long after the exposure ends.
+
+Beyond serving as an integrative readout, methylation encodes rich information about cellular identity and state. Cell types can be distinguished by their methylation profiles, and within a cell type, methylation captures information about age, health status, and disease risk. Epigenetic clocks built from methylation data predict chronological age with remarkable accuracy, and deviations from predicted age correlate with mortality risk and disease burden [@camillo_cpgpt_2024].
+
+Traditional methylation models have been task-specific: one model for age prediction, another for mortality risk, another for tissue classification. Each model is trained from scratch on labeled data for its particular task, learning whatever methylation patterns happen to be predictive without necessarily capturing general structure. CpGPT reframes methylation as a foundation modeling problem, using large-scale pretraining to learn representations that transfer across tasks.
+
+### Architecture and Pretraining
+
+CpGPT, the Cytosine-phosphate-Guanine Pretrained Transformer, treats methylomes as sequences or sets of CpG sites and uses transformer-style self-attention to model their structure [@camillo_cpgpt_2024]. The model was pretrained on over 1,500 DNA methylation datasets encompassing more than 100,000 samples from diverse tissues and conditions.
+
+Several aspects of methylation structure make it amenable to transformer modeling. Local CpG correlations arise because nearby CpG sites tend to share methylation status, particularly within CpG islands. Long-range coordination reflects the fact that methylation patterns at distant genomic regions can be correlated through shared regulatory programs or chromatin compartmentalization. Global sample-level variation captures the systematic differences between samples that reflect tissue identity, age, disease status, and other biological variables.
+
+CpGPT uses masked modeling objectives analogous to BERT-style language model pretraining. During training, a fraction of CpG methylation values are masked, and the model learns to predict the masked values from the surrounding context. This objective encourages the model to learn both local correlations between neighboring CpG sites and global patterns that distinguish different tissues or conditions.
+
+The resulting embeddings capture sample-level representations that summarize methylation state. These embeddings can serve as inputs to downstream predictors, providing rich methylation features for risk scores, prognosis models, or treatment response prediction. They can function as one modality in a shared latent space that also includes expression, proteomics, and other data types. They can inject epigenetic state information into otherwise sequence-centric genomic foundation models, providing context about cellular identity and regulatory status.
+
+### Downstream Applications
+
+Conceptually, CpGPT exemplifies a single-omic foundation model designed to plug into multi-omics architectures. The pretraining objective learns general methylation structure, and the resulting embeddings can be combined with other modalities for tasks that require systems-level reasoning.
+
+CpGPT demonstrates strong performance on several downstream tasks through transfer learning. For biological age prediction, fine-tuned CpGPT models match or exceed purpose-built epigenetic clocks while using a more general architecture. For tissue classification, the learned embeddings cluster by tissue type without explicit supervision, suggesting that the pretraining captures biologically meaningful variation. For disease-associated methylation patterns, the model can be adapted to distinguish cases from controls across multiple disease contexts.
+
+The foundation model paradigm offers advantages over task-specific methylation models. New tasks can be addressed through fine-tuning or linear probing rather than training from scratch. Representations learned from diverse tissues and conditions may generalize better than those learned from narrow disease-specific cohorts. The model can impute missing methylation values, enabling analysis of samples profiled on different array platforms or with different coverage depths.
+
+## Single-Cell Foundation Models
+
+### The Promise of Cellular Language Models
+
+The explosion of single-cell sequencing data has created training corpora of unprecedented scale for modeling cellular biology. Public repositories now contain tens of millions of single-cell transcriptomes spanning diverse tissues, developmental stages, disease states, and species. This scale approaches the data volumes that enabled large language models, motivating researchers to ask whether similar foundation model approaches could work for cellular data.
+
+The analogy between language and single-cell biology runs deeper than dataset scale. In language, words combine according to grammatical rules to form sentences that convey meaning. In cells, genes combine according to regulatory programs to form expression profiles that define cellular identity and function. Just as language models learn syntax and semantics by predicting masked words, single-cell foundation models might learn regulatory logic by predicting masked genes.
+
+Several groups have pursued this vision, producing models with different architectures, pretraining objectives, and downstream applications. We examine three prominent examples: Geneformer, scGPT, and related models that collectively establish the paradigm of cellular language models.
+
+### Geneformer: Network Biology Through Pretraining
+
+Geneformer was developed as a context-aware, attention-based model pretrained on approximately 30 million single-cell transcriptomes to enable context-specific predictions in network biology [@theodoris_geneformer_2023]. The model's key insight is that during pretraining, it gained a fundamental understanding of network dynamics, encoding network hierarchy in attention weights in a completely self-supervised manner.
+
+The architecture treats each cell as a sentence, with genes serving as tokens. Rather than using raw expression counts, Geneformer ranks genes by their expression level relative to their typical expression across the training corpus. This rank-based encoding emphasizes which genes are unusually active or silent in each cell, capturing the contextual information that defines cell state.
+
+Pretraining uses a masked gene prediction objective. A fraction of genes are masked in each cell, and the model learns to predict which genes were masked based on the remaining expression context. This forces the model to learn co-expression patterns, regulatory relationships, and the gene combinations that characterize different cell states.
+
+After pretraining, Geneformer can be fine-tuned for diverse downstream tasks. Cell type annotation achieves high accuracy even with limited labeled examples, leveraging the general biological knowledge acquired during pretraining. Multi-batch integration benefits from representations that capture biological variation while being robust to technical artifacts. Perturbation response prediction uses the model's implicit understanding of gene networks to anticipate how cells will respond to genetic or chemical perturbations.
+
+Applied to disease modeling with limited patient data, Geneformer identified candidate therapeutic targets for cardiomyopathy by analyzing how disease-associated genes fit within the learned network structure. This demonstrates the potential for foundation models to accelerate discovery in rare diseases where large datasets are unavailable.
+
+### scGPT: Generative Pretraining for Multi-Omics
+
+scGPT extends the foundation model paradigm to single-cell multi-omics, training a generative pretrained transformer on over 33 million cells to learn representations useful across diverse downstream applications [@cui_scgpt_2024].
+
+The model architecture includes several innovations tailored to single-cell data. Gene tokens are embedded using both learnable embeddings and position encodings that capture genomic location. Expression values are discretized into bins to handle the wide dynamic range and zero-inflation characteristic of single-cell data. Special tokens mark cell boundaries and indicate modality when multi-omic data are available.
+
+scGPT uses multiple pretraining objectives simultaneously. Masked gene prediction, analogous to BERT, encourages learning of co-expression patterns. Expression value prediction, analogous to regression, provides more graded supervision than binary masking. Cell-type classification, when labels are available during pretraining, provides additional signal about which gene patterns distinguish cell types.
+
+The combination of objectives and the scale of pretraining enable scGPT to excel across multiple downstream applications. Cell type annotation benefits from the rich representations learned during pretraining. Multi-batch integration aligns cells from different experiments while preserving biological variation. Multi-omic integration learns joint representations when cells have both RNA-seq and ATAC-seq measurements. Perturbation response prediction anticipates transcriptional changes following CRISPR knockouts or drug treatments. Gene network inference extracts regulatory relationships from attention patterns.
+
+### TranscriptFormer and Cross-Species Modeling
+
+TranscriptFormer extends single-cell foundation models across evolutionary time, training on over 112 million cells spanning 1.5 billion years of evolution across 12 species [@pearce_transcriptformer_2025]. This cross-species approach tests whether foundation models can learn regulatory principles that generalize beyond individual organisms.
+
+The model uses a novel generative architecture that jointly models genes and transcripts, enabling it to function as a virtual instrument for probing cellular biology. In zero-shot settings, TranscriptFormer demonstrates superior performance on both in-distribution and out-of-distribution cell type classification, with robust performance even for species separated by over 685 million years of evolutionary distance.
+
+Cross-species transfer enables several applications not possible with single-species models. Cell type annotations can be transferred across species boundaries, accelerating atlas construction for less-studied organisms. Disease state identification in human cells benefits from regulatory patterns conserved across evolution. Gene-gene interactions predicted by the model align with independent experimental observations across species.
+
+The success of cross-species foundation models suggests that core principles of cellular regulation are deeply conserved, and that models trained on diverse organisms can capture these universal patterns more effectively than models trained on any single species.
+
+## GLUE: Graph-Linked Unified Embedding for Single-Cell Multi-Omics
+
+### The Unpaired Integration Challenge
+
+Single-cell experiments often profile different modalities in different cells. A typical study might include scRNA-seq data from one set of cells, scATAC-seq data from another set, and perhaps a small subset with both modalities measured simultaneously through multiome protocols. The central challenge is building a unified atlas that aligns these cells in a common space, recovers cell types and trajectories, and infers regulatory networks connecting chromatin to expression [@cao_glue_2022].
+
+This problem is harder than standard data integration because the feature spaces are entirely different. RNA-seq measures gene expression across roughly 20,000 genes. ATAC-seq measures chromatin accessibility across hundreds of thousands of peaks. There is no direct correspondence between features: a gene is not the same object as a peak. Aligning cells across modalities requires reasoning about how features in one modality relate to features in another.
+
+Previous approaches addressed this through explicit feature conversion, for example by assigning ATAC-seq peaks to nearby genes and treating the resulting gene-level accessibility as comparable to expression. This conversion is straightforward but loses information, since the detailed structure of chromatin accessibility within a gene's regulatory region is collapsed into a single number. It also introduces arbitrary choices about how to define gene-peak assignments.
+
+GLUE, Graph-Linked Unified Embedding, addresses this problem by combining modality-specific encoders with a graph of biological prior knowledge linking features across omics.
+
+### Architecture and Training
+
+GLUE consists of three key components that work together to align cells across modalities while respecting biological relationships between features.
+
+Modality-specific variational autoencoders provide the foundation. Each omic has its own encoder-decoder pair. Encoders map cells to a low-dimensional latent embedding, and decoders reconstruct modality-specific features from these embeddings. The variational structure encourages smooth, interpretable latent spaces.
+
+The feature graph encodes biological prior knowledge about relationships between features across modalities. Edges connect ATAC peaks to the genes they might regulate based on genomic proximity or evidence from chromatin conformation capture experiments. Edges connect genes to the transcription factors that bind their promoters. The graph structure is provided as input rather than learned, allowing incorporation of external biological knowledge.
+
+Graph neural network layers propagate information across the feature graph, learning feature embeddings that respect the biological relationships encoded in the graph structure. These feature embeddings help align the latent spaces of different modalities by ensuring that biologically related features have similar representations.
+
+Adversarial alignment ensures that the latent embeddings from different modalities are truly integrated rather than merely correlated. A discriminator tries to distinguish which modality produced each latent embedding, and the encoders are trained to fool the discriminator. This adversarial objective forces the encoders to produce embeddings that are indistinguishable across modalities.
+
+### Applications and Extensions
+
+GLUE enables several applications beyond basic integration. Triple-omics integration combines gene expression, chromatin accessibility, and DNA methylation measured in different cells from the same tissue, producing unified cell type annotations that leverage all three data types. Regulatory inference uses the learned feature embeddings to identify candidate enhancer-gene links that can be validated against chromatin conformation capture data or eQTL evidence. Atlas construction at scale handles millions of cells across many batches and datasets.
+
+SCGLUE extends the framework specifically for single-cell applications, with optimizations for the scale and sparsity of single-cell data. The adversarial alignment is refined to handle the batch effects common in single-cell experiments, and the graph structure is expanded to include tissue-specific regulatory relationships.
+
+The success of GLUE demonstrates that graph-guided integration, where biological prior knowledge structures the alignment objective, provides a more principled approach than feature conversion or purely data-driven alignment. The feature graph allows the model to learn biologically meaningful relationships while the adversarial objective ensures genuine integration across modalities.
+
+## 3D Genome Prediction Models
+
+### The Structural Dimension of Gene Regulation
+
+The linear genome folds into a complex three-dimensional structure that brings distant regulatory elements into spatial proximity with their target genes. This folding is not random: specific sequence features, particularly CTCF binding sites with their characteristic orientation dependence, organize the genome into topologically associating domains (TADs) and create specific chromatin contacts between enhancers and promoters.
+
+Understanding how sequence encodes 3D structure is crucial for interpreting regulatory variants. A variant might sit far from any gene in linear distance but be brought into contact with a promoter through chromatin looping. Sequence-to-structure models that predict chromatin contacts from DNA sequence can identify such variants and predict how structural variants, which may create or disrupt loops, affect gene regulation.
+
+### Akita: Sequence-to-Contact Prediction
+
+Akita demonstrated that convolutional neural networks can accurately predict genome folding from DNA sequence alone [@fudenberg_akita_2020]. The model takes megabase-scale sequence as input and outputs predicted Hi-C contact maps, capturing the spatial proximity relationships between all pairs of positions in the input window.
+
+The architecture uses an encoder-decoder structure. Convolutional layers in the encoder extract sequence features at multiple scales, capturing both the local motifs (particularly CTCF sites) that anchor chromatin loops and the broader sequence context that influences compartmentalization. The decoder reconstructs the two-dimensional contact matrix from the encoded sequence representation.
+
+Akita's representations underscore the importance of an orientation-specific grammar for CTCF binding sites. The model learns that CTCF sites pointing toward each other tend to anchor chromatin loops, while sites pointing away do not. This orientation dependence, known from molecular biology, emerges automatically from training on Hi-C data without explicit supervision.
+
+Once trained, Akita enables rapid in silico predictions. Saturation mutagenesis experiments, prohibitively expensive to perform experimentally across megabase regions, can be simulated computationally by predicting the effect of every possible single-nucleotide change on chromatin structure. This reveals which positions are most critical for maintaining normal genome folding and which mutations might cause structural disruption.
+
+Applications include interpreting eQTLs through the lens of 3D structure, making predictions for structural variants that create or delete CTCF sites, and probing species-specific genome folding by applying models trained on one species to sequences from another.
+
+### Extensions and Related Models
+
+Several models have extended Akita's sequence-to-structure paradigm. Orca scales to longer input contexts and higher resolution outputs, enabling prediction of finer structural features. DeepC uses transfer learning to predict 3D folding at megabase scales. C.Origami incorporates additional training data and architectural refinements.
+
+HiCDiffusion addresses a limitation of encoder-decoder architectures: the tendency to produce blurred contact maps that lack the sharp features of experimental Hi-C data. By combining the encoder-decoder with a diffusion model, HiCDiffusion produces high-resolution matrices that better resemble experimental results while maintaining similar correlation with ground truth.
+
+These models collectively establish that 3D genome structure can be predicted from sequence, opening new possibilities for understanding how variants affect gene regulation through structural mechanisms that sequence-to-expression models like Enformer capture only indirectly.
+
+## Design Patterns and Practical Considerations
+
+Several design patterns recur across the models surveyed in this chapter.
+
+Tokenization strategies for cellular data require careful consideration. Geneformer's rank-based encoding emphasizes relative expression, while scGPT's discretization handles the dynamic range of count data. The choice affects what biological signals the model can capture and how well representations transfer across datasets with different technical characteristics.
+
+Pretraining objectives shape what models learn. Masked prediction encourages learning of co-occurrence patterns. Generative objectives enable sampling and imputation. Contrastive objectives emphasize discriminative features. Multi-task pretraining can combine benefits of multiple objectives.
+
+Graph structure provides biological grounding. GLUE's feature graph encodes regulatory relationships that guide integration. Similar graph structures could incorporate protein-protein interactions, pathway membership, or other biological networks to constrain what models learn.
+
+Scale of pretraining enables generalization. Models trained on tens of millions of cells or hundreds of thousands of samples learn representations that transfer to new contexts better than models trained on smaller datasets. This argues for continued investment in large-scale data generation and aggregation.
+
+## Practical Challenges
+
+Several challenges complicate the application of single-cell and epigenomic foundation models.
+
+Batch effects remain pervasive in single-cell data. Technical differences between experiments, protocols, and platforms can dominate biological signal. Foundation models that are robust to batch effects in their training data may struggle when applied to new batches not represented during pretraining.
+
+Cell type imbalance affects what models learn. Common cell types are overrepresented in training corpora, while rare populations may be poorly captured. Models may excel at identifying well-represented cell types while struggling with rare or novel populations.
+
+Evaluation complexity increases when ground truth is uncertain. Cell type labels in training data reflect current annotations that may be incomplete or inconsistent. Performance metrics on held-out data conflate model quality with annotation quality.
+
+Computational requirements for training and inference remain substantial. While smaller than the largest language models, single-cell foundation models still require significant GPU resources that may limit accessibility.
+
+## Summary
+
+This chapter has surveyed foundation models for single-cell transcriptomics, DNA methylation, and three-dimensional genome structure. CpGPT demonstrates that methylation can be modeled as a sequence-like object amenable to transformer-based pretraining, with applications spanning biological age prediction, tissue classification, and disease association. Single-cell foundation models including Geneformer, scGPT, and TranscriptFormer learn cellular representations from massive transcriptomic corpora that transfer to diverse downstream tasks including cell type annotation, perturbation response prediction, and cross-species analysis. GLUE shows how graph-linked embeddings can align cells across modalities when different omics are measured in different cells, using biological prior knowledge to guide integration. 3D genome prediction models including Akita and its successors predict chromatin contacts from sequence, revealing how variants affect gene regulation through structural mechanisms.
+
+These models extend the foundation model paradigm from sequence-only representations to the rich landscape of cellular identity and genome organization. The next chapter examines how these representations can be integrated with multi-omics data and systems-level reasoning for clinical and biological applications.
