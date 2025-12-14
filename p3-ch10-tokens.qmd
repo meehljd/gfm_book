@@ -18,6 +18,15 @@ DNA presents similar choices but with important differences. The genome has only
 
 This chapter examines the evolution of sequence representation strategies in genomic deep learning. We trace the progression from one-hot encoding through k-mer tokenization to modern approaches including Byte Pair Encoding, single-nucleotide tokens, and biologically-informed tokenization schemes. Understanding these choices clarifies design decisions in models throughout Parts III and IV, and illuminates why seemingly minor representation choices can dramatically affect model capabilities.
 
+## Gene-Level Embeddings: A Road Not Taken
+
+Before examining sequence tokenization strategies, it is worth asking whether sequence representation is necessary at all. When Word2Vec demonstrated that meaningful word embeddings could be learned from co-occurrence patterns in text corpora, an analogous approach for biology seemed natural: learn gene embeddings from co-expression patterns across experiments.
+Gene2Vec (2019) pursued exactly this strategy, training Word2Vec-style embeddings on gene co-expression data from thousands of experiments [@du_gene2vec_2019]. Genes appearing in similar expression contexts received similar vector representations, capturing functional relationships without any sequence information. The resulting embeddings improved performance on gene function prediction and could identify functionally related genes that shared no obvious sequence similarity. Similar approaches emerged for other biological entities, embedding proteins based on interaction networks or pathways based on shared gene membership.
+
+Yet gene-level embeddings did not become the dominant paradigm for genomic deep learning, and the reasons illuminate why sequence-based representations proved more powerful. Gene embeddings treat each gene as an atomic unit with no internal structure. They cannot distinguish between synonymous and nonsynonymous variants within a gene, cannot predict effects of novel mutations never seen during training, and cannot generalize to newly discovered genes absent from the original embedding corpus. The representations are static rather than compositional: a gene's embedding captures its average behavior across training contexts but cannot adapt to the specific sequence context of a particular variant or regulatory configuration.
+
+The field's commitment to sequence-based representations reflects a fundamental insight: the information determining gene function is encoded in nucleotide sequence, and models that operate directly on sequence can learn this encoding rather than relying on pre-computed summaries. A sequence model can predict how a single nucleotide change alters splicing, expression, or protein function because it has learned the underlying sequence grammar. A gene embedding cannot. This distinction becomes critical for clinical applications, where the variants of greatest interest are often novel mutations never previously observed. The remainder of this chapter examines the various strategies for representing sequence while preserving this compositional, generalizable structure.
+
 ## One-Hot Encoding: The CNN Foundation
 
 One-hot encoding represents the simplest possible approach to sequence representation: each nucleotide becomes a sparse binary vector with a single active element indicating its identity. Adenine is encoded as [1, 0, 0, 0], cytosine as [0, 1, 0, 0], guanine as [0, 0, 1, 0], and thymine as [0, 0, 0, 1]. A sequence of length $L$ thus becomes a matrix of dimensions $4 \times L$, interpretable as four channels analogous to the RGB channels of an image plus one additional channel.
@@ -84,9 +93,30 @@ Perhaps most notably, HyenaDNA demonstrated the first use of in-context learning
 
 Standard tokenization schemes treat DNA as a homogeneous string of characters, ignoring the biological reality that different genomic regions serve fundamentally different functions and follow different structural rules. Coding sequences obey a strict codon structure where every three nucleotides encode an amino acid, while noncoding regions have no such constraint. Treating these regions identically wastes an opportunity to build biological knowledge directly into the representation.
 
+### Codon Aware - Life Code
+
 Life-Code (2025) proposed codon-aware tokenization that respects the central dogma of molecular biology [@liu_life-code_2025]. The approach uses different tokenization strategies for different genomic regions based on their biological function. Coding regions are tokenized by codons, with each three-nucleotide unit encoding an amino acid becoming a single token. This aligns the token boundaries with the fundamental unit of protein translation, enabling the model to learn directly about amino acid sequences and protein structure. Noncoding regions, lacking codon structure, are tokenized by learned patterns that capture regulatory motifs and other functional elements.
 
 This biologically-informed design enables Life-Code to learn protein structure through knowledge distillation from protein language models, capture interactions between coding and noncoding regions within a unified framework, and achieve state-of-the-art results across tasks involving DNA, RNA, and protein. The approach demonstrates that tokenization need not be uniform across the genome, and that encoding biological knowledge in the representation itself can improve model capabilities.
+
+### Codon Aware - GenSLM
+
+::: {.callout-warning .content-visible when-profile="draft"}
+**MAKE MUCH MORE CONSISE**
+**MEREGE WITH LIFECODE ABOVE**
+:::
+
+The tokenization strategies discussed thus far, from one-hot encoding through k-mers and BPE, are all learned or imposed without reference to known biological structure. An alternative approach leverages the genome's intrinsic organization: the genetic code that maps codons to amino acids during translation. GenSLMs pioneered codon-level tokenization for genomic foundation models, treating each three-nucleotide codon as a single token and exploiting the fact that codons are the biologically meaningful units of protein-coding sequence [@zvyagin_genslms_2022].
+
+Codon tokenization offers several conceptual advantages for modeling coding regions. The 64-codon vocabulary captures the complete space of possible genetic code words, with each token corresponding to either an amino acid or a stop signal. This alignment with translation semantics means that mutations affecting amino acid identity (nonsynonymous changes) alter the token sequence, while synonymous mutations within a codon alter the specific token used but maintain the broader codon-family structure. The model can potentially learn codon usage biases, translational efficiency patterns, and other codon-level phenomena that would be obscured by arbitrary k-mer boundaries.
+
+The approach also provides natural compression. A protein-coding sequence of 300 amino acids spans 900 nucleotides but compresses to 300 codon tokens, achieving the same three-fold compression as non-overlapping 3-mers but with biological rather than arbitrary boundaries. This compression enables whole-gene or even whole-genome modeling within standard transformer context windows, as GenSLMs demonstrated by processing entire viral genomes as coherent sequences.
+
+However, codon tokenization has significant limitations for general genomic modeling. The approach assumes a defined reading frame, which works for known coding sequences but fails for noncoding regions where no frame exists. Frame shifts, common in viral genomes and relevant for certain human genetic contexts, disrupt the codon structure and require special handling. Regulatory regions, introns, and intergenic sequences have no codon organization to leverage. These limitations restrict codon tokenization to applications where coding sequence dominates, such as protein-centric modeling or viral genomics where the majority of the genome encodes proteins.
+
+The broader lesson is that tokenization can and perhaps should be informed by biological structure when that structure is known and relevant. BPE learns statistical patterns from the corpus, but those patterns need not correspond to biological units. Codon tokenization imposes biological semantics directly, at the cost of applicability to noncoding regions. Future approaches might combine these strategies, using codon-aware tokenization for coding regions and BPE or single-nucleotide tokens for noncoding sequence, though such hybrid schemes introduce complexity in handling transitions between regions.
+
+### Variant Tokens
 
 BioToken (2025) extends tokenization even further beyond sequence content to include explicit genomic structural annotations [@medvedev_biotoken_2025]. Rather than treating variants as implicit changes in the sequence string, BioToken creates tokens that explicitly represent SNPs, insertions, and deletions. Known regulatory elements receive dedicated tokens encoding their presence and type. Gene structure, chromatin state, and other functional annotations are integrated directly into the token representation.
 

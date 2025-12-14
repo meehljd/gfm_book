@@ -1,6 +1,6 @@
 ::: {.callout-warning .content-visible when-profile="draft"}
 **TODO:**
-
+- Flesh-out Evo-2 section
 - Add figure: timeline of genomic language model development (DNABERT → Nucleotide Transformer → HyenaDNA → Caduceus → GROVER)
 - Add figure: architecture comparison diagram showing transformer vs Hyena vs Mamba approaches
 - Add figure: context length evolution visualization showing the dramatic expansion from 512 bp to 1 Mb
@@ -70,6 +70,22 @@ As with protein and natural-language models, performance improved predictably wi
 | HyenaDNA | Hyena | 1 Mb | $O(L \log L)$ |
 | Caduceus | Mamba | 1 Mb | $O(L)$ |
 
+## GPN: Cross-Species Pretraining for Variant Effect Prediction
+
+While the Nucleotide Transformer demonstrated the value of scaling, the Genomic Pre-trained Network (GPN) explored a complementary direction: what can be learned from cross-species pretraining on relatively small, well-annotated genomes [@benegas_gpn_2023]. Rather than scaling to the largest possible model and training corpus, GPN asked whether the self-supervised paradigm could yield useful variant effect predictors even in a more constrained setting.
+
+GPN was trained on unaligned reference genomes from *Arabidopsis thaliana* and seven related species within the Brassicales order. The training objective was masked language modeling on DNA sequences, predicting masked nucleotides from surrounding context. This is the same fundamental objective used by DNABERT and the Nucleotide Transformer, but applied to a much smaller and more phylogenetically focused corpus.
+
+The key insight from GPN was that self-supervised DNA language models learn biologically meaningful representations without explicit supervision on functional annotations. Analysis of the trained model revealed emergent encoding of gene structure, including exon-intron boundaries and splice sites, as well as DNA sequence motifs associated with transcription factor binding and other regulatory functions. The model discovered these patterns purely from the statistical regularities of genomic sequence across related species.
+
+For variant effect prediction, GPN used a likelihood ratio approach. Given a reference and alternate allele at a position, the model computes the log-likelihood of each under the learned sequence distribution. Variants that substantially reduce sequence likelihood, relative to the reference, are inferred to be more disruptive. This scoring strategy exploits the fact that constrained positions should have confident predictions for the reference allele, while unconstrained positions allow more flexibility.
+
+Evaluated on *A. thaliana* variants using allele frequencies from the 1001 Genomes Project and a comprehensive database of GWAS associations, GPN outperformed traditional conservation scores including phyloP and phastCons. This was notable because phyloP and phastCons are computed from explicit multiple sequence alignments and evolutionary models, while GPN learned its representations from unaligned sequences through self-supervision alone.
+
+GPN established several principles that would influence subsequent work. First, cross-species pretraining captures evolutionary constraints that transfer to variant effect prediction, even without alignment-based conservation calculations. Second, relatively small models trained on focused phylogenetic groups can outperform larger generic conservation measures for species within that group. Third, the masked language modeling objective naturally produces representations suitable for variant scoring via likelihood comparisons.
+
+The limitation of the original GPN was its scope. Training on plant genomes did not directly produce a human variant effect predictor. The later GPN-MSA addressed this gap by incorporating multi-species alignments and training on mammalian genomes, achieving strong performance on human variant benchmarks as discussed in @sec-vep. However, the original GPN remains important as a demonstration that the DNA language model paradigm extends beyond model organisms and can discover biologically meaningful patterns through self-supervision on comparatively modest training data.
+
 ## HyenaDNA: Megabase Context at Single-Nucleotide Resolution
 
 Quadratic attention limits transformer context length to tens of kilobases at best, even with aggressive engineering. This is a fundamental architectural constraint: processing a 100 kb sequence with dense attention requires on the order of $10^{10}$ attention computations per layer. HyenaDNA addressed this limitation by replacing attention with a Hyena long-convolution architecture that scales sub-quadratically, enabling processing of sequences up to 1 Mb in length [@nguyen_hyenadna_2023].
@@ -105,6 +121,79 @@ The training objective predicts masked or held-out regulatory profiles condition
 GROVER occupies a role analogous to self-supervised vision models for images. It treats regulatory profiles as a high-dimensional signal over the genome and learns rich representations of regulatory states at each position. This supports tasks like imputation of missing assays, denoising of noisy experimental data, and cell-type-specific activity prediction.
 
 While not a pure DNA language model, GROVER-style systems complement sequence-based models in important ways. DNA language models capture what the genome can do, encoding the potential regulatory activities specified by the sequence. Regulatory foundation models like GROVER capture what the genome is actually doing in specific contexts, representing the realized regulatory state in particular cell types and conditions. Later chapters explore how sequence-based and regulatory foundation models can be combined, using DNA language models to parameterize sequence priors and regulatory models for context-specific readouts.
+
+## GenSLMs: Codon Tokenization and Whole-Genome Modeling
+
+::: {.callout-warning .content-visible when-profile="draft"}
+**MAKE MUCH MORE CONSISE**
+:::
+
+The DNA language models discussed thus far, including DNABERT, Nucleotide Transformer, HyenaDNA, and Caduceus, were designed primarily for human and multi-species genomics applications such as regulatory prediction and variant effect estimation. GenSLMs (Genome-scale Language Models) represents a distinct design point that targets pathogen surveillance and viral evolution rather than human regulatory genomics [@zvyagin_genslms_2022]. The model illustrates how different biological applications motivate different architectural and tokenization choices, even within the broader family of genomic foundation models.
+
+GenSLMs operates at the codon level rather than the nucleotide level. Where most DNA language models tokenize sequences into nucleotides, k-mers, or BPE-derived subwords, GenSLMs treats each three-nucleotide codon as a single token. This choice reflects an explicit alignment with the central dogma of molecular biology: codons are the fundamental units of translation from nucleic acid to protein, and mutations at the codon level determine amino acid changes that drive phenotypic evolution. The approach yields a vocabulary of 64 codon tokens (plus special tokens for noncoding regions and frame shifts), intermediate in size between character-level tokenization (4 tokens) and typical BPE vocabularies (4,096 to 32,000 tokens).
+
+The codon-level tokenization enables GenSLMs to model entire viral genomes as sequences of manageable length. A SARS-CoV-2 genome spans approximately 30,000 nucleotides, which translates to roughly 10,000 codons. This places whole-genome modeling within reach of standard transformer context windows, avoiding the architectural innovations required to handle megabase-scale human sequences. The approach trades single-nucleotide resolution for the ability to capture genome-wide patterns and cross-protein dependencies that would be difficult to model at nucleotide resolution.
+
+The training strategy follows a two-stage paradigm. The foundation model was pretrained on over 110 million prokaryotic gene sequences from the BV-BRC database, exposing the model to broad codon usage patterns and gene-level structure across bacterial diversity. This pretraining corpus provided the model with general understanding of coding sequence organization without being specific to any particular pathogen. The model was then fine-tuned on 1.5 million SARS-CoV-2 genome sequences to learn the specific evolutionary landscape of the virus.
+
+Remarkably, a GenSLM model trained only on sequences from the first year of the pandemic, before Delta or Omicron variants emerged, could subsequently distinguish between variants of concern in its learned embedding space. When new variant sequences were projected into the model's latent space, they clustered according to lineage identity despite the model never having observed these variants during training. This generalization suggests that the model learned structural features of SARS-CoV-2 evolution that transferred to novel variants, providing a foundation for real-time surveillance applications.
+
+GenSLMs also revealed interpretable attention patterns across the viral genome. Cross-protein attention showed coupling between the Spike protein and nonstructural proteins (nsp3, nsp5) that differed between Delta and Omicron lineages. These patterns suggest that the model captured biologically meaningful co-evolutionary relationships rather than arbitrary sequence statistics, though the mechanistic interpretation of such patterns remains an area for further investigation.
+
+From a computational perspective, GenSLMs demonstrated that genomic foundation models can be trained at unprecedented scale. The project achieved 1.63 Zettaflops of total computation across training runs, with sustained performance of 121 PFLOPS in mixed precision on GPU-based supercomputers. Training on specialized AI hardware accelerators (Cerebras CS-2 clusters) reduced convergence time from over a week to less than a day. This work received the 2022 Gordon Bell Special Prize for High Performance Computing-Based COVID-19 Research, establishing a benchmark for large-scale genomic model training.
+
+The GenSLMs approach highlights several broader lessons for the field. First, tokenization should be aligned with biological semantics when possible. Codon-level tokenization makes sense for coding sequences where the codon-to-amino-acid mapping is the relevant biological transformation. Second, pretraining corpora can be chosen strategically to provide useful inductive biases. Prokaryotic gene pretraining exposed the model to diverse codon usage and gene organization before specializing to a particular virus. Third, different applications motivate different scales. Pathogen surveillance requires whole-genome context but benefits from relatively compact genomes, while human regulatory genomics requires kilobase to megabase context around specific loci.
+
+The model's application to emerging pathogen detection illustrates a use case distinct from the variant effect prediction focus of most human-centric genomic foundation models. Rather than scoring individual mutations for pathogenicity, GenSLMs aims to characterize entire genomes and identify novel variants that may represent public health concerns. This surveillance application places different demands on the model: speed of inference across many sequences, robust generalization to novel variants, and interpretable representations that can guide downstream analysis.
+
+
+## Evo 2: Genome-Scale Language Modeling Across All Life
+
+::: {.callout-warning .content-visible when-profile="draft"}
+**UPDATE THIS SECTION**
+:::
+
+### Scale and Training Corpus
+- 9.3 trillion DNA tokens from OpenGenome2 dataset
+- Pan-species: bacteria, archaea, eukaryotes, phages, organelles
+- 7B and 40B parameter variants
+- Fully open (weights, code, training data)
+
+### Architecture: StripedHyena 2
+- Hybrid convolutional-attention design
+- 1 million token context window at single-nucleotide resolution
+- Subquadratic scaling enabling megabase processing
+- Autoregressive training objective (next-base prediction)
+
+### Emergent Biological Knowledge
+- Learns exon-intron boundaries without supervision
+- Discovers TF binding site patterns
+- Captures protein structural elements
+- Identifies prophage genomic regions
+- Mechanistic interpretability analyses reveal breadth of learned features
+
+### Zero-Shot Variant Effect Prediction
+- Likelihood-based scoring: compare P(ref) vs P(alt)
+- Competitive pathogenic/benign classification without variant-specific training
+- BRCA1 VUS classification via simple classifiers on embeddings
+- Noncoding and coding variants in a single framework
+
+### Cross-Species Applications
+- Variant interpretation in non-model organisms (livestock, crops)
+- Mutation load quantification for breeding programs
+- Genome editing design across species
+- Trade-off: generality vs human-specific optimization
+
+### Generative Capabilities
+- Mitochondrial, prokaryotic, eukaryotic sequence generation
+- Genome-scale coherence exceeding prior methods
+- Inference-time search for controllable generation
+- First inference-time scaling results in biology (epigenomic structure)
+
+### Limitations and Trade-offs
+- Generalist vs specialist: AlphaMissense/AlphaGenome may outperform on human-specific tasks
+- Cross-ref to VEP chapter (@sec-veps) for benchmarking details
+- Calibration requirements before clinical use
 
 ## Central-Dogma-Aware and Annotation-Enriched Models
 

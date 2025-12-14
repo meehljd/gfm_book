@@ -1,6 +1,7 @@
 ::: {.callout-warning .content-visible when-profile="draft"}
 **TODO:**
-
+- Flesh-out Enformer; Berzoi; AlphaGenome; 
+- Include population specific models, like UKBerzoi
 - Add figure: Enformer architecture diagram showing CNN stem → transformer trunk → multi-task heads
 - Add figure: Comparison of effective receptive fields across models (DeepSEA 1kb → Basenji2 40kb → Enformer 200kb)
 - Add figure: Borzoi RNA-seq coverage prediction example showing transcription, splicing, and polyadenylation signals
@@ -100,6 +101,71 @@ Like Enformer, Borzoi is trained in a multi-task regime, but with stronger empha
 This shift to RNA-level prediction supports several analyses not possible with chromatin-focused models. Promoter usage can be assessed by distinguishing alternative promoter transcription start sites based on coverage patterns. Alternative splicing can be predicted through differential exon inclusion or skipping, complementing the splice-site-focused approach of SpliceAI. Coverage drop-offs and polyadenylation-linked patterns enable modeling of 3' UTR and polyA site choice.
 
 Variant effect prediction follows similar steps as with Enformer: predict transcriptome outputs for reference and alternate sequences, compute delta-coverage at exons, splice junctions, and 3' ends, and aggregate into variant-level scores for tasks like eQTL or sQTL prioritization. The richer output enables combined assessment of how a single variant might affect transcription, splicing, and polyadenylation simultaneously.
+
+## AlphaGenome: Unified Megabase-Scale Regulatory Modeling
+
+::: {.callout-warning .content-visible when-profile="draft"}
+**UPDATE THIS SECTION**
+:::
+
+### Motivation: From Specialized Models to Unified Prediction
+- Enformer/Borzoi: chromatin + expression, separate from SpliceAI (splicing)
+- AlphaGenome unifies regulatory, transcriptional, splicing, and 3D predictions
+- Single model spanning the functional readouts relevant to variant interpretation
+
+### Architecture
+- 1 megabase DNA input at single-base resolution
+- Convolutional stem for local motif detection (DeepSEA lineage)
+- Transformer blocks for full-megabase context propagation
+- Task-specific output heads for each modality
+
+### Multi-Modal Outputs
+- Chromatin accessibility and histone modifications
+- Transcription factor binding across cell types
+- Gene expression (CAGE-like signals)
+- Splice junctions and splice site usage
+- 3D genome contacts (enhancer-promoter communication)
+
+### Variant Effect Prediction Workflow
+- Predict tracks for reference sequence
+- Predict tracks for variant-bearing sequence
+- Compute delta signals across all modalities
+- Mechanistic hypotheses: which tracks/tissues disrupted, not just scalar scores
+
+### Benchmarking Performance
+- State-of-the-art on unseen functional genomics tracks
+- Strong performance on noncoding disease variants
+- Splicing disruption prediction
+- Regulatory MPRA concordance
+- Cross-ref to detailed benchmarks in @sec-veps
+
+### Access and Practical Use
+- API access for large-scale variant scoring
+- No local training infrastructure required
+- Enables mechanistic interpretation at scale
+
+### Positioning in the Landscape
+- Comparison table: Enformer (200kb, chromatin+CAGE) → Borzoi (RNA-seq coverage) → AlphaGenome (1Mb, unified multi-modal)
+- Human-genome-centric vs Evo 2's cross-species generality
+- Supervised multi-task vs self-supervised pretraining
+
+## Alternative Architectures: Hierarchical Attention
+
+While Enformer, Borzoi, and AlphaGenome use standard self-attention over downsampled sequence representations, alternative approaches address the computational cost of long-range modeling through hierarchical or windowed attention mechanisms.
+
+### Genomic Interpreter and 1D-Swin Transformers
+
+Genomic Interpreter adapts the shifted window (Swin) transformer architecture from computer vision to one-dimensional genomic sequences [@li_genomic_2023]. The core insight is that biological regulatory dependencies often exhibit hierarchical structure: local motif interactions operate at different scales than distal enhancer-promoter communication. Rather than computing full self-attention across the entire sequence (which scales quadratically with length), Swin-style architectures restrict attention to local windows and then merge information hierarchically across scales.
+
+The 1D-Swin block operates in two alternating phases. In the first phase, attention is computed within non-overlapping windows of fixed size along the sequence. In the second phase, windows are shifted by half their width, allowing information to flow between the previously separated regions. This alternation creates a hierarchical receptive field that grows with network depth while keeping per-layer attention cost linear in sequence length.
+
+Evaluated on 17 kb DNA segments for chromatin accessibility and gene expression prediction, Genomic Interpreter demonstrated competitive performance with models using full attention while offering computational advantages. The hierarchical structure also provides a natural framework for interpretability, as attention patterns at different levels correspond to regulatory interactions at different genomic scales.
+
+### Computational Trade-offs
+
+The choice between full attention (Enformer-style) and hierarchical attention (Swin-style) involves trade-offs. Full attention can capture arbitrary pairwise interactions but scales as O(n²) in sequence length, limiting context windows or requiring substantial downsampling. Hierarchical approaches scale more favorably but impose an inductive bias that distant interactions must be mediated through intermediate representations. For regulatory genomics, where most enhancer-promoter interactions occur within topologically associating domains of roughly 1 Mb, this hierarchical structure may align well with biological reality.
+
+Other efficient attention mechanisms have been explored for long genomic sequences, including linear attention approximations, sparse attention patterns, and state-space models like Hyena and Mamba (@sec-dna). The diversity of architectural solutions reflects the fundamental tension between modeling capacity and computational tractability that defines the current frontier of long-range genomic modeling.
 
 
 ## What Hybrid Models Changed

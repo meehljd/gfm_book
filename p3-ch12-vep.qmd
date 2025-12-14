@@ -10,6 +10,24 @@
 - Add benchmark performance table across ClinVar, MAVE, and regulatory variant datasets
 :::
 
+::: {.callout-warning .content-visible when-profile="draft"}
+**FIND LOCATION:**
+
+In Chapter 12 (@sec-veps), after discussing EVE and ESM-1v zero-shot approaches but before moving to AlphaMissense. It bridges the purely unsupervised PLM methods with structure-aware foundation models, showing how modest supervision from DMS data adds substantial value on top of pretrained representations.
+
+(current discussion of EVE and ESM-1v is sparse!)
+
+### Cross-Protein Transfer from Deep Mutational Scanning
+
+A persistent challenge for variant effect predictors is the gap between functional assay measurements, which provide ground truth but cover only a handful of proteins, and clinical variant databases, which span the proteome but suffer from ascertainment bias and circularity concerns. Cross-protein transfer (CPT) models address this by training on deep mutational scanning data from a small number of proteins and evaluating generalization to unseen proteins across the human proteome [@jagota_cross-protein_2023].
+
+The CPT-1 model combines features from multiple complementary sources: ESM-1v log-likelihood ratios capture deep evolutionary patterns learned from millions of protein sequences, vertebrate sequence alignments (using only approximately 100 genomes) provide constraint information at more recent evolutionary timescales, and AlphaFold2 structural features encode local geometric context around each residue. Training on DMS data from just five proteins with cell viability assays, CPT-1 learns weights that combine these features to predict pathogenicity.
+
+The results demonstrate substantial improvements in the high-sensitivity regime most relevant for clinical applications. At 95% sensitivity for detecting pathogenic ClinVar variants, CPT-1 achieves 68% specificity compared to 55% for EVE and 27% for ESM-1v. This corresponds to thousands fewer false positives when screening candidate variants. Notably, the shallow vertebrate alignments contribute predictive signal beyond what the protein language model provides, suggesting that evolutionary constraint at different timescales captures distinct aspects of variant deleteriousness. The approach validates that functional measurements from a small number of well-characterized proteins can inform predictions across the proteome, providing a principled way to leverage growing MAVE datasets without the circularity concerns that affect methods trained directly on clinical annotations.
+:::
+
+
+
 
 # Variant Effect Prediction  {#sec-veps}
 
@@ -127,6 +145,11 @@ The models surveyed in this chapter span different points in a multidimensional 
 
 Several key contrasts emerge from this comparison. In terms of scope, AlphaMissense is human-missense-specific with deep clinical calibration, GPN-MSA and AlphaGenome are human-genome-centric and span coding and regulatory variants, while Evo 2 is cross-species and general-purpose. For context and long-range effects, AlphaMissense operates at protein scale, GPN-MSA uses modest windows centered on the variant, and Evo 2 and AlphaGenome support megabase-scale context capable of capturing long-range regulatory interactions. Regarding outputs, AlphaMissense and GPN-MSA primarily produce scalar scores, Evo 2 outputs likelihoods and embeddings that require task-specific postprocessing, and AlphaGenome outputs rich functional profiles that enable mechanistic hypotheses about variant effects.
 
+### Specialized vs. General Regulatory Models
+
+A recurring tension in regulatory variant effect prediction concerns the tradeoff between specialized tissue-specific models and general pan-tissue approaches. Models like Enformer and Sei learn regulatory patterns across hundreds of cell types and assays, achieving broad applicability at the cost of potentially diluting tissue-specific signals. Specialized models take the opposite approach, concentrating capacity on a single biological context.
+
+TREDNet illustrates the specialized strategy, training exclusively on pancreatic islet enhancer data to predict regulatory effects of variants at T2D-associated loci [@hudaiberdiev_trednet_2023]. Recent benchmarking suggests that such CNN-based tissue-specific models can outperform both general-purpose CNNs and transformer architectures when evaluated on variants in their target tissue context, though hybrid CNN-transformer models like Borzoi show advantages for fine-mapping tasks requiring discrimination among variants in linkage disequilibrium [@manzo_comparative_2025]. The practical implication is that model selection should consider the biological question: foundation models provide broad coverage suitable for exploratory analyses, while specialized models may be preferable when the tissue and disease context are well-defined.
 
 ## Practical Use: Choosing and Interpreting Modern VEP Tools
 
