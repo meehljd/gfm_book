@@ -1,27 +1,38 @@
+# Clinical Risk Prediction  {#sec-clinical}
+
 ::: {.callout-warning .content-visible when-profile="draft"}
 **TODO:**
 
 - Add figure: Clinical risk prediction pipeline overview showing data flow from genotype/EHR through GFM feature extraction to risk stratification and clinical decision support
+- Add figure: Validation hierarchy ladder showing progression from internal validation through external multi-site validation to prospective trials
 - Add figure: Calibration plot examples contrasting well-calibrated versus miscalibrated models, with stratification by ancestry
 - Add figure: Model drift monitoring dashboard concept showing input distribution shifts, output score histograms over time, and performance degradation alerts
 - Add figure: Multi-modal fusion architecture comparison (early, intermediate, late fusion) with representative genomic and clinical inputs
+- Add figure: System architecture diagram showing deployment infrastructure (sequencing lab, GFM service, EHR integration)
 - Add table: Evaluation metrics summary (discrimination, calibration, clinical utility) with appropriate use cases and limitations
 - Add table: Regulatory considerations for GFM-based clinical decision support systems across FDA, CE marking, and other frameworks
 - Consider adding decision curve example for cardiometabolic risk stratification showing net benefit across threshold probabilities
 :::
 
-
-# Clinical Risk Prediction  {#sec-clinical}
-
 Modern genomic foundation models provide increasingly rich representations of DNA, RNA, proteins, and multi-omic context. The preceding parts of this book have traced how these models learn from sequence and structure, predict molecular functions, and integrate information across biological scales. The natural next question is practical: how do we turn these representations into actionable predictions for individual patients?
 
-This chapter focuses on clinical risk prediction and decision support, the task of estimating the probability, timing, or trajectory of outcomes such as incident disease, progression, recurrence, or adverse drug reactions. The discussion emphasizes how genomic foundation models and related deep learning approaches extend traditional polygenic scores with richer sequence-based features and epistatic structure through methods like Delphi, G2PT, and MIFM [@georgantas_delphi_2024; @lee_g2pt_2025; @rakowski_mifm_2025]. These models combine genomic features with electronic health records and multi-omics to produce holistic patient-level risk representations, building on the systems-level integration strategies introduced in @sec-systems [@cao_glue_2022; @camillo_cpgpt_2024; @clarke_deeprvat_2024]. Throughout, the emphasis is on evaluation, calibration, uncertainty quantification, and fairness considerations that are essential for high-stakes clinical decisions.
+This chapter focuses on clinical risk prediction and decision support, the task of estimating the probability, timing, or trajectory of outcomes such as incident disease, progression, recurrence, or adverse drug reactions. The discussion emphasizes how genomic foundation models and related deep learning approaches extend traditional polygenic scores with richer sequence-based features and epistatic structure through methods like Delphi, G2PT, and MIFM [@georgantas_delphi_2024; @lee_g2pt_2025; @rakowski_mifm_2025]. These models combine genomic features with electronic health records and multi-omics to produce holistic patient-level risk representations, building on the systems-level integration strategies introduced in @sec-systems [@cao_glue_2022; @camillo_cpgpt_2024; @clarke_deeprvat_2024]. Throughout, the emphasis is on evaluation, calibration, uncertainty quantification, fairness considerations, and the practical realities of clinical deployment.
 
-The chapter concludes with case studies in cardiometabolic risk, oncology risk and recurrence, and pharmacogenomics, illustrating how foundation models move from computational representations to clinical utility.
+The chapter concludes with case studies in cardiometabolic risk, oncology risk and recurrence, and pharmacogenomics, illustrating how foundation models move from computational representations to clinical utility, followed by a practical checklist for translation teams.
+
+## From Polygenic Scores to Foundation Model-Enabled Risk
+
+Classical polygenic risk scores (PRS) aggregate the effects of many common variants into a single number for a given disease, typically derived from genome-wide association studies (GWAS) and validated in held-out cohorts. As discussed in @sec-pgs, PRS have demonstrated that common variants contribute substantial risk for conditions such as coronary artery disease, breast cancer, and type 2 diabetes. However, traditional PRS face several limitations: they rely on linear models that cannot capture epistatic interactions, they perform poorly in non-European ancestries due to training data bias, and they reduce the entire genome to a single scalar that provides little mechanistic insight.
+
+Genomic foundation models change this landscape in several ways. First, they provide richer genomic representations beyond simple linear combinations of effect sizes. Instead of relying solely on GWAS summary statistics, foundation models can encode sequence context, chromatin state, and three-dimensional genome features into high-dimensional embeddings that capture non-linear interactions and context-dependent effects. Second, they enable task-agnostic pretraining with task-specific adaptation. A single pretrained model can support many downstream clinical tasks through fine-tuning or feature extraction, amortizing the cost of large-scale pretraining across multiple applications. Third, they facilitate multi-modal risk models that naturally integrate genomic representations with electronic health records, imaging, and environmental data through the fusion architectures discussed in @sec-systems.
+
+In practice, a foundation model-enabled clinical risk system typically consists of one or more pretrained models generating variant-level or region-level embeddings, optional aggregation across the genome at the gene, pathway, or genome-wide level, and a downstream predictor that maps embeddings plus clinical covariates to risk scores or survival curves. This modular design separates the foundation model backbone from clinical prediction heads, enabling updates to either component while maintaining clear interfaces for validation and regulatory compliance.
 
 ## Problem Framing: What Is Clinical Risk Prediction?
 
-Clinical risk prediction is the task of mapping patient data to probabilistic statements about future outcomes. The inputs include genotypes, family history, clinical measurements, imaging, and environmental factors. The outputs are probabilities or hazard estimates that answer questions such as: What is this patient's 10-year risk of coronary artery disease if treated with standard of care? Given current tumor characteristics and therapy, what is the hazard of recurrence within two years? If we start this medication, what is the probability of a severe adverse drug reaction in the next six months?
+Clinical risk prediction is the task of mapping patient data to probabilistic statements about future outcomes. Critically, these predictions must be tied to actionable decisions rather than statistical association alone. The inputs include genotypes, family history, clinical measurements, imaging, and environmental factors. The outputs are probabilities or hazard estimates that answer specific clinical questions: What is this patient's 10-year risk of coronary artery disease if treated with standard of care? Given current tumor characteristics and therapy, what is the hazard of recurrence within two years? If we start this medication, what is the probability of a severe adverse drug reaction in the next six months?
+
+For a foundation model-based risk tool to achieve clinical adoption, you must explicitly define the outcome (incident disease, exacerbation, hospitalization, mortality, or composite endpoint), the time horizon (one-year versus 10-year risk, or lifetime risk), the target population (inclusion and exclusion criteria, age range, ancestry distribution, care setting), and the intended use case (screening, triage, preventive intervention targeting, treatment selection, or prognosis). Risk models are more likely to be adopted when they map to concrete actions such as intensifying screening programs, starting preventive therapies, tailoring surveillance frequency, or prioritizing patients for genetic counseling.
 
 These questions fall into several archetypes that differ in their temporal structure and clinical context. Individual-level incident risk concerns whether a currently disease-free individual will develop disease within a specified time window, such as 10-year type 2 diabetes risk. Progression and complication risk asks which patients with an existing condition will develop complications, for example nephropathy in diabetes or heart failure after myocardial infarction. Prognosis and survival involve time-from-baseline to events such as death, recurrence, or transplant, often with censoring and competing risks that complicate standard regression approaches. Treatment response and toxicity prediction concerns whether a patient will benefit from one therapy versus another and their risk of severe toxicity or adverse drug reactions.
 
@@ -47,9 +58,13 @@ Intermediate fusion trains separate encoders for genomics, electronic health rec
 
 Late fusion trains independent models for each modality, such as a polygenic score-only model and an electronic health record-only model, then combines their predictions through ensemble methods or a meta-model. This approach is robust to missing modalities since each sub-model operates independently, and it allows each modality to use whatever architecture works best for its data type. However, late fusion may underutilize cross-modal structure since interactions between genomic and clinical features can only be captured at the final combination stage rather than learned jointly.
 
-## Evaluation: Discrimination, Calibration, and Clinical Utility
+::: {.callout-note .content-visible when-profile="draft"}
+**Visual suggestion:** Schematic comparison of early, intermediate, and late fusion architectures for combining genomic foundation model features with clinical data. Show representative inputs (genotype matrices, EHR features, multi-omic profiles), encoder blocks, fusion mechanisms, and prediction heads. Annotate each with key advantages and limitations for clinical deployment.
+:::
 
-High performance on held-out test sets is necessary but not sufficient for clinical deployment. Risk models must be discriminative, well-calibrated, robust to distribution shift, and clinically useful in ways that justify the costs of implementation.
+## Evidence Standards: Discrimination, Calibration, and Clinical Utility
+
+Many genomic foundation models will initially be developed in research settings, but clinical deployment requires additional evidence beyond what is usually reported in machine learning papers. High performance on held-out test sets is necessary but not sufficient for clinical deployment. Risk models must be discriminative, well-calibrated, robust to distribution shift, and clinically useful in ways that justify the costs of implementation.
 
 ### Discrimination
 
@@ -64,6 +79,24 @@ Calibration asks whether predicted probabilities match observed frequencies. If 
 Calibration is assessed through calibration plots that compare predicted risk deciles to observed event rates, statistical tests like the Hosmer-Lemeshow test, and proper scoring rules like the Brier score that combine calibration and discrimination into a single metric. These assessments should be stratified by clinically relevant subgroups such as ancestry, sex, and age, since a model that is well-calibrated overall may be systematically miscalibrated for specific populations.
 
 For polygenic score-informed models, calibration is especially important because raw polygenic scores are often centered and scaled rather than calibrated to absolute risk. Mapping a polygenic score to an absolute probability of disease typically requires post-hoc models that incorporate baseline incidence and clinical covariates. Foundation models can shift score distributions as architectures evolve, meaning that recalibration may be required when swapping or updating encoders.
+
+::: {.callout-note .content-visible when-profile="draft"}
+**Visual suggestion:** Example calibration plots showing well-calibrated versus miscalibrated risk models, with stratification by ancestry group. Include observed versus predicted event rates across risk deciles, 95% confidence intervals, and annotations highlighting systematic over-prediction or under-prediction in specific subgroups.
+:::
+
+### Reclassification and Net Benefit
+
+Beyond discrimination and calibration, clinical utility asks whether using the model will change decisions in a beneficial way. Net reclassification improvement quantifies how many patients are appropriately moved across risk thresholds compared to a baseline model. Decision curve analysis estimates net benefit across a range of risk thresholds, accounting for the relative costs of false positives and false negatives in clinical decision-making. For genomic foundation models, these analyses should demonstrate incremental value over existing tools such as traditional polygenic scores or clinical risk calculators.
+
+### The Validation Hierarchy
+
+The strength of evidence depends critically on validation design. Internal validation through cross-validation or temporal splits within the development cohort is useful but insufficient for clinical deployment due to potential overfitting and subtle leakage, as discussed in @sec-confound. External validation across institutions and ancestries, testing the same model in independent health systems and populations with different ancestry distributions, is essential for assessing robustness and transportability. Prospective observational validation runs the model silently in a live clinical system without influencing care, measuring real-time performance and drift over time. Prospective interventional trials use randomized or quasi-experimental designs to assess whether using the model actually improves patient outcomes, equity, and cost-effectiveness.
+
+For most foundation model-based risk tools, regulators, payers, and health systems will expect at least robust external validation and, for high-stakes decisions, prospective evidence. The validation hierarchy reflects increasing confidence in clinical applicability, from internal studies that establish proof of concept to prospective trials that demonstrate real-world benefit.
+
+::: {.callout-note .content-visible when-profile="draft"}
+**Visual suggestion:** Validation hierarchy ladder showing progression from internal cross-validation through external multi-site validation (with diverse ancestries) to prospective trials and post-deployment monitoring. Overlay annotations showing where most genomic foundation model research currently stops versus what is required for clinical adoption.
+:::
 
 ### Uncertainty Estimation
 
@@ -81,33 +114,69 @@ Ancestry and polygenic score portability remain central concerns. As discussed i
 
 Measurement and access bias affect electronic health record features. Which patients get genotyped, which laboratory tests are ordered, how diagnoses are coded, and how thoroughly clinical notes are documented all differ systematically across patient populations, care settings, and health systems. A model trained on one system's data may encode these institutional patterns rather than underlying biology.
 
+Health equity evaluation for foundation model-based tools should include disparity metrics that measure differences in AUROC, calibration, and net benefit across subgroups, along with error rates for high-stakes predictions. Access metrics assess who is eligible to receive the test and whether financial or geographic barriers exist. Outcome metrics evaluate whether clinical actions triggered by the model differ across groups and whether benefits accrue equitably or primarily to already advantaged populations.
+
+Mitigation strategies include reweighting or resampling training data to reduce representation disparities, group-wise calibration and threshold setting to ensure equitable performance, and localized fine-tuning using data from the deployment site with careful attention to overfitting. However, technical interventions alone are insufficient. Non-technical approaches such as expanding sequencing access, subsidizing tests for underserved populations, and designing workflows that fit local constraints are equally essential.
+
 Group-wise evaluation is essential. Calibration and discrimination should be assessed separately by ancestry, sex, socioeconomic proxies, and care site. A model that appears well-calibrated overall but is miscalibrated for specific groups will exacerbate rather than reduce health disparities. When necessary, fairness constraints such as equalized odds or affirmative designs targeting historically disadvantaged groups can be incorporated into model training, though such constraints involve tradeoffs with overall performance that must be navigated thoughtfully.
 
 Equity is not an afterthought. For foundation models, it should inform what data to pretrain on, which benchmarks to report, and how to deploy models in practice.
 
-## Prospective Validation, Trials, and Regulation
+## Clinical Integration and Deployment
 
-Retrospective performance metrics, even when computed on held-out test sets with appropriate splitting strategies, are not sufficient to justify clinical use. Clinical risk models typically require several additional layers of validation before deployment.
+Even a beautifully validated model can fail in practice if it does not integrate into clinical workflows. Clinical genomics already has established pathways for returning results through CLIA-certified laboratories, structured reports, and genetic counseling. Genomic foundation models can augment these pathways in two main ways.
 
-Prospective validation evaluates model performance in a temporally held-out cohort, ideally in multiple health systems with different population structures and practice patterns. A model trained on data from 2015-2020 should be tested on patients from 2021-2023 to assess whether it generalizes across time. Multi-site validation tests whether a model trained at one institution transfers to others with different patient populations, sequencing platforms, and clinical workflows.
+First, they can augment laboratory interpretation by prioritizing variants for manual review (see @sec-vep), providing richer functional annotations such as predicted impact on splicing or chromatin accessibility, and suggesting likely disease mechanisms to support differential diagnosis. Second, they can embed risk predictions directly in the electronic health record by precomputing risk scores for patients with genomic data, surfacing these scores in structured fields or dashboards, and triggering alerts or best-practice advisories when thresholds are crossed.
 
-Impact studies measure whether using the model actually changes clinician behavior and improves patient outcomes. A risk model might achieve excellent discrimination and calibration, but if clinicians do not trust it, do not integrate it into their workflow, or override its recommendations based on unmeasured factors, the model will have no clinical impact. Demonstrating that a model leads to better statin targeting, fewer adverse drug reactions, or reduced unnecessary imaging requires prospective studies that compare outcomes between patients whose clinicians used the model and those whose clinicians did not.
+Design choices include whether to use batch versus on-demand computation. Batch computation, such as overnight processing, is often preferable for foundation models because of their computational cost and the relative infrequency of genomic changes. Synchronous alerts at order entry versus asynchronous reports in an inbox represent another choice, as does the requirement for human-in-the-loop review by genetic counselors or specialty clinics before high-impact recommendations reach front-line clinicians.
 
-Randomized or pragmatic trials provide the strongest evidence when models materially influence treatment decisions. Observational evaluations, even prospective ones, cannot fully account for confounding between which patients receive model-guided care and which do not. For high-stakes decisions like treatment selection, randomization may be necessary to demonstrate causal benefit.
+### Software Architecture and Operationalization
 
-Regulatory landscapes increasingly recognize learning systems and continuous updates. Foundation models complicate this further because a "fixed" risk model may rely on a backbone that improves over time. Updates to the foundation model can change risk rankings and calibration even if the downstream prediction head remains unchanged. Regulatory strategies include locked models with explicit versions that require reapproval for each update, change control plans that prespecify acceptable ranges of performance drift, and adaptive approvals that allow constrained forms of continual learning under monitoring requirements.
+From a systems perspective, foundation model-based tools are typically deployed as services with several key components. A secure model-serving endpoint, whether on-premises or in a regulated cloud environment, handles inference requests. Input adapters transform laboratory and electronic health record data into model-ready formats. Output adapters map model outputs to structured concepts or user-facing text. Logging and monitoring infrastructure provides auditing capabilities and drift detection.
 
-Regardless of the regulatory framework, clear documentation of data provenance, foundation model versions, training procedures, and validation results is essential for both regulatory compliance and scientific reproducibility.
+Regulated settings often require versioning of models, data pipelines, and reference genomes, along with audit trails for all predictions returned. Access controls and network segmentation protect genomic data, while validation environments separate from production allow safe testing of updates. For practical details about deployment patterns, hardware considerations, and monitoring stacks, see @sec-apx-deployment.
+
+::: {.callout-note .content-visible when-profile="draft"}
+**Visual suggestion:** System architecture diagram showing typical hospital deployment with sequencing laboratory and variant calling pipeline on the left, foundation model service (with model registry, feature store, monitoring) in the middle, and EHR with clinician-facing applications (risk dashboards, reports, alert pop-ups) on the right. Show data flows including one-time genomic upload and periodic recomputation, along with governance and approval checkpoints.
+:::
+
+## Regulatory and Quality Frameworks
+
+It is crucial to distinguish between research-only foundation models used for discovery and hypothesis generation, clinical decision support tools that inform diagnosis or management, and in vitro diagnostic devices or laboratory-developed tests that may fall under medical device regulations. Jurisdictions differ in how they regulate AI-based clinical software, but common themes include the intended use and claims made for the tool, risk classification where high-risk tools face stricter oversight than low-risk educational reports, and change management procedures for updating models and retraining.
+
+Regulators increasingly expect transparent descriptions of model training data and limitations, quantitative performance evidence across relevant subgroups, and plans for post-market surveillance and incident reporting. Beyond formal regulation, health systems often require standard operating procedures for model deployment and decommissioning, model cards and datasheets describing training data and known limitations, validation reports documenting evaluation evidence, and governance structures such as AI oversight committees that review and approve new tools.
+
+Genomic foundation models introduce additional documentation needs including detailed descriptions of pretraining corpora (which genomes, which assays, from which populations), fine-tuning datasets and label definitions, and procedures for updating to new genome builds, reference panels, or assay types. The modular separation between pretrained encoders and clinical prediction heads can ease regulatory management by allowing updates to either component independently, but this requires clear versioning and compatibility testing.
+
+::: {.callout-note .content-visible when-profile="draft"}
+**Visual suggestion:** Summary table of regulatory considerations for foundation model-based clinical decision support systems. Include columns for regulatory framework (FDA, CE marking, others), device classification criteria, validation evidence requirements, post-market surveillance obligations, and considerations for model updates. Annotate with examples of how genomic foundation models might be classified under different frameworks.
+:::
 
 ## Monitoring, Drift, and Continual Learning
 
-Once deployed, foundation models and downstream risk models operate in non-stationary environments. Clinical practice patterns change as new treatments and guidelines emerge. Patient populations drift as screening programs expand or contract. Laboratory assays and sequencing pipelines evolve, introducing subtle distributional shifts in input features.
+Clinical deployment is not the end of the story but the beginning of a model lifecycle. Once deployed, foundation models and downstream risk models operate in non-stationary environments. Clinical practice patterns change as new treatments and guidelines emerge. Patient populations drift as screening programs expand or contract. Laboratory assays and sequencing pipelines evolve, introducing subtle distributional shifts in input features.
 
 Monitoring systems should track input distributions such as genotype frequencies and electronic health record feature patterns to detect when the current patient population differs from the training population. Output distributions including risk score histograms and the fraction of patients above decision thresholds reveal whether model behavior is changing over time. Performance metrics over time, often computed via rolling windows or periodic audits, detect calibration or discrimination degradation before it becomes clinically consequential.
 
 When drift is detected, several responses are possible depending on severity and type. Recalibration may suffice if the model's ranking behavior remains sound but the mapping from scores to probabilities has shifted. Refitting a calibration layer to current data can restore well-calibrated predictions without retraining the entire model. Partial retraining of prediction heads or fusion layers can adapt to new environments while keeping foundation model weights fixed, preserving regulatory status of the backbone while adjusting to local conditions. Full continual learning, including updating foundation model backbones, requires careful safeguards to avoid catastrophic forgetting (where the model loses performance on previously well-handled cases) and maintain regulatory compliance.
 
-The modular design patterns from @sec-systems, with clear interfaces between foundation encoders and clinical prediction layers, are crucial for maintainable and updatable decision support systems.
+Key components of post-deployment management include performance monitoring that tracks discrimination, calibration, and case-mix over time with separate evaluation by subgroup to detect emerging disparities. Data and concept drift monitoring watches for changes in laboratory workflows, sequencing technologies, patient populations, and the introduction of new therapies or screening programs that alter outcome incidence. Incident response processes allow clinicians to report surprising or harmful model behavior with root-cause analysis and remediation such as retraining or narrowing intended use. Governance and sunset decisions involve regular reviews by oversight committees and clear criteria for deprecating or replacing models.
+
+Genomic foundation models complicate this lifecycle because updates to shared encoders can affect many downstream tools simultaneously. This argues for strong versioning and compatibility testing, staged rollouts with canary deployments, and clear communication to clinicians when underlying models change. The modular design patterns from @sec-systems, with clear interfaces between foundation encoders and clinical prediction layers, are crucial for maintainable and updatable decision support systems.
+
+::: {.callout-note .content-visible when-profile="draft"}
+**Visual suggestion:** Model drift monitoring dashboard concept showing temporal trends in input distributions (allele frequencies, clinical feature distributions), output score histograms over time, and performance metrics (discrimination, calibration) with alert thresholds. Include examples of acceptable drift versus actionable degradation requiring intervention.
+:::
+
+## Interpretability and Clinician Trust
+
+Genomic foundation models are often perceived as black boxes. In clinical settings, trust depends on more than raw performance. As discussed in @sec-interp, interpretability methods range from simple feature importance to mechanistic model dissection. In clinical translation, you often need "interpretability for action" rather than comprehensive mechanistic understanding.
+
+For variant-level predictions, this means highlighting specific variants, motifs, or genomic regions that drive risk. For multi-modal models, it involves showing contributions from genomic versus non-genomic features. For complex predictions, succinct rationales work best, such as "Genomic risk is high due to variants impacting LDL metabolism; clinical risk is elevated due to hypertension and smoking history."
+
+Communicating uncertainty is equally important. Clinically, you must differentiate aleatoric uncertainty (irreducible noise due to biology and measurement) from epistemic uncertainty (model uncertainty due to limited training data, especially in certain subgroups or genomic contexts). Practical strategies include reporting prediction intervals or credible intervals for risk estimates, especially near decision thresholds, flagging cases falling outside the training distribution such as ancestry extrapolation or rare variant patterns not seen during training, and using ensemble methods or Bayesian approaches to quantify epistemic uncertainty.
+
+However, interpretability tools can themselves be misleading. They should be validated for stability and robustness and used to detect model failures such as shortcut learning from ancestry proxies rather than to retroactively justify any prediction. The goal is to provide clinicians with enough transparency to make informed decisions while acknowledging the inherent limitations of post-hoc explanation methods.
 
 ## Case Studies
 
@@ -143,8 +212,24 @@ The model design uses foundation models to derive mechanistically meaningful fea
 
 Clinical use would flag patients at high risk before initiating therapy, prompting genotype-guided drug choice or dose adjustment. Reports would tie risk predictions back to specific variants and pharmacogenes, aligned with existing clinical pharmacogenomics guidelines from organizations like CPIC and PharmGKB. Cross-ancestry evaluation would ensure that the model does not exacerbate existing disparities in access to safe and effective therapy, a particular concern given the European bias in pharmacogenomics research.
 
-## Practical Design Patterns and Outlook
+## Practical Checklist for Translating Foundation Model-Based Risk Models
 
-Across these case studies, several design patterns for foundation model-enabled clinical prediction recur. Treating foundation models as modular feature extractors, with clear separation between encoders and clinical prediction heads, eases updates and regulatory management. Embracing multi-modal fusion that combines genotype, multi-omics, and electronic health records takes advantage of the integration architectures developed throughout this book. Prioritizing calibration, uncertainty, and fairness as first-class design constraints rather than post-hoc additions ensures that models are suitable for high-stakes decisions. Bridging interpretability and mechanism, using the tools from @sec-interp to connect individual risk predictions to variants, regions, and pathways, enables mechanistic hypotheses and clinician trust. Designing for continual learning and monitoring assumes that clinical practice and data distributions will change and builds pipelines that can adapt responsibly.
+To close, we summarize a pragmatic checklist for teams aiming to translate foundation model-based models into clinical practice. This checklist distills the key considerations discussed throughout this chapter into actionable steps.
+
+**Define the clinical problem clearly.** What decision will change? For whom, and in what setting? What alternative tools exist, and how will this be better? Ensure the outcome, time horizon, target population, and use case are precisely specified and tied to actionable clinical decisions.
+
+**Design the model with translation in mind.** Choose inputs and outputs that can be reliably obtained in routine care. Plan for batch versus real-time inference based on computational constraints and clinical workflow. Consider requirements for latency, compute resources, and interpretability from the outset rather than as afterthoughts.
+
+**Build robust evidence across the validation hierarchy.** Start with rigorous internal validation using appropriate methodology as described in @sec-eval. Progress to external, multi-site validation across diverse ancestries and demographics. Pursue prospective validation and, where feasible, interventional studies that demonstrate actual clinical benefit rather than statistical performance alone.
+
+**Assess equity comprehensively.** Evaluate performance and calibration across subgroups defined by ancestry, sex, age, and socioeconomic status. Examine who gets access to the test and who benefits from its use. Implement mitigation strategies for identified disparities and track equity metrics continuously over time.
+
+**Prepare for regulation and governance.** Clarify intended use and risk classification early in development. Create comprehensive documentation including model cards, standard operating procedures, and validation reports. Engage regulatory and institutional stakeholders before deployment rather than seeking approval as a final step.
+
+**Integrate into clinical workflows thoughtfully.** Co-design with clinicians, laboratory staff, and patients to ensure the tool fits existing workflows. Prototype interfaces and iterate based on usability testing. Avoid alert fatigue by prioritizing high-value, actionable outputs over comprehensive but overwhelming information displays.
+
+**Plan for monitoring and model updates.** Establish metrics and dashboards for ongoing performance monitoring across relevant subgroups. Define clear triggers for investigation and potential retraining. Maintain a model registry with detailed version histories and compatibility testing procedures.
+
+If genomic foundation models are to realize their promise in clinical medicine, success will depend less on ever-larger models and more on humble, rigorous translation work: careful problem selection, evidence generation, stakeholder engagement, and vigilant stewardship. The modular design patterns discussed in this chapter, treating foundation models as feature extractors with clear separation from clinical prediction heads, embracing multi-modal fusion, prioritizing calibration and fairness, bridging interpretability and mechanism, and designing for continual learning, provide a framework for responsible deployment.
 
 In the broader arc of this book, clinical risk prediction and decision support represent a key translation layer that connects the representational gains of genomic foundation models to the realities of patient care. The next chapters extend these ideas to other application domains: pathogenic variant discovery in rare disease and cancer workflows (@sec-variants), and drug discovery and biotech applications (@sec-drugs), further exploring how foundation models reshape translational genomics.
