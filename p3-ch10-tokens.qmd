@@ -1,24 +1,12 @@
 ::: {.callout-warning .content-visible when-profile="draft"}
 **TODO:**
 
-- Verify tradeoffs and general concensus discussion is sufficient
-- ...
+- Verify tradeoffs and general consensus discussion is sufficient
+- Double-check that all model names (DNABERT, DNABERT-2, Nucleotide Transformer, HyenaDNA, LifeCode, GenSLMs, BioToken, etc.) align with the details and citations in the architecture chapters
+- Confirm that the high-level summary of LifeCode, GenSLMs, and BioToken matches the primary sources
+- Validate that cross-references to other chapters (@sec-dna, @sec-hybrid, @sec-princ, @sec-reg, @sec-splice) still point to the right sections after final re-organization
+- Revisit the numerical examples for context lengths (e.g., 1 kb, 6 kb, 1 Mb) to ensure internal consistency with Chapters 7–9 and with the latest model details
 :::
-
-::: {.callout-warning .content-visible when-profile="draft"}
-**ADD Brief Mention to EmbedGEM; ref Chapter 17:**
-**What to say (conceptually):**
-- Mukherjee *et al.* introduce **EmbedGEM**, a framework to evaluate multivariate traits or ML-derived embeddings specifically for **genetic discovery** along two axes:  
-  1. **Heritability** – measured by the number of LD-clumped genome-wide significant hits and the mean/median χ² at those loci.  
-  2. **Disease relevance** – measured by PRSs built from embedding-associated variants and their incremental predictive value for a downstream trait in an independent cohort. :contentReference[oaicite:0]{index=0}  
-
-- Technically, they:
-  - Orthogonalize multivariate traits/embedding dimensions using PCA.  
-  - Run **univariate GWAS on PCs**, then combine Wald Z-statistics into a multivariate χ² test for each SNP.  
-  - Perform LD-based clumping to get independent loci.  
-  - Build **per-PC PRSs** and compare full (PRS + covariates) vs reduced (covariates only) GLMs using AUROC/AUPRC (for binary traits) or \(R^2\)/MAE (for continuous traits), with permutation + bootstrap to get P-values. 
-:::
-
 
 # Sequence Representation & Tokens  {#sec-token}
 
@@ -32,14 +20,33 @@ DNA presents similar choices but with important differences. The genome has only
 
 This chapter examines the evolution of sequence representation strategies in genomic deep learning. We trace the progression from one-hot encoding through k-mer tokenization to modern approaches including Byte Pair Encoding, single-nucleotide tokens, and biologically-informed tokenization schemes. Understanding these choices clarifies design decisions in models throughout Parts III and IV, and illuminates why seemingly minor representation choices can dramatically affect model capabilities.
 
+::: {.callout-warning .content-visible when-profile="draft"}
+**Visual suggestion 10.1 – Representation trade-off comparison**
+
+A single genomic sequence drawn once and tokenized four ways: one-hot bases, k-mers, BPE tokens, and single-nucleotide tokens. Under each, show:
+- Approximate sequence length (number of tokens)
+- "Resolution" (e.g., whether variants map cleanly to a single token)
+- Typical models that use the representation
+:::
+
 ## Gene-Level Embeddings: A Road Not Taken
 
 Before examining sequence tokenization strategies, it is worth asking whether sequence representation is necessary at all. When Word2Vec demonstrated that meaningful word embeddings could be learned from co-occurrence patterns in text corpora, an analogous approach for biology seemed natural: learn gene embeddings from co-expression patterns across experiments.
+
 Gene2Vec (2019) pursued exactly this strategy, training Word2Vec-style embeddings on gene co-expression data from thousands of experiments [@du_gene2vec_2019]. Genes appearing in similar expression contexts received similar vector representations, capturing functional relationships without any sequence information. The resulting embeddings improved performance on gene function prediction and could identify functionally related genes that shared no obvious sequence similarity. Similar approaches emerged for other biological entities, embedding proteins based on interaction networks or pathways based on shared gene membership.
 
 Yet gene-level embeddings did not become the dominant paradigm for genomic deep learning, and the reasons illuminate why sequence-based representations proved more powerful. Gene embeddings treat each gene as an atomic unit with no internal structure. They cannot distinguish between synonymous and nonsynonymous variants within a gene, cannot predict effects of novel mutations never seen during training, and cannot generalize to newly discovered genes absent from the original embedding corpus. The representations are static rather than compositional: a gene's embedding captures its average behavior across training contexts but cannot adapt to the specific sequence context of a particular variant or regulatory configuration.
 
 The field's commitment to sequence-based representations reflects a fundamental insight: the information determining gene function is encoded in nucleotide sequence, and models that operate directly on sequence can learn this encoding rather than relying on pre-computed summaries. A sequence model can predict how a single nucleotide change alters splicing, expression, or protein function because it has learned the underlying sequence grammar. A gene embedding cannot. This distinction becomes critical for clinical applications, where the variants of greatest interest are often novel mutations never previously observed. The remainder of this chapter examines the various strategies for representing sequence while preserving this compositional, generalizable structure.
+
+::: {.callout-warning .content-visible when-profile="draft"}
+**Visual suggestion 10.2 – Gene2vec vs sequence models**
+
+Schematic comparing:
+- A "gene graph" with gene2vec-style embeddings (nodes with vector representations)
+- A sequence model taking raw DNA as input
+Highlight how gene-level embeddings lack positional and base-resolution information, while sequence tokens preserve genomic structure.
+:::
 
 ## One-Hot Encoding: The CNN Foundation
 
@@ -52,6 +59,12 @@ DeepSEA, ExPecto, and SpliceAI all employed one-hot encoding without modificatio
 Yet for transformer architectures, one-hot encoding presents significant challenges. Transformers compute attention between all pairs of positions in a sequence, with computational cost scaling as $O(L^2)$ where $L$ is the sequence length. A 10 kb sequence requires 10,000 tokens, meaning 100 million pairwise attention computations per layer. This quickly becomes prohibitive for the long sequences that genomic applications require. Furthermore, transformers typically learn dense embeddings for each token, but with only four possible nucleotides, there is little opportunity for the model to discover rich representations through the embedding layer. The sparse one-hot vectors provide minimal information for the embedding to transform. Most critically, practical transformer context windows of 512 to 4,096 tokens translate to only 512 to 4,096 base pairs when using one-hot encoding, a tiny fraction of genes or regulatory regions and far less than the context that proved valuable for models like Enformer and SpliceAI.
 
 These limitations motivated the search for alternative representations that could compress genomic sequences into fewer tokens while preserving the information needed for biological prediction.
+
+::: {.callout-warning .content-visible when-profile="draft"}
+**Visual suggestion 10.3 – One-hot vs CNN filters**
+
+A 1D DNA sequence mapped to a 4-channel one-hot matrix. Convolutional filters sliding across the matrix, with motif-like filters highlighted. Optional inset: "effective receptive field" of a deep CNN stack vs sequence length.
+:::
 
 ## K-mer Tokenization: The DNABERT Approach
 
@@ -73,6 +86,12 @@ Fourth, the fixed $4^k$ vocabulary does not adapt to corpus statistics. Frequent
 
 These limitations motivated exploration of alternative tokenization strategies that could achieve genuine sequence compression while preserving the information needed for biological prediction.
 
+::: {.callout-warning .content-visible when-profile="draft"}
+**Visual suggestion 10.4 – K-mer sliding window**
+
+A short DNA sequence with overlapping 6-mers highlighted. Show how a single SNV changes several k-mer tokens. Side panel: token count vs *k* (e.g., bases vs 3-mer vs 6-mer) for a fixed window length.
+:::
+
 ## Byte Pair Encoding: Learning the Vocabulary
 
 Byte Pair Encoding offers a fundamentally different approach to tokenization. Rather than defining tokens through a fixed rule (every k consecutive nucleotides), BPE constructs a vocabulary by learning which subsequences appear frequently in the training corpus. The algorithm, originally developed for data compression, iteratively merges the most frequent adjacent token pairs until reaching a desired vocabulary size.
@@ -89,6 +108,12 @@ GROVER (Genome Rules Obtained Via Extracted Representations) extended this appro
 
 Yet BPE introduces its own complications. The variable-length tokens mean that variant positions fall at different locations relative to token boundaries depending on the local sequence context. A SNP might fall in the middle of a long token in one context but at a token boundary in another, potentially affecting how the model represents and processes the variant. This context-dependence can complicate variant effect interpretation, as the same nucleotide change may alter different numbers of tokens depending on surrounding sequence.
 
+::: {.callout-warning .content-visible when-profile="draft"}
+**Visual suggestion 10.5 – BPE merges on DNA**
+
+Start with a short sequence tokenized as individual bases. Show successive BPE merges building longer tokens. Overlay frequency counts or "motif-like" tokens to suggest that the learned vocabulary captures biologically relevant subsequences.
+:::
+
 ## Single-Nucleotide Tokenization: The HyenaDNA Approach
 
 While k-mer and BPE tokenization compress sequences to enable longer context windows, they sacrifice single-nucleotide resolution in doing so. This trade-off becomes problematic for variant effect prediction, where the precise position and identity of mutations is paramount. A single nucleotide polymorphism can completely alter protein function through mechanisms ranging from amino acid substitution to splice site disruption to regulatory element ablation. Multi-nucleotide tokens obscure exactly where variants fall and how they relate to the boundaries of biological features.
@@ -103,54 +128,72 @@ The result was a 500-fold increase in context length over dense attention models
 
 Perhaps most notably, HyenaDNA demonstrated the first use of in-context learning in genomics. The model could perform tasks based on examples provided in the context window without any fine-tuning, simply by conditioning on demonstration sequences. This capability, familiar from large language models, had not previously been shown for genomic sequences and suggests that very long context combined with high resolution enables qualitatively new forms of biological reasoning.
 
+::: {.callout-warning .content-visible when-profile="draft"}
+**Visual suggestion 10.6 – Context length vs resolution plot**
+
+Scatter or line plot showing different models on a 2D plane:
+- x-axis: context length (bp)
+- y-axis: token resolution (bases per token)
+Place: One-hot CNNs (short context, 1 bp/token), DNABERT (medium context, 6 bp/token), DNABERT-2 / BPE models (longer context, variable bp/token), HyenaDNA (very long context, 1 bp/token).
+:::
+
 ## Biologically-Informed Tokenization
 
 Standard tokenization schemes treat DNA as a homogeneous string of characters, ignoring the biological reality that different genomic regions serve fundamentally different functions and follow different structural rules. Coding sequences obey a strict codon structure where every three nucleotides encode an amino acid, while noncoding regions have no such constraint. Treating these regions identically wastes an opportunity to build biological knowledge directly into the representation.
 
-### Codon Aware - Life Code
+### Codon-Aware Tokenization
 
-Life-Code (2025) proposed codon-aware tokenization that respects the central dogma of molecular biology [@liu_life-code_2025]. The approach uses different tokenization strategies for different genomic regions based on their biological function. Coding regions are tokenized by codons, with each three-nucleotide unit encoding an amino acid becoming a single token. This aligns the token boundaries with the fundamental unit of protein translation, enabling the model to learn directly about amino acid sequences and protein structure. Noncoding regions, lacking codon structure, are tokenized by learned patterns that capture regulatory motifs and other functional elements.
+For protein-coding regions, the natural unit of sequence is the codon, not the individual nucleotide. Several models exploit this structure by treating codons as tokens. GenSLMs (2022) pioneered codon-level tokenization for genomic foundation models, treating each three-nucleotide codon as a single token and exploiting the fact that codons are the biologically meaningful units of protein-coding sequence [@zvyagin_genslms_2022]. The 64-codon vocabulary captures the complete space of possible genetic code words, with each token corresponding to either an amino acid or a stop signal. This alignment with translation semantics means that mutations affecting amino acid identity (nonsynonymous changes) alter the token sequence, while synonymous mutations within a codon alter the specific token used but maintain the broader codon-family structure.
 
-This biologically-informed design enables Life-Code to learn protein structure through knowledge distillation from protein language models, capture interactions between coding and noncoding regions within a unified framework, and achieve state-of-the-art results across tasks involving DNA, RNA, and protein. The approach demonstrates that tokenization need not be uniform across the genome, and that encoding biological knowledge in the representation itself can improve model capabilities.
+Life-Code (2025) extended codon-aware tokenization to broader genomic contexts, encoding coding and noncoding regions in a way that respects reading frame and local biological function [@liu_life-code_2025]. The approach uses different tokenization strategies for different genomic regions based on their biological function. Coding regions are tokenized by codons, with each three-nucleotide unit encoding an amino acid becoming a single token. This aligns the token boundaries with the fundamental unit of protein translation, enabling the model to learn directly about amino acid sequences and protein structure. Noncoding regions, lacking codon structure, are tokenized by learned patterns that capture regulatory motifs and other functional elements.
 
-### Codon Aware - GenSLM
+Codon tokenization offers several conceptual advantages for modeling coding regions. The approach provides natural compression, with a protein-coding sequence of 300 amino acids spanning 900 nucleotides but compressing to 300 codon tokens. This compression enables whole-gene or even whole-genome modeling within standard transformer context windows, as GenSLMs demonstrated by processing entire viral genomes as coherent sequences. The model can potentially learn codon usage biases, translational efficiency patterns, and other codon-level phenomena that would be obscured by arbitrary k-mer boundaries.
 
-::: {.callout-warning .content-visible when-profile="draft"}
-**MAKE MUCH MORE CONSISE**
-**MEREGE WITH LIFECODE ABOVE**
-:::
-
-The tokenization strategies discussed thus far, from one-hot encoding through k-mers and BPE, are all learned or imposed without reference to known biological structure. An alternative approach leverages the genome's intrinsic organization: the genetic code that maps codons to amino acids during translation. GenSLMs pioneered codon-level tokenization for genomic foundation models, treating each three-nucleotide codon as a single token and exploiting the fact that codons are the biologically meaningful units of protein-coding sequence [@zvyagin_genslms_2022].
-
-Codon tokenization offers several conceptual advantages for modeling coding regions. The 64-codon vocabulary captures the complete space of possible genetic code words, with each token corresponding to either an amino acid or a stop signal. This alignment with translation semantics means that mutations affecting amino acid identity (nonsynonymous changes) alter the token sequence, while synonymous mutations within a codon alter the specific token used but maintain the broader codon-family structure. The model can potentially learn codon usage biases, translational efficiency patterns, and other codon-level phenomena that would be obscured by arbitrary k-mer boundaries.
-
-The approach also provides natural compression. A protein-coding sequence of 300 amino acids spans 900 nucleotides but compresses to 300 codon tokens, achieving the same three-fold compression as non-overlapping 3-mers but with biological rather than arbitrary boundaries. This compression enables whole-gene or even whole-genome modeling within standard transformer context windows, as GenSLMs demonstrated by processing entire viral genomes as coherent sequences.
+This biologically-informed design enables models like Life-Code to learn protein structure through knowledge distillation from protein language models, capture interactions between coding and noncoding regions within a unified framework, and achieve state-of-the-art results across tasks involving DNA, RNA, and protein. The approach demonstrates that tokenization need not be uniform across the genome, and that encoding biological knowledge in the representation itself can improve model capabilities.
 
 However, codon tokenization has significant limitations for general genomic modeling. The approach assumes a defined reading frame, which works for known coding sequences but fails for noncoding regions where no frame exists. Frame shifts, common in viral genomes and relevant for certain human genetic contexts, disrupt the codon structure and require special handling. Regulatory regions, introns, and intergenic sequences have no codon organization to leverage. These limitations restrict codon tokenization to applications where coding sequence dominates, such as protein-centric modeling or viral genomics where the majority of the genome encodes proteins.
 
 The broader lesson is that tokenization can and perhaps should be informed by biological structure when that structure is known and relevant. BPE learns statistical patterns from the corpus, but those patterns need not correspond to biological units. Codon tokenization imposes biological semantics directly, at the cost of applicability to noncoding regions. Future approaches might combine these strategies, using codon-aware tokenization for coding regions and BPE or single-nucleotide tokens for noncoding sequence, though such hybrid schemes introduce complexity in handling transitions between regions.
 
+::: {.callout-warning .content-visible when-profile="draft"}
+**Visual suggestion 10.7 – Codon-aware vs base-level tokens**
+
+Show a coding exon segmented into codons vs bases. Highlight a synonymous and a non-synonymous SNV at the codon level. Optional: link codon tokens to amino acid tokens to illustrate the sequence–protein bridge.
+:::
+
 ### Variant Tokens
 
-BioToken (2025) extends tokenization even further beyond sequence content to include explicit genomic structural annotations [@medvedev_biotoken_2025]. Rather than treating variants as implicit changes in the sequence string, BioToken creates tokens that explicitly represent SNPs, insertions, and deletions. Known regulatory elements receive dedicated tokens encoding their presence and type. Gene structure, chromatin state, and other functional annotations are integrated directly into the token representation.
+BioToken (2025) extends tokenization even further beyond sequence content to include explicit genomic structural annotations [@medvedev_biotoken_2025]. Rather than treating variants as implicit changes in the sequence string, BioToken creates tokens that explicitly represent SNPs, insertions, and deletions. Known regulatory elements receive dedicated tokens encoding their presence and type. Gene structure, chromatin state, and other functional annotations are integrated directly into the token representation. This approach treats tokens as rich entities that bundle nucleotides with positional, functional, or experimental context.
+
+Such variant-aware representations are especially attractive for variant effect prediction and clinical interpretation, where the input is often "reference plus variant" rather than a generic sequence. Embedding variants directly can enable the model to share information across genomic positions and contexts for similar variants, make it easier to integrate non-sequence features (such as constraint scores or population frequency) into a unified representation, and facilitate pretraining objectives that operate on variant events.
 
 By incorporating biological inductive biases directly into tokenization, BioToken's associated model (BioFM) achieves competitive or superior performance to specialized models like Enformer and SpliceAI with significantly fewer parameters, approximately 265 million compared to the billions in some contemporary models. This efficiency suggests that appropriate representation can substitute for model scale, at least partially, by making the learning problem easier through informed structure.
 
+The cost is increased complexity in data preprocessing and model design. Variant tokens require careful handling of how reference and alternate alleles are represented, how indels that span multiple bases are encoded, and how the model learns to reason about variant-specific features versus general sequence context. But for translational applications, the payoff can be substantial: variant-aware tokens bring the model's input space closer to the actual objects of biomedical interest.
+
+::: {.callout-warning .content-visible when-profile="draft"}
+**Visual suggestion 10.8 – Variant-aware tokenization**
+
+Panel A: classic "reference sequence only" tokenization. Panel B: sequence plus explicit variant tokens (e.g., SNV markers or composite variant tokens). Emphasize how variant tokens can span multiple neighboring bases (e.g., indels) but still map to a conceptually single event.
+:::
+
 ## The Context Length Evolution
 
-Examining the history of genomic deep learning reveals a consistent trend toward longer sequence context, reflecting growing appreciation for the importance of distal regulatory interactions.
+Examining the history of genomic deep learning reveals a consistent trend toward longer sequence context, reflecting growing appreciation for the importance of distal regulatory interactions. The earliest CNN models from 2015 to 2017, including DeepSEA and DeepBind, operated on sequences of approximately 1 kb, sufficient to capture local motifs and their immediate context. The next generation of models from 2018 to 2020, including ExPecto and SpliceAI, expanded to 10-40 kb windows, enabling capture of promoter-proximal regulatory elements and the extended context needed for accurate splice site prediction.
 
-The earliest CNN models from 2015 to 2017, including DeepSEA and DeepBind, operated on sequences of approximately 1 kb, sufficient to capture local motifs and their immediate context. The next generation of models from 2018 to 2020, including ExPecto and SpliceAI, expanded to 10-40 kb windows, enabling capture of promoter-proximal regulatory elements and the extended context needed for accurate splice site prediction.
+The transformer era beginning in 2021 brought divergent approaches. DNABERT with its overlapping k-mers was limited to approximately 512 bp of effective context, while Enformer combined CNN preprocessing with attention to achieve 200 kb contexts. The Nucleotide Transformer (2022-2023) pushed transformer-based models to 6 kb using k-mer tokenization [@dalla-torre_nucleotide_2023]. Then HyenaDNA and Caduceus (2023-2024) demonstrated that sub-quadratic architectures could reach 1 Mb while maintaining single-nucleotide resolution through character-level tokenization. Most recently, Evo 2 (2025) has achieved similar million-base-pair contexts using single-nucleotide tokens with BPE-style learned embeddings.
 
-The transformer era beginning in 2021 brought divergent approaches. DNABERT with its overlapping k-mers was limited to approximately 512 bp of effective context, while Enformer combined CNN preprocessing with attention to achieve 200 kb contexts. The Nucleotide Transformer (2022-2023) pushed transformer-based models to 6 kb using k-mer tokenization. Then HyenaDNA and Caduceus (2023-2024) demonstrated that sub-quadratic architectures could reach 1 Mb while maintaining single-nucleotide resolution through character-level tokenization. Most recently, Evo 2 (2025) has achieved similar million-base-pair contexts using single-nucleotide tokens with BPE-style learned embeddings.
+This progression reflects biological reality. Enhancers can regulate genes from hundreds of kilobases away. TAD boundaries and loop anchors create long-range dependencies in chromatin organization. Understanding genome function requires integrating information across these distances, and representation schemes must enable architectures capable of capturing such interactions. From a design perspective, context length is now less a fixed constraint and more a tunable design dimension, mediated jointly by tokenization, architecture, and hardware budget.
 
-This progression reflects biological reality. Enhancers can regulate genes from hundreds of kilobases away. TAD boundaries and loop anchors create long-range dependencies in chromatin organization. Understanding genome function requires integrating information across these distances, and representation schemes must enable architectures capable of capturing such interactions.
+::: {.callout-warning .content-visible when-profile="draft"}
+**Visual suggestion 10.9 – Historical timeline**
+
+Timeline of models with approximate context lengths and tokenization strategies: DeepSEA / ExPecto / SpliceAI (one-hot), DNABERT (k-mers), DNABERT-2 / genome BPE models, Nucleotide Transformer, HyenaDNA. Optionally color-code by architecture family (CNN, transformer, long-range hybrid).
+:::
 
 ## Trade-offs and Practical Considerations
 
-The choice between tokenization strategies involves multiple competing considerations that depend on the intended application.
-
-Compression and resolution exist in fundamental tension. Higher compression enables longer context windows within fixed computational budgets, but loses precision for identifying exactly where variants fall and how they relate to biological features. One-hot encoding and single-nucleotide tokenization provide no compression but maintain full resolution. Non-overlapping k-mers achieve approximately k-fold compression at the cost of k-nucleotide resolution. BPE provides variable compression depending on sequence repetitiveness, with corresponding variable resolution. For variant effect prediction, where single nucleotide changes can have dramatic phenotypic consequences, resolution is paramount and the computational costs of long single-nucleotide sequences are often justified.
+The choice between tokenization strategies involves multiple competing considerations that depend on the intended application. Compression and resolution exist in fundamental tension. Higher compression enables longer context windows within fixed computational budgets, but loses precision for identifying exactly where variants fall and how they relate to biological features. One-hot encoding and single-nucleotide tokenization provide no compression but maintain full resolution. Non-overlapping k-mers achieve approximately k-fold compression at the cost of k-nucleotide resolution. BPE provides variable compression depending on sequence repetitiveness, with corresponding variable resolution. For variant effect prediction, where single nucleotide changes can have dramatic phenotypic consequences, resolution is paramount and the computational costs of long single-nucleotide sequences are often justified.
 
 Vocabulary size affects both model capacity and efficiency. Larger vocabularies require bigger embedding tables but may capture more complex patterns directly. Smaller vocabularies are parameter-efficient but require the model to learn compositional structure through multiple layers. The vocabulary size of one-hot encoding (4 tokens plus special tokens) minimizes embedding parameters but maximizes the compositional learning burden. K-mer vocabularies scale exponentially with k, reaching 4,096 for 6-mers. BPE vocabularies are tunable, typically ranging from 4,096 to 32,000 tokens for genomic applications. Codon-aware approaches use approximately 64 codons plus additional tokens for noncoding regions.
 
@@ -158,11 +201,15 @@ Computational efficiency depends on both tokenization and architecture. For stan
 
 For variant effect prediction specifically, tokenization choice has direct implications. Single-nucleotide tokens (as in HyenaDNA) enable clean comparison of reference and alternate alleles at the same token position with no ambiguity about effect localization. K-mer tokens complicate matters because a single SNP changes $k$ overlapping tokens, requiring aggregation across affected tokens and introducing potential boundary effects. BPE tokens create context-dependent effects where the same variant may fall at different positions relative to token boundaries depending on surrounding sequence, and where re-tokenization may be needed to properly represent the alternate allele.
 
+::: {.callout-warning .content-visible when-profile="draft"}
+**Visual suggestion 10.10 – Design table**
+
+A table summarizing tokenization strategies (rows) vs design axes (columns): context length, variant resolution, biological alignment, implementation complexity. Highlight recommended use cases (e.g., "best for VEP", "best for genome-scale pretraining").
+:::
+
 ## The Emerging Consensus
 
-Recent developments in the field suggest convergence toward several principles, though the optimal approach continues to evolve.
-
-First, single-nucleotide resolution has become the preferred choice for applications requiring precise variant interpretation. The development of sub-quadratic architectures like Hyena, Mamba, and state space models has eliminated the computational barriers that previously forced researchers to accept resolution trade-offs. When long context and high resolution can both be achieved, there is little reason to sacrifice resolution through compression.
+Recent developments in the field suggest convergence toward several principles, though the optimal approach continues to evolve. First, single-nucleotide resolution has become the preferred choice for applications requiring precise variant interpretation. The development of sub-quadratic architectures like Hyena, Mamba, and state space models has eliminated the computational barriers that previously forced researchers to accept resolution trade-offs. When long context and high resolution can both be achieved, there is little reason to sacrifice resolution through compression.
 
 Second, learned embeddings rather than fixed representations have become standard. Even single-nucleotide tokenization now typically involves trainable embeddings that transform the four nucleotide identities into dense vectors. This allows the model to discover meaningful representations of nucleotide properties rather than treating all positions equivalently.
 
@@ -172,8 +219,10 @@ Fourth, hybrid approaches that combine multiple representation strategies show p
 
 The choice ultimately depends on the task at hand. Variant effect prediction demands high resolution and benefits most from single-nucleotide approaches. Species classification or repeat annotation may benefit from compression that enables comparison across longer regions. Expression prediction requires sufficient context to capture distal enhancers while maintaining resolution to identify causal variants. Understanding these trade-offs is essential for selecting or designing appropriate representations for specific applications.
 
+In other words, there is no single "correct" tokenization. Instead, we see a toolbox of representations, each suited to particular regimes of context length, resolution, and task demands. For many practitioners, a reasonable heuristic has emerged: use single-nucleotide tokens when variant-level reasoning or high-resolution interpretability is central, use k-mers or BPE when context length is the primary bottleneck and tasks do not require base-level precision, and consider biologically-informed tokens when integrating multi-modal or annotation-rich data.
+
 ## Implications for Subsequent Chapters
 
-The tokenization choices examined in this chapter set the stage for the genomic language models covered in @sec-dna. Understanding why models like the Nucleotide Transformer use 6-mers [@dalla-torre_nucleotide_2023], why DNABERT-2 switched to BPE, and why HyenaDNA's single-nucleotide approach enabled unprecedented context lengths clarifies the design space these models navigate. The hybrid architectures of @sec-hybrid, including Enformer and Borzoi, largely retained one-hot encoding for its precision in variant effect prediction, while the foundation models of @sec-princ explore how sub-quadratic architectures enable single-nucleotide tokenization at truly genomic scale.
+The tokenization choices examined in this chapter set the stage for the design decisions discussed throughout the rest of the book. In @sec-dna, we will revisit why many DNA transformers still use 6-mers, and how models like the Nucleotide Transformer balance context length with biological resolution. In @sec-rna and @sec-hybrid, we examine how long-range models like Enformer and Borzoi largely retained one-hot encoding or single-nucleotide input encodings for precision in variant effect prediction, leaning on architectural innovations rather than token compression to scale context. In @sec-princ, we explore how pretraining objectives interact with tokenization choices, including masked language modeling over k-mers versus bases, or variant-aware pretraining objectives over BioToken-style representations.
 
-The representation problem remains an active area of research. As models grow larger and contexts extend further, new tokenization strategies may emerge that better balance compression, resolution, and biological structure. The field has moved from treating tokenization as a fixed preprocessing step to recognizing it as a fundamental design decision that shapes what models can learn and how they can be applied.
+The representation problem remains an active area of research. As models grow larger and contexts extend further, new tokenization strategies may emerge that better balance compression, resolution, and biological structure. The field has moved from treating tokenization as a fixed preprocessing step to recognizing it as a fundamental design decision that shapes what models can learn and how they can be applied. Understanding sequence representation is therefore not a technical footnote but a core element of genomic foundation model design, with implications that ripple through every subsequent chapter of this book.

@@ -7,28 +7,6 @@
 - Add figure: evaluation pyramid from molecular readouts to clinical decisions
 - Add decision tree flowchart for practitioners choosing appropriate GFM for their task
 - Add figure: adapter strategies (linear probe, LoRA, full fine-tune) with computational cost comparison
-
-
-
-
-
-Pretraining objectives (MLM, autoregressive, contrastive)
-Generative objectives (diffusion, flow matching, VAEs)
-Fine-tuning strategies
-Transfer and adaptation
-Scaling laws
-Multi-species vs intra-species
-(@consens_transformers_2023)
-- **Critique of MLM/ALM as “imported” pretext tasks**  
-  The review explicitly argues that **MLM and ALM were imported from NLP with little biological tailoring**, and may not be the right pretraining objectives for genomics. They point to:
-  - Self-GenomeNet as an example of a biologically motivated pretext that uses reverse complements and neighboring sequence structure.  
-  - Results showing random k-mer embeddings can perform comparably to biologically pre-trained embeddings on some downstream tasks, questioning how much genomic grammar current pretraining actually learns. :contentReference[oaicite:7]{index=7}  
-  This is *perfect* material for a short, critical subsection in p3-ch11-principles (“How much does pretraining really help?”).
-
-(@ma_bingo-large_2023)
-Ma et al. apply FGM-style adversarial perturbations to internal GNN embeddings (not raw sequence) and show:
-small performance gains,
-but noticeably smoother and lower training loss, suggesting reduced overfitting (Figure 4F).
 :::
 
 # Genomic FMs: Principles & Practice {#sec-princ}
@@ -73,6 +51,10 @@ This distinction matters because it affects how models should be evaluated. Foun
 
 The landscape of genomic foundation models can be organized into four broad families, each with distinct characteristics, strengths, and typical applications. Understanding this taxonomy helps practitioners select appropriate models for their specific needs and helps researchers position new contributions within the broader field.
 
+::: {.callout-note}
+**Figure 11.1 suggestion:** A 2×2 taxonomy grid showing the four families of genomic foundation models. The horizontal axis could represent "sequence-centric" versus "variant-centric" approaches, while the vertical axis represents "single-modality" versus "multi-modal" integration. Each quadrant would contain representative models: DNA language models (DNABERT, Nucleotide Transformer, HyenaDNA, GROVER), sequence-to-function models (Enformer, Sei, DeepSEA), variant-centric models (AlphaMissense, CADD, DELFI/DELpHI, MIFM), and multi-omic models (Omni-DNA, cross-modal architectures).
+:::
+
 ### DNA Language Models
 
 The first family comprises DNA language models that learn sequence representations from raw nucleotide strings. Representative examples include DNABERT and DNABERT-2, which apply BERT-style masked language modeling to DNA sequences [@ji_dnabert_2021; @zhou_dnabert-2_2024]. The Nucleotide Transformer family scales this approach to larger models and cross-species training corpora [@dalla-torre_nucleotide_2023]. HyenaDNA uses implicit convolutions rather than attention to achieve subquadratic complexity, enabling context lengths up to one million nucleotides [@nguyen_hyenadna_2023]. Caduceus incorporates bidirectional processing and reverse-complement equivariance as architectural inductive biases. GROVER combines BPE-style tokenization with training on regulatory tracks rather than raw sequence alone [@sanabria_grover_2024].
@@ -99,9 +81,17 @@ Finally, a growing set of models aim to natively integrate multiple modalities. 
 
 Recent work on architectures like Omni-DNA explores transformer-based auto-regressive models that jointly handle DNA and task-specific tokens, enabling multi-task learning over sequence, epigenetic marks, and even textual descriptions of function. These models move genomic foundation models closer to a unified interface for genome biology, though at the cost of more complex training objectives and data engineering requirements.
 
+::: {.callout-note}
+**Table 11.1 suggestion:** A comparison table of representative genomic foundation model families with columns for: Model Family, Example Models, Context Length (typical range), Parameter Count (order of magnitude), Pretraining Objective, Primary Readouts, and Typical Downstream Applications. This would help readers quickly compare trade-offs across the taxonomy.
+:::
+
 ## Design Dimensions of Genomic Foundation Models
 
 When designing or selecting a genomic foundation model, it is helpful to think in terms of several orthogonal design dimensions. Each dimension involves trade-offs that affect model performance, computational requirements, and suitability for specific applications.
+
+::: {.callout-note}
+**Figure 11.2 suggestion:** A schematic diagram showing four orthogonal axes representing the design dimensions: Data (species coverage, assay diversity, population diversity), Architecture (CNN/transformer/Hyena, attention mechanisms), Objectives (MLM, autoregressive, multi-task), and Tokenization/Representations (character-level, k-mer, learned BPE). Each axis should be annotated with concrete choices to illustrate the design space.
+:::
 
 ### Data: What Does the Model See?
 
@@ -141,6 +131,8 @@ Multi-task sequence-to-function prediction directly predicts chromatin profiles,
 
 Cross-modal objectives jointly predict sequence features and other modalities. Examples include contrastive alignment between DNA slices and 3D contacts or histone marks, and joint prediction of sequence, epigenetic tracks, and textual function labels in Omni-DNA-like architectures.
 
+A recent review of transformers in genomics explicitly argues that MLM and autoregressive objectives were imported from NLP with little biological tailoring, and may not be the right pretraining objectives for genomics [@consens_transformers_2023]. The authors point to results showing random k-mer embeddings can perform comparably to biologically pre-trained embeddings on some downstream tasks, questioning how much genomic grammar current pretraining actually learns. This critique suggests that the field should explore more biologically motivated pretext tasks, such as Self-GenomeNet's use of reverse complements and neighboring sequence structure, rather than reflexively adopting NLP objectives.
+
 ### Tokenization and Representations
 
 Tokenization presents a non-trivial design choice for DNA models, with different approaches offering distinct trade-offs.
@@ -156,6 +148,10 @@ Internally, genomic foundation models typically produce per-position embeddings 
 ## Evaluating Genomic Foundation Models
 
 Because genomic foundation models are intended to serve as foundations for many applications, their evaluation must be broader than single-task metrics. A model that excels at one benchmark may fail on others, and performance on standard benchmarks may not predict utility for real-world applications.
+
+::: {.callout-note}
+**Figure 11.3 suggestion:** An evaluation pyramid diagram with four levels. The base represents token-level or base-pair tasks (e.g., masked prediction, motif recognition). The second level shows molecular readouts (chromatin accessibility, TF binding, gene expression). The third level represents cellular and tissue phenotypes (cell state, differentiation, response to perturbation). The apex represents organismal and clinical outcomes (disease risk, drug response, fitness). Arrows should indicate that validation evidence should ideally accumulate from lower to higher levels.
+:::
 
 ### Downstream Task Suites and Benchmarks
 
@@ -185,6 +181,10 @@ For practitioners seeking to use genomic foundation models in their work, severa
 
 The appropriate model depends on the specific application. For missense variant interpretation, protein language models like ESM-2 or AlphaMissense provide strong baselines with well-characterized performance [@cheng_alphamissense_2023]. For non-coding variant interpretation, sequence-to-function models like Enformer or DNA language models fine-tuned on regulatory tasks are more appropriate [@avsec_enformer_2021]. For tasks requiring very long genomic context, such as enhancer-promoter linking or structural variant interpretation, models like HyenaDNA or long-context dense-attention models like Gene42 should be considered. For regulatory variant interpretation near genes, Enformer-like or DeepSEA-like models can be compared against DNA language models working via embeddings [@zhou_deepsea_2015; @chen_deepsea_2022; @ji_dnabert_2021]. For trait-level prediction with large cohorts, polygenic score pipelines incorporating GFM-based variant priors, such as Delphi or MIFM, offer promising approaches [@georgantas_delphi_2024; @rakowski_mifm_2025; @wu_genome-wide_2024]. For method development and benchmarking, standardized benchmark suites like TraitGym, ProteinGym, GV-Rep, and DNA foundation model comparison studies ensure that comparisons are meaningful [@benegas_traitgym_2025; @notin_proteingym_2023; @manzo_comparative_2025].
 
+::: {.callout-note}
+**Figure 11.4 suggestion:** A decision tree flowchart for model selection. Starting from "What is your primary input?" (variants, sequences, loci), branch by prediction target (molecular readout, trait association, pathogenicity), then by available data (labeled functional data, reference genomes only), and finally by computational constraints (high-throughput scoring, exploratory analysis). Terminal nodes would recommend appropriate model families with brief justifications.
+:::
+
 ### Integration Strategies
 
 Once a model is selected, several integration strategies are available. The simplest approach uses the model as a feature extractor, computing embeddings or predictions for variants or sequences of interest and then feeding these features into downstream models or pipelines. This approach is computationally efficient and compatible with existing infrastructure.
@@ -195,6 +195,10 @@ End-to-end fine-tuning updates the entire model on task-specific data. This can 
 
 Ensemble approaches combine predictions from multiple models, often achieving better performance and calibration than any single model. This is particularly valuable when different models have complementary strengths.
 
+::: {.callout-note}
+**Figure 11.5 suggestion:** A comparison diagram of adaptation strategies showing four approaches: (1) frozen backbone with linear probe, (2) frozen backbone with shallow MLP, (3) frozen backbone with LoRA adapters, and (4) full fine-tuning. For each, annotate approximate parameter counts (both trainable and total), memory requirements, and typical compute requirements. Include rough guidance on when each approach is appropriate based on available labeled data and computational resources.
+:::
+
 ## Safety, Robustness, and Responsible Use
 
 As genomic foundation models become infrastructure for clinical and research pipelines, considerations of safety and robustness move from optional extras to essential requirements.
@@ -202,6 +206,8 @@ As genomic foundation models become infrastructure for clinical and research pip
 ### Robustness and Adversarial Sensitivity
 
 Recent work on genomic foundation model robustness highlights that these models can be surprisingly sensitive to adversarial perturbations at both the input sequence level and through soft prompts in embedding space. Even when perturbations are hardly biologically plausible, they reveal fragility of decision boundaries in high-dimensional representation space and potential failure modes where small spurious changes strongly impact pathogenicity or variant effect predictions.
+
+Work on large biological graph models suggests potential mitigation strategies. Ma and colleagues applied adversarial perturbations to internal GNN embeddings (not raw sequence) and observed small performance gains but noticeably smoother and lower training loss, suggesting reduced overfitting [@ma_bingo-large_2023]. Similar adversarial training approaches may help stabilize genomic foundation models, though this remains an active area of investigation.
 
 These findings suggest that adversarial testing should become part of genomic foundation model validation, especially for clinical use cases. Robust training approaches, including data augmentation, adversarial objectives, or distributionally robust optimization, may be needed for high-stakes applications.
 

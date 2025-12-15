@@ -1,204 +1,240 @@
 ::: {.callout-warning .content-visible when-profile="draft"}
-**TODO:**
+**Chapter TODO**
 
-- Add figure: ESM architecture diagram showing transformer layers, attention heads, and masked token prediction
-- Add figure: ESMFold pipeline diagram showing embedding extraction → structure module
-- Add figure: AlphaMissense workflow showing integration of PLM embeddings with structural context
-- Consider adding visualization of attention patterns capturing residue contacts
-- Add table comparing PLM architectures (ESM, ProtTrans variants, ESM-2 scaling)
-- Add discussion somewhere (here or VEP chapter) on marginal VEP calculations of log likelihoods
+- Double-check citation keys for Xpresso, ExPecto, Basenji, Enformer, and related models, and ensure they are present in `references.bib`.
+- Coordinate figures and tables proposed in the inline callouts with the global book figure/table numbering.
+- Verify technical details on model architectures, particularly window sizes and feature sets.
+- Consider adding extended discussion of Borzoi in relation to Chapter 11.
 :::
 
+# Transcriptional Effects {#sec-trans}
 
-# Protein Language Models  {#sec-prot}
+The previous chapter examined CNN-based models that predict chromatin accessibility, histone modifications, and transcription factor binding directly from DNA sequence. These regulatory marks tell us where the genome is poised for transcriptional activity, but they do not directly answer a key question: which genes are actually expressed, at what levels, and in which cell types? This chapter extends from regulatory annotations to gene expression itself, showing how models integrate promoter sequences, distal regulatory elements, and mRNA stability features to predict transcript abundance and perturbation effects.
 
-## Evolutionary Sequences as Natural Language
+We focus primarily on two complementary approaches: Xpresso, which models promoter-proximal sequences and mRNA features to predict baseline expression, and ExPecto, which uses a CNN to predict chromatin features from sequence and then combines these features in tissue-specific linear models to predict expression across hundreds of cell types. Both frameworks enable variant effect prediction through in silico mutagenesis, providing mechanistic hypotheses about how sequence changes perturb expression. We close by discussing limitations around context dependence, epistasis, and the challenge of predicting cell-type-specific expression from sequence alone.
 
-Before transformers revolutionized genomic sequence modeling, they first transformed our ability to model proteins. The success of protein language models (PLMs) established a paradigm that would later inspire genomic foundation models: treat biological sequences as a form of natural language, train large transformer models on massive unlabeled sequence databases, and extract functional knowledge through self-supervised learning.
+Throughout, we emphasize that expression is a systems-level phenotype shaped by multiple layers of regulation. Sequence encodes cis-regulatory information, but trans factors, chromatin state, and cellular context all modulate the final output. The models in this chapter represent early efforts to capture this complexity through deep learning, establishing patterns that reappear in transformer-based architectures and multi-omic foundation models in later chapters.
 
-The analogy between protein sequences and natural language runs deeper than mere metaphor. Both encode complex information in linear strings of discrete tokens, whether amino acids or words. Both exhibit hierarchical structure, with motifs combining into domains as words combine into phrases. Both have syntax in the form of structural constraints and semantics in the form of functional meaning. And crucially, both are shaped by evolutionary pressure: natural selection filters protein sequences just as cultural selection shapes language.
+## From Chromatin to Expression: The Multilayer Problem
 
-This chapter examines how protein language models pioneered biological foundation modeling, from the ESM family's demonstration that transformers can learn protein structure and function from sequence alone, to their application in variant effect prediction and structure determination. Understanding PLMs provides essential context for the genomic language models covered in subsequent chapters, as many architectural choices and training strategies transfer directly from proteins to DNA.
+Gene expression levels in a given cell type emerge from multiple regulatory layers. Promoter-proximal sequences encode core transcription factor binding sites, TATA boxes, initiator elements, and CpG islands that recruit RNA polymerase II. Distal enhancers provide cell-type-specific activation or repression, with effects that can extend over hundreds of kilobases through chromatin looping. Transcript stability, codon usage, and UTR regulatory elements shape how much mRNA accumulates once transcription begins. Environmental signals, epigenetic modifications, and three-dimensional genome architecture modulate these effects dynamically.
 
-## The ESM Model Family
+This multilayer structure creates a prediction challenge. Models that look only at promoter-proximal sequence miss distal regulatory context. Models that incorporate chromatin state as input require experimental measurements for every cell type of interest. Ideally, we want models that predict expression from sequence alone, integrating promoter logic, distal regulation, and post-transcriptional features in a principled way.
 
-### ESM-1b: Establishing the Paradigm
+The models discussed in this chapter pursue two distinct strategies. Xpresso focuses narrowly on promoter sequences and mRNA features, deliberately excluding distal regulatory elements to isolate what can be learned from local sequence context and transcript properties. ExPecto takes the opposite approach, using a CNN trained on chromatin data to infer regulatory element activity across large windows, then combining these predictions in linear models to estimate expression. Both approaches achieve substantial predictive power, revealing different aspects of the sequence-to-expression mapping.
 
-The Evolutionary Scale Modeling (ESM) project, developed at Meta AI Research, demonstrated that transformer language models trained on protein sequences learn biologically meaningful representations without explicit supervision [@rives_esm_2021]. The key insight was that masked language modeling, the same objective that powers BERT in natural language processing, could be applied directly to amino acid sequences.
+::: {.callout-warning .content-visible when-profile="draft"}
+**Visual suggestion: Regulatory layers to expression**
 
-ESM-1b was trained on UniRef50, a clustered database of approximately 33 million protein sequences covering the known diversity of protein families. UniRef50 clusters sequences at 50% identity, providing broad coverage while reducing redundancy. This curation strategy ensures the model sees diverse evolutionary solutions to protein function rather than memorizing overrepresented families.
+Add a schematic showing the flow from DNA sequence through regulatory layers to mRNA abundance:
+- Promoter-proximal elements (TF binding, TATA, CpG)
+- Distal enhancers and silencers
+- Chromatin state (accessibility, histone marks)
+- Transcription initiation and elongation
+- mRNA stability and decay
+Indicate which layers Xpresso versus ExPecto explicitly model.
+:::
 
-The architecture follows the BERT-style bidirectional transformer design with 650 million parameters distributed across 33 layers, a hidden dimension of 1,280, and 20 attention heads. The maximum sequence length of 1,024 amino acids accommodates most individual protein domains and many complete proteins. The training objective is masked language modeling: the model learns to predict randomly masked amino acids given surrounding context. This is analogous to BERT's masked token prediction, but operates on amino acids rather than words.
+## Xpresso: Expression from Promoters and mRNA Features
 
-### Emergent Biological Knowledge
+Xpresso represents a deliberately constrained approach to expression prediction. Rather than attempting to model the full regulatory landscape, it asks a focused question: how much of expression variability can be explained by promoter sequences and intrinsic mRNA properties, without considering distal elements or cell-type-specific chromatin state?
 
-Despite never seeing structural or functional labels during training, ESM learns representations that capture fundamental biological properties. This emergent knowledge manifests across multiple levels of protein organization.
+### Model Design and Features
 
-At the level of secondary structure, attention patterns in ESM correlate with alpha helices and beta sheets. The model implicitly learns that certain amino acid patterns form specific structural elements, encoding this knowledge in its internal representations without any explicit supervision on structure labels.
+Xpresso predicts steady-state mRNA abundance using two primary sources of information. First, it encodes the promoter region with a CNN that scans a window around the transcription start site, typically extending a few kilobases upstream and downstream. This CNN learns motifs corresponding to transcription factor binding sites, core promoter elements, and local sequence composition such as CpG dinucleotide density. Second, Xpresso incorporates features associated with mRNA stability: coding sequence length, 5' and 3' UTR characteristics, codon usage bias, and predicted secondary structure. These features are concatenated with the learned promoter representations and passed to fully connected layers that output a predicted log-transformed expression level.
 
-ESM's attention heads also capture residue-residue contacts, identifying amino acids that are distant in sequence but close in three-dimensional space. This emergent capability suggests the model learns aspects of protein folding from sequence statistics alone. When researchers analyzed which sequence positions attend to each other in trained ESM models, they found strong correspondence with experimentally determined contact maps.
+The architecture is straightforward, involving convolutional layers for promoter sequence encoding followed by dense layers for regression. The key insight is feature selection: by restricting attention to promoter-proximal sequence and transcript properties, Xpresso isolates the contribution of these elements without confounding from distal regulation or trans-acting factors that vary across cell types.
 
-The model's masked token predictions correlate with position-specific conservation scores from multiple sequence alignments. ESM effectively learns which positions tolerate variation and which are evolutionarily constrained, extracting this information from the statistical patterns in sequence databases rather than from explicit conservation annotations.
+::: {.callout-warning .content-visible when-profile="draft"}
+**Visual suggestion: Xpresso architecture**
 
-Attention also concentrates on catalytic residues, binding sites, and other functionally important positions, even without explicit functional annotation in the training data. The model discovers that certain sequence positions are more informative about surrounding context, and these positions frequently correspond to sites of biological importance.
+Insert a diagram showing:
+- Input: promoter sequence (CNN) + mRNA features (hand-crafted)
+- CNN extracts learned representations from promoter
+- Concatenation with mRNA stability features
+- Fully connected layers → predicted expression
+:::
 
-### ESM-2: Scaling Up
+### Predictive Performance
 
-ESM-2 extended the ESM approach with larger models and improved training [@lin_esm-2_2022]. The model family spans several orders of magnitude in scale, from 8 million to 15 billion parameters, enabling systematic study of how biological knowledge scales with model capacity.
+Xpresso achieves approximately 59% variance explained in human steady-state mRNA levels and 71% in mouse when trained on large-scale RNA-seq datasets. This performance is striking given the restricted feature set. It suggests that a substantial fraction of expression variability is determined by local promoter architecture and intrinsic transcript properties, independent of distal enhancers or cell-type-specific trans factors.
 
-| Model | Parameters | Layers | Contact Prediction Performance |
-|-------|------------|--------|-------------------------------|
-| ESM-2 (8M) | 8M | 6 | Baseline |
-| ESM-2 (35M) | 35M | 12 | +5% |
-| ESM-2 (150M) | 150M | 30 | +8% |
-| ESM-2 (650M) | 650M | 33 | +12% |
-| ESM-2 (3B) | 3B | 36 | +15% |
-| ESM-2 (15B) | 15B | 48 | State-of-the-art |
+Interpretation of the learned model reveals that promoter-proximal CpG dinucleotides are among the strongest predictors of transcriptional activity. CpG islands near transcription start sites are canonical features of constitutively expressed housekeeping genes, and Xpresso's emphasis on CpG features recapitulates this biological knowledge without explicit feature engineering. Beyond CpG content, the CNN learns motifs corresponding to known transcription factor families, providing a direct link between sequence patterns and expression output.
 
-Performance scales smoothly with model size across structure prediction, contact prediction, and variant effect tasks. This phenomenon mirrors the scaling laws observed in natural language processing, where larger models consistently capture more nuanced patterns and achieve better downstream performance. The predictable scaling relationship suggests that continued investment in model size yields reliable returns in biological accuracy.
+### Limitations and Insights
 
-## Alternative Architectures: The ProtTrans Family
+Xpresso's focus on promoters and mRNA features means it cannot capture cell-type-specific regulation driven by distal enhancers or chromatin remodeling. Residuals from Xpresso predictions can be used to quantify the influence of factors the model ignores: enhancers, heterochromatic domains, microRNAs, and other trans-acting regulators. These residuals provide a complementary signal for downstream analyses, effectively partitioning expression into a promoter-driven baseline and a context-dependent modulation term.
 
-The ProtTrans family explored multiple transformer architectures for protein sequences, demonstrating that the protein language modeling paradigm generalizes beyond the specific design choices of ESM.
+The success of Xpresso establishes an important baseline: even without distal elements or chromatin state, local sequence and transcript features explain a large fraction of expression variance. This sets a benchmark for models like ExPecto and Enformer, which incorporate larger genomic windows and chromatin predictions. Any gains from those models represent the additional contribution of distal regulation and systems-level context.
 
-ProtBERT applies the BERT-style bidirectional encoder to protein sequences, trained on the Big Fantastic Database (BFD) comprising approximately 2.1 billion protein sequences. This massive training corpus, substantially larger than UniRef50, provides even broader coverage of protein sequence space.
+::: {.callout-warning .content-visible when-profile="draft"}
+**Visual suggestion: Xpresso performance and interpretation**
 
-ProtT5 adapts the encoder-decoder architecture from T5, enabling both understanding and generation tasks. The encoder processes input sequences to produce contextual representations, while the decoder can generate output sequences conditioned on those representations. This architecture is particularly valuable for tasks that require sequence generation, such as protein design or sequence completion.
+Add a panel figure showing:
+- Scatter plot of predicted versus observed expression for a representative dataset
+- Bar chart of feature importance, highlighting CpG dinucleotides
+- Residual analysis showing correlation with enhancer activity or chromatin marks
+:::
 
-ProtXLNet explores permutation language modeling based on XLNet, capturing bidirectional context without the artificial [MASK] token that BERT-style models require during training. By training on all possible token orderings, XLNet-style models learn to predict each token from any subset of context tokens, potentially capturing richer dependencies.
+## ExPecto: From Sequence to Chromatin to Expression
 
-These architectural variants demonstrate that the protein language modeling paradigm generalizes across architectures. The choice between encoder-only (BERT-style) and encoder-decoder (T5-style) models depends on the downstream application: encoders excel at classification and embedding tasks, while encoder-decoders enable sequence generation.
+ExPecto extends the sequence-to-expression paradigm by explicitly modeling the intermediate layer of chromatin features. Rather than predicting expression directly from sequence, ExPecto uses a two-stage architecture: first, a CNN predicts genome-wide chromatin features from DNA sequence; second, tissue-specific linear models combine these chromatin predictions to estimate expression. This design cleanly separates sequence-level regulatory grammar (learned by the CNN) from tissue-specific regulatory programs (captured by the linear models).
 
-## Zero-Shot Variant Effect Prediction
+### Architecture and Training
 
-A critical application of protein language models is predicting the effects of amino acid substitutions. Missense variants are the most common type of protein-coding mutation, and clinical genetics pipelines must routinely assess whether specific substitutions are likely to be pathogenic or benign. Traditionally, this required either direct experimental characterization or computational methods trained on labeled pathogenicity data.
+The first stage of ExPecto is the Beluga CNN, discussed in @sec-reg. Beluga is trained to predict 2,002 chromatin features spanning transcription factor binding, histone modifications, and DNase hypersensitivity across hundreds of cell types and assays. Beluga scans a 40 kb window centered on the transcription start site of each gene and outputs a vector of chromatin feature predictions at multiple positions within that window.
 
-### The Zero-Shot Paradigm
+The second stage takes these chromatin feature predictions and aggregates them spatially and functionally to predict gene expression. For each gene and tissue, ExPecto fits a linear model that combines upstream and downstream chromatin features with position-dependent exponential decay functions. This formulation assumes that regulatory elements closer to the promoter have stronger effects, and it models activation and repression separately. The linear model is trained on large-scale expression datasets from GTEx, Roadmap Epigenomics, and ENCODE, covering 218 tissues and cell types.
 
-ESM-1v demonstrated that PLMs can predict variant effects without any training on variant labels [@meier_esm-1v_2021]. The approach exploits the masked language modeling objective: for a variant at position $i$ changing amino acid $a$ to amino acid $b$, compute the log-likelihood ratio:
+Linear models were chosen deliberately. They provide interpretability, preventing overfitting given the high-dimensional feature space and enabling straightforward coefficient analysis to identify which chromatin features drive expression in each tissue. Because the upstream Beluga CNN is tissue-agnostic, the combination of a shared sequence-to-chromatin model with separate tissue-specific linear heads provides a clean separation between sequence-level regulatory grammar and tissue-specific regulatory programs.
 
-$$\Delta \text{score} = \log P(b \mid \text{context}) - \log P(a \mid \text{context})$$
+::: {.callout-warning .content-visible when-profile="draft"}
+**Visual suggestion: ExPecto two-stage architecture**
 
-If the model assigns higher probability to the mutant amino acid than the wild-type, the variant is predicted benign; if lower, deleterious. This zero-shot prediction requires no labeled training data. The model's evolutionary knowledge, learned from sequence databases, directly informs variant interpretation.
+Insert a diagram showing:
+- Stage 1: DNA sequence → Beluga CNN → chromatin feature predictions (2,002 features)
+- Stage 2: chromatin features → tissue-specific linear model → predicted expression
+- Indicate spatial aggregation with position-dependent decay functions
+:::
 
-The intuition is straightforward. If evolution has shaped protein sequences such that certain positions strongly prefer certain amino acids, substitutions that violate these preferences are likely to disrupt function. The language model captures these preferences through its training on millions of evolutionarily successful sequences. Variants that the model finds surprising, in the sense of assigning low probability, are more likely to be functionally disruptive.
+### Expression Prediction Performance
 
-### Genome-Wide Application
+ExPecto achieves a median Spearman correlation of 0.819 between predicted and observed expression across 218 tissues and cell types when evaluated on a held-out chromosome. This performance substantially improves over prior sequence-based expression models, which were typically limited to narrower regulatory regions (under 2 kb) and fewer cell types. The improvement demonstrates the value of integrating distal regulatory elements captured by the 40 kb window and leveraging chromatin features as an intermediate representation.
 
-Brandes and colleagues applied ESM-1b to predict effects for all approximately 450 million possible missense variants in the human genome [@brandes_genome-wide_2023]. This comprehensive annotation covers every position in every human protein multiplied by every possible amino acid substitution, providing precomputed effect scores that can be queried for any missense variant without running the model.
+Beyond predicting absolute expression levels, ExPecto captures tissue-specific expression patterns. Analysis of model coefficients reveals automatic learning of cell-type-relevant features without explicit tissue labels. The liver expression model assigns top weights to transcription factors profiled in HepG2 (liver-derived) cells. The breast tissue model weights estrogen receptor and glucocorticoid receptor features from breast cancer cell lines most heavily among its positive coefficients. These patterns emerge purely from learning to predict expression, without any tissue identity information provided to the chromatin features.
 
-On ClinVar, the database of clinically annotated variants, ESM-1b outperformed existing methods in classifying approximately 150,000 missense variants as pathogenic or benign. The model achieved strong correlation with experimental measurements across 28 deep mutational scanning datasets, demonstrating that PLM predictions capture genuine functional information rather than merely correlating with annotation artifacts.
+Model coefficients also reveal the relative contributions of different chromatin feature types. Transcription factors and histone marks receive consistently higher weights, reflecting their direct mechanistic roles in transcriptional regulation. DNase I features receive significantly lower weights despite indicating regulatory activity. This discrepancy likely reflects that DNase hypersensitivity marks the presence of regulatory activity without specifying its type or causal relationship to expression.
 
-The analysis also identified approximately 2 million variants annotated as damaging only in specific protein isoforms, highlighting the importance of considering alternative splicing when interpreting variant effects. A variant that disrupts function in one isoform may have no effect if that isoform is not expressed in relevant tissues, underscoring the need to integrate PLM predictions with expression context.
+::: {.callout-warning .content-visible when-profile="draft"}
+**Visual suggestion: ExPecto performance and tissue specificity**
 
-### The ProteinGym Benchmark
+Add a multi-panel figure showing:
+- Scatter plot of predicted versus observed expression for a representative tissue
+- Bar chart of per-tissue Spearman correlation
+- Heatmap of model coefficients for several tissues, highlighting tissue-specific transcription factors
+:::
 
-ProteinGym provides a comprehensive benchmark for variant effect predictors, aggregating 217 deep mutational scanning assays covering diverse proteins [@notin_proteingym_2023]. Deep mutational scanning experiments systematically measure the functional effects of thousands of variants in a protein, providing ground truth for computational method evaluation.
+### Variant Effect Prediction
 
-| Method | Mean Spearman ρ |
-|--------|-----------------|
-| ESM-1v | 0.48 |
-| EVE (evolutionary model) | 0.46 |
-| DeepSequence | 0.44 |
-| PolyPhen-2 | 0.32 |
-| SIFT | 0.30 |
+ExPecto's expression predictions enable scoring variant effects through in silico mutagenesis. For a given variant, the model predicts expression with the reference allele and with the alternative allele, then computes the difference:
 
-PLMs achieve competitive or superior performance to methods that explicitly model evolutionary conservation from multiple sequence alignments, despite using only single sequences as input. This suggests that transformer attention over large sequence databases captures similar information to traditional alignment-based approaches, but in a form that generalizes more readily to novel sequence contexts.
+$$
+\Delta \text{expression} = f(\text{sequence}_{\text{alt}}) - f(\text{sequence}_{\text{ref}})
+$$
 
-## ESMFold: Structure from Sequence
+Because the model never trains on variant data, predictions are unconfounded by linkage disequilibrium, a fundamental advantage over statistical eQTL approaches that rely on association testing in human populations.
 
-### Eliminating the Alignment Bottleneck
+ExPecto correctly predicted the direction of expression change for 92% of the top 500 strongest-effect GTEx eQTL variants. This performance demonstrates that sequence-based models can recapitulate population-level association signals without observing those associations during training. The model identifies which variants are likely causal by evaluating their effects on chromatin features and expression, rather than relying on correlation structure in the data.
 
-The most dramatic demonstration of PLM capabilities came with ESMFold, which predicts protein 3D structure directly from ESM-2 embeddings [@lin_esm-2_2022]. Traditional structure prediction, including AlphaFold2, relies heavily on multiple sequence alignments (MSAs). These computationally expensive searches against sequence databases can take hours per protein, and the quality of predictions depends critically on finding informative homologs.
+ExPecto has been applied to prioritize causal variants within disease-associated loci from genome-wide association studies. In experimental validation for four immune-related diseases, ExPecto successfully identified variants that showed significant changes in transcriptional regulatory activity in reporter assays. For example, in a Crohn's disease locus, the top ExPecto-prioritized SNP was predicted to decrease expression of IRGM, an innate immune response gene strongly associated with inflammatory bowel disease. Reporter assays confirmed a significant decrease in transcriptional activity for this variant. Similar results held for loci associated with Behçet's disease and chronic hepatitis B infection. Importantly, in all cases, the directionality of expression change matched ExPecto's predictions.
 
-ESMFold eliminates this requirement entirely. The architecture couples ESM-2 (15 billion parameters) with a structure module adapted from AlphaFold2. The language model embeddings replace MSA-derived features, providing the evolutionary context that the structure module needs to predict atomic coordinates.
+These validations illustrate a key advantage of sequence-based variant effect prediction over purely statistical fine-mapping. Statistical approaches identify regions of association but struggle to pinpoint causal variants within correlated haplotype blocks. ExPecto evaluates variants mechanistically, predicting how each alters chromatin features and expression, which enables prioritization even when multiple variants are in strong linkage disequilibrium.
 
-The computational speedup is substantial: approximately 60-fold faster than AlphaFold2 for typical proteins, enabling metagenomic-scale structure prediction. This speed advantage makes it feasible to predict structures for the millions of protein sequences emerging from environmental sequencing projects, where computing MSAs would be prohibitively expensive.
+::: {.callout-warning .content-visible when-profile="draft"}
+**Visual suggestion: Variant effect prediction and validation**
 
-ESMFold achieves atomic-level accuracy for many proteins, though slightly below AlphaFold2 for proteins that benefit from MSA information. The accuracy gap is largest for proteins with sparse evolutionary sampling, where MSAs provide information that single-sequence analysis cannot recover. For well-represented protein families, ESMFold approaches AlphaFold2 accuracy at a fraction of the computational cost.
+Insert a figure showing:
+- In silico mutagenesis schematic: reference → prediction, alternative → prediction, difference
+- Scatter plot of predicted versus observed expression changes for GTEx eQTLs
+- Bar chart of experimental validation results for GWAS-prioritized variants
+:::
 
-### What ESMFold Reveals About PLMs
+## Variation Potential and Evolutionary Constraints
 
-ESMFold's success demonstrates that ESM-2's internal representations encode sufficient information to determine 3D structure. The language model has learned not just local sequence patterns but global folding principles, capturing what makes a sequence fold into a particular shape.
+ExPecto enables exploration of the regulatory mutation space at unprecedented scale. By computing predicted expression effects for every possible single nucleotide mutation within promoter-proximal regions, the model generates a catalog of variant effects spanning over 140 million potential mutations across all human RNA polymerase II-transcribed genes.
 
-This has profound implications for understanding what PLMs learn. The attention that transformers pay to distant sequence positions during masked prediction is, in some sense, learning the physics of protein folding. Residues that need to be close in 3D space attend to each other in the transformer's attention matrices. The statistical patterns in protein sequences, shaped by billions of years of evolution and the physical constraints of protein folding, encode structural information that sufficiently powerful language models can decode.
+This catalog supports several analyses not possible with experimental assays. First, it identifies mutations with strong predicted effects on expression at high confidence, providing candidates for functional validation. Second, it characterizes the distribution of predicted effect sizes for each gene, which can serve as a measure of mutational robustness or constraint. Genes with many predicted high-impact mutations may be especially vulnerable to regulatory disruption, whereas genes with few such mutations may be buffered by redundant regulatory elements.
 
-## Integration into Variant Interpretation Pipelines
+Third, the distribution of predicted effects across tissues reveals tissue-specific regulatory constraints. A variant predicted to strongly decrease expression in one tissue but have minimal effect in others highlights tissue-specific regulatory elements. Such predictions can guide experimental designs for reporter assays or CRISPR screens, focusing resources on variants and tissues most likely to show functional effects.
 
-### CADD v1.7: PLM Features for Ensemble Methods
+The concept of "variation potential" proposed by the ExPecto authors quantifies the collective impact of all potential mutations on a gene's expression. Genes with high variation potential are predicted to be more sensitive to regulatory perturbation, which may correlate with their roles in development, disease susceptibility, or evolutionary constraint. Conversely, genes with low variation potential may be robustly regulated, protected by multiple redundant elements or strong core promoters that buffer against single-nucleotide changes.
 
-The Combined Annotation Dependent Depletion (CADD) framework integrates diverse annotations to score variant deleteriousness (@sec-cadd). CADD v1.7 incorporated ESM-1v predictions as features within its existing integrative architecture [@schubach_cadd_2024].
+::: {.callout-warning .content-visible when-profile="draft"}
+**Visual suggestion: Variation potential landscape**
 
-The integration approach treats PLM scores as additional annotations alongside conservation scores, functional annotations, and regulatory predictions. For each missense variant, ESM-1v scores are computed and included as features in CADD's gradient-boosted tree classifier. This allows the ensemble to learn how PLM predictions complement other evidence sources, potentially capturing cases where PLM and conservation signals provide independent information.
+Add a figure showing:
+- Distribution of predicted variant effects across genes (histogram or violin plot)
+- Example gene locus with mutation effect predictions colored by magnitude
+- Correlation between variation potential and evolutionary constraint metrics (e.g., LOEUF)
+:::
 
-Performance gains from PLM integration are consistent across benchmarks. On ClinVar pathogenic versus common variant classification, CADD v1.7 improves from 0.94 to 0.95 AUROC. On deep mutational scanning datasets (31 assays), performance improves from 0.78 to 0.81 Spearman correlation. The PLM features particularly improve scoring for variants in regions with limited evolutionary conservation data, where traditional methods struggle but language models can still extract contextual information.
+## Cell-Type Specificity and Regulatory Context
 
-### AlphaMissense: Combining PLM and Structure
+One of the central challenges in expression prediction is accounting for cell-type specificity. The same genomic sequence produces vastly different expression patterns in liver versus brain versus immune cells. This variability arises from differences in trans-acting factors (transcription factors, coactivators, chromatin remodelers) that interpret cis-regulatory sequences.
 
-AlphaMissense represents the current state-of-the-art in missense variant effect prediction, combining PLM representations with structural context [@cheng_alphamissense_2023]. Rather than treating PLMs as a feature source for an external classifier, AlphaMissense adapts AlphaFold's architecture directly for pathogenicity prediction.
+Xpresso, by design, does not model cell-type-specific expression. It predicts a single baseline expression value that represents the average or typical level across contexts. This approach works well for constitutively expressed housekeeping genes but fails for genes with highly variable, context-dependent expression.
 
-The model learns to predict pathogenicity by combining three information sources. Sequence embeddings from ESM-style language modeling provide evolutionary context about amino acid preferences at each position. Structural context from predicted protein structures captures whether a position is buried or exposed, in a secondary structure element or loop, near active sites or binding interfaces. Evolutionary information from cross-species comparisons supplements the single-sequence PLM signal with explicit alignment-derived conservation.
+ExPecto addresses cell-type specificity through its two-stage architecture. The Beluga CNN learns a universal mapping from sequence to chromatin features, capturing which regulatory elements are present. The tissue-specific linear models learn how each cell type weighs these features to produce expression. This design assumes that sequence determines the potential for regulatory activity, while cellular context determines which potential is realized.
 
-The training data comes from population frequency databases, primarily gnomAD. Common variants, those observed frequently in healthy populations, provide weak labels for benign effects. Variants absent from large population databases, particularly those in constrained positions, provide weak labels for deleterious effects. Critically, AlphaMissense never trains on clinical pathogenicity labels from ClinVar, yet achieves state-of-the-art performance on clinical benchmarks. This demonstrates that the combination of PLM representations, structural context, and population genetics signals captures genuine functional information rather than memorizing clinical annotations.
+However, this assumption has limits. ExPecto's linear models cannot capture complex interactions among regulatory elements or nonlinear dependencies between chromatin features. In reality, enhancers often act synergistically, and repressors can override activation in context-dependent ways. The linear combination of chromatin features provides a useful first-order approximation but misses higher-order regulatory logic.
 
-AlphaMissense provides predictions for all approximately 71 million possible single amino acid substitutions across the human proteome. Of these, 89% are classified as either likely benign or likely pathogenic with sufficient confidence to be actionable, providing interpretable predictions for the vast majority of possible missense variants.
+Models like Enformer and Borzoi, discussed in @sec-hybrid, extend ExPecto's approach by using transformer-based attention mechanisms to model long-range dependencies and nonlinear interactions among regulatory elements. These hybrid architectures achieve higher performance by capturing more complex regulatory grammar, though at the cost of reduced interpretability compared to ExPecto's linear models.
 
-| Method | ClinVar AUC | DMS Correlation | Information Sources |
-|--------|-------------|-----------------|---------------------|
-| SIFT | 0.78 | 0.30 | Conservation |
-| PolyPhen-2 | 0.82 | 0.32 | Conservation + structure |
-| CADD v1.7 | 0.95 | 0.81 | Multi-feature integration |
-| ESM-1v | 0.89 | 0.48 | Sequence only (zero-shot) |
-| AlphaMissense | 0.94 | 0.52 | PLM + structure + population |
+::: {.callout-warning .content-visible when-profile="draft"}
+**Visual suggestion: Cell-type-specific regulation**
 
-AlphaMissense achieves top performance by integrating the strengths of multiple approaches: PLM-derived sequence understanding, AlphaFold-derived structural context, and population genetics-derived evolutionary constraint signals.
+Add a schematic contrasting:
+- Xpresso: sequence → universal expression (no cell-type specificity)
+- ExPecto: sequence → chromatin features → cell-type-specific linear model → expression
+- Mention Enformer's transformer attention as extension for nonlinear interactions
+:::
 
-## Lessons for Genomic Foundation Models
+## Limitations and Open Challenges
 
-The success of protein language models established several principles that inform genomic foundation modeling. These lessons transfer, with appropriate modifications, to the DNA language models covered in subsequent chapters.
+Despite their success, sequence-based expression models face several fundamental limitations that remain active areas of research.
 
-### Self-Supervision Works
+### Context Dependence Beyond Sequence
 
-PLMs demonstrated that massive amounts of biological knowledge can be learned from unlabeled sequences. The same evolutionary pressures that shape proteins also shape DNA. Purifying selection removes deleterious variants, leaving statistical signatures in sequence databases that self-supervised models can learn to exploit. This principle underlies the entire foundation model paradigm: if sufficiently large models are trained on sufficiently large datasets with appropriate self-supervised objectives, they will learn representations that capture biological function.
+Expression is shaped by factors not encoded in cis-regulatory sequences. Trans-acting factors vary across cell types and developmental stages, chromatin architecture changes dynamically in response to signaling, and environmental perturbations alter regulatory programs. Models that predict from sequence alone cannot capture these dynamic effects without additional input.
 
-### Scale Matters
+One approach is to condition models on cell-type or context embeddings that represent the trans-regulatory environment. Another is to train models on perturbation data, learning how expression responds to changes in transcription factor abundance or chromatin state. Both strategies require moving beyond static sequence-to-expression mappings toward models that integrate sequence with cellular state.
 
-Performance improves predictably with model size, motivating the development of larger genomic models. The progression from 8 million to 15 billion parameters in ESM-2 showed consistent gains across structure prediction, contact prediction, and variant effect tasks. While the relationship between scale and performance is not linear indefinitely, current models remain in a regime where additional capacity yields reliable improvements. This scaling relationship justifies the substantial computational investment required to train genomic foundation models.
+### Long-Range Regulation and 3D Genome
 
-### Transfer Learning is Effective
+Both Xpresso and ExPecto use relatively short genomic windows: Xpresso focuses on promoter-proximal regions, while ExPecto scans 40 kb around the TSS. Many enhancers lie hundreds of kilobases or even megabases away from their target genes, brought into proximity through chromatin looping. Models with limited context windows cannot see these distal elements, leading to systematic underprediction for genes regulated by long-range enhancers.
 
-Representations learned for one task (masked token prediction) transfer to other tasks (structure prediction, variant effects). This suggests that self-supervised pretraining captures fundamental biological knowledge rather than task-specific shortcuts. A model trained to predict masked amino acids is simultaneously learning about protein structure, function, evolutionary constraint, and disease relevance, even though none of these properties appear in the training objective. The same principle applies to genomic sequences: models trained to predict masked nucleotides may simultaneously learn about regulatory elements, evolutionary conservation, and variant effects.
+Addressing this limitation requires larger context windows, as achieved by Enformer (200 kb) and other hybrid models. However, even 200 kb is insufficient for the most distal regulatory elements. Incorporating 3D genome conformation data such as Hi-C or ChIA-PET offers a complementary approach, explicitly modeling which distal elements contact target promoters. Integrating sequence and 3D genome information remains an open challenge.
 
-### Architecture Choices Matter
+### Epistasis and Combinatorial Regulation
 
-The BERT-style bidirectional encoder proved highly effective for proteins, where the entire sequence context is typically available. However, genomic sequences present different challenges: much longer lengths spanning kilobases to megabases, different information density with proteins being information-dense while intergenic regions are less so, and different symmetries including the reverse-complement structure absent in proteins. These differences motivate architectural adaptations in genomic language models, including hybrid architectures that combine convolutional and attention mechanisms, longer context windows, and specialized tokenization schemes.
+Most variant effect predictions assume independent effects: the impact of a variant is computed by comparing reference and alternative alleles in isolation. In reality, regulatory elements often act combinatorially. Two enhancers may act synergistically, producing greater-than-additive effects when both are active. Conversely, a silencer may override activation by enhancers, creating context-dependent epistasis.
 
-### Integration with Other Modalities
+Linear models like those in ExPecto cannot capture these interactions. More expressive architectures such as transformers can learn some combinatorial patterns, but interpreting these patterns mechanistically remains difficult. Developing models that explicitly represent regulatory logic (e.g., AND, OR, NOT gates) and epistatic interactions is a key frontier.
 
-AlphaMissense showed that PLM embeddings combine effectively with structural information. Similarly, genomic models benefit from integration with epigenomic data, gene annotations, and other biological context. The most powerful variant effect predictors combine multiple information sources, using PLMs as one component of larger systems. This principle extends to genomic foundation models, where sequence-based representations complement rather than replace other genomic annotations.
+### Prediction Versus Understanding
 
-## Limitations and Ongoing Challenges
+High predictive accuracy does not guarantee mechanistic understanding. A model may predict expression accurately by exploiting spurious correlations or dataset biases without learning the underlying regulatory mechanisms. For example, a model might learn that high GC content predicts high expression in training data, even though GC content is correlated with but not causally responsible for expression.
 
-Despite their success, protein language models face several limitations that inform the development of genomic models.
+Distinguishing learned mechanisms from learned shortcuts requires careful evaluation, including ablation studies, perturbation experiments, and tests of generalization to held-out contexts. Interpretability tools such as saliency maps and motif discovery can help, but they must be used cautiously and validated against known biology.
 
-### Sequence Length Constraints
+::: {.callout-warning .content-visible when-profile="draft"}
+**Visual suggestion: Limitation schematic**
 
-Most PLMs handle sequences up to 1,000 to 2,000 amino acids. While sufficient for most individual protein domains, this limits modeling of large protein complexes and does not directly transfer to the much longer sequences in genomics. Genomic language models must handle sequences spanning millions of bases, requiring architectural innovations beyond simple scaling of transformer attention.
+Add a diagram highlighting key limitations:
+- Trans factors not in sequence (e.g., TF concentration varying across cells)
+- Distal enhancers beyond model window
+- Combinatorial logic (synergy, repression) not captured by linear models
+- Spurious correlations versus causal mechanisms
+:::
 
-### Orphan Proteins
+## Connections to Later Chapters
 
-PLMs struggle with proteins that have few homologs in training databases. Orphan or dark proteins, those unique to specific lineages, lack the evolutionary signal that PLMs exploit. For these proteins, the statistical patterns learned from diverse sequence families provide less informative context. This limitation is less severe for genomic models trained on reference genomes, where even unique sequences exist in the context of conserved flanking regions.
+The models discussed in this chapter provide a foundation for understanding more complex architectures and applications in later parts of the book.
 
-### Epistasis
+Hybrid models like Enformer and Borzoi, covered in @sec-hybrid, extend ExPecto's sequence-to-chromatin-to-expression paradigm by using transformers to model long-range dependencies. These models achieve state-of-the-art performance on expression prediction benchmarks by capturing regulatory grammar that linear models miss.
 
-Most variant effect predictions assume independence: the effect of mutation A does not depend on whether mutation B is present. Real proteins exhibit epistasis, where variant effects depend on sequence context. Two individually benign variants may be jointly deleterious if they disrupt compensatory interactions. Current PLM-based predictors do not explicitly model these interaction effects, though the contextual embeddings may capture some epistatic relationships implicitly.
+Genomic foundation models discussed in Part IV leverage similar architectures but are pretrained on massive unlabeled sequence corpora using self-supervised objectives. These models learn generalizable representations that can be fine-tuned for expression prediction, variant effect prediction, and other downstream tasks, as explored in @sec-princ and @sec-vep.
 
-### Interpretability
+The interpretability challenges highlighted here recur throughout the book. @sec-interp examines tools for extracting mechanistic insights from learned models, including saliency maps, motif discovery, and perturbation-based attribution methods. Understanding when these tools succeed and when they mislead is critical for building trustworthy genomic AI systems.
 
-While attention patterns correlate with biological features, understanding exactly what PLMs learn remains challenging. The field is developing interpretation methods (@sec-interp), but PLMs remain partially opaque. For clinical applications where explanations are valued, this interpretability gap limits adoption. Future work must balance the accuracy gains from complex models against the transparency required for clinical decision-making.
+Finally, the variant effect prediction strategies introduced here inform clinical applications in @sec-variants. Sequence-based models provide orthogonal information to population genetics approaches, enabling prioritization of causal variants in disease-associated loci even when linkage disequilibrium confounds statistical fine-mapping.
 
 ## Significance
 
-Protein language models established that transformer architectures can learn deep biological knowledge from sequence data alone. ESM's ability to predict structure, function, and variant effects without explicit labels demonstrated the power of self-supervised learning on evolutionary data. This success directly motivated the development of genomic language models. If proteins constitute a language that transformers can learn, perhaps DNA does too.
+Sequence-based expression prediction models represent a major step forward in understanding the regulatory code. By learning to predict expression from DNA sequence and mRNA features, they isolate the contribution of cis-regulatory elements and provide mechanistic hypotheses about how variants perturb expression.
 
-The genomic language models covered in @sec-dna adapt PLM architectures and training strategies to the distinct challenges of DNA sequences: longer contexts, different alphabets, and the full complexity of gene regulation. The integration path continues as well: just as CADD v1.7 and AlphaMissense incorporate PLM predictions, future models will integrate genomic and proteomic language models into unified frameworks for variant interpretation (@sec-vep) and multi-omic modeling (@sec-systems).
+Xpresso demonstrated that promoter-proximal sequences and mRNA features explain a substantial fraction of expression variance, establishing a baseline for more complex models. ExPecto extended this framework by incorporating distal regulatory elements through chromatin predictions, achieving strong performance across hundreds of tissues and enabling variant prioritization in disease-associated loci.
+
+The two-stage architecture pioneered by ExPecto (sequence to chromatin to expression) provides a template for later models. By separating sequence-level grammar from tissue-specific interpretation, it offers interpretability and modularity that fully end-to-end models often lack. This design pattern recurs in hybrid architectures like Enformer and in multi-omic foundation models that integrate diverse data types.
+
+The limitations discussed here point toward future directions: incorporating 3D genome conformation, modeling combinatorial regulatory logic, integrating trans-regulatory context, and developing mechanistic rather than merely predictive models. These challenges motivate much of the research in subsequent chapters, where transformers, foundation models, and multi-omic integration offer new tools for tackling the complexity of gene regulation.
