@@ -1,6 +1,6 @@
 ::: {.callout-warning .content-visible when-profile="draft"}
 **TODO:**
-
+- ADD TAPE; ProGen
 - Add figure: ESM architecture diagram showing transformer layers, attention heads, and masked token prediction
 - Add figure: ESMFold pipeline diagram showing embedding extraction → structure module
 - Add figure: AlphaMissense workflow showing integration of PLM embeddings with structural context
@@ -12,11 +12,9 @@
 
 # Protein Language Models  {#sec-prot}
 
-## Evolutionary Sequences as Natural Language
+Before transformers revolutionized genomic sequence modeling, they first transformed our ability to model proteins. The field built upon decades of computational progress, from David Baker's Rosetta framework that pioneered physics-based protein structure prediction and design through sampling and energy minimization, to the deep learning revolution of the past decade. This progression moved from early generative models like DeepSequence that captured epistatic interactions in protein families [@riesselman_deepsequence_2018], to EVE's unsupervised prediction of disease variants from evolutionary data [@frazer_eve_2021], to the ESM family's demonstration that transformers trained on massive sequence databases learn representations encoding structure and function [@rives_esm_2021]. The trajectory culminated in AlphaFold2's solution to the protein structure prediction problem [@jumper_alphafold2_2021] and AlphaMissense's proteome-wide variant pathogenicity scoring [@cheng_alphamissense_2023], establishing that self-supervised learning on biological sequences could match or exceed decades of specialized computational methods. The transformative impact of this work was recognized with the 2024 Nobel Prize in Chemistry, awarded to Demis Hassabis and John Jumper for AlphaFold2 and to David Baker for computational protein design. These advances validated and extended the central dogma's sequence → structure → function paradigm, demonstrating that deep learning models could compress the entire chain of causation into learned representations that predict functional consequences directly from amino acid sequences.
 
-Before transformers revolutionized genomic sequence modeling, they first transformed our ability to model proteins. The success of protein language models (PLMs) established a paradigm that would later inspire genomic foundation models: treat biological sequences as a form of natural language, train large transformer models on massive unlabeled sequence databases, and extract functional knowledge through self-supervised learning.
-
-The analogy between protein sequences and natural language runs deeper than mere metaphor. Both encode complex information in linear strings of discrete tokens, whether amino acids or words. Both exhibit hierarchical structure, with motifs combining into domains as words combine into phrases. Both have syntax in the form of structural constraints and semantics in the form of functional meaning. And crucially, both are shaped by evolutionary pressure: natural selection filters protein sequences just as cultural selection shapes language.
+The success of protein language models (PLMs) established a paradigm that would later inspire genomic foundation models: treat biological sequences as a form of natural language, train large transformer models on massive unlabeled sequence databases, and extract functional knowledge through self-supervised learning. The analogy between protein sequences and natural language runs deeper than mere metaphor. Both encode complex information in linear strings of discrete tokens, whether amino acids or words. Both exhibit hierarchical structure, with motifs combining into domains as words combine into phrases. Both have syntax in the form of structural constraints and semantics in the form of functional meaning. And crucially, both are shaped by evolutionary pressure: natural selection filters protein sequences just as cultural selection shapes language.
 
 This chapter examines how protein language models pioneered biological foundation modeling, from the ESM family's demonstration that transformers can learn protein structure and function from sequence alone, to their application in variant effect prediction and structure determination. Understanding PLMs provides essential context for the genomic language models covered in subsequent chapters, as many architectural choices and training strategies transfer directly from proteins to DNA.
 
@@ -26,7 +24,7 @@ This chapter examines how protein language models pioneered biological foundatio
 
 The Evolutionary Scale Modeling (ESM) project, developed at Meta AI Research, demonstrated that transformer language models trained on protein sequences learn biologically meaningful representations without explicit supervision [@rives_esm_2021]. The key insight was that masked language modeling, the same objective that powers BERT in natural language processing, could be applied directly to amino acid sequences.
 
-ESM-1b was trained on UniRef50, a clustered database of approximately 33 million protein sequences covering the known diversity of protein families. UniRef50 clusters sequences at 50% identity, providing broad coverage while reducing redundancy. This curation strategy ensures the model sees diverse evolutionary solutions to protein function rather than memorizing overrepresented families.
+ESM-1b was trained on UniRef50, a clustered database of approximately 33 million protein sequences covering the known diversity of protein families. UniRef50 clusters sequences at 50% identity, providing broad coverage while reducing redundancy [@suzek_uniref_2007]. This curation strategy ensures the model sees diverse evolutionary solutions to protein function rather than memorizing overrepresented families.
 
 The architecture follows the BERT-style bidirectional transformer design with 650 million parameters distributed across 33 layers, a hidden dimension of 1,280, and 20 attention heads. The maximum sequence length of 1,024 amino acids accommodates most individual protein domains and many complete proteins. The training objective is masked language modeling: the model learns to predict randomly masked amino acids given surrounding context. This is analogous to BERT's masked token prediction, but operates on amino acids rather than words.
 
@@ -55,17 +53,21 @@ ESM-2 extended the ESM approach with larger models and improved training [@lin_e
 | ESM-2 (3B) | 3B | 36 | +15% |
 | ESM-2 (15B) | 15B | 48 | State-of-the-art |
 
+::: {.callout-warning .content-visible when-profile="draft"}
+Validate contact prediction performance values
+:::
+
 Performance scales smoothly with model size across structure prediction, contact prediction, and variant effect tasks. This phenomenon mirrors the scaling laws observed in natural language processing, where larger models consistently capture more nuanced patterns and achieve better downstream performance. The predictable scaling relationship suggests that continued investment in model size yields reliable returns in biological accuracy.
 
 ## Alternative Architectures: The ProtTrans Family
 
-The ProtTrans family explored multiple transformer architectures for protein sequences, demonstrating that the protein language modeling paradigm generalizes beyond the specific design choices of ESM.
+The ProtTrans family explored multiple transformer architectures for protein sequences, demonstrating that the protein language modeling paradigm generalizes beyond the specific design choices of ESM [@elnaggar_prottrans_2021].
 
-ProtBERT applies the BERT-style bidirectional encoder to protein sequences, trained on the Big Fantastic Database (BFD) comprising approximately 2.1 billion protein sequences. This massive training corpus, substantially larger than UniRef50, provides even broader coverage of protein sequence space.
+ProtBERT applies the BERT-style bidirectional encoder to protein sequences, trained on the Big Fantastic Database (BFD) comprising approximately 2.1 billion protein sequences [@devlin_bert_2019; @jumper_alphafold2_2021]. This massive training corpus, substantially larger than UniRef50, provides even broader coverage of protein sequence space.
 
-ProtT5 adapts the encoder-decoder architecture from T5, enabling both understanding and generation tasks. The encoder processes input sequences to produce contextual representations, while the decoder can generate output sequences conditioned on those representations. This architecture is particularly valuable for tasks that require sequence generation, such as protein design or sequence completion.
+ProtT5 adapts the encoder-decoder architecture from T5, enabling both understanding and generation tasks [@raffel_t5_2019]. The encoder processes input sequences to produce contextual representations, while the decoder can generate output sequences conditioned on those representations. This architecture is particularly valuable for tasks that require sequence generation, such as protein design or sequence completion.
 
-ProtXLNet explores permutation language modeling based on XLNet, capturing bidirectional context without the artificial [MASK] token that BERT-style models require during training. By training on all possible token orderings, XLNet-style models learn to predict each token from any subset of context tokens, potentially capturing richer dependencies.
+ProtXLNet explores permutation language modeling based on XLNet, capturing bidirectional context without the artificial [MASK] token that BERT-style models require during training [@yang_xlnet_2020]. By training on all possible token orderings, XLNet-style models learn to predict each token from any subset of context tokens, potentially capturing richer dependencies.
 
 These architectural variants demonstrate that the protein language modeling paradigm generalizes across architectures. The choice between encoder-only (BERT-style) and encoder-decoder (T5-style) models depends on the downstream application: encoders excel at classification and embedding tasks, while encoder-decoders enable sequence generation.
 
@@ -95,13 +97,16 @@ The analysis also identified approximately 2 million variants annotated as damag
 
 ProteinGym provides a comprehensive benchmark for variant effect predictors, aggregating 217 deep mutational scanning assays covering diverse proteins [@notin_proteingym_2023]. Deep mutational scanning experiments systematically measure the functional effects of thousands of variants in a protein, providing ground truth for computational method evaluation.
 
-| Method | Mean Spearman ρ |
-|--------|-----------------|
-| ESM-1v | 0.48 |
-| EVE (evolutionary model) | 0.46 |
-| DeepSequence | 0.44 |
-| PolyPhen-2 | 0.32 |
-| SIFT | 0.30 |
+| Method | Mean Spearman ρ | Information Sources |
+|--------|-----------------|---------------------|
+| ESM-1v | 0.48 | Single sequence (PLM) |
+| EVE (evolutionary model) | 0.46 | MSA (generative model) |
+| DeepSequence | 0.44 | MSA (VAE) |
+| PolyPhen-2 | 0.32 | Conservation + structure |
+| SIFT | 0.30 | Conservation |
+
+: Performance of protein language models and traditional methods on the ProteinGym deep mutational scanning benchmark [@notin_proteingym_2023]. Shown are mean Spearman correlations between predicted and experimentally measured variant effects across 217 assays [@meier_esm-1v_2021; @frazer_eve_2021; @riesselman_deepsequence_2018; @ng_sift_2003; @adzhubei_polyphen_2010].
+
 
 PLMs achieve competitive or superior performance to methods that explicitly model evolutionary conservation from multiple sequence alignments, despite using only single sequences as input. This suggests that transformer attention over large sequence databases captures similar information to traditional alignment-based approaches, but in a form that generalizes more readily to novel sequence contexts.
 
@@ -139,7 +144,7 @@ AlphaMissense represents the current state-of-the-art in missense variant effect
 
 The model learns to predict pathogenicity by combining three information sources. Sequence embeddings from ESM-style language modeling provide evolutionary context about amino acid preferences at each position. Structural context from predicted protein structures captures whether a position is buried or exposed, in a secondary structure element or loop, near active sites or binding interfaces. Evolutionary information from cross-species comparisons supplements the single-sequence PLM signal with explicit alignment-derived conservation.
 
-The training data comes from population frequency databases, primarily gnomAD. Common variants, those observed frequently in healthy populations, provide weak labels for benign effects. Variants absent from large population databases, particularly those in constrained positions, provide weak labels for deleterious effects. Critically, AlphaMissense never trains on clinical pathogenicity labels from ClinVar, yet achieves state-of-the-art performance on clinical benchmarks. This demonstrates that the combination of PLM representations, structural context, and population genetics signals captures genuine functional information rather than memorizing clinical annotations.
+The training data comes from population frequency databases, primarily gnomAD [@gnomAD]. Common variants, those observed frequently in healthy populations, provide weak labels for benign effects. Variants absent from large population databases, particularly those in constrained positions, provide weak labels for deleterious effects. Critically, AlphaMissense never trains on clinical pathogenicity labels from ClinVar, yet achieves state-of-the-art performance on clinical benchmarks. This demonstrates that the combination of PLM representations, structural context, and population genetics signals captures genuine functional information rather than memorizing clinical annotations.
 
 AlphaMissense provides predictions for all approximately 71 million possible single amino acid substitutions across the human proteome. Of these, 89% are classified as either likely benign or likely pathogenic with sufficient confidence to be actionable, providing interpretable predictions for the vast majority of possible missense variants.
 
@@ -150,6 +155,8 @@ AlphaMissense provides predictions for all approximately 71 million possible sin
 | CADD v1.7 | 0.95 | 0.81 | Multi-feature integration |
 | ESM-1v | 0.89 | 0.48 | Sequence only (zero-shot) |
 | AlphaMissense | 0.94 | 0.52 | PLM + structure + population |
+
+: Comparative performance of missense variant effect predictors on clinical (ClinVar) and experimental (deep mutational scanning) benchmarks [@ng_sift_2003; @adzhubei_polyphen_2010; @schubach_cadd_2024; @meier_esm-1v_2021; @cheng_alphamissense_2023].
 
 AlphaMissense achieves top performance by integrating the strengths of multiple approaches: PLM-derived sequence understanding, AlphaFold-derived structural context, and population genetics-derived evolutionary constraint signals.
 
@@ -196,6 +203,48 @@ Most variant effect predictions assume independence: the effect of mutation A do
 ### Interpretability
 
 While attention patterns correlate with biological features, understanding exactly what PLMs learn remains challenging. The field is developing interpretation methods (@sec-interp), but PLMs remain partially opaque. For clinical applications where explanations are valued, this interpretability gap limits adoption. Future work must balance the accuracy gains from complex models against the transparency required for clinical decision-making.
+
+## Beyond Language Models: Structure Prediction and Design
+
+While protein language models demonstrate the power of self-supervised learning on sequences alone, the broader protein modeling landscape encompasses methods that explicitly incorporate structural information, evolutionary constraints, and physical principles. These approaches complement PLMs by addressing tasks where three-dimensional geometry, binding interactions, or design objectives are central.
+
+### Structure Prediction Systems
+
+AlphaFold2 revolutionized protein structure prediction by combining learned representations with explicit modeling of protein geometry [@jumper_alphafold2_2021]. Unlike pure sequence models, AlphaFold2 processes both sequence information through embeddings and structural information through an iterative refinement process that directly predicts atomic coordinates. The system requires multiple sequence alignments as input, using evolutionary information to infer residue-residue contacts and structural constraints. AlphaFold2 searches for homologous sequences using computationally expensive tools including HHblits against the BFD and Jackhmmer against other databases, a process that can take hours per protein.
+
+AlphaFold3 extends this framework to model protein complexes, nucleic acids, and small molecules [@abramson_alphafold3_2024]. The architecture incorporates diffusion-based structure generation, allowing it to predict not only protein structures but also their interactions with other biomolecules. This expansion from single proteins to molecular complexes represents a shift toward modeling entire biological systems rather than isolated components.
+
+ColabFold democratized access to AlphaFold-quality predictions by replacing the slow MSA search with MMseqs2, reducing search time from hours to minutes while maintaining prediction accuracy [@mirdita_colabfold_2022]. The system uses precomputed databases and optimized search algorithms to make structure prediction accessible through free cloud computing resources. ColabFold's efficiency enabled large-scale structural proteomics, with researchers generating predictions for entire proteomes in practical time frames.
+
+OpenFold provides an open-source reimplementation of AlphaFold2, enabling researchers to modify and extend the architecture for specialized applications [@ahdritz_openfold_2024]. By making the full training and inference pipeline accessible, OpenFold supports development of domain-specific variants optimized for particular protein families or prediction tasks.
+
+RosettaFold emerged as an alternative to AlphaFold2, demonstrating that similar accuracy could be achieved through different architectural choices [@baek_rosettafold_2021]. The three-track neural network architecture processes sequence, distance, and coordinate information simultaneously, with each track informing the others through carefully designed information exchange. RosettaFold's modular design facilitated subsequent extensions including RoseTTAFold2 for protein-protein interactions and RoseTTAFoldNA for nucleic acid modeling.
+
+ESMFold, discussed earlier in this chapter, represents a distinct approach by eliminating MSA requirements entirely [@lin_esm-2_2022]. The model achieves AlphaFold2-level accuracy for many proteins while being orders of magnitude faster, enabling structural annotation of metagenomic sequences where traditional MSA construction fails due to lack of homologs.
+
+### Generative Design Methods
+
+ProteinMPNN applies message-passing neural networks to the inverse folding problem: designing sequences that fold into specified backbone structures [@dauparas_proteinmpnn_2022]. Given a target structure, the model learns to generate amino acid sequences likely to adopt that fold. ProteinMPNN's success at designing stable, functional proteins demonstrates that neural networks can capture the sequence-structure relationship in both directions, complementing the structure prediction capabilities of AlphaFold and ESM.
+
+RFDiffusion extends diffusion models to protein backbone generation, enabling de novo design of proteins with specified functions [@watson_rfdiffusion_2023]. Rather than predicting structure from sequence or sequence from structure, RFDiffusion generates entirely novel protein backbones conditioned on design objectives such as binding a target molecule or forming particular geometric shapes. The method has been used to design proteins with enzymatic activity, binding specificity, and novel folds not found in nature.
+
+Boltz-1 introduced a unified framework for predicting structures of protein-ligand, protein-protein, and protein-nucleic acid complexes using a diffusion-based approach [@wohlwend_boltz1_2025]. Boltz-2 builds on this foundation with improved accuracy and broader applicability across different types of biomolecular interactions. These methods address the critical challenge of predicting not just individual protein structures but how proteins interact with other molecules in cellular contexts.
+
+### Molecular Docking and Binding
+
+DiffDock applies diffusion models to molecular docking, predicting how small molecules bind to protein targets [@corso_diffdock_2022]. Traditional docking methods rely on physics-based scoring functions and extensive sampling, often requiring hours of computation per ligand-protein pair. DiffDock learns to generate binding poses directly, achieving comparable or better accuracy in a fraction of the time. This capability is particularly valuable for drug discovery, where thousands of potential compounds must be evaluated against protein targets.
+
+### Infrastructure and Search Methods
+
+The MSA construction pipeline underlying AlphaFold2 represents substantial engineering beyond the neural network architecture itself. HHblits performs iterative profile-profile searches to identify remote homologs, building deep alignments that capture evolutionary constraints [@remmert_hhblits_2012]. Jackhmmer provides complementary sensitivity using hidden Markov model searches [@finn_hmmer_2011]. These tools process multiple sequence databases including UniRef, BFD, and MGnify, each optimized for different coverage-redundancy tradeoffs.
+
+MMseqs2 revolutionized sequence search by achieving BLAST-level sensitivity at hundreds of times the speed through careful algorithmic optimization and parallelization [@steinegger_mmseqs2_2017]. ColabFold's adoption of MMseqs2 for MSA construction demonstrated that the computational bottleneck in structure prediction lay not in the neural network but in the database search, motivating the development of faster search algorithms as a critical infrastructure problem.
+
+### Integration with Protein Language Models
+
+These structure-focused methods increasingly incorporate PLM representations as complementary information sources. AlphaFold3 integrates sequence embeddings from language models with its structure prediction network. RFDiffusion can condition generation on ESM embeddings to guide designs toward particular sequence properties. ProteinMPNN benefits from PLM-derived features when designing sequences for challenging structural targets. This trend toward hybrid architectures suggests that the future of protein modeling lies not in choosing between sequence models and structure models, but in intelligently combining their complementary strengths.
+
+The protein modeling ecosystem thus spans a continuum from pure sequence models like ESM that never explicitly represent structure, through hybrid systems like AlphaFold that combine learned sequence representations with geometric constraints, to physics-based methods that emphasize structural principles. Each approach offers distinct advantages: PLMs provide fast, broadly applicable predictions without MSA construction; structure prediction systems achieve atomic-level accuracy when sufficient evolutionary data exists; generative methods enable design of novel proteins with specified functions. Understanding this landscape helps position genomic foundation models, which face analogous tradeoffs between sequence-only and structure-aware approaches.
 
 ## Significance
 
