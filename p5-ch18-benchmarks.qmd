@@ -65,33 +65,13 @@ To facilitate more standardized comparison, several efforts have curated suites 
 
 These suites define canonical train/validation/test splits, metrics, and baseline models, making it easier to compare new architectures. However, they are still heavily skewed toward short-range, single-variant or single-element tasks and often focus on a small number of well-studied cell types and assays.
 
-## DNA Language Model Benchmark Suites
+## Overview: Benchmark Categories and Purpose
 
-As genomic language models have matured (see @sec-dna and @sec-foundation), dedicated benchmark suites have emerged to assess their representation quality and task performance in a more comprehensive and standardized manner.
+This chapter catalogs the major benchmark suites and evaluation datasets used to assess genomic foundation models. We organize benchmarks by the level of biological abstraction they target, from molecular predictions (chromatin state, transcription factor binding) through variant-level predictions (pathogenicity, functional impact) to individual and population-level predictions (polygenic risk, trait prediction).
 
-### BEND (Benchmark for DNA Language Models)
+Each benchmark category serves distinct purposes and comes with characteristic strengths and limitations. Molecular benchmarks test whether models learn sequence-to-function mappings accurately. Variant effect benchmarks assess clinical utility for interpretation tasks. Trait-level benchmarks evaluate whether models capture polygenic architecture and enable risk prediction. Understanding what each benchmark measures—and what it does not—is essential for interpreting model performance claims.
 
-BEND provides a diverse set of biologically meaningful tasks on the human genome. Task composition includes gene finding, enhancer annotation, chromatin accessibility prediction, histone mark classification, and CpG methylation status. The design philosophy emphasizes biologically relevant evaluation rather than synthetic or contrived benchmarks.
-
-Key findings from models evaluated on BEND include limited capture of long-range features in current architectures, highlighting an important gap between model receptive fields and the genomic distances over which regulatory interactions occur.
-
-### Genomics Long-Range Benchmark (LRB)
-
-Developed alongside the Nucleotide Transformer and related work by InstaDeep, the LRB focuses explicitly on tasks requiring extended context. These tasks include enhancer-promoter linking, expression prediction over long genomic windows, and regulatory variant effect prediction at distances beyond what typical convolutional models can capture.
-
-The LRB also explores fine-tuning recipes and their impact on evaluation. Performance gaps are often observed: models tend to perform better on annotation tasks (chromatin marks, binding) than on variant effect and expression prediction, which require more integrated understanding of regulatory logic.
-
-### DNALongBench
-
-DNALongBench extends the evaluation of long-range dependencies even further, with five tasks operating on sequences up to 1 Mb in length. These tasks include enhancer-target gene assignment, eQTL identification, 3D genome organization prediction, regulatory activity modeling, and transcription initiation site prediction.
-
-Baseline comparisons across CNNs, HyenaDNA, and Caduceus variants reveal that different architectures have different strengths: some handle local features well but struggle with megabase-scale patterns, while others sacrifice local precision for better long-range coherence. The benchmark is designed for standardized assessment of long-range dependency modeling.
-
-### GenBench
-
-GenBench offers a modular framework for genomic foundation model evaluation, stratifying tasks by short-range versus long-range dependencies and examining architecture-task interactions. For example, attention-based models may excel at tasks requiring integration over long distances, while convolutional models may be better suited for motif-centric predictions.
-
-The benchmark emphasizes reproducibility, providing clear documentation of data splits, preprocessing, and evaluation protocols. This emphasis addresses a common concern in the field: that minor differences in data preparation or hyperparameter tuning can produce large swings in reported performance.
+The methodological principles for using these benchmarks properly, including data splitting, metric selection, and avoiding common pitfalls, are covered in @sec-eval. This chapter focuses on describing what benchmarks exist, their design, and their coverage of the genomic modeling landscape.
 
 ## Variant Effect Prediction Benchmarks
 
@@ -99,14 +79,17 @@ From a clinical perspective, the most important question is often not "what is t
 
 ### Clinical Annotation Databases
 
-A common class of benchmarks uses curated variant databases to define classification tasks. **ClinVar** is the most widely used resource, providing pathogenic, likely pathogenic, benign, and likely benign annotations for variants across the genome. However, ClinVar has well-documented biases: submission heterogeneity (annotations come from diverse submitters with varying standards), version sensitivity (classifications are updated regularly as evidence accumulates), and ancestry and gene coverage biases (variants in well-studied populations and disease genes are overrepresented).
+Clinical variant databases provide pathogenicity labels that connect sequence variation to disease outcomes, making them attractive benchmarks for variant effect predictors despite significant limitations.
 
-**HGMD** (Human Gene Mutation Database) offers another source of disease-associated variants, but access limitations and similar biases apply. Expert-curated panels such as those from ClinGen and disease-specific consortia provide higher confidence labels for subsets of genes, but at much smaller scale.
+**ClinVar** is the most widely used resource, aggregating pathogenicity assertions (pathogenic, likely pathogenic, benign, likely benign, uncertain significance) from clinical laboratories and researchers [@landrum_clinvar_2018]. As a benchmark, ClinVar enables direct evaluation of how well models predict clinical classifications. However, the biases documented in @sec-data profoundly shape what these benchmarks measure: submission heterogeneity means label quality varies dramatically across variants, version sensitivity means benchmark composition changes over time, and circularity with computational predictors means models may be evaluated on labels they helped create.
 
-Labels from these resources are closer to clinical decisions than molecular assay readouts, but subject to ascertainment bias (well-studied genes and variant types are overrepresented), historical annotation bias (older annotations may not reflect current clinical guidelines), and context dependence (pathogenicity can depend on ancestry, environment, and genetic background, which benchmarks often ignore).
+**Ancestry and gene coverage biases** are particularly consequential for benchmark interpretation. Variants in well-studied populations (particularly European ancestry) and well-studied disease genes are heavily overrepresented, while variants from underrepresented populations are more likely to remain classified as VUS. This means that high performance on ClinVar primarily demonstrates accuracy for European ancestry variants in canonical disease genes rather than robust generalization across human genetic diversity. These representation gaps and their implications for model fairness are detailed in @sec-confound.
 
-Models that score variants (as discussed in @sec-vep) are commonly assessed on such benchmarks using metrics like AUROC, AUPRC, and calibration diagnostics.
+When using ClinVar as a benchmark, best practices include specifying the exact version and download date, excluding variants with conflicting assertions unless studying disagreement resolution, stratifying performance by evidence level (expert-reviewed vs single submitter), reporting ancestry-stratified metrics when ancestry information is available, and comparing to baselines that use only allele frequency or basic annotations.
 
+**HGMD** (Human Gene Mutation Database) provides another source of disease-associated variants, but access limitations and similar biases apply. Expert-curated panels such as those from ClinGen and disease-specific consortia provide higher confidence labels for subsets of genes, but at much smaller scale.
+
+Models assessed on these benchmarks are typically evaluated using AUROC, AUPRC, and calibration diagnostics. However, high discrimination metrics can be misleading. A model that achieves 0.95 AUROC by learning to reproduce CADD scores (which were used in the original clinical classifications) demonstrates circularity rather than independent predictive power. As discussed in @sec-confound, detecting such shortcuts requires comparison to simpler baselines and evaluation on truly held-out data where the predictor could not have influenced the labels.
 ::: {.callout-warning .content-visible when-profile="draft"}
 **Visual suggestion (variant effect flow):** A schematic showing the flow from raw variant call to variant effect predictor to benchmark labels (for example, ClinVar categories), including possible sources of noise and bias.
 :::
@@ -144,6 +127,24 @@ Benchmarks distinguish between single-sequence and MSA-based evaluation regimes.
 ### Clinical Variant Benchmarks for Proteins
 
 Benchmarks that evaluate protein models on clinical variant classification often use ClinVar pathogenic versus benign discrimination as the primary task. Models like AlphaMissense, ESM-1v, and integrated tools like CADD have been benchmarked on this task. However, circularity concerns arise when models are trained on features derived from resources that also contribute to ClinVar labels, creating feedback loops that inflate apparent performance without genuine predictive power.
+
+## DNA Foundation Model Benchmark Suites
+
+Several standardized suites enable systematic comparison of DNA foundation models across diverse tasks.
+
+**Nucleotide Transformer benchmarks** evaluate transformer-based DNA models on regulatory element classification, enhancer-promoter interactions, and transcript abundance prediction across cell types [@dalla-torre_nucleotide_2023]. The benchmark suite emphasizes transfer learning capabilities and includes both chromatin state prediction and functional genomics readouts. Tasks span multiple scales, from single nucleotide resolution (variant effect prediction) to kilobase-scale regulatory interactions.
+
+**BEND (BEhavior of NucleotidE Deep learning models)** provides a unified framework for evaluating genomic foundation models across diverse tasks. The benchmark includes regulatory element classification, chromatin accessibility prediction, and variant effect scoring, with standardized train/validation/test splits to enable fair comparison.
+
+**LRB (Long Range Benchmark)** focuses specifically on long-context genomic modeling, testing models' ability to integrate information across tens to hundreds of kilobases. Tasks include predicting distal enhancer-promoter interactions, modeling large-scale chromatin structure, and identifying long-range regulatory dependencies.
+
+**DNALongBench** extends evaluation to ultra-long contexts (up to millions of base pairs), testing whether models can leverage chromosome-scale information for regulatory prediction.
+
+**GenBench** provides cross-species evaluation, testing whether models trained on one organism generalize to related species and whether multi-species training improves within-species performance.
+
+**Comparative evaluations** such as recent head-to-head comparisons of DNABERT-2, Nucleotide Transformer V2, HyenaDNA, Caduceus-Ph, and GROVER reveal that no single model dominates across all tasks [@manzo_comparative_2025]. Performance varies substantially depending on task characteristics (local vs long-range), training data composition, and architectural choices. Such studies establish performance bands for different model families and identify task-specific strengths.
+
+These benchmark suites complement task-specific datasets like ClinVar for variant interpretation (@sec-data), ENCODE and Cistrome for regulatory prediction [@kagda_encode_2025; @zheng_cistrome_2019], and GTEx for eQTL-based validation [@gtex_2020]. The combination of standardized suites and domain-specific validation provides the most complete assessment of model capabilities.
 
 ## Trait and Individual-Level Benchmarks
 
@@ -210,6 +211,18 @@ To mitigate staleness, communities can periodically refresh benchmark datasets, 
 ::: {.callout-warning .content-visible when-profile="draft"}
 **Visual suggestion (timeline):** A timeline showing benchmark introductions over time, overlaid with major assay and technology changes (for example, short-read to long-read, bulk to single-cell). Highlight how older benchmarks drift away from current practice.
 :::
+
+## Cross-Population and Fairness Considerations
+
+A recurring limitation across nearly all genomic benchmarks is ancestry representation. Most benchmarks are dominated by individuals of European ancestry, with African, East Asian, South Asian, and admixed populations substantially underrepresented. This skew has profound consequences for model development and deployment.
+
+**Training on biased benchmarks** produces models optimized for European ancestry performance. When these models encounter variants or individuals from other ancestries, performance often degrades substantially. The degradation stems from multiple sources: different linkage disequilibrium patterns, population-specific variants absent from training data, and systematically different feature distributions (allele frequencies, conservation patterns, regulatory annotations).
+
+**Aggregate metrics mask disparities**. Reporting only overall AUROC or correlation across all individuals can hide dramatic performance gaps between ancestry groups. A model with 0.90 aggregate AUROC might achieve 0.93 in European ancestry but only 0.75 in African ancestry individuals. Without stratified reporting, such disparities remain invisible.
+
+**Fairness requires explicit evaluation**. Best practices now include stratifying all performance metrics by ancestry or population group, reporting confidence intervals for each stratum to assess whether differences are statistically meaningful, evaluating calibration separately by group (a model may discriminate well but be systematically miscalibrated in underrepresented groups), and documenting the ancestry composition of training data to set expectations about where the model is likely to work well.
+
+The fundamental challenge is that genomic benchmarks inherit biases from their source data: biobanks, clinical databases, and functional genomics consortia that systematically undersample non-European populations. Addressing these biases requires investment in diverse cohorts, multi-ancestry functional genomics, and evaluation frameworks that explicitly prioritize equity. The technical and social dimensions of ancestry bias in genomic models are explored in depth in @sec-confound.
 
 ## Chapter Summary
 

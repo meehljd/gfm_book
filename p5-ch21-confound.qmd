@@ -40,7 +40,7 @@ Confounders in genomic modeling can be grouped into several broad categories. Th
 
 **Cohort and institution effects** reflect hospital systems with different patient populations and coding practices, biobank-specific inclusion and exclusion criteria, and ascertainment patterns (referral centers versus population-based studies).
 
-**Label and curation bias** stems from clinical labels derived from billing codes, problem lists, or registry entries. Variant pathogenicity labels from ClinVar and similar databases reflect expert curation, test panels, and past literature biases [@landrum_clinvar_2018]. Expression, regulatory, or splicing labels derived from specific tissues or cell lines carry their own limitations [@gtex_2020; @kagda_encode_2025].
+**Label and curation bias** stems from clinical labels derived from billing codes, problem lists, or registry entries. Variant pathogenicity databases like ClinVar exhibit the systematic biases detailed in @sec-data: submission heterogeneity, ancestry gaps, gene coverage biases, and circularity with computational predictors that creates feedback loops between model predictions and benchmark labels [@landrum_clinvar_2018]. Expression, regulatory, or splicing labels derived from specific tissues or cell lines carry their own limitations [@gtex_2020; @kagda_encode_2025].
 
 **Temporal drift** includes changes in clinical practice, diagnostic criteria, or coding over time, evolving sequencing technologies and QC pipelines, and shifts in population behavior or environment.
 
@@ -54,6 +54,10 @@ Many of these factors are present simultaneously in large-scale genomic resource
 
 
 ## Population Structure and Ancestry as Shortcuts
+
+Population structure and ancestry represent one of the most pervasive and challenging sources of confounding in genomic modeling. While earlier chapters introduced ancestry's role in GWAS stratification (@sec-pgs) and portability failures in polygenic scores, this section provides comprehensive treatment of how ancestry becomes a confounder, how it manifests in foundation models, and how to detect and mitigate ancestry-related biases.
+
+The core issue is that ancestry simultaneously affects genomic features (allele frequencies, haplotype structure) and many phenotypes of interest through environmental, socioeconomic, and healthcare pathways. This creates classic confounding that models can exploit as a shortcut, appearing to predict disease or variant effects while actually learning population membership.
 
 ### How Ancestry Becomes a Confounder
 
@@ -76,6 +80,16 @@ Foundation models trained directly on nucleotide sequences or variant streams cl
 Multi-ancestry GWAS and polygenic score studies underscore the magnitude of these issues. Risk scores derived from primarily European cohorts often transfer poorly to other ancestries, with attenuated performance and systematic miscalibration [@ishigaki_multi-ancestry_2022]. Similar pitfalls arise when genomic foundation models are trained or validated in ancestry-skewed datasets.
 
 Crucially, increasing model capacity does not automatically solve ancestry bias; it can make it worse by making it easier to detect and exploit subtle ancestry-linked features. Robust evaluation must therefore probe performance within and across ancestry groups, not just overall metrics.
+
+### Ancestry Bias Across the Modeling Pipeline
+
+Ancestry bias appears at every stage of genomic model development and deployment. During data collection, biobanks and clinical cohorts systematically oversample European ancestry individuals. In the training phase, models learn features that work well for the majority population but generalize poorly to others. At evaluation time, aggregate metrics hide disparities between ancestry groups. In deployment, models trained on European ancestry data often fail or mislead when applied to diverse clinical populations.
+
+The compounding of these biases means that small representational gaps at the data collection stage become large performance gaps at deployment. A biobank that is 80% European ancestry may produce models that work acceptably for European ancestry but fail dramatically for other groups, not simply because of the 80/20 split but because of cascading effects through feature engineering, threshold selection, and benchmark optimization.
+
+**Portability failures in polygenic scores** provide the clearest evidence of these effects. Meta-analyses consistently show 40-75% reductions in prediction accuracy when European ancestry-derived scores are applied to African ancestry individuals [@duncan_analysis_2019]. Similar patterns emerge for variant effect predictors, gene expression models, and regulatory predictions, though often less well documented due to lack of systematic cross-ancestry evaluation.
+
+**The fairness imperative**: These are not merely technical challenges but questions of equity and justice. Genomic medicine that works primarily for European ancestry individuals perpetuates and potentially worsens existing health disparities. Ancestry bias in genomic models is thus both a scientific problem (models that don't generalize) and a social problem (models that exacerbate inequality).
 
 
 ## Technical Batch and Platform Effects
