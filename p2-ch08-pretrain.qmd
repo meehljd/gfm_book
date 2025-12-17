@@ -1,0 +1,492 @@
+::: {.callout-warning .content-visible when-profile="draft"}
+Transfer (domain adaptation, few-shot) — deployment strategies
+:::
+
+# Pretraining Objectives & Strategies {#sec-pretrain}
+
+Foundation models do not emerge fully formed. Before they can predict variant effects, interpret regulatory sequences, or guide experimental design, they must first learn general representations from vast amounts of unlabeled genomic data. This learning process is called pretraining, and the choice of pretraining objective fundamentally shapes what a model learns, how efficiently it trains, and which downstream tasks it ultimately excels at.
+
+This chapter explores the landscape of pretraining strategies for genomic models. We begin with the conceptual foundations: why pretraining works, how self-supervised learning creates useful supervision from sequence structure alone, and the connections to language modeling paradigms from NLP. We then survey the major families of pretraining objectives, including masked language modeling, next-token prediction, denoising, contrastive learning, and multi-task approaches. For each, we examine the core algorithmic principles, genomic adaptations, and trade-offs between objectives.
+
+Beyond objectives themselves, effective pretraining requires careful decisions about data curation, augmentation strategies, curriculum design, and computational infrastructure. We address these practical considerations alongside the theoretical motivations. Finally, we examine how leading models were pretrained in practice, extracting lessons from DNABERT, HyenaDNA, Enformer, and ESM-2 that inform future work.
+
+By the end of this chapter you should understand:
+
+- Why self-supervised pretraining is particularly well-suited to genomics.
+- The algorithmic mechanics and biological implications of major pretraining objectives.
+- How to select and design pretraining strategies for specific model architectures and downstream applications.
+- Practical considerations for data preparation, optimization, and scaling.
+- The relationship between pretraining choices and downstream transfer performance.
+
+## Learning from Unlabeled Genomes
+
+Genomics presents a paradox: we have enormous quantities of sequence data but relatively sparse functional annotations. Reference genomes span billions of nucleotides across thousands of species. Population sequencing projects catalog millions of individuals. Yet experimental labels—ChIP-seq peaks, expression measurements, clinical outcomes—are available for only a tiny fraction of possible sequences and contexts.
+
+This imbalance motivates pretraining. Rather than training models from scratch on small labeled datasets, we can first learn general-purpose sequence representations from unlabeled genomes, then adapt these representations to specific tasks through fine-tuning or few-shot learning. The intuition is that many patterns relevant to regulatory function, splice site recognition, or protein folding are embedded in sequence statistics themselves. A model that learns to predict missing nucleotides or adjacent sequence context must implicitly capture motifs, constraints, and compositional structure that generalize across tasks.
+
+Self-supervised learning provides the algorithmic framework for extracting supervision from unlabeled data. Instead of requiring external labels, self-supervised objectives construct prediction tasks from the data's inherent structure. In genomics, this might mean masking portions of a sequence and predicting the masked content, predicting the next token in a sequence, or distinguishing augmented views of the same sequence from unrelated sequences. These artificial tasks force the model to build representations that capture sequence properties useful for many downstream applications.
+
+The connection to natural language processing is direct. Models like BERT and GPT revolutionized NLP by pretraining on massive text corpora before fine-tuning on specific tasks. Genomic sequences are discrete symbol sequences much like text, and many of the same algorithmic principles apply. However, genomics introduces unique considerations: DNA has no word boundaries, both strands encode information, motifs are compositional, and biological function depends on spatial organization at multiple scales.
+
+## The Pretraining Paradigm
+
+The standard deep learning workflow for genomics now follows a two-stage process: pretraining followed by fine-tuning or adaptation. During pretraining, the model processes large volumes of unlabeled sequence data under a self-supervised objective designed to encourage useful representations. The result is a pretrained model with learned parameters that encode general sequence properties. During fine-tuning, these pretrained parameters are adapted to specific labeled tasks, often with far less data than would be required to train from scratch.
+
+This paradigm succeeds because of the transfer hypothesis: features learned on one task can improve performance on related tasks. A model pretrained to predict masked DNA tokens learns motif patterns, sequence constraints, and compositional structure. When fine-tuned to predict transcription factor binding, these representations provide a strong initialization that accelerates convergence and improves generalization. The pretrained model has already learned "what DNA looks like," so the fine-tuning stage need only specialize these representations to the binding prediction task.
+
+Genomics is particularly well-suited to this approach. We have orders of magnitude more unlabeled sequence than labeled functional data. Reference genomes provide billions of training examples at zero annotation cost. Even when functional labels exist, they are often sparse (covering small genomic regions), noisy (from experimental variability), or context-specific (measured in particular cell types or conditions). Pretraining allows us to leverage the full scope of genomic sequence diversity before specializing to narrower labeled datasets.
+
+This contrasts sharply with training models from scratch on supervised tasks alone. Without pretraining, models must learn both general sequence structure and task-specific patterns simultaneously from limited labeled examples. This is not only data-inefficient but also risks overfitting to spurious correlations in small datasets. Pretraining separates these learning stages: general representations come from abundant unlabeled data, while task-specific refinement uses precious labeled examples more efficiently.
+
+::: {.callout-warning .content-visible when-profile="draft"}
+**Visual suggestion (pretraining paradigm overview):** A two-stage diagram showing (1) pretraining on unlabeled genome sequences with self-supervised objectives, producing a pretrained model, then (2) fine-tuning on labeled data (e.g., ChIP-seq peaks, variant effects) to produce a task-specific model. Arrows indicate parameter initialization from pretraining to fine-tuning.
+:::
+
+## Masked Language Modeling
+
+Masked language modeling treats sequences as partially observed and trains models to predict missing content from surrounding context. Inspired by BERT's success in NLP, MLM has become the dominant pretraining objective for genomic models. The core idea is simple: randomly mask portions of an input sequence, feed the corrupted sequence to the model, and train the model to reconstruct the original tokens at masked positions.
+
+In practice, a masking strategy replaces selected tokens with a special `[MASK]` token or leaves them unchanged with some probability. For DNA sequences, this might mean masking individual nucleotides, k-mers, or byte-pair encoding tokens depending on the tokenization scheme. The model processes the masked sequence through its layers and produces predictions for the masked positions. The loss function is typically cross-entropy over the vocabulary at each masked position, computed only for masked tokens to avoid wasting computation on unmasked positions.
+
+MLM encourages bidirectional context integration. Unlike left-to-right language models that can only condition on past tokens, MLM models see both left and right context when predicting masked positions. For genomics, this is biologically appropriate: regulatory function depends on patterns both upstream and downstream of any given position. A transcription factor binding site might be recognized through flanking sequences on both sides, and splicing signals require coordination between donor and acceptor sites separated by hundreds of bases.
+
+The choice of masking strategy significantly impacts what models learn. Random masking of individual tokens creates a simple objective where each prediction is relatively local. Span masking, which masks contiguous blocks of tokens, forces models to infer longer-range dependencies and compositional patterns. Whole-word masking in NLP masks all tokens corresponding to a word, preventing trivial solutions from subword statistics alone. In genomics, masking entire k-mers or motifs rather than individual bases may encourage learning of functional modules rather than just nucleotide co-occurrence.
+
+Masking rates present a trade-off. Higher masking rates (e.g., 30-40%) provide more supervision per sequence but make the prediction task harder and may destabilize training. Lower masking rates (e.g., 10-15%) are more stable but require more data to achieve equivalent coverage. The standard 15% rate from BERT represents a reasonable compromise, though genomic models have explored a range of values depending on context length and tokenization granularity.
+
+::: {.callout-warning .content-visible when-profile="draft"}
+**Visual suggestion (MLM mechanics):** A schematic showing an input DNA sequence, the same sequence with 15% of tokens masked, the model architecture processing the masked sequence, and predictions at masked positions. Highlight how bidirectional attention allows each position to see both upstream and downstream context.
+:::
+
+### Genomic Adaptations of MLM
+
+DNABERT pioneered MLM for genomic sequences by applying it to overlapping k-mer tokens. Rather than treating DNA as individual nucleotides, DNABERT tokenizes sequences into all possible 6-mers with overlapping windows. Masking then operates at the k-mer level: entire 6-mers are masked as units. This design encourages the model to learn k-mer level patterns that correspond to transcription factor binding motifs and other short functional elements.
+
+DNABERT-2 adopted byte-pair encoding tokenization, which learns a vocabulary of variable-length subword units from the training corpus. BPE tokens might represent single nucleotides, common motifs, or repeated elements depending on their frequency. MLM with BPE tokens balances the flexibility of single-nucleotide models with the compositional structure of fixed k-mer approaches. However, BPE introduces its own complexities: the learned vocabulary may not align with biological functional units, and different tokenization schemes can lead to different learned representations.
+
+The Nucleotide Transformer family applies MLM with variable-length masking and very long context windows, pretraining on sequences up to 1000 nucleotides or more. By scaling both model capacity and context length, these models capture longer-range dependencies relevant to enhancer-promoter interactions, chromatin domain structure, and coordinated regulation of gene clusters.
+
+Biological considerations inform masking decisions beyond algorithmic choices. Masking functional elements like transcription factor binding sites or splice motifs creates harder but more biologically relevant prediction tasks. If the training corpus includes evolutionary conservation information, masking conserved regions may teach models about functional constraint. Conversely, masking repetitive or low-complexity regions may provide less informative supervision.
+
+### What MLM Learns
+
+MLM objectives drive models to capture multiple aspects of sequence organization. At the lowest level, models learn nucleotide-level statistics and local constraints: CpG dinucleotide frequencies, GC content biases, and simple repeat patterns. These basic properties are necessary but not sufficient for biological function.
+
+At a higher level, MLM encourages learning of motif patterns. To accurately predict masked positions in transcription factor binding sites, models must recognize surrounding motif context. Predicting splice donor or acceptor sequences requires models to encode the consensus patterns characteristic of these sites. Over many training examples, models implicitly build representations of motifs as distributed patterns across embedding dimensions.
+
+Beyond individual motifs, MLM captures sequence grammar: how motifs combine, their spatial relationships, and context-dependent usage. If certain transcription factor motifs co-occur at specific distances, masking one motif and predicting it from the other reinforces this grammatical relationship in the learned representations. This compositional learning is difficult to achieve with supervised learning alone, which typically provides coarse binary labels rather than fine-grained structural information.
+
+Finally, MLM captures evolutionary conservation patterns. Conserved sequences are often conserved because mutations would disrupt function. By learning to predict these conserved patterns from surrounding context, models implicitly learn which sequence features are constrained by selection. This knowledge transfers to downstream tasks like variant effect prediction, where the model can recognize when a mutation disrupts a learned conserved pattern.
+
+## Next-Token Prediction and Autoregressive Models
+
+Next-token prediction represents an alternative pretraining paradigm where models learn to predict each token in a sequence given only the preceding tokens. This autoregressive approach, popularized by GPT-style language models, treats sequence generation as a core capability rather than a secondary feature. The objective is straightforward: for a sequence of length $T$, predict token $t$ from tokens $1$ through $t-1$, maximizing the likelihood of the observed sequence under the model.
+
+Algorithmically, next-token prediction requires causal masking in the attention mechanism. Unlike MLM's bidirectional attention, autoregressive models prevent each position from attending to future positions. This ensures predictions at position $t$ depend only on positions $1, \ldots, t-1$, matching the conditional probability factorization inherent in the objective. The loss function is still cross-entropy over the vocabulary, but computed at every position rather than only at masked locations.
+
+This objective has a distinct flavor from MLM. By predicting sequences token by token, autoregressive models naturally learn generative capabilities. They can sample new sequences by predicting the first token, conditioning on it to predict the second, and so forth. This makes autoregressive pretraining attractive for sequence design applications where generating novel sequences is the goal rather than a side benefit.
+
+The trade-off is computational and statistical efficiency. MLM sees bidirectional context and predicts multiple positions per sequence in parallel. Autoregressive models see only left context and must process sequences sequentially during generation. For pretraining, however, teacher forcing allows efficient parallel computation: the model predicts all positions simultaneously during training by feeding in the ground truth sequence shifted by one position. Generation at inference time is slower, but pretraining speed is comparable to MLM.
+
+::: {.callout-warning .content-visible when-profile="draft"}
+**Visual suggestion (autoregressive vs bidirectional):** A side-by-side comparison showing (1) bidirectional attention in MLM where each position sees full context, and (2) causal attention in autoregressive models where each position sees only leftward context. Illustrate the difference in attention masks and how it affects representation learning.
+:::
+
+### Genomic Applications of Autoregressive Pretraining
+
+DNA sequences have no inherent directionality: both strands encode information, and regulatory function is often strand-agnostic. This complicates autoregressive modeling, which assumes a natural left-to-right reading order. Early autoregressive genomic models addressed this by training separate models for forward and reverse strands or by augmenting training data with reverse-complement sequences.
+
+Evo-2 represents a recent large-scale autoregressive genomic model trained on whole genomes with long-context transformers. By predicting next tokens across chromosome-length sequences, Evo-2 learns long-range dependencies and generates coherent synthetic genomes. This capability is useful for designing regulatory circuits, generating training data through synthetic augmentation, and exploring sequence space beyond observed genomes.
+
+Protein sequence models also benefit from autoregressive pretraining. ESM models, which predict amino acid sequences autoregressively, learn protein grammar and evolutionary constraints that transfer to structure prediction and function annotation tasks. For proteins, where N-terminus to C-terminus directionality has biological significance, autoregressive models are more natural than for bidirectional DNA.
+
+Sequence design is a primary use case for autoregressive genomic models. Generating functional promoters, enhancers, or protein coding sequences benefits from coherent left-to-right generation that respects grammatical constraints learned during pretraining. Conditional generation, where the model generates sequences conditioned on desired properties, is also straightforward with autoregressive models by incorporating conditioning information into the context at each step.
+
+### Trade-offs Between MLM and Autoregressive Objectives
+
+The choice between MLM and next-token prediction involves several considerations. For tasks requiring understanding of full sequence context, MLM's bidirectional attention provides richer representations. Predicting transcription factor binding at a specific location benefits from seeing both upstream and downstream sequence. MLM models learn these bidirectional relationships explicitly during pretraining.
+
+For generative tasks, autoregressive models are more principled. Their sequential prediction structure matches the generation process exactly, whereas generating from MLM models requires iterative masking and filling or auxiliary generative heads. Autoregressive models can also naturally handle variable-length sequences and streaming data.
+
+Pretraining efficiency differs between objectives. MLM predicts only 15% of tokens per sequence but uses bidirectional context for each prediction. Autoregressive models predict all tokens but with unidirectional context. Empirically, MLM often converges faster to good downstream performance, but autoregressive models scale well to very large datasets and long contexts.
+
+Task-specific performance depends on alignment between pretraining and downstream objectives. If the downstream task involves predicting missing information from context (variant effect prediction, binding site identification), MLM pretraining provides better transfer. If the downstream task involves generation or sequential decision-making (sequence design, sampling from conditional distributions), autoregressive pretraining aligns more naturally.
+
+## Denoising Objectives
+
+Denoising objectives generalize masked language modeling by introducing more complex forms of corruption beyond simple token masking. The core principle remains: corrupt the input in some way, then train the model to reconstruct the original uncorrupted sequence. By varying the corruption strategy, we can teach models different aspects of sequence structure and robustness properties.
+
+Token substitution replaces input tokens with random tokens from the vocabulary. Unlike masking, which uses a special symbol, substitution creates realistic corrupted sequences that resemble sequencing errors or natural variation. The model must learn to distinguish correct from incorrect tokens based on surrounding context. This encourages representations that capture local consistency and motif structure.
+
+Deletion and insertion corruptions remove or add tokens at random positions, shifting subsequent tokens and changing sequence length. This teaches models about position-invariant features and functional elements that remain identifiable despite surrounding changes. For genomics, insertions and deletions are biologically realistic: indels are common mutation types, and models that handle them gracefully during pretraining may better predict their effects downstream.
+
+Sequence permutation randomly shuffles spans of tokens, disrupting syntactic structure while preserving token content. Reconstructing the original order from the scrambled sequence forces the model to learn ordering dependencies and grammatical constraints. In genomics, this might reveal motif ordering rules or constraints on enhancer element organization.
+
+Multi-corruption strategies combine several corruption types simultaneously: some tokens masked, others substituted, still others deleted or permuted. This creates a richer supervision signal that captures multiple aspects of sequence organization. However, multi-corruption makes the reconstruction task harder and may slow convergence if not carefully balanced.
+
+::: {.callout-warning .content-visible when-profile="draft"}
+**Visual suggestion (denoising strategies):** A set of examples showing an original DNA sequence followed by the same sequence under different corruption types (masking, substitution, deletion/insertion, permutation). For each, show the corrupted input and highlight the model's reconstruction task.
+:::
+
+### Genomic Denoising Strategies
+
+Simulating sequencing errors provides biologically motivated corruption for genomic models. Base miscalls, systematic biases from sequencing platforms, and quality score patterns can all be incorporated into corruption strategies. Models trained with such corruptions may generalize better to real sequencing data with platform-specific error profiles.
+
+Variant augmentation introduces biologically realistic sequence changes based on population variation. Randomly substituting alleles at known polymorphic sites or inserting variants from databases like gnomAD creates corrupted sequences that reflect natural genetic diversity. The model learns to recognize variants as systematic deviations from reference patterns, which may improve variant effect prediction downstream.
+
+Structural variation simulation models larger-scale genomic changes: tandem duplications, copy number variation, and segmental rearrangements. These corruptions are harder to implement but capture realistic sources of genomic diversity beyond single-nucleotide changes. Models trained with structural variation corruptions may better understand how gene dosage, enhancer duplication, or domain boundary disruptions affect function.
+
+Robustness to distribution shift is a key benefit of denoising pretraining. If downstream applications involve sequences from different populations, environments, or sequencing platforms than the pretraining corpus, models pretrained with appropriate corruptions can maintain performance despite distribution mismatch. This is particularly valuable in clinical genomics, where validation cohorts often differ from discovery cohorts in ancestry, sequencing technology, or phenotyping protocols.
+
+## Contrastive Learning
+
+Contrastive learning takes a fundamentally different approach to self-supervised pretraining. Instead of reconstructing corrupted inputs, contrastive objectives train models to produce similar representations for different views of the same sequence while distinguishing them from representations of unrelated sequences. The intuition is that augmented versions of a sequence (e.g., with minor corruptions or transformations) should map to nearby points in representation space, while unrelated sequences should map to distant points.
+
+The algorithmic framework typically involves constructing positive pairs and negative samples. For a given anchor sequence, positive pairs are created through augmentation: reverse complementation, random cropping, variant injection, or other transformations that preserve functional identity. Negative samples are drawn from other sequences in the training batch. The model produces embeddings for all sequences, and the contrastive loss encourages anchor and positive embeddings to be similar (high cosine similarity or low distance) while pushing apart anchor and negative embeddings.
+
+InfoNCE loss is the most common contrastive objective. For an anchor embedding $z_i$ and positive embedding $z_i^+$, InfoNCE maximizes:
+
+$$\log \frac{\exp(z_i \cdot z_i^+ / \tau)}{\sum_j \exp(z_i \cdot z_j / \tau)}$$
+
+where the sum in the denominator runs over the positive and all negative samples, and $\tau$ is a temperature parameter controlling the concentration of the distribution. Lower temperatures make the model more discriminative.
+
+NT-Xent (normalized temperature-scaled cross entropy) is a variant used in SimCLR and related methods. It differs primarily in normalization details but shares the same core principle: maximize agreement between augmented views while minimizing agreement with unrelated examples.
+
+Triplet loss offers an alternative formulation using anchor-positive-negative triplets directly:
+
+$$\max(0, d(z_a, z_p) - d(z_a, z_n) + m)$$
+
+where $d$ is a distance metric (often Euclidean distance) and $m$ is a margin hyperparameter. This loss explicitly enforces that positives are closer than negatives by at least margin $m$.
+
+::: {.callout-warning .content-visible when-profile="draft"}
+**Visual suggestion (contrastive learning):** A diagram showing (1) an anchor sequence, (2) positive examples created through augmentation (reverse complement, cropped versions, variants), (3) negative examples from other sequences, and (4) the embedding space where the model pulls positives together and pushes negatives apart.
+:::
+
+### Contrastive Strategies for Genomic Sequences
+
+Augmentation design is critical for contrastive learning. Augmentations must preserve functional identity while introducing variability: if augmentations change function, the contrastive objective will learn meaningless invariances. For genomic sequences, several augmentation strategies are biologically grounded.
+
+Reverse complementation is the simplest and most reliable augmentation. DNA is double-stranded, and many regulatory elements function identically on either strand. Training the model to treat forward and reverse complement sequences as equivalent captures strand symmetry inherent in molecular biology.
+
+Random cropping extracts overlapping windows from longer sequences. If a transcription factor binding site appears in multiple cropped windows, the model learns that the site is the functionally relevant feature regardless of surrounding context. This teaches position-invariant representations useful for tasks where absolute genomic coordinates are less important than local sequence content.
+
+Variant injection introduces common polymorphisms or simulated mutations into sequences. If the variants are neutral or do not disrupt function, treating the variant and reference sequences as positive pairs teaches the model robustness to genetic variation. This is particularly valuable for cross-population generalization, where models must recognize functional elements despite surrounding sequence polymorphism.
+
+Negative sampling strategies also matter. Random sequences from the genome provide straightforward negatives, but they may be too easy to distinguish: any functional sequence is easily separable from random intergenic sequence. Harder negatives, such as sequences from orthologous regions in related species or sequences with similar motif content but different functional annotations, provide more informative supervision.
+
+Cross-species contrastive learning leverages evolutionary relationships. Orthologous sequences from different species share functional identity despite nucleotide divergence. Treating orthologous pairs as positives and non-orthologous pairs as negatives teaches the model to extract species-invariant functional features. This can improve cross-species transfer: a model pretrained with human-mouse contrastive pairs may generalize better to rat or primate sequences.
+
+### Applications of Contrastive Genomic Representations
+
+Sequence embedding quality improves with contrastive pretraining. Models trained contrastively produce embedding spaces where functionally similar sequences cluster together. This is useful for nearest-neighbor search, sequence retrieval, and unsupervised clustering of regulatory elements based on learned representations.
+
+Variant effect prediction benefits from contrastive learning through robustness to genetic variation. If the model learns that sequences differing only by neutral variants are functionally equivalent, it will better distinguish disruptive variants that genuinely alter function from benign polymorphisms. This aligns with the clinical need to prioritize rare, deleterious variants over common, neutral ones.
+
+Evolutionary relationships emerge naturally in contrastive representations. If orthologous sequences are treated as positives during pretraining, the learned embedding space reflects evolutionary distance: closely related species have nearby embeddings, while distantly related species are separated. This can inform phylogenetic analyses and cross-species prediction tasks.
+
+## Multi-Task Pretraining
+
+Multi-task pretraining combines multiple related objectives during the same training run, jointly optimizing for several prediction tasks. The rationale is that different tasks provide complementary supervision signals: masking captures local patterns, chromatin prediction captures regulatory function, and conservation scoring captures evolutionary constraint. By learning representations that satisfy all tasks simultaneously, the model may develop richer and more general features than any single objective alone.
+
+Task selection is the first design decision. Ideally, tasks should be diverse enough to provide distinct supervision signals but related enough to benefit from shared representations. For genomic models, common combinations include:
+
+- Masked language modeling for general sequence structure.
+- Chromatin accessibility prediction for regulatory function.
+- Gene expression prediction for transcriptional output.
+- Evolutionary conservation scoring for functional constraint.
+- Variant frequency prediction from population databases.
+
+Each task operates on the same input sequence but predicts different outputs using task-specific head layers. The shared backbone encoder processes the sequence into intermediate representations, and separate prediction heads map these representations to task-specific outputs.
+
+Task weighting determines how much each task contributes to the total loss. With $L_1, \ldots, L_K$ representing individual task losses, the multi-task loss is typically:
+
+$$L_{\text{total}} = \sum_{k=1}^K w_k L_k$$
+
+where $w_k$ are task weights. Equal weighting ($w_k = 1$ for all $k$) is simple but may lead to imbalanced learning if tasks have different scales or difficulties. Task-specific weights can be tuned by grid search, but this is expensive with many tasks.
+
+Dynamic task weighting adjusts weights during training based on learning dynamics. Uncertainty-based weighting uses the magnitude of task losses as a signal: tasks with higher loss receive higher weight, encouraging the model to focus on harder objectives. Gradient-based methods balance task contributions by equalizing gradient magnitudes across tasks. These approaches require careful implementation to avoid instabilities.
+
+::: {.callout-warning .content-visible when-profile="draft"}
+**Visual suggestion (multi-task architecture):** A diagram showing a shared encoder backbone processing an input sequence, then branching into multiple task-specific prediction heads (MLM head, chromatin prediction head, conservation scoring head, etc.). Illustrate how gradients from all tasks flow back through the shared encoder.
+:::
+
+### Genomic Multi-Task Examples
+
+Enformer and Borzoi exemplify large-scale multi-task pretraining for genomics. Enformer predicts over 5,000 genomic assays simultaneously: ChIP-seq signals for hundreds of transcription factors and histone marks, DNase-seq and ATAC-seq accessibility, CAGE transcription initiation, and more. This massive multi-task objective forces the model to learn representations that capture diverse regulatory signals across cell types and experimental conditions.
+
+The task diversity in Enformer provides supervision far richer than any single assay alone. A model trained only on DNase-seq might learn general accessibility patterns but miss transcription factor specificity. A model trained only on H3K27ac ChIP-seq might capture active enhancers but miss repressive marks. Training on all assays jointly allows the model to disentangle overlapping and complementary signals, learning representations that generalize across regulatory contexts.
+
+Borzoi extends this paradigm to full RNA-seq coverage prediction, jointly modeling transcription initiation, splicing, and transcript abundance. By predicting both chromatin signals and transcriptomic outputs, Borzoi learns connections between regulatory state and gene expression that are difficult to capture with either modality alone.
+
+Combined MLM and chromatin prediction represents another multi-task configuration. The model predicts masked tokens through a language modeling head while simultaneously predicting chromatin accessibility or other functional readouts through regression heads. This hybrid objective balances sequence-level pretraining with functional-level supervision, potentially combining the benefits of both approaches.
+
+RNA, DNA, and protein joint training is an emerging direction. Models like those in the ESM family predict protein sequences and structures jointly, while genomic models are beginning to incorporate RNA-seq, ribosome profiling, and protein-DNA binding data into unified multi-task frameworks. These cross-modality models may learn representations that bridge sequence, structure, and function across biological scales.
+
+### When Multi-Task Helps and When It Hurts
+
+Task interference is a primary concern with multi-task learning. If tasks require conflicting representations, jointly optimizing for both may compromise performance on each compared to single-task baselines. In genomics, this might occur if one task benefits from very local features while another requires long-range context, forcing the model to choose a suboptimal architecture for both.
+
+Negative transfer occurs when adding a task during pretraining actually hurts downstream performance compared to training without it. This can happen if the additional task introduces noise, if task weights are poorly balanced, or if the auxiliary task shifts the learned representations away from features useful for the target downstream application.
+
+Computational overhead increases with the number of tasks. Each task requires a prediction head, loss computation, and storage of task-specific labels. Data loading and preprocessing become more complex when different tasks operate on different genomic regions or require different data formats. These costs must be weighed against potential benefits.
+
+The benefits of multi-task pretraining are largest when tasks are complementary and data for individual tasks is limited. If chromatin data is sparse for a particular cell type but gene expression data is abundant, jointly training on both may improve performance on both compared to single-task models. The shared representations allow information to flow between tasks, compensating for data scarcity in any single modality.
+
+## Data Strategies for Pretraining
+
+Corpus construction establishes the foundation for pretraining. The choice of training data determines what patterns the model can learn and how well it will generalize to downstream tasks. For genomic models, this involves decisions about reference genomes, population variation, repeat handling, and chromosome representation.
+
+Reference genomes are the standard starting point. Human genome assemblies like GRCh38 provide a high-quality, contiguous reference spanning all chromosomes. Training on the reference genome allows models to learn patterns characteristic of human DNA: base composition, repeat structure, gene organization, and regulatory architecture. However, the reference genome represents only a single haploid consensus sequence, missing the rich variation present in human populations.
+
+Population-scale variation can be incorporated through variant databases like gnomAD. Rather than training only on the reference sequence, we can inject variants at their observed population frequencies to create synthetic diploid genomes that reflect real genetic diversity. This teaches models that common polymorphisms are normal variation rather than errors, potentially improving robustness and variant effect prediction.
+
+Pan-genome approaches extend this further by explicitly representing multiple high-quality genome assemblies from diverse individuals. Instead of a single linear reference, pan-genomes capture structural variation, copy number differences, and population-specific haplotypes. Models trained on pan-genome representations may better understand how sequences function across genetic backgrounds.
+
+Repeat masking decisions impact pretraining. Simple repeats, tandem repeats, and transposable elements occupy substantial genomic fractions but contribute less to regulatory function than unique sequences. Hard-masking repeats (replacing them with Ns) reduces training data size but may discard information relevant to some tasks. Soft-masking (lowercase) retains sequence information while marking repetitive regions, allowing models to learn differential representations for repeats and unique sequences.
+
+Chromosome representation determines context window and segmentation. Some models train on entire chromosomes as single sequences, though this requires efficient long-range architectures. Others segment chromosomes into fixed-length windows (e.g., 1 kb, 10 kb, or 100 kb) and train on these fragments independently. Overlapping windows provide additional training examples but may create artificial dependencies at boundaries.
+
+### Data Augmentation and Sampling
+
+Data augmentation artificially increases training diversity without requiring additional labeled data. For genomic sequences, several augmentation strategies are standard.
+
+Reverse complementation exploits DNA strand symmetry. Augmenting each training sequence with its reverse complement doubles the effective training data and encourages models to learn strand-invariant representations. This is typically done on-the-fly during training rather than pre-computing augmented examples.
+
+Random cropping extracts variable-length windows from longer sequences or takes overlapping segments with stochastic offsets. This teaches position-invariant features: the model must recognize functional elements regardless of their absolute position within the training window.
+
+Variant injection randomly substitutes reference alleles with alternate alleles from population databases. This simulates genetic variation and teaches models to distinguish functional variants from neutral polymorphisms. Injection probabilities can match population allele frequencies for realistic augmentation.
+
+Sampling strategies determine which genomic regions contribute to training. Uniform sampling draws sequences randomly across the genome, weighting all regions equally. This is unbiased but means coding regions (2% of the human genome) are underrepresented.
+
+GC content balancing samples sequences to match a target GC distribution, preventing models from exploiting compositional biases. High GC regions (CpG islands, gene-dense loci) and low GC regions (AT-rich deserts, heterochromatin) are sampled proportionally rather than uniformly.
+
+Functional element enrichment oversamples genomic regions containing regulatory elements, transcription factor binding sites, or other features of interest. This biases the training distribution toward functional regions but can improve performance on downstream regulatory tasks by providing more supervision where it matters most.
+
+Negative example construction is important for contrastive and classification tasks. Random genomic sequences provide simple negatives, but shuffled sequences (preserving dinucleotide or higher-order statistics) or scrambled functional elements provide harder negatives that force models to learn genuine functional patterns rather than compositional shortcuts.
+
+## Curriculum Learning and Training Schedules
+
+Curriculum learning orders training examples from easy to hard, gradually increasing task difficulty as the model improves. This mimics educational curricula where foundational concepts are taught before advanced topics. In genomics, curriculum strategies can be applied to context length, pattern complexity, or functional difficulty.
+
+Context length curricula start with short sequences and progressively increase length as training proceeds. A transformer model might train first on 512-base windows, then 2 kb, then 10 kb, gradually expanding receptive field and long-range dependency requirements. This stabilizes early training by focusing on local patterns before introducing distant interactions.
+
+Low-to-high complexity curricula begin with simple sequences (e.g., coding regions with clear structure) before introducing complex regulatory regions with overlapping, context-dependent motifs. This progression allows models to master basic patterns before tackling harder cases.
+
+Coarse-to-fine curricula move from chromosome-level patterns to base-level resolution. Early training might focus on predicting gene density, chromatin state, or large-scale structure. Later training refines to single-base predictions, motif boundaries, and precise functional annotations.
+
+Training schedules encompass learning rate decay, batch size scaling, and warmup phases. Learning rate warmup gradually increases the learning rate from near-zero over the first few thousand steps. This prevents early training instability when the model has random initializations and large gradient variance.
+
+Cosine decay schedules reduce learning rate following a cosine curve from peak to near-zero over training. This provides aggressive learning early when gradients are informative and gentle refinement late when the model nears convergence. Step decay schedules drop learning rate by a fixed factor at predetermined intervals (e.g., every 10 epochs).
+
+Batch size scaling increases batch size during training, enabled by distributed training infrastructure. Larger batches reduce gradient variance but may require learning rate adjustments to maintain convergence speed. Some studies suggest optimal batch sizes scale with model size: larger models benefit from larger batches.
+
+Context length curriculum is particularly important for transformer models trained on genomic sequences. Training directly on long contexts (e.g., 100 kb) from initialization is unstable: attention matrices scale quadratically with sequence length, memory requirements are prohibitive, and gradients may vanish or explode. Starting with short contexts and progressively increasing length allows models to build stable representations before facing long-range dependencies.
+
+## Loss Functions and Optimization
+
+Objective-specific losses translate pretraining objectives into differentiable optimization targets. The choice of loss function impacts what the model learns and how efficiently it trains.
+
+Cross-entropy loss is standard for MLM and next-token prediction. For a vocabulary of size $V$, the model predicts a distribution $\hat{p}(x_i | \text{context})$ over tokens at position $i$, and cross-entropy measures disagreement with the true token:
+
+$$L_{\text{CE}} = -\log \hat{p}(x_i = x_i^{\text{true}} | \text{context})$$
+
+Averaged over all masked or predicted positions, this loss is minimized when the model's predicted distribution matches the true conditional distribution.
+
+Mean squared error or Poisson loss apply to continuous-valued predictions like chromatin signal intensity. If predicting ChIP-seq read counts, Poisson loss accounts for count-based variability:
+
+$$L_{\text{Poisson}} = -\log \text{Poisson}(y; \hat{\lambda})$$
+
+where $y$ is the observed count and $\hat{\lambda}$ is the predicted rate. MSE is simpler but ignores the discrete, count-based nature of the data.
+
+Multi-label classification losses handle cases where sequences have multiple overlapping labels (e.g., binding sites for multiple transcription factors). Binary cross-entropy per label or focal loss (which downweights easy examples) are common choices.
+
+Regression losses for continuous targets might use MSE, mean absolute error, or Huber loss (which is robust to outliers). The choice depends on the target distribution and desired sensitivity to extreme values.
+
+Optimization algorithms determine how gradient information updates model parameters. AdamW, a variant of Adam with decoupled weight decay, is the current standard for transformer pretraining. AdamW maintains running averages of gradients and squared gradients, enabling adaptive per-parameter learning rates that accelerate convergence compared to vanilla SGD.
+
+Learning rate schedules modulate the effective step size during training. Warmup phases prevent early instability. Cosine decay provides smooth reduction toward convergence. Linear decay is simpler but may not perform as well. Plateau-based schedules reduce learning rate when validation loss stops improving, though these require careful validation set construction to avoid overfitting to the validation metric.
+
+Gradient clipping prevents training instability from occasional large gradients. Clipping gradients by global norm (scaling all gradients proportionally when the total norm exceeds a threshold) is standard practice, especially for recurrent and transformer models where exploding gradients can occur.
+
+Mixed precision training uses lower-precision arithmetic (float16 or bfloat16 instead of float32) to reduce memory consumption and accelerate computation on modern GPUs. Loss scaling prevents underflow in float16, and careful handling of gradient updates ensures numerical stability. Mixed precision is now standard for large-scale pretraining.
+
+### Loss Scaling and Multi-Task Balancing
+
+Multi-task loss balancing ensures all tasks contribute meaningfully to learning. If one task has loss values 100 times larger than another, gradients will be dominated by the high-magnitude task unless weights compensate.
+
+Manual weighting requires setting $w_k$ for each task through grid search or heuristic reasoning. This is feasible for small numbers of tasks but scales poorly to hundreds or thousands of tasks as in Enformer.
+
+Uncertainty-based weighting parameterizes each task loss with a learned noise parameter $\sigma_k^2$:
+
+$$L_{\text{total}} = \sum_{k=1}^K \frac{1}{2 \sigma_k^2} L_k + \log \sigma_k$$
+
+The model learns $\sigma_k$ during training, automatically balancing task contributions based on their uncertainty. Tasks with high uncertainty (high $\sigma_k$) receive lower effective weight, while confident tasks (low $\sigma_k$) receive higher weight.
+
+Dynamic loss scaling adjusts task weights based on learning progress. If one task's loss plateaus while another continues improving, increasing weight on the plateaued task may reinvigorate learning. Gradient magnitude balancing normalizes task gradients to similar scales before combining them, preventing any single task from dominating updates.
+
+## Pretraining at Scale
+
+Large-scale pretraining requires substantial computational resources and careful infrastructure design. Modern genomic foundation models train on clusters with hundreds or thousands of GPUs, consuming months of compute time and terabytes of data.
+
+FLOPs (floating-point operations) scale with model size, sequence length, and training dataset size. A transformer with $L$ layers, hidden dimension $d$, and attention heads $h$ processing sequences of length $n$ requires approximately $12 L d^2 n + 4 L d n^2$ FLOPs per forward pass (ignoring feedforward layers). For models with billions of parameters on sequences of hundreds of kilobases, this amounts to petaFLOPs per training step.
+
+Memory footprint includes model parameters, activations, gradients, and optimizer states. For a model with $P$ parameters, each forward pass stores activations proportional to $P \cdot n$ (sequence length times depth). Backward passes compute gradients of size $P$, and AdamW stores two momentum buffers of size $P$ each. The total memory scales as $\sim 4P$ for parameters and optimizer states, plus activation memory that grows with batch size and sequence length.
+
+Distributed training strategies parallelize computation across many devices. Data parallelism replicates the model on each device and splits training batches, aggregating gradients across devices. This scales well up to the point where communication overhead dominates, typically when batch size per device becomes too small.
+
+Model parallelism splits the model itself across devices, with different layers or layer components on different GPUs. Pipeline parallelism stages layers sequentially, overlapping forward and backward passes across pipeline stages. These strategies enable training models too large to fit on a single device but introduce communication and synchronization overhead.
+
+### Data Throughput and Infrastructure
+
+Data loading and preprocessing can become bottlenecks at scale. Efficiently reading genomic sequences, tokenizing them, and assembling batches requires optimized data pipelines. Preprocessing (tokenization, masking, augmentation) should happen in parallel with training using dedicated CPU workers.
+
+Tokenization caching precomputes tokenized sequences and stores them on disk, avoiding repeated tokenization during training. This trades disk space for CPU time and significantly speeds up data loading when tokenization is expensive (e.g., byte-pair encoding).
+
+GPU utilization monitoring ensures hardware is fully used. Profiling tools identify bottlenecks: if GPUs idle waiting for data, improve data loading; if utilization is low during computation, increase batch size or optimize kernel efficiency.
+
+Multi-GPU and multi-node training distributes work across machines connected by high-bandwidth networks. Frameworks like PyTorch Distributed Data Parallel and DeepSpeed provide efficient synchronization and communication primitives. Gradient accumulation allows simulating large batch sizes by accumulating gradients over multiple mini-batches before updating parameters.
+
+Checkpointing strategies save model state periodically to enable recovery from failures and to provide intermediate models for evaluation. Frequent checkpointing (every few hundred steps) provides fine-grained recovery but consumes significant disk space and I/O bandwidth. Balancing checkpoint frequency with storage constraints is essential for long training runs.
+
+Fault tolerance mechanisms handle hardware failures during training. Preemptible cloud instances, power outages, or hardware errors can interrupt training. Automatic checkpoint loading and job restarting minimize lost work. Some frameworks support dynamic rescheduling and elastic training, adjusting parallelism as resources become available or fail.
+
+## Monitoring and Debugging Pretraining
+
+Pretraining runs span weeks or months, and early detection of issues prevents wasted computation. Careful monitoring and debugging practices are essential.
+
+Training loss curves should decrease smoothly in the early stages, eventually plateauing as the model approaches convergence. Sudden spikes suggest numerical instability, poor learning rate schedules, or corrupted batches. Persistent plateaus may indicate insufficient model capacity, inappropriate objectives, or optimization hyperparameters.
+
+Perplexity measures how well a language model predicts sequences. For an MLM or next-token objective, perplexity is the exponential of the average cross-entropy loss:
+
+$$\text{perplexity} = \exp(L_{\text{CE}})$$
+
+Lower perplexity indicates better sequence modeling. Tracking perplexity on held-out validation data monitors generalization: if training perplexity decreases but validation perplexity increases, the model is overfitting.
+
+Gradient norms indicate whether gradients are well-scaled. Very small gradients (vanishing gradient problem) prevent learning, while very large gradients (exploding gradients) destabilize training. Tracking the global gradient norm and per-layer gradient norms helps diagnose these issues early.
+
+Red flags include loss explosions (often from numerical overflow or learning rate too high), gradient clipping activating frequently (gradients consistently too large), mode collapse in generative models (generating repetitive or degenerate sequences), and overfitting to the pretraining corpus (validation loss diverges from training loss).
+
+### Debugging Strategies
+
+Probing tasks provide sanity checks during pretraining. Simple downstream evaluations (e.g., predicting DNase-seq peaks from sequence) can be run periodically on intermediate checkpoints. If probing performance plateaus or degrades, pretraining may not be learning useful representations.
+
+Attention pattern visualization examines what the model attends to. Inspecting attention weights at different layers and heads can reveal whether the model learns meaningful patterns: do heads attend to motif boundaries, promoter-enhancer distances, or splice sites? Or do attention patterns appear random or dominated by positional biases?
+
+Embedding space analysis projects learned representations into low-dimensional space using t-SNE or UMAP. Sequences with similar function should cluster together. If embeddings fail to separate functional classes (e.g., enhancers vs silencers) or show no structure, representations may not capture relevant biology.
+
+Ablation studies isolate the impact of design choices. If uncertain whether multi-task training helps, train a baseline model without auxiliary tasks and compare downstream performance. If unsure about a data augmentation strategy, run training with and without it. Ablations are expensive but provide definitive answers when debugging complex pretraining pipelines.
+
+## Choosing the Right Pretraining Strategy
+
+Selecting a pretraining approach involves balancing computational budget, target downstream tasks, data availability, and model architecture constraints. No single strategy is universally optimal, so understanding trade-offs is essential.
+
+Compute budget determines feasible scale. Pretraining large models on long contexts requires significant resources. If compute is limited, smaller models, shorter contexts, or single-task objectives may be more practical. If abundant compute is available, multi-task pretraining on diverse objectives and long contexts provides maximum flexibility.
+
+Target downstream tasks influence objective selection. For tasks requiring sequence understanding (variant effect prediction, binding site classification), MLM or denoising objectives align well. For generative design (creating synthetic promoters or enhancers), autoregressive or diffusion-based objectives are more natural. For cross-species applications, contrastive learning on orthologous sequences may improve transfer.
+
+Data availability shapes corpus construction. If only reference genomes are available, standard MLM pretraining suffices. If functional assays (chromatin, expression) exist at scale, multi-task pretraining leverages this supervision. If population variant databases are accessible, denoising with variant augmentation improves robustness.
+
+Model architecture constraints also matter. Convolutional models have limited receptive fields, so curriculum strategies on context length are less critical. Transformer models benefit from progressive context scaling. Recurrent models face vanishing gradients on long sequences, making denoising objectives with deletions/insertions challenging.
+
+### Objective Selection Guidelines
+
+For most general-purpose DNA or protein models, MLM pretraining provides a strong default. It learns bidirectional context, scales efficiently, and transfers well to diverse downstream tasks. DNABERT and DNABERT-2 exemplify this approach for genomics, while ESM models demonstrate its effectiveness for proteins.
+
+Next-token prediction is preferred when generation is the primary goal. If designing sequences from scratch, sampling from autoregressive models produces coherent outputs respecting learned grammar. Evo-2 and GPT-style genomic models exemplify this.
+
+Multi-task pretraining makes sense when functional labels are available at scale and tasks are complementary. Enformer's success with thousands of chromatin assays shows the power of multi-task learning when data supports it. However, multi-task requires infrastructure to handle heterogeneous data and careful loss balancing.
+
+Contrastive learning is valuable for cross-species or variant-focused applications. If the goal is to transfer models trained on model organisms to related species, or to improve robustness to genetic variation, contrastive pretraining on orthologous pairs or variant-augmented sequences provides targeted benefits.
+
+### When to Pretrain from Scratch vs Fine-Tune
+
+Starting from a pretrained model is almost always preferable if an appropriate model exists. Fine-tuning a DNABERT-2 checkpoint on a new binding prediction task is faster and more data-efficient than training from scratch. However, several scenarios favor pretraining from scratch.
+
+New tokenization schemes require retraining. If switching from k-mer tokens to byte-pair encoding or single-nucleotide tokens, the existing vocabulary and embeddings are incompatible. Starting fresh is necessary.
+
+New species without suitable existing models may benefit from pretraining on that species' genome. While DNABERT trained on human DNA transfers reasonably to mouse, more distant organisms (plants, bacteria) may require species-specific pretraining to capture their unique sequence properties.
+
+Different architectures cannot reuse pretrained weights. If moving from transformers to convolutional models or hybrid architectures, pretrained parameters do not apply directly. However, knowledge distillation or representation transfer may still help.
+
+More data for the same domain suggests continued pretraining rather than starting fresh. If an existing model was pretrained on 3 billion tokens but a larger corpus is now available, continued pretraining from the existing checkpoint on the new data extends coverage without discarding prior learning.
+
+## Case Studies: How Leading Models Were Pretrained
+
+Examining how successful models were pretrained provides concrete lessons and design patterns.
+
+### DNABERT
+
+DNABERT introduced MLM pretraining to genomics by adapting BERT's architecture to DNA sequences with overlapping k-mer tokenization. The model was pretrained on the human genome with 6-mer tokens, masking 15% of tokens at random. Training used standard BERT hyperparameters: AdamW optimizer with warmup, dropout regularization, and layer normalization.
+
+Key lessons from DNABERT include the importance of tokenization choice (k-mers capture motif-level patterns better than single nucleotides), the value of strand symmetry (reverse complement augmentation improved performance), and the transferability of representations (pretrained DNABERT generalized well to diverse regulatory tasks despite training only on raw genome sequence).
+
+### HyenaDNA
+
+HyenaDNA demonstrated that efficient long-range architectures enable pretraining on extremely long contexts. By using Hyena layers (subquadratic attention alternatives), HyenaDNA scaled to 1 Mb contexts, far beyond standard transformers. Pretraining used single-nucleotide next-token prediction on the human genome with a curriculum that progressively increased context length from short to long.
+
+Lessons from HyenaDNA include the feasibility of million-base contexts with appropriate architectures, the benefits of curriculum learning for context scaling, and the emergence of long-range regulatory patterns when models have sufficient receptive field.
+
+### Enformer
+
+Enformer pioneered multi-task chromatin prediction at scale. The model was pretrained jointly on over 5,000 assays from ENCODE, Roadmap Epigenomics, and other consortia, using a hybrid convolutional-transformer architecture. Task weighting was carefully balanced to prevent any single assay from dominating training. The model predicts chromatin signals across 128 kb windows with 128 bp resolution.
+
+Key insights from Enformer include the power of large-scale multi-task learning (joint training on diverse assays improves all tasks), the importance of architectural design (combining convolutions for local patterns with transformers for long-range interactions balances efficiency and capacity), and the value of attention for interpretability (attention weights reveal learned enhancer-promoter contacts).
+
+### ESM-2
+
+ESM-2 represents the state-of-the-art for protein language models, scaling to 15 billion parameters on evolutionary databases containing billions of protein sequences. Pretraining used standard MLM on amino acid sequences, but at unprecedented scale. ESM-2 demonstrated that pretraining on evolutionary diversity (hundreds of millions of protein families) transfers exceptionally well to structure prediction, function annotation, and protein design tasks.
+
+Lessons from ESM-2 include the benefit of extreme scale (larger models and more data continue to improve even at billions of parameters), the value of evolutionary information (pretraining on diverse sequences captures constraints not visible in individual genomes), and the emergence of structural understanding from sequence alone (ESM-2 representations contain information about 3D structure despite no explicit structural supervision).
+
+::: {.callout-warning .content-visible when-profile="draft"}
+**Visual suggestion (case study comparison table):** A table summarizing DNABERT, HyenaDNA, Enformer, and ESM-2 along dimensions such as objective (MLM vs next-token vs multi-task), architecture (transformer vs hybrid vs Hyena), pretraining corpus (human genome vs multi-species vs protein databases), context length, and key innovations.
+:::
+
+## The Relationship Between Pretraining and Transfer
+
+Pretraining objectives predict transfer performance, though not always in obvious ways. MLM pretraining emphasizes bidirectional understanding, which benefits classification and interpretation tasks requiring full context. Next-token prediction emphasizes generation, favoring sequence design applications. Multi-task pretraining on functional assays directly optimizes for functional understanding, often providing best transfer to similar downstream tasks.
+
+Misalignment between pretraining and downstream objectives can cause problems. If a model is pretrained autoregressively but then fine-tuned for bidirectional classification, the causal attention structure limits information flow. Conversely, an MLM-pretrained model cannot generate sequences without additional architectural modifications. Bridging these gaps may require intermediate objectives, hybrid architectures, or multi-stage pretraining.
+
+Intermediate objectives provide gradual adaptation. A model might first pretrain with MLM on raw sequence, then continue pretraining with chromatin prediction on functional labels, and finally fine-tune on a specific variant effect task. Each stage specializes representations progressively, transferring knowledge from abundant unlabeled data through intermediate supervision to the final task.
+
+For further discussion of deployment and transfer strategies, see @sec-transfer.
+
+## Open Questions and Future Directions
+
+Despite rapid progress, many fundamental questions about genomic pretraining remain open.
+
+Optimal objective combinations are unclear. Should we jointly train with MLM and chromatin prediction, or train sequentially? How many auxiliary tasks help before we hit diminishing returns? Do contrastive and generative objectives complement each other, or do they interfere?
+
+Scaling laws relating pretraining compute, data size, and model capacity to downstream performance are not yet well-characterized for genomics. In NLP, power-law relationships predict optimal model sizing and training duration given a compute budget. Establishing similar laws for genomic models would guide resource allocation.
+
+Task-aware pretraining vs truly general objectives presents a design tension. Enformer's multi-task objective is highly task-aware, directly optimizing for chromatin predictions. DNABERT's MLM is more general, agnostic to downstream tasks. Which approach generalizes better to unforeseen applications?
+
+Incorporating biological priors (e.g., known motifs, pathway structure, evolutionary constraints) vs learning from scratch remains debated. Hand-engineered features risk encoding false assumptions, but pure data-driven learning may rediscover basic biology inefficiently. Hybrid approaches that combine priors with learned representations are underexplored.
+
+Continual pretraining as new data arrives is increasingly relevant. As sequencing technologies improve and new assays emerge, how do we update pretrained models without catastrophic forgetting of prior knowledge? Online learning and elastic weight consolidation are potential solutions but remain largely untested in genomics.
+
+## Summary and Best Practices
+
+Pretraining objectives form the foundation of modern genomic models. This chapter has surveyed the major families: masked language modeling for bidirectional sequence understanding, next-token prediction for generation, denoising for robustness, contrastive learning for invariant representations, and multi-task learning for functional supervision.
+
+Core principles apply across objectives. Self-supervised learning leverages abundant unlabeled sequence data to learn general representations. Transfer from pretraining to fine-tuning improves data efficiency and generalization. Careful design of objectives, data strategies, and optimization details determines success.
+
+When designing pretraining strategies, consider:
+
+- **Objective alignment**: Match pretraining objective to downstream task characteristics (bidirectional understanding vs generation).
+- **Data coverage**: Pretrain on diverse, representative genomic sequences; augment to cover variation.
+- **Scale appropriately**: Larger models and more data improve performance, but compute budget constrains ambition.
+- **Monitor carefully**: Track loss curves, validation metrics, and probing tasks to catch issues early.
+- **Evaluate transfer**: Pretraining is only valuable if it improves downstream performance; benchmark regularly.
+
+Best practices distilled from leading models include:
+
+- Use MLM for most general-purpose DNA and protein models.
+- Apply multi-task pretraining when functional labels exist at scale.
+- Incorporate data augmentation (reverse complement, cropping, variant injection) for robustness.
+- Scale context length gradually via curriculum learning for transformers.
+- Balance multi-task losses carefully to avoid task domination.
+- Leverage existing pretrained models when possible; pretrain from scratch only when necessary.
+
+The next chapter (@sec-transfer) explores how to deploy and adapt pretrained models to specific downstream tasks, closing the loop from general-purpose pretraining to specialized applications.

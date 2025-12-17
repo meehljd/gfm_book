@@ -1,0 +1,370 @@
+::: {.callout-warning .content-visible when-profile="draft"}
+
+:::
+
+# Genomic Foundation Models: Concepts & Taxonomy {#sec-foundation}
+
+The preceding chapters traced deep learning architectures from convolutional networks for regulatory sequence prediction through recurrent and transformer-based models for variant effect prediction. These architectures established that neural networks could learn genomic patterns directly from sequence, often matching or exceeding expert-crafted features. However, most models operated within narrow task boundaries: DeepSEA predicted chromatin accessibility, SpliceAI predicted splicing outcomes, and Enformer mapped sequences to molecular readouts. Each model solved its specific problem well but offered limited transferability to other genomic questions.
+
+The emergence of foundation models represents a fundamental shift in how we approach computational genomics. Rather than training separate models for each task, foundation models learn general representations that can be adapted to diverse downstream applications. This paradigm follows the transformative success of large language models in natural language processing and protein language models in structural biology, where models pretrained on vast unlabeled corpora have become infrastructure for entire research communities.
+
+Genomics presents unique challenges for the foundation model paradigm. The scale of genomic context necessary to capture distal regulatory interactions far exceeds typical sequence lengths in protein or language modeling. Single-nucleotide resolution is often essential, ruling out aggressive tokenization schemes that work well in other domains. The diversity of genomic tasks spans orders of magnitude, from predicting local chromatin states to estimating polygenic disease risk across populations. Despite these challenges, genomic foundation models have rapidly emerged as practical tools for variant interpretation, regulatory genomics, and complex trait prediction.
+
+This chapter addresses the conceptual landscape of genomic foundation models rather than their implementation details. We define what distinguishes foundation models from task-specific architectures, organize the emerging ecosystem into a practical taxonomy, and establish design principles that guide model selection and development. The framework developed here will inform subsequent chapters as we examine training procedures, deployment strategies, and specific application domains.
+
+::: {.callout-warning .content-visible when-profile="draft"}
+**Figure suggestion:** A timeline diagram showing the progression from hand-crafted scores (CADD, SIFT circa 2014) through task-specific deep models (DeepSEA 2015, SpliceAI 2019, Enformer 2021) to foundation models (DNABERT 2021, HyenaDNA 2023, NT v2 2023, GROVER 2024). Include parameter counts and context lengths as secondary axes to show the scaling trends.
+:::
+
+## From Task-Specific Models to Foundation Models
+
+The history of computational genomics reveals a consistent pattern: models become more general while maintaining or improving task-specific performance. Hand-crafted scores such as CADD, DANN, and SIFT established that integration of diverse genomic annotations could improve variant pathogenicity prediction [@rentzsch_cadd_2019; @schubach_cadd_2024]. These approaches relied on expert feature engineering, combining conservation scores, functional annotations, and population frequency data through ensemble methods or logistic regression.
+
+Task-specific deep learning models demonstrated that neural networks could learn relevant features directly from sequence. DeepSEA predicted chromatin accessibility and transcription factor binding from 1 kb sequences using convolutional architectures [@zhou_deepsea_2015]. ExPecto extended this approach to gene expression prediction by modeling regulatory elements across multiple cell types [@zhou_expecto_2018]. Sei organized regulatory predictions into interpretable sequence classes through unsupervised clustering [@chen_deepsea_2022]. SpliceAI achieved near-perfect splice site prediction through dilated convolutions over 10 kb contexts [@jaganathan_spliceai_2019]. Enformer scaled sequence-to-function modeling to 200 kb windows and thousands of chromatin tracks through transformer architectures [@avsec_enformer_2021].
+
+These models succeeded within their specific domains but remained difficult to repurpose. Training a DeepSEA model required chromatin accessibility data. Using SpliceAI for regulatory prediction would require complete retraining on different labels. Each application domain needed its own model, trained from scratch on task-specific data.
+
+Sequence language models introduced self-supervised learning to genomics. DNABERT applied masked language modeling to DNA sequences, demonstrating that general representations could be learned without task-specific labels [@ji_dnabert_2021]. ESM and ESM-2 showed that protein language models pretrained on sequence alone could transfer effectively to structure prediction, variant effect prediction, and protein design [@rives_esm_2021; @lin_esm-2_2022]. The Nucleotide Transformer family scaled DNA language modeling to cross-species training corpora [@dalla-torre_nucleotide_2023]. HyenaDNA used implicit convolutions to reach million-token contexts at single-nucleotide resolution [@nguyen_hyenadna_2023].
+
+True genomic foundation models emerged when models satisfied several criteria simultaneously: pretraining on large-scale genomic data with minimal supervision, production of general-purpose representations useful across diverse tasks, demonstrated transfer capability across assays and tissues and species, and standardized interfaces for embedding extraction and downstream adaptation. These properties distinguish foundation models from earlier approaches. A large Enformer model trained on chromatin data remains task-specific despite its size. A DNA language model trained on reference genomes qualifies as a foundation model even if its parameter count is modest, provided it produces reusable representations.
+
+The shift from task-specific to foundation models changes the relationship between model developers and users. Task-specific models deliver predictions as their primary product. Foundation models deliver representations that users adapt to their own tasks. This distinction affects everything from model architecture design to evaluation strategies to deployment infrastructure.
+
+## Defining Genomic Foundation Models
+
+The term "foundation model" appears frequently in genomics literature, sometimes applied to any large neural network trained on biological sequences. For practical purposes, establishing working criteria helps separate true genomic foundation models from ordinary deep learning approaches that happen to operate on DNA or protein sequences.
+
+### Essential Properties
+
+A genomic foundation model satisfies several key properties that distinguish it from task-specific architectures.
+
+**Large-scale pretraining with minimal supervision.** Foundation models train on entire genomes, pan-genomic sequence collections, or large assay compendia. The pretraining objectives include masked language modeling, next-token prediction, denoising, or multi-task sequence-to-function prediction. Critically, these objectives do not require dense task-specific labels for every training example. A model that requires annotated enhancers or curated pathogenic variants for every training instance does not qualify as a foundation model under this criterion.
+
+**General-purpose representations.** Foundation models produce embeddings that prove useful across many downstream tasks. These representations can be extracted through forward passes and reused with simple linear probes or lightweight adapter modules rather than requiring full model retraining. The representations should encode biological information at multiple scales, from local sequence motifs to long-range regulatory grammar.
+
+**Broad transfer capability.** Foundation models support diverse downstream applications without architectural modifications or complete retraining. Transfer occurs across multiple dimensions: different assays (from chromatin accessibility to gene expression), different tissues and cell types, different species, and different variant types (from SNVs to structural variants). Evidence of broad transfer requires evaluation across multiple benchmarks rather than demonstration of performance on a single task.
+
+**Scale along at least one dimension.** Foundation models operate at a scale that would be impractical for task-specific training. Some scale context length, as HyenaDNA scales to million-token windows at single-nucleotide resolution. Others scale parameter count, as the ESM and Nucleotide Transformer families reach billions of parameters. Still others scale data diversity through pan-genomic pretraining across hundreds of species or integration of many assays and cell types. The scaling dimension chosen reflects the model's intended applications and architectural constraints.
+
+**Standardized interfaces.** Foundation models typically expose consistent APIs for common operations. These include embedding extraction for sequences or variants, sequence probability scoring, and mask-based in-silico mutagenesis for variant effect prediction. Models distributed through repositories such as Hugging Face often include documented recipes for downstream fine-tuning and example notebooks demonstrating common use cases.
+
+### What Doesn't Count
+
+Many excellent genomic models fail one or more of these criteria and should not be classified as foundation models. Early versions of DeepSEA trained specifically on chromatin accessibility data from a limited set of cell types lack the generality and standardized interface of foundation models, though later iterations that integrate many assays begin to approach foundation model territory [@zhou_deepsea_2015]. SpliceAI predicts splicing outcomes exceptionally well but was designed for that specific task and provides neither general-purpose embeddings nor easy transfer to other genomic prediction problems [@jaganathan_spliceai_2019]. Even a very large Enformer-like model trained solely on human chromatin tracks remains bound to its specific prediction interface despite its scale and sophistication [@avsec_enformer_2021].
+
+The distinction between large models and foundation models matters for several reasons. It affects evaluation strategy, since foundation models must be assessed across families of tasks rather than single benchmarks. It affects integration into existing pipelines, since foundation models serve as feature extractors while task-specific models typically provide end-to-end predictions. It affects how we think about model development, since foundation model training requires different infrastructure and data curation than task-specific supervised learning.
+
+### Why Definition Matters
+
+Clear definitions enable meaningful comparisons and guide appropriate use. A practitioner selecting a model for regulatory variant interpretation needs to understand whether a model provides general embeddings that can be adapted to their specific cell type or delivers fixed predictions for a predetermined set of assays. A researcher developing new methods needs to know whether their model should be evaluated on single-task performance or multi-task transfer capability. A clinical laboratory implementing variant interpretation pipelines needs to understand what guarantees about robustness and generalization a model can provide.
+
+The framework established here will guide our taxonomy of genomic foundation models and inform discussions of evaluation strategies and practical deployment.
+
+## A Taxonomy of Genomic Foundation Models
+
+The landscape of genomic foundation models can be organized into four broad families. Each family exhibits distinct characteristics, characteristic strengths and limitations, and typical application domains. Understanding this taxonomy helps practitioners select appropriate models for their tasks and helps researchers position new contributions within the broader ecosystem.
+
+::: {.callout-warning .content-visible when-profile="draft"}
+**Figure suggestion:** A 2x2 taxonomy grid organizing genomic foundation models. One axis could represent "sequence-native" versus "annotation-guided" approaches. The other axis could represent "molecular-scale" versus "systems-scale" predictions. The four quadrants would contain: DNA language models (HyenaDNA, DNABERT-2, NT v2, Caduceus, Evo-2, GROVER), sequence-to-function models (Enformer, Borzoi, Sei), variant-centric models (AlphaMissense, ESM-1v, EVE, CADD, Delphi, MIFM), and multi-omic models (Omni-DNA, cross-modal architectures, systems models). Each quadrant should list representative models with brief characterizations.
+:::
+
+### DNA Language Models
+
+DNA language models learn sequence representations from raw nucleotide strings through self-supervised objectives. These models treat DNA as a language to be modeled without explicit functional labels, discovering patterns through statistical regularities in genomic sequence.
+
+**Core characteristics.** DNA language models typically use masked language modeling or autoregressive next-token prediction as their pretraining objective. They train on reference genomes or pan-genomic sequence collections spanning multiple species. The resulting models produce per-position or pooled sequence embeddings that can be extracted and used for downstream tasks. Critically, these embeddings are not tied to specific assays or cell types, making them applicable to any task that benefits from general sequence context.
+
+**Representative models.** DNABERT and DNABERT-2 apply BERT-style masked language modeling to DNA sequences, using overlapping k-mers as tokens [@ji_dnabert_2021; @zhou_dnabert-2_2024]. The Nucleotide Transformer family scales this approach to larger parameter counts and cross-species training, demonstrating improved transfer to diverse downstream tasks [@dalla-torre_nucleotide_2023]. HyenaDNA achieves subquadratic complexity through implicit convolutions, enabling context lengths up to one million nucleotides at single-base resolution [@nguyen_hyenadna_2023]. Caduceus incorporates bidirectional processing and reverse-complement equivariance as architectural inductive biases. Evo-2 combines long-range attention with biological tokenization strategies. GROVER integrates learned BPE-style tokenization with training on regulatory tracks in addition to raw sequence [@sanabria_grover_2024].
+
+**Strengths.** DNA language models provide truly general representations not bound to specific assays, cell types, or experimental conditions. They can process and generate novel sequences that do not appear in reference genomes, making them suitable for de novo design tasks and synthetic biology applications. Their self-supervised training requires only genome sequences, making them scalable to any species with assembled genomes.
+
+**Limitations.** Without explicit functional grounding during pretraining, DNA language models may not capture subtle regulatory patterns that manifest only under specific cellular conditions. Their representations encode sequence patterns but do not directly predict molecular phenotypes. Performance on tasks requiring fine-grained functional discrimination may lag models trained with functional supervision.
+
+**Typical applications.** These models excel at tasks where general sequence context matters: sequence classification (identifying promoters, enhancers, transposons), motif discovery and refinement, variant effect prediction through embedding perturbation, sequence generation for synthetic biology, and transfer learning to new species or genomic contexts with limited labeled data.
+
+### Sequence-to-Function Foundation Models
+
+Sequence-to-function models predict molecular readouts directly from sequence through supervised or semi-supervised training on assay compendia. These models blur into foundation model territory when their output space is sufficiently broad and their internal representations prove useful for tasks beyond the original assay set.
+
+**Core characteristics.** These models map DNA sequences to high-dimensional vectors of molecular measurements, including chromatin accessibility, histone modifications, transcription factor binding, and gene expression levels. Training typically uses large collections of functional genomics assays spanning many cell types and conditions. The models learn regulatory grammar through supervised prediction of molecular phenotypes rather than through self-supervised sequence modeling.
+
+**Representative models.** Enformer predicts thousands of chromatin and expression tracks from 200 kb sequence windows through a transformer architecture with attention over long genomic contexts [@avsec_enformer_2021]. Borzoi extends this approach with refined architectures and expanded assay coverage. Sei organizes sequence-to-function predictions into interpretable sequence classes through unsupervised clustering, providing a discrete vocabulary for regulatory elements [@chen_deepsea_2022]. Earlier models including DeepSEA and Basset established the sequence-to-function paradigm at smaller scales [@zhou_deepsea_2015].
+
+**Strengths.** Explicit functional supervision provides strong mechanistic grounding. Predictions can be interpreted through comparison to experimental measurements. The models naturally support variant effect prediction by computing differences between reference and alternative allele predictions. When trained on sufficiently diverse assay collections, internal representations generalize beyond the specific prediction targets.
+
+**Limitations.** Models remain tied to the specific assays and cell types present during training. Extending predictions to new cell types typically requires retraining or collection of new data. Very rare cell types or transient cellular states may not be adequately represented in training data. The supervised training paradigm limits scalability compared to self-supervised approaches.
+
+**Typical applications.** These models serve well for regulatory variant interpretation in well-studied cell types, expression quantitative trait locus (eQTL) fine-mapping, enhancer identification and characterization, transcription factor binding site prediction, and regulatory mechanism discovery through perturbation analysis.
+
+### Variant-Centric Foundation Models
+
+A third class of foundation models focuses on genetic variants as the fundamental unit of analysis rather than on raw sequence. These models embed variants using contextual information from local sequence, gene structure, population genetics, and external annotations, then predict variant pathogenicity, molecular consequences, or trait-level effect sizes.
+
+**Core characteristics.** Variant-centric models typically integrate information from multiple sources: local sequence context around the variant, conservation and population frequency patterns, protein structural context for coding variants, and functional annotations from databases. They may use genomic foundation models as feature extractors, combining sequence embeddings with variant-specific features. The outputs include pathogenicity scores, effect size estimates, or functional consequence predictions.
+
+**Representative models.** AlphaMissense applies protein language models to predict pathogenicity of missense variants across the human proteome [@cheng_alphamissense_2023]. ESM-1v uses evolutionary context to predict variant effects on protein function. EVE combines evolutionary and structural information for variant interpretation. CADD and its successors integrate diverse genomic annotations to score deleteriousness of any genetic variant [@rentzsch_cadd_2019; @schubach_cadd_2024]. Delphi, MIFM, and related models couple genomic foundation model embeddings with polygenic score estimation for complex trait prediction [@georgantas_delphi_2024; @rakowski_mifm_2025; @wu_genome-wide_2024].
+
+**Strengths.** Direct focus on variants aligns naturally with clinical applications and genetic association studies. Integration of multiple information sources provides robust predictions. Models can provide calibrated uncertainty estimates through ensemble approaches or variational methods. The variant-level interface simplifies integration into existing genetic analysis pipelines.
+
+**Limitations.** Most current models focus on single-nucleotide variants, with limited coverage of insertions, deletions, and structural variants. Predictions may be biased toward well-studied regions of the genome or commonly occurring variant types. The integration of multiple data sources creates dependencies on external databases that may not be uniformly available or accurate.
+
+**Typical applications.** Clinical variant interpretation for rare disease diagnosis, polygenic risk score construction for complex traits, prioritization of variants in genome-wide association studies, therapeutic target identification through variant effect prediction, and stratification of patient cohorts by genetic risk.
+
+### Multi-Omic Foundation Models
+
+The fourth category comprises models that natively integrate multiple molecular modalities. These models jointly process DNA sequence, chromatin state, gene expression, protein abundance, 3D genome structure, or even phenotypic descriptions, learning representations that span traditional boundaries between genomics, transcriptomics, and other omics layers.
+
+**Core characteristics.** Multi-omic models employ architectures that can handle heterogeneous input types, including transformer variants with cross-attention mechanisms, graph neural networks over molecular interaction networks, or modality-specific encoders combined through fusion layers. Training objectives encourage alignment across modalities through contrastive learning, joint prediction tasks, or generative modeling of multiple data types simultaneously.
+
+**Representative models.** Omni-DNA uses transformer-based autoregressive models with a two-stage approach: pretraining on DNA sequences with next-token prediction, followed by vocabulary expansion and multi-task finetuning [@li_omnidna_2025]. The model unifies diverse genomic tasks under a common instruction-response paradigm, enabling a single model to simultaneously handle classification (histone modifications, promoters, enhancers), generate functional text descriptions from DNA sequences, and produce image outputs through response discretization. This cross-modal capability demonstrates that autoregressive genomic models can extend beyond fixed molecular readouts to handle heterogeneous output modalities including natural language and structured visual data. Models integrating Hi-C or Micro-C data with sequence information capture 3D genome organization. Cross-modal architectures that align DNA embeddings with chromatin state predictions or gene expression measurements through contrastive objectives represent another approach. Systems-level models incorporate pathway annotations or gene ontology terms to constrain learned representations toward biologically meaningful subspaces.
+
+**Strengths.** Unified representations enable cross-modal queries such as "predict expression changes from a sequence variant" or "identify variants that affect chromatin organization in specific cell types." Joint training can improve performance on individual modalities through multi-task learning effects. Task unification approaches that convert diverse genomic problems into a common format enable single models to address multiple applications simultaneously, reducing the overhead of maintaining separate models for each task. Mechanistic relationships between molecular layers can emerge naturally from data rather than requiring explicit modeling.
+
+**Limitations.** Data engineering becomes substantially more complex. Different molecular modalities require different measurement technologies, temporal sampling strategies, and quality control procedures. Training objectives must balance multiple tasks with potentially conflicting gradients. Vocabulary expansion for new modalities can cause distribution shifts in pretrained token representations, requiring techniques like noise injection during finetuning and careful initialization of new embeddings. Computational requirements scale with the number of modalities and the complexity of cross-modal interactions. The field is still early, with few widely adopted models reaching production maturity.
+
+**Typical applications.** Systems biology investigations of disease mechanisms, drug discovery through multi-target effect prediction, cellular state modeling and trajectory inference, integration of genetic and environmental effects on phenotypes, functional annotation generation from sequence, and mechanistic modeling of regulatory networks.
+
+## Design Dimensions: A Framework for Understanding Models
+
+Within and across the four families of genomic foundation models, individual models differ along several orthogonal design dimensions. Understanding these dimensions helps practitioners evaluate model suitability for specific tasks and helps researchers position new architectures within the design space.
+
+::: {.callout-warning .content-visible when-profile="draft"}
+**Figure suggestion:** A multi-axis diagram showing four orthogonal design dimensions: Data (species coverage, assay diversity, population diversity), Architecture (transformer/CNN/Hyena, attention patterns, parameter scaling), Objectives (MLM, autoregressive, multi-task, contrastive), and Tokenization (character-level, k-mer, learned BPE, resolution). Each axis should show concrete examples of choices (e.g., "1 species" vs "50+ species" on the data axis, "100M params" vs "10B params" on the architecture axis). The diagram should convey that models can make independent choices along each dimension.
+:::
+
+### Data Composition
+
+The choice of training data fundamentally shapes what patterns a model can learn and how well it generalizes beyond its training distribution.
+
+**Species coverage.** Models trained exclusively on human genomes focus on patterns relevant to human genetics and clinical applications. Cross-species training, as employed by Nucleotide Transformer and many protein language models, encourages learning of conserved regulatory elements and evolutionary constraints [@dalla-torre_nucleotide_2023; @rives_esm_2021]. Pan-genomic approaches that incorporate multiple species may improve out-of-domain generalization but risk diluting human-specific signals relevant for clinical applications.
+
+**Sequence diversity.** Training on reference genomes alone provides clean sequences but limited exposure to population-level variation. Incorporating sequences from diverse populations and variant databases improves robustness to common genetic variation. However, variant-augmented training requires careful design to avoid learning spurious associations between neutral variants and functional effects. Some models sample alleles from population databases to augment reference sequences during training, while others train on multiple reference assemblies when available.
+
+**Annotation integration.** Models may train on raw sequence alone or may incorporate functional annotations as additional input channels or auxiliary prediction targets. DeepSEA-style models predict chromatin accessibility and transcription factor binding from sequence, effectively using these annotations as labels [@zhou_deepsea_2015]. Language models like GROVER integrate regulatory track information during pretraining rather than treating it as a downstream task [@sanabria_grover_2024]. The degree of annotation integration trades off between generality (raw sequence only) and functional grounding (annotation-aware training).
+
+**Scale.** The quantity of training data varies from single reference genomes (approximately 3 billion bases for human) to pan-genomic collections spanning hundreds of species and trillions of bases. For sequence-to-function models, scale also includes the number of assays, cell types, and experimental conditions represented. Larger and more diverse training data generally improves generalization, but with diminishing returns beyond a certain scale and potential concerns about data quality degradation when scraping very large corpora.
+
+### Architecture Families
+
+Architectural choices determine computational properties including maximum context length, memory requirements, training efficiency, and ease of adaptation to downstream tasks.
+
+**Transformer architectures.** Transformers dominate current genomic foundation models and come in several variants. Encoder-only models following the BERT design, such as DNABERT and Nucleotide Transformer, excel at classification and embedding tasks. They process sequences bidirectionally through masked language modeling objectives. Decoder-only models following the GPT design, including GROVER and some Omni-DNA variants, use autoregressive prediction and naturally support generative tasks. Encoder-decoder architectures combine bidirectional context encoding with flexible output generation, useful for tasks like sequence-to-text explanation or structure-guided design.
+
+The attention mechanism itself varies across implementations. Full dense attention provides exact computation of all pairwise interactions but scales quadratically with sequence length. Sparse attention patterns, including local windows and strided patterns, reduce complexity while maintaining long-range modeling capacity. Linear attention approximations trade exact computation for reduced asymptotic complexity. Flash attention and other algorithmic optimizations improve memory efficiency and speed without changing model behavior.
+
+**Sub-quadratic long-range models.** Attention-free architectures address the quadratic complexity bottleneck directly. Hyena-based models like HyenaDNA use implicit convolutions parameterized by small neural networks to achieve subquadratic scaling [@nguyen_hyenadna_2023]. State space models including Mamba and related architectures process sequences recurrently with linear complexity. These approaches enable much longer contexts than standard transformers with comparable parameter counts.
+
+**Hybrid architectures.** Many successful models combine multiple architectural components. CNN-transformer hybrids use local convolutions followed by global attention, as seen in Enformer and related models [@avsec_enformer_2021]. Multi-scale approaches process sequences at multiple resolutions, using dilated convolutions or hierarchical attention patterns. Cross-attention mechanisms integrate information from multiple input modalities, such as sequence and chromatin state or DNA and protein sequence.
+
+**Parameter scaling.** Genomic foundation models range from approximately 100 million parameters at the small end to over 10 billion parameters for the largest models. Larger models generally achieve better performance on downstream tasks, but with significantly higher computational costs for training and inference. The optimal scale depends on available training data, computational budget, and deployment constraints. Recent work suggests that smaller, more carefully trained models can approach or match the performance of larger models on many tasks.
+
+### Context Length Capabilities
+
+The genomic context a model can process constrains which biological phenomena it can capture and which applications it can serve effectively.
+
+**Short context (under 1 kb).** Models with kilobase-scale contexts capture local sequence patterns including transcription factor binding motifs, splice sites, and promoter elements. These models work well for tasks focused on local regulatory logic but cannot capture distal enhancer-promoter interactions or chromatin domain structure. Most early deep learning models for genomics operated at this scale due to computational constraints.
+
+**Medium context (1-10 kb).** At this scale, models capture complete genes with their proximal regulatory regions, local regulatory grammar involving multiple nearby elements, and some distal interactions within topologically associating domains. Many current models including DNABERT-2 and standard transformer implementations reach contexts in this range. This scale balances biological relevance with computational tractability for many applications.
+
+**Long context (10-200 kb).** Models reaching this scale can represent distal enhancer-promoter interactions, topologically associating domains (TADs) and their internal structure, and multi-gene regulatory clusters. Enformer operates at 200 kb context, enabling prediction of long-range regulatory effects [@avsec_enformer_2021]. This scale is particularly relevant for understanding complex regulatory regions such as gene-dense loci and super-enhancers.
+
+**Ultra-long context (over 200 kb).** A few models extend beyond 200 kb, with HyenaDNA reaching up to one million nucleotides through its sub-quadratic architecture [@nguyen_hyenadna_2023]. At this scale, models can capture chromosomal domains, multi-megabase structural variants, and complex haplotype structure. Applications include structural variant interpretation, haplotype-aware variant effect prediction, and modeling of very long-range regulatory interactions.
+
+The effective use of long context requires careful consideration of tokenization strategy and positional encoding schemes, as discussed below.
+
+### Tokenization Strategies
+
+How sequences are discretized into tokens affects model capacity, context length, positional resolution, and computational efficiency. This dimension interacts strongly with architecture choice and context requirements.
+
+**Character-level tokenization.** Treating each nucleotide as a separate token maintains single-base resolution and makes no assumptions about relevant sequence units. HyenaDNA and many sequence-to-function models use this approach [@nguyen_hyenadna_2023]. Character-level tokenization provides maximum flexibility for variant effect prediction and precise regulatory element mapping. However, it imposes the longest sequence lengths, requiring efficient architectures or aggressive downsampling for long-range modeling.
+
+**K-mer tokenization.** Grouping nucleotides into overlapping or non-overlapping k-mers reduces sequence length by a factor approaching k. For 6-mers, the vocabulary size reaches 4,096 tokens. DNABERT uses overlapping 6-mers, allowing the model to reach longer effective contexts within transformer attention limits [@ji_dnabert_2021]. K-mer approaches introduce positional ambiguity at word boundaries and may not align naturally with biological units, but they often improve performance through implicit modeling of short motifs.
+
+**Learned tokenization.** Byte-pair encoding (BPE) and related methods discover tokenization schemes from data rather than using fixed vocabularies. Models like GROVER explore learned tokenization for DNA, potentially allocating vocabulary capacity more efficiently than k-mer schemes [@sanabria_grover_2024]. Recent work with BioToken demonstrates that learned tokenizers can improve downstream task performance compared to fixed k-mer schemes [@medvedev_biotoken_2025]. However, learned tokenization complicates interpretation and may not transfer well across domains or species.
+
+**Hierarchical and multi-resolution approaches.** Some models use different tokenization schemes at different architectural layers. For example, early layers might operate on character-level tokens to capture fine-grained patterns, while later layers use learned pooling to reduce sequence length and expand receptive fields. This approach attempts to combine the resolution benefits of character-level encoding with the efficiency of coarser tokenization.
+
+The choice of tokenization strategy should align with both the architecture's computational constraints and the biological scales relevant to downstream applications. Single-nucleotide variant effect prediction strongly favors character-level or fine-grained tokenization. Expression prediction or chromatin state modeling may benefit from coarser tokenization that implicitly captures regulatory motifs.
+
+## Understanding Model Capabilities Through the Taxonomy
+
+The taxonomy and design dimensions established above provide a framework for matching models to specific genomic analysis tasks. Different families excel at different applications, and no single model dominates across all use cases.
+
+### Matching Model Families to Task Requirements
+
+**Novel sequence analysis.** When working with sequences not present in reference genomes, such as synthetic constructs, pathogen genomes, or rare structural variants, DNA language models provide the most flexibility. Their self-supervised training on general sequence distributions transfers well to novel contexts without requiring task-specific labels. Models like HyenaDNA and Nucleotide Transformer can process and embed arbitrary sequences, making them suitable for de novo design and synthetic biology applications.
+
+**Regulatory prediction in well-studied contexts.** For predicting chromatin accessibility, transcription factor binding, or gene expression in cell types well-represented in training data, sequence-to-function models offer strong baselines. Enformer-style models directly output predictions for relevant assays and can be queried with specific genomic loci [@avsec_enformer_2021]. The mechanistic grounding from functional supervision often produces more interpretable predictions than language model embeddings.
+
+**Clinical variant interpretation.** Variant-centric models like AlphaMissense and ESM-1v provide pathogenicity scores calibrated for clinical use [@cheng_alphamissense_2023]. These models integrate evolutionary context, population frequency, and protein structural information in ways optimized for distinguishing pathogenic from benign variants. For missense variant interpretation specifically, protein language models outperform DNA-based approaches on most benchmarks.
+
+**Systems-level questions.** Tasks requiring integration of multiple molecular layers, such as predicting phenotypic effects of regulatory variants on downstream pathways, benefit from multi-omic models. These models can jointly reason about DNA sequence, gene expression, and pathway activation. However, the relative immaturity of this model family means that practitioners often need to combine predictions from separate DNA and expression models rather than using a unified multi-omic architecture.
+
+### Trade-offs Between Model Families
+
+The taxonomy reveals consistent trade-offs that guide model selection and development priorities.
+
+**Generality versus specificity.** DNA language models provide the most general representations but may underperform specialized models on specific tasks. Variant-centric models achieve excellent performance on pathogenicity prediction but offer limited utility for other genomic questions. Sequence-to-function models occupy a middle ground, specialized for regulatory prediction but still useful for related tasks like enhancer design.
+
+**Mechanistic grounding versus flexibility.** Models trained with functional supervision (sequence-to-function and some variant-centric models) produce predictions that align with known biology and can be validated against experimental measurements. Self-supervised language models learn representations from sequence statistics without mechanistic constraints, providing greater flexibility but potentially missing important biological patterns that require specific cellular contexts to manifest.
+
+**Single-task performance versus transfer breadth.** Task-specific fine-tuning of foundation models typically achieves the best performance on individual benchmarks. However, fully fine-tuned models lose some transfer capability, requiring separate models for each new task. Lightweight adaptation through linear probes or low-rank fine-tuning preserves more general knowledge while accepting some performance loss.
+
+### Why Multiple Families Persist
+
+The existence of four distinct families of genomic foundation models reflects fundamental differences in their intended use cases and biological scope. DNA language models emphasize generality and novel sequence handling. Sequence-to-function models prioritize mechanistic grounding and interpretability. Variant-centric models optimize for clinical decision-making. Multi-omic models aim for systems-level integration.
+
+This specialization suggests that a single universal genomic foundation model may not emerge soon. Different applications have genuinely different requirements regarding context length, resolution, functional grounding, and interpretability. The field may converge on a small set of architectural patterns rather than a single dominant approach, similar to how natural language processing maintains distinct model families for different tasks despite the success of large language models.
+
+## Evaluation: Beyond Single Benchmarks
+
+Foundation models by their nature resist evaluation on single tasks. Their value lies in transfer and reuse across many applications, making comprehensive evaluation substantially more complex than benchmarking task-specific models.
+
+### Multi-task Assessment Requirements
+
+A genomic foundation model should be evaluated across families of related tasks rather than on isolated benchmarks. For DNA language models, this includes sequence classification tasks (promoter identification, enhancer detection, repeat classification), variant effect prediction across multiple variant types, transcription factor motif discovery, and transfer to non-human species when trained on cross-species corpora.
+
+For sequence-to-function models, evaluation should span prediction of held-out assays, transfer to novel cell types or tissues, accuracy on regulatory variant effect prediction, and consistency between predicted and experimentally measured effects. Variant-centric models require assessment across coding and non-coding variants, calibration analysis for clinical thresholds, performance stratification by population ancestry, and comparison against existing clinical interpretation guidelines.
+
+The diversity of evaluation tasks complicates comparison across models. A model that excels at promoter classification may underperform on eQTL fine-mapping. Direct comparisons require controlling for differences in training data, model scale, and evaluation protocols.
+
+### Transfer Capability Versus Pretraining Performance
+
+Foundation models are intended for transfer, making performance on pretraining objectives only moderately predictive of downstream utility. A model with slightly worse masked language modeling loss may produce better embeddings for downstream classification if the loss function better aligns with useful representations. Conversely, a model that achieves very low pretraining loss through memorization may transfer poorly to novel sequences or tasks.
+
+Evaluation should explicitly test transfer capability through several mechanisms:
+
+- **Zero-shot performance** using frozen embeddings with no task-specific training
+- **Few-shot learning** with minimal labeled examples (10-100 per class)
+- **Cross-domain transfer** from training to evaluation on different sequence types, species, or assay modalities
+- **Robustness to distribution shift** including population variation, sequencing artifacts, and batch effects
+
+These evaluations reveal whether a model has learned general principles of genomic organization or has simply memorized patterns in its training data.
+
+### Robustness Across Domains and Distributions
+
+Genomic foundation models deployed in clinical or research settings encounter sequences, variants, and contexts not represented in training data. Evaluation should probe robustness to various distribution shifts:
+
+- **Population diversity:** Performance stratified by genetic ancestry
+- **Sequencing technology:** Consistency across Illumina, PacBio, and Nanopore data
+- **Assembly quality:** Degradation when applied to draft genomes versus finished assemblies
+- **Rare variants:** Calibration for very low-frequency or singleton variants
+- **Structural variants:** Handling of insertions, deletions, inversions beyond single-nucleotide changes
+
+Models showing strong performance on reference genome benchmarks may fail on real-world data if they have learned spurious correlations with assembly artifacts or population-specific patterns.
+
+::: {.callout-warning .content-visible when-profile="draft"}
+**Figure suggestion:** An evaluation pyramid with four tiers. The base tier represents molecular readouts (chromatin accessibility, TF binding, RNA expression). The second tier shows functional predictions (regulatory element annotation, variant effect scores). The third tier represents cellular phenotypes (cell state classification, differentiation trajectories). The apex shows organismal and clinical outcomes (disease risk, drug response, organismal fitness). Each tier should indicate representative evaluation datasets and the strength of validation evidence typically available (strong at the base, weaker toward the apex). Arrows connecting tiers illustrate that robust validation requires accumulation of evidence across multiple levels.
+:::
+
+### Benchmark Suites and Community Resources
+
+Several standardized benchmark suites enable systematic comparison of genomic foundation models.
+
+**ProteinGym** evaluates variant effect prediction across thousands of proteins through deep mutational scanning data [@notin_proteingym_2023]. The benchmark includes multiple protein families and variant types, enabling assessment of transfer across proteins and mechanistic understanding of mutation effects.
+
+**TraitGym** assesses genomic foundation models on complex trait prediction tasks [@benegas_traitgym_2025]. The benchmark spans quantitative traits, binary outcomes, and disease phenotypes, testing models' ability to integrate regulatory information for polygenic prediction.
+
+**Nucleotide Transformer benchmarks** provide diverse DNA-level tasks including regulatory element classification, enhancer-promoter linking, and transcript abundance prediction across cell types [@dalla-torre_nucleotide_2023]. These benchmarks explicitly compare transformer-based DNA foundation models.
+
+**Comparative evaluations** such as the recent comparison of five DNA foundation models (DNABERT-2, Nucleotide Transformer V2, HyenaDNA, Caduceus-Ph, GROVER) across classification, expression prediction, variant effect, and TAD recognition tasks reveal that no single model dominates all benchmarks [@manzo_comparative_2025]. Such studies establish performance bands and identify model-specific strengths.
+
+**GV-Rep and variant representation benchmarks** explicitly test how well genomic foundation models represent genetic variants and clinical contexts. These resources fill a gap in evaluation infrastructure by focusing on the variant representation layer rather than end-to-end task performance.
+
+Task-specific datasets remain relevant for focused applications. ClinVar provides ground-truth pathogenicity labels for clinical variant interpretation [@landrum_clinvar_2018]. ENCODE and Cistrome supply functional genomics data for regulatory prediction [@kagda_encode_2025; @zheng_cistrome_2019]. GTEx enables eQTL-based validation of expression prediction models [@gtex_2020]. Combining standardized benchmarks with domain-specific validation provides the most complete assessment of model capabilities.
+
+### Evaluation Regimes
+
+Genomic foundation models can be evaluated in several distinct regimes that test different aspects of utility and deployment readiness.
+
+**Zero-shot evaluation** uses frozen model embeddings with no task-specific training. This tests whether useful information is directly accessible through simple operations like cosine similarity or k-nearest neighbors. Zero-shot evaluation provides a lower bound on model utility and can reveal whether representations encode biologically meaningful structure.
+
+**Linear probe evaluation** trains shallow linear or logistic regression classifiers on frozen embeddings. This regime tests whether relevant information is linearly separable in the model's representation space, providing a diagnostic for representation quality independent of downstream model complexity. Linear probes are computationally inexpensive and robust to overfitting on small labeled datasets.
+
+**Lightweight adaptation** includes approaches like low-rank adaptation (LoRA), prompt tuning, or small MLP heads trained on frozen or partially frozen backbone models. These methods balance performance with computational cost and stability. They enable task-specific tuning without the full computational expense of end-to-end fine-tuning and with reduced risk of catastrophic forgetting.
+
+**Full fine-tuning** updates all model parameters on downstream tasks. This typically yields the best single-task performance but requires more labeled data and computation. Fine-tuning risks overfitting to narrow task distributions and losing general knowledge acquired during pretraining. Full fine-tuning evaluation establishes performance ceilings but may not reflect practical deployment constraints.
+
+**Adapter ablation studies** that compare these evaluation regimes on the same tasks reveal how much task-specific information must be learned versus how much can be extracted from pretrained representations. Large gaps between linear probe and fine-tuned performance suggest that relevant information is present but not easily accessible. Small gaps indicate that pretrained representations already encode task-relevant structure.
+
+## The Foundation Model Ecosystem
+
+Genomic foundation models exist within a broader ecosystem of infrastructure, community resources, and shared practices that enable their development, distribution, and application.
+
+### Model Hubs and Distribution
+
+Most genomic foundation models are distributed through centralized repositories that provide standardized interfaces and documentation. Hugging Face hosts many DNA and protein language models with documented APIs for embedding extraction, tokenization, and fine-tuning. GitHub repositories often accompany publications, providing model weights, training code, and example notebooks. Some models are distributed through domain-specific platforms like ProteinGym or integrated into larger software ecosystems.
+
+Standardized distribution formats reduce friction in model adoption. Models packaged with consistent APIs can be swapped easily in downstream pipelines, enabling rapid benchmarking and experimentation. However, inconsistent documentation, incomplete training details, and missing preprocessing code remain common challenges in reproducing published results.
+
+### Documentation and Reproducibility Requirements
+
+Responsible distribution of genomic foundation models requires comprehensive documentation covering training data provenance, preprocessing procedures, model architecture details, training hyperparameters, evaluation protocols, and known limitations or failure modes.
+
+Data provenance is particularly important given that training data may include cohort-level genomic datasets with specific use restrictions or population-specific biases. Models trained on data from predominantly European ancestries should document this limitation. Models incorporating clinical annotations should clarify whether those annotations have been validated or are computationally predicted.
+
+Reproducibility remains an active challenge. Many published foundation models cannot be retrained from scratch due to computational costs, proprietary data, or incomplete method descriptions. Standardized reporting guidelines analogous to those in machine learning conferences may improve reproducibility in genomic foundation model publications.
+
+### Community Benchmarks and Leaderboards
+
+Public leaderboards for genomic tasks encourage model development but also risk overfitting to specific benchmark distributions. ProteinGym and TraitGym provide test sets with held-out targets to mitigate this concern [@notin_proteingym_2023; @benegas_traitgym_2025]. Community challenges such as CAGI (Critical Assessment of Genome Interpretation) enable head-to-head comparison of variant interpretation methods including foundation model approaches.
+
+Leaderboards work best when they capture diverse evaluation criteria rather than single metrics. Rankings should consider computational efficiency, calibration quality, robustness across populations, and interpretability in addition to raw accuracy. Multi-objective evaluation prevents optimization for narrow benchmark performance at the expense of practical utility.
+
+### Industry Versus Academic Models
+
+Genomic foundation models are developed by both academic research groups and industry. Academic models typically emphasize reproducibility and open access, with model weights and training code released publicly. Industry models may offer superior performance through access to proprietary data or computational resources but with limited transparency about training procedures and restricted access.
+
+Notable industry contributions include NVIDIA's BioNeMo platform, which provides optimized implementations of genomic foundation models for efficient inference, and Microsoft's integration of genomic models into Azure cloud infrastructure. Some models occupy a middle ground, with academic groups partnering with industry for computational resources while maintaining open publication and model release.
+
+Licensing terms vary. Most academic models use permissive open-source licenses allowing commercial use. Some models restrict commercial applications or require citation. Users should review license terms before deploying models in commercial or clinical settings.
+
+## Open Questions and Frontiers
+
+Despite rapid progress, genomic foundation models face several fundamental challenges that represent important directions for future research.
+
+### Convergence or Divergence
+
+An open question is whether the field will converge toward a small number of unified architectures or whether specialized model families will persist. In natural language processing, decoder-only transformers have largely unified the field despite earlier diversity of architectures. In genomics, the diversity of sequence lengths, resolution requirements, and functional contexts may preclude such convergence.
+
+A unified model would need to handle sequences from single nucleotides to megabases, operate on raw sequence and functional annotations, transfer across species and cell types, and serve both mechanistic modeling and predictive tasks. Whether such generality is achievable or desirable remains unclear. Specialized models may continue to outperform unified approaches on their target applications, suggesting that moderate architectural diversity could persist.
+
+### What Genomic Foundation Models Still Cannot Do
+
+Current genomic foundation models have significant limitations that constrain their applicability.
+
+**Causal reasoning.** Existing models learn correlations in training data but do not distinguish causal from spurious relationships. A model might learn that certain motifs correlate with gene expression in training data due to cell-type-specific confounding rather than direct regulatory function. Integrating causal structure into model training or inference could improve robustness to distribution shifts and enable counterfactual reasoning about perturbations.
+
+**Mechanistic structure.** Most models treat regulatory effects as black-box functions of sequence without imposing mechanistic constraints from biochemistry or physics. Hybrid approaches that combine neural network flexibility with mechanistic models of transcription factor binding, chromatin remodeling, or RNA folding may improve interpretability and generalization.
+
+**Rare variant interpretation.** Foundation models trained on reference genomes and common variants may not calibrate well for ultra-rare or de novo variants. Improved integration of protein structure constraints, evolutionary information, and functional assay data could strengthen rare variant interpretation.
+
+**Long-range and structural variants.** While models like HyenaDNA demonstrate feasibility of very long contexts, most models do not adequately handle complex structural variants involving inversions, duplications, or translocations [@nguyen_hyenadna_2023]. Better integration of sequence topology and copy number could improve structural variant interpretation.
+
+**Temporal and dynamic regulation.** Current models produce static predictions that do not account for temporal dynamics of gene regulation, developmental trajectories, or response to environmental perturbations. Incorporating temporal information through sequential modeling or dynamical systems could enable prediction of regulatory dynamics.
+
+### Scaling Limits
+
+The recent success of large language models has encouraged scaling of genomic foundation models along multiple dimensions. However, biological constraints may impose practical limits. Single-nucleotide resolution over megabase contexts may not provide additional benefits if most regulatory interactions occur over shorter ranges. Parameter counts beyond billions may yield diminishing returns given limited training data and finite biological complexity.
+
+Alternative scaling strategies deserve exploration. Rather than naively increasing model size, future work might scale the diversity of training data across species, populations, and functional contexts, incorporate more structured biological knowledge through hybrid architectures, or improve sample efficiency through better pretraining objectives. The most productive scaling dimension likely depends on the target application.
+
+### Clinical Deployment Readiness
+
+Translation of genomic foundation models to clinical use faces substantial challenges beyond predictive performance. Clinical deployment requires robust performance across diverse patient populations including underrepresented ancestries, calibrated uncertainty quantification for risk-benefit decision-making, interpretability that enables clinicians to understand model predictions, prospective validation demonstrating clinical utility beyond retrospective benchmarks, and regulatory approval processes that current models do not yet satisfy.
+
+Addressing these requirements will likely require domain adaptation techniques that adjust models to clinical populations, ensemble methods that provide well-calibrated uncertainty estimates, mechanistic interpretation frameworks that connect predictions to biological mechanisms, integration with electronic health record systems and clinical workflows, and accumulation of prospective validation evidence demonstrating patient benefit.
+
+## Summary and Forward References
+
+This chapter established a conceptual framework for understanding genomic foundation models as a distinct class of computational tools. We defined genomic foundation models through five essential properties: large-scale pretraining with minimal supervision, general-purpose representations, broad transfer capability, scale along at least one dimension, and standardized interfaces for downstream use. This definition separates true foundation models from task-specific architectures that may be large but lack generality.
+
+We organized the emerging ecosystem into four families. DNA language models learn sequence distributions through self-supervision and provide general embeddings. Sequence-to-function models predict molecular readouts from sequence through functionally supervised training. Variant-centric models focus on genetic variants as atomic units, integrating sequence context with population and functional annotations. Multi-omic models jointly represent DNA and other molecular layers through cross-modal architectures.
+
+Four orthogonal design dimensions shape model behavior: data composition including species coverage and assay diversity, architecture families spanning transformers to sub-quadratic alternatives, pretraining objectives from masked language modeling to multi-task prediction, and tokenization strategies that trade resolution against context length. Understanding these dimensions helps match models to applications and positions new contributions within the design space.
+
+Evaluation of genomic foundation models requires multi-task assessment, measurement of transfer capability, and robustness testing across domains and populations. Emerging benchmark suites including ProteinGym, TraitGym, and DNA foundation model comparisons enable systematic evaluation, though gaps remain in coverage of clinical and rare variant interpretation tasks [@notin_proteingym_2023; @benegas_traitgym_2025].
+
+The foundation model ecosystem includes model hubs, documentation standards, community benchmarks, and industry contributions that collectively enable model development and deployment. Open challenges include potential convergence toward unified architectures versus persistence of specialized families, integration of causal and mechanistic structure, improved rare and structural variant interpretation, and satisfaction of clinical deployment requirements.
+
+The conceptual framework established here will guide subsequent chapters. @sec-pretrain examines how genomic foundation models are actually trained, including data curation, objective design, and optimization strategies. @sec-vep recasts variant effect prediction in the foundation model era, while @sec-systems explores multi-omic integration and systems-level modeling. Throughout these applications, the taxonomy and design principles developed in this chapter provide structure for understanding a rapidly evolving field.
