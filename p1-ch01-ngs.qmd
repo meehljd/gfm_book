@@ -90,6 +90,11 @@ The per-read likelihoods aggregate into genotype likelihoods, which combine with
 Visual TODO: Small schematic showing reads aligned at a single site, illustrating how each read contributes to the likelihood term in the Bayesian genotype model (e.g., three reads supporting the alternate allele with different base qualities).
 :::
 
+::: {.callout-note}
+The VCF Format
+The Variant Call Format (VCF) is the standard file format for storing variant calls. Each variant occupies one row with mandatory columns: CHROM and POS specify genomic location; REF and ALT give the reference and alternate alleles; QUAL provides a Phred-scaled quality score; FILTER indicates whether the variant passed quality filters; and INFO contains semicolon-delimited annotations such as allele frequency or functional predictions. For multi-sample files, a FORMAT column defines per-sample fields (typically GT for genotype, GQ for genotype quality, DP for depth), followed by one column per sample containing those values. Genotypes are encoded as allele indices separated by / (unphased) or | (phased), where 0 represents the reference allele and 1 the first alternate. A heterozygous call appears as 0/1; a phased heterozygote as 0|1 or 1|0 depending on which allele was inherited maternally versus paternally.
+:::
+
 ### Cohort Calling and Filtering
 
 Individual samples rarely provide sufficient information for confident rare variant calling. A variant observed in only one sample with modest supporting reads might be a true rare variant or a systematic artifact; examining a single sample cannot distinguish these possibilities. Examining the same site across thousands of samples resolves this ambiguity: true variants appear in multiple individuals following population genetic expectations, while artifacts show patterns inconsistent with inheritance and population structure.
@@ -242,7 +247,7 @@ Visual TODO: Example DeepVariant-style pileup image with color channels labeled 
 
 ### Architecture and Training
 
-*DeepVariant* uses an Inception-style CNN architecture originally developed for natural image classification. The network processes the pileup tensor through multiple convolutional layers, pooling operations, and nonlinearities, outputting posterior probabilities over three genotype classes (homozygous reference, heterozygous, homozygous alternate) for each candidate site [@poplin_deepvariant_2018].
+*DeepVariant* uses an Inception-style CNN architecture originally developed for natural image classification.  The convolutional architecture that makes this possible is examined in detail in @sec-cnn.  The network processes the pileup tensor through multiple convolutional layers, pooling operations, and nonlinearities, outputting posterior probabilities over three genotype classes (homozygous reference, heterozygous, homozygous alternate) for each candidate site [@poplin_deepvariant_2018].
 
 Training uses high-confidence truth sets such as GIAB genomes. The model observes many examples of true variants and non-variants along with their associated pileup images, learning complex decision boundaries that integrate base quality, mapping quality, local sequence context, and read-level patterns. Where VQSR fits a separate model on hand-selected annotations after initial calling, *DeepVariant* processes raw evidence directly during the primary classification step.
 
@@ -282,7 +287,7 @@ If a variant is never called, it cannot appear in training data, and no model ca
 
 Upstream decisions constrain what downstream models can learn. If an assay rarely observes indels in certain repeat classes, models trained on those callsets effectively learn a world where such variants do not exist. If certain ancestries are underrepresented in reference panels or truth sets, models may perform poorly for those populations while appearing well-calibrated in benchmarks dominated by European samples. High-confidence region definitions determine which variants enter training sets; variants in excluded regions are invisible to models regardless of their biological importance.
 
-For regulatory sequence models and variant effect predictors (@sec-dna-lm, @sec-regulatory, @sec-cnn, @sec-vep-classical), upstream variant calling determines which sites appear as candidates and how often certain sequence patterns are observed in association with functional outcomes. The HLA blind spot in short-read calling means that models trained primarily on short-read callsets will systematically underperform for immune-related variants despite their substantial clinical importance for autoimmune disease, transplant rejection, and drug hypersensitivity.
+For regulatory sequence models and variant effect predictors (@sec-dna-lm, @sec-regulatory, @sec-cnn, @sec-vep-classical), upstream variant calling determines which sites appear as candidates and how often certain sequence patterns are observed in association with functional outcomes. The HLA blind spot in short-read calling means that models trained primarily on short-read callsets will systematically underperform for immune-related variants despite their substantial clinical importance for autoimmune disease, transplant rejection, and drug hypersensitivity.  The accuracy ceiling imposed by variant calling on downstream effect prediction is examined quantitatively in @sec-vep.
 
 ### Effect Sizes Across the Frequency Spectrum
 

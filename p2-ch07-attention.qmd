@@ -9,7 +9,7 @@ This chapter examines the mechanisms that make transformers effective for genomi
 
 ## The Self-Attention Mechanism
 
-Understanding a variant's regulatory impact often requires integrating information across thousands of base pairs. A transcription factor binding site gains meaning from the promoter it activates, the insulators that constrain its range, and the chromatin state that modulates accessibility. CNNs force this information to propagate through many layers, each aggregating only local context. Self-attention instead computes all pairwise interactions simultaneously, allowing the model to directly relate any position to any other regardless of distance.
+Understanding a variant's regulatory impact often requires integrating information across thousands of base pairs. A transcription factor binding site gains meaning from the promoter it activates, the insulators that constrain its range, and the chromatin state that modulates accessibility. CNNs force this information to propagate through many layers, each aggregating only local context. Self-attention instead computes all pairwise interactions simultaneously, allowing the model to directly relate any position to any other regardless of distance. Where convolutions apply fixed filters uniformly across the sequence, attention performs dynamic routing: each position queries the entire sequence and aggregates information based on content-dependent relevance scores. The "routing" changes for every input because attention weights depend on what the sequence contains, not just where positions sit relative to each other.
 
 At each position in the input sequence, self-attention computes three vectors: a query, a key, and a value. These vectors emerge from multiplying the input embedding at that position by three learned weight matrices $W^Q$, $W^K$, and $W^V$. The query represents what information this position seeks from other positions. The key represents what information this position offers to queries from elsewhere. The value represents the actual information this position contributes when attended to. This query-key-value structure separates the question of "which positions should interact" (determined by query-key similarity) from "what information flows between them" (determined by values).
 
@@ -52,7 +52,7 @@ This quadratic scaling creates a fundamental tension between context length and 
 
 Self-attention has a critical limitation: it is permutation invariant. Shuffling input token order changes nothing about how attention weights are computed because the same queries, keys, and values exist regardless of position. The model has no inherent notion of sequence order. For genomic data where position matters fundamentally (5' to 3' directionality, distance from transcription start sites, strand orientation), this blindness to order would be catastrophic.
 
-Positional encodings inject information about token positions into the model. The approach varies across methods, but the goal is consistent: break permutation invariance by making the model aware of where each token sits in the sequence.
+Positional encodings inject information about token positions into the model, a challenge first introduced in @sec-embeddings when discussing how models represent sequence information. The approach varies across methods, but the goal is consistent: break permutation invariance by making the model aware of where each token sits in the sequence.
 
 ### Absolute Position Encodings
 
@@ -158,6 +158,12 @@ Encoder-only models excel at representation learning: producing embeddings that 
 Decoder-only transformers use causal attention where each position attends only to itself and preceding positions. This enables autoregressive generation: the model produces sequences one token at a time, conditioning each new token on all previous tokens. GenSLM and other genomic models trained on next-token prediction use this architecture.
 
 Causal attention is essential for generation tasks but produces less rich representations for fixed sequences because each position sees only partial context. The choice between encoder and decoder architectures reflects a fundamental tension: representation learning benefits from bidirectional context, while generation requires causal structure. Some applications use both, with a bidirectional encoder producing initial representations that a causal decoder refines for generation or autoregressive prediction.
+
+### Encoder-Decoder Transformers
+
+Encoder-decoder architectures combine bidirectional encoding with autoregressive decoding. The encoder processes an input sequence with full bidirectional attention, producing contextualized representations. The decoder then generates output tokens autoregressively, attending both to its own previous outputs (through causal self-attention) and to encoder representations (through cross-attention). This cross-attention allows each decoder position to query the full encoded input when generating output.
+
+Encoder-decoder models suit sequence-to-sequence tasks where input and output differ in length or structure. In natural language processing, machine translation exemplifies this pattern: encode a sentence in one language, decode into another. Genomic applications are less common but include tasks like predicting protein sequences from DNA (where input and output alphabets differ) or generating variant descriptions from sequence context. Most genomic foundation models favor encoder-only or decoder-only architectures because their primary tasks (representation learning, sequence generation) align naturally with those simpler structures. Encoder-decoder overhead provides little benefit when input and output share the same sequence space.
 
 ### Hybrid CNN-Transformer Models
 
