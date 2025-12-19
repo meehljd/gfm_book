@@ -271,7 +271,7 @@ End chapters when the argument naturally completes. Final paragraph should point
 Weave forward references throughout the chapter naturally:
 - "We return to this in Chapter X when examining..."
 - "This architectural choice anticipates the foundation models in Part 4"
-- "The interpretability challenges here motivate the mechanistic approaches in @sec-interpretabilityretability"
+- "The interpretability challenges here motivate the mechanistic approaches in @sec-interpretability"
 
 **Don't**: Save all forward references for conclusion
 **Don't**: Make them feel like advertisements ("The exciting developments in Chapter X...")
@@ -282,17 +282,46 @@ Weave forward references throughout the chapter naturally:
 
 Readers decide whether to engage deeply within the first 60 seconds. The opening must establish intellectual stakes and narrative tension immediately—not through meta-commentary about what the chapter will cover, but through the inherent tension in the subject matter itself.
 
+### The Distinctiveness Requirement
+
+**CRITICAL: Each chapter must have a unique hook that no other chapter uses.**
+
+When writing or revising chapter openings, first identify what makes THIS chapter's intellectual contribution distinctive. The hook should reflect that specific contribution, not a generic framing that could apply to multiple chapters.
+
+**Hooks to use ONCE in the entire book (then retire):**
+- "We can X, yet we cannot Y" paradox structure
+- "Asymmetry between X and Y" framing
+- Clinical scenario openings (use sparingly, max 3-4 across all chapters)
+- "The interpretation gap" (sequencing cheap, understanding hard)
+- Scale contrasts (millions of X, handful of Y)
+
+**Before writing any chapter opening, check:**
+1. What is this chapter's unique intellectual contribution?
+2. What hook best captures that specific contribution?
+3. Has this hook pattern been used in another chapter?
+4. If yes, find a different angle
+
+**Examples of distinctive hooks by chapter type:**
+
+| Chapter Focus | Distinctive Hook Approach |
+|---------------|--------------------------|
+| Data/Resources | "Models inherit training data biases" (inheritance framing) |
+| Architecture | "Different architectures encode different assumptions about biology" |
+| Evaluation | "Genomic data makes it easy to fool yourself" (unique pitfalls) |
+| Clinical application | "Predictions only matter if they change decisions" (action gap) |
+| Method comparison | "Each approach answers a different question" |
+
 ### Opening Techniques That Work
 
-**Paradoxes and tensions:**
+**Paradoxes and tensions** (use variety across chapters):
 - "We can X, yet we cannot Y"
 - "The field has achieved X, but Y remains unsolved"
-- "Method X succeeds when Y, but fails when Z—understanding why requires..."
+- "Method X succeeds when Y, but fails when Z"
 
 **Concrete scale that surprises:**
-- Juxtapose achievable vs. impossible: "sequence a genome for $300 / interpret variants"
-- Scale contrasts: "millions of genomes / understand 2% of variants"
-- Time contrasts: "hours to sequence / years to interpret"
+- Juxtapose achievable vs. impossible
+- Scale contrasts with specific numbers
+- Time contrasts
 
 **The central problem as narrative driver:**
 State the core challenge as a problem demanding solution, not as a topic to be covered:
@@ -304,6 +333,16 @@ Within the first paragraph, establish why failure matters:
 - Clinical: "Missed variants mean missed diagnoses"
 - Scientific: "Systematic errors propagate through every downstream analysis"
 - Practical: "Every model in this book assumes this problem is solved"
+
+**Conceptual shifts:**
+Frame the chapter around an intellectual pivot:
+- "Where X asks 'what pattern exists here,' Y asks 'what distant information matters here'"
+- "The key insight was not better X, but a reformulation of the problem itself"
+
+**The distinctive capability:**
+Lead with what this approach uniquely enables:
+- "Foundation models score variants without ever seeing pathogenic labels during pretraining"
+- "Graph neural networks consume foundation model representations, operating at a higher level of abstraction"
 
 ### Opening Patterns to Avoid
 
@@ -325,10 +364,15 @@ Within the first paragraph, establish why failure matters:
 - ❌ "In order to understand X, we must first..."
 - ❌ "Before we can discuss X, it's important to..."
 
+**Repetitive patterns across chapters:**
+- ❌ Using "asymmetry" framing in multiple chapters
+- ❌ Opening every clinical chapter with a patient scenario
+- ❌ Repeatedly using "we can sequence cheaply but can't interpret"
+
 ### Structure for Opening Paragraphs
 
 **Paragraph 1 (2-4 sentences):**
-- Sentence 1: State the paradox, tension, or central challenge
+- Sentence 1: State the paradox, tension, or central challenge UNIQUE to this chapter
 - Sentences 2-3: Concrete evidence or scale that makes it vivid
 - Sentence 4 (optional): First hint at consequences or why it matters
 
@@ -355,55 +399,172 @@ Every major opening (chapter, major section) should contain at least one sentenc
 
 5. **State information-theoretic limits**: "Short reads face a fundamental limitation rooted in information theory: sequences shorter than local repeats cannot unambiguously resolve these features."
 
+6. **Capture conceptual shifts**: "Where convolutions ask 'what local pattern exists here,' attention asks 'what distant information matters here.'"
+
+7. **Name the key distinction**: "Plausible explanations that match biological intuition are not the same as faithful explanations that accurately reflect model computation."
+
 **Placement**: Typically the final sentence of paragraph 1 (chapter opening) or final sentence of the motivating paragraph (section opening).
 
 **Test**: Can you imagine a professor quoting this sentence in a lecture? If not, it's not memorable enough.
 
-### Examples
+### Exemplary Chapter Hooks by Type
 
-**Strong opening (genomic variant calling):**
-> "Modern genomics rests on a paradox. We can sequence a human genome for a few hundred dollars and store millions of genomes in continental biobanks, yet we cannot reliably interpret most of the variants we discover. The flood of sequence data vastly outpaces our ability to distinguish true biological variation from technical artifact, let alone to predict which variants matter for disease or drug response. Every analysis downstream—from polygenic scores to clinical variant interpretation—assumes that this upstream conversion from sequencing reads to variant calls has already succeeded. When it fails, every subsequent model inherits those errors."
+**The Discovery Hook** (for methods that revealed something unexpected):
+> "In 2015, a convolutional neural network trained on ENCODE chromatin data learned to recognize transcription factor binding motifs that matched entries in the JASPAR database, despite never seeing those motifs during training. The network had discovered, through gradient descent on raw sequence, patterns that experimental biologists had spent decades cataloging."
 
-Why it works: Immediate paradox, concrete scale, clear stakes, narrative tension.
+Why it works: Leads with a surprising, concrete finding. The model "discovered" biology.
 
-**Strong opening (attention mechanisms):**
-> "Convolutional networks excel at local patterns but fail at long-range dependencies. When a regulatory element 50 kilobases upstream controls gene expression, no practical CNN architecture can span that distance—the receptive field would require hundreds of layers and billions of parameters. This limitation isn't merely computational; it reflects a fundamental mismatch between sequence biology and translational symmetry. The attention mechanism, introduced in 2017 for language modeling, resolved this tension by abandoning sequential processing entirely."
+**The Conceptual Shift Hook** (for architectural innovations):
+> "Where convolutional networks ask 'what local pattern exists here,' attention asks a different question: 'what distant information matters here?' This reformulation changed what genomic models could learn."
 
-Why it works: States limitation, gives concrete example of failure, explains why fundamental (not just technical), introduces solution as resolution of tension.
+Why it works: Frames the innovation as answering a different question, not just performing better.
 
-**Weak opening (avoid this):**
-> "Attention mechanisms have become increasingly important in genomic deep learning over the past several years. This chapter examines how attention works, why it matters for genomic sequences, and how transformer architectures apply these concepts. We begin by reviewing the limitations of previous approaches, then introduce the attention mechanism, and finally discuss applications to genomic problems."
+**The Silent Failure Hook** (for evaluation/methodology chapters):
+> "Transfer learning fails as often as it succeeds, and the failures are silent. A model produces confident predictions; nothing signals when those predictions are meaningless."
 
-Why it fails: Generic historical framing, meta-commentary about chapter structure, no stakes, no tension, no concrete hooks.
+Why it works: Creates stakes around a hidden danger. The problem isn't obvious.
 
-### Anatomy of the v7 Opening (Variant Calling Chapter)
+**The Calibration Hook** (for uncertainty/clinical chapters):
+> "A pathogenicity score of 0.73 means nothing unless we know what 0.73 means. If the model is well-calibrated, approximately 73% of variants receiving this score are truly pathogenic. If miscalibrated, the true rate could be 40% or 95%."
 
-**Paragraph 1:**
-> "Modern genomics rests on a paradox. We can sequence a human genome for a few hundred dollars and store millions of genomes in continental biobanks, yet we cannot reliably interpret most of the variants we discover. A newborn screening program can identify thousands of rare variants in an infant's genome before discharge, but clinicians can confidently act on fewer than a hundred. The flood of sequence data vastly outpaces our ability to distinguish true biological variation from technical artifact, let alone to predict which variants matter for disease or drug response. Every analysis downstream—from polygenic scores to clinical variant interpretation—assumes that this upstream conversion from sequencing reads to variant calls has already succeeded. When it fails, every subsequent model inherits those errors."
+Why it works: Makes an abstract concept (calibration) concrete through a specific number.
 
-**What makes this exceptional:**
-1. **Sentence 1**: States paradox directly (can sequence vs. cannot interpret)
-2. **Sentence 2**: CONCRETE clinical example with numbers (thousands → fewer than 100)
-3. **Sentence 3**: Expands the paradox (data generation >> interpretation ability)
-4. **Sentence 4**: Stakes for THIS BOOK specifically (downstream models)
-5. **Sentence 5**: Consequence statement ("When it fails...")
+**The Action Gap Hook** (for clinical translation chapters):
+> "A risk prediction has clinical value only if it changes what happens next. If a patient with a high score receives the same treatment as one without genetic testing, the score added nothing to care regardless of its statistical validity."
 
-**Key technique**: Sentence 2 provides a memorable, specific example that makes the abstract paradox concrete.
+Why it works: Reframes success criteria from prediction accuracy to clinical impact.
 
-**Paragraph 2:**
-> "This asymmetry between data generation and interpretation defines the central challenge of genomic medicine. Variant calls represent the atoms that later models operate on: polygenic risk scores treat variants as weighted features, regulatory sequence models learn from patterns around variant sites, and clinical interpretation systems classify individual variants as pathogenic or benign. None of these systems question whether the variants they receive are real. They assume the upstream pipeline has already solved the problem of separating signal from noise, true variation from systematic artifact, inherited germline mutations from somatic changes acquired during life. Understanding where that assumption breaks down, and how deep learning has begun to address those failures, establishes the foundation for everything that follows in this book."
+**The Proxy Gap Hook** (for benchmark/evaluation chapters):
+> "Every benchmark measures a proxy. ClinVar pathogenicity labels proxy clinical impact. AUROC proxies discrimination ability. The gap between proxy and target varies across benchmarks, variant types, and populations."
 
-**What makes this exceptional:**
-1. **Sentence 1**: Explicitly NAMES the central tension ("This asymmetry...")
-2. **Sentences 2-3**: Explains what variants represent and what downstream models do (connects to book's arc)
-3. **Sentence 4**: States the assumption
-4. **Sentence 5**: States what chapter will do (frame as understanding breakdown)
+Why it works: Establishes critical distance from benchmarks without being cynical.
 
-**Key technique**: "This asymmetry" explicitly names and frames the problem from paragraph 1.
+### Quality Checklist for Chapter Openings
 
-**Pattern to replicate:**
-- Paragraph 1: Paradox → Concrete example → Expanded paradox → Stakes → Consequence
-- Paragraph 2: Name the tension → Explain components → State assumption → Frame chapter's purpose
+Before finalizing any chapter opening:
+- [ ] Does paragraph 1 contain a paradox, tension, or challenge (not just a topic)?
+- [ ] Is this hook DISTINCT from all other chapter hooks in the book?
+- [ ] Are there concrete numbers, scales, or examples in the first 100 words?
+- [ ] Could a smart undergraduate explain "why this matters" after reading paragraph 1?
+- [ ] Did I avoid starting with "This chapter examines..." or "X technology has transformed..."?
+- [ ] Is there at least one memorable, quotable sentence?
+- [ ] Would I keep reading if this were someone else's textbook?
+
+If you answer "no" to any of these, revise the opening before proceeding.
+
+## Section Opening Strategy
+
+### Every Section Needs a Hook
+
+Major sections (## headings) require their own motivating opening, not just a transition from the previous section. The first paragraph of each section must establish why this specific content matters before diving into mechanism.
+
+### Avoid Formulaic Section Transitions
+
+**DON'T open sections with:**
+- ❌ "Having discussed X, we now turn to Y"
+- ❌ "With this foundation in place, we can examine..."
+- ❌ "The previous section established X. This section addresses Y."
+- ❌ "Building on the concepts above..."
+- ❌ Direct definitions: "X is defined as..."
+
+**DO open sections with:**
+- ✅ A limitation or gap that motivates this section's content
+- ✅ A concrete example that illustrates the need
+- ✅ A question that the section will answer
+- ✅ Stakes specific to this topic
+
+### Section Opening Patterns
+
+**The Limitation Pattern:**
+> "Convolutional networks integrate information only within their receptive fields. Genomic regulation routinely operates across distances that exceed practical receptive field sizes: enhancers control genes across tens of kilobases, topologically associating domains span megabases."
+
+**The Concrete Example Pattern:**
+> "Consider a child who inherits two rare variants in *CFTR*. If both reside on the maternal chromosome, the child retains one functional copy. If on opposite chromosomes, no functional copy exists. Standard genotypes cannot distinguish these scenarios."
+
+**The Question Pattern:**
+> "What does it mean for a model to 'understand' regulatory grammar? The question is not philosophical but operational: can we identify what patterns the model has learned, and do those patterns correspond to known biology?"
+
+**The Stakes Pattern:**
+> "Calibration determines whether model outputs can inform clinical decisions. A model that systematically overstates confidence will trigger unnecessary interventions; one that understates confidence will miss actionable findings."
+
+**The Capability Pattern:**
+> "Long reads traverse regions essentially invisible to short-read sequencing. A single 15-kilobase HiFi read can span an entire tandem repeat, resolving copy number and internal structure simultaneously."
+
+### Section Opening Checklist
+
+Before finalizing any section opening:
+- [ ] Does the first paragraph establish stakes or motivation?
+- [ ] Did I avoid formulaic transitions ("Having discussed...", "Building on...")?
+- [ ] Is there a concrete example, specific limitation, or clear question?
+- [ ] Would a reader understand why this section matters before reading the technical content?
+
+## Part Introductions
+
+### Purpose
+
+Orient readers at major transitions. Establish intellectual coherence for the 4-5 chapters ahead. Motivate why these chapters belong together.
+
+### Length and Structure
+
+**Target**: 300-500 words (3-4 paragraphs)
+
+**Paragraph 1**: Central question, challenge, or intellectual theme that unifies this part. Lead with substance, not backward reference.
+
+**Paragraph 2**: How the chapters build on each other logically. Show the arc, don't just list contents.
+
+**Paragraph 3**: Chapter-by-chapter preview with specific focus of each.
+
+**Paragraph 4** (optional): Forward pointer to what this part enables in later parts.
+
+### Critical Rules for Part Introductions
+
+**DO NOT open with backward references:**
+- ❌ "The preceding parts have traced..."
+- ❌ "Part I established the foundations..."
+- ❌ "Having covered X in earlier chapters..."
+- ❌ "Building on the concepts from Part II..."
+
+**DO open with the intellectual stakes of THIS part:**
+- ✅ "Every genomic foundation model inherits the biases of its training data."
+- ✅ "Biology operates across scales that sequence alone cannot capture."
+- ✅ "Evaluating genomic models presents challenges that distinguish this domain from NLP or computer vision."
+
+**Minimize chapter enumeration:**
+- ❌ "Chapter 5 covers X. Chapter 6 addresses Y. Chapter 7 examines Z."
+- ✅ Weave chapter references into the narrative of how ideas build
+
+### Part Introduction Template
+
+**Paragraph 1 (Intellectual Stakes):**
+Open with the central insight, challenge, or question that unifies the part. No backward references. Make readers understand why these chapters belong together.
+
+**Paragraph 2 (The Arc):**
+Explain how the chapters build logically. What does each add? How do they connect? This is narrative, not enumeration.
+
+**Paragraph 3 (Chapter Preview):**
+Brief mention of each chapter's specific focus. Use @sec-references. Keep to 1-2 sentences per chapter.
+
+**Paragraph 4 (Forward Connection):**
+Optional. What does mastering this part enable? How does it connect to later parts?
+
+### Example Part Introduction
+
+**Part II: Sequence Architectures**
+
+> Five foundational questions determine what any genomic model can learn. How should sequences be represented as neural network inputs? What mechanisms enable models to capture dependencies across thousands or millions of base pairs? What distinguishes foundation models from their task-specific predecessors? How do models extract useful representations from unlabeled sequence data? And how can pretrained representations be adapted to specific applications? The answers to these questions, made before any training begins, constrain everything that follows.
+>
+> This part addresses each question in turn, building from fundamental representation choices through architectural mechanisms to training and adaptation strategies. The progression is logical: representation choices (@sec-representations) determine what patterns are visible to the model; convolutional architectures (@sec-cnn) established the paradigm of learning sequence-to-function mappings; attention mechanisms (@sec-attention) resolved the tension between local computation and long-range dependencies; pretraining objectives (@sec-pretraining) determine what patterns models learn from unlabeled data; and transfer learning (@sec-transfer) bridges the gap between pretraining and deployment.
+>
+> Together, these chapters provide the conceptual foundation for understanding the specific model families examined in Part III and the applications developed throughout the remainder of the book.
+
+### Part Introduction Checklist
+
+Before finalizing any part introduction:
+- [ ] Does paragraph 1 establish intellectual stakes without backward references?
+- [ ] Is there a clear unifying theme for why these chapters belong together?
+- [ ] Does the chapter preview show logical progression, not just list contents?
+- [ ] Is it 300-500 words (not too long, not too short)?
+- [ ] Would a reader understand the part's purpose without having read previous parts?
 
 ## Heading Structure
 
@@ -580,37 +741,6 @@ Citations should feel natural, not tacked on:
 
 **Bad**: "Enformer extended the receptive field to 200kb through transformer attention. [@avsec_effective_2021]"
 
-## Part Introductions
-
-### Purpose
-
-Orient readers at major transitions. Establish intellectual coherence for the 4-5 chapters ahead. Motivate why these chapters belong together.
-
-### Length and Structure
-
-**Target**: 250-400 words (approximately 3 paragraphs)
-
-**Paragraph 1** (2-4 sentences): Central question or challenge that unifies this part
-**Paragraph 2** (4-6 sentences): Chapter arc—show how chapters build logically, not just list contents
-**Paragraph 3** (1-2 sentences): Forward pointer or key capability this part enables
-
-### What to Avoid
-
-- Detailed chapter summaries (that's what chapter openings do)
-- Rehashing concepts from previous parts
-- Formulaic "In Chapter X, we will discuss..." repetition
-- Redundant content with chapter introductions
-
-### Example
-
-**Part 2: Architectures for Genomic Sequence Modeling**
-
-> Sequence models for genomics must balance three competing demands: capturing long-range dependencies that can span hundreds of kilobases, learning hierarchical representations from nucleotides to regulatory logic, and maintaining computational tractability for genome-scale data. No single architecture optimally addresses all three constraints, but each offers distinct advantages that shaped the field's evolution.
->
-> This part examines the three architectural paradigms that dominated genomic deep learning before the foundation model era. Convolutional networks established the field by demonstrating that learned filters could outperform hand-crafted motifs for predicting chromatin states and variant effects, though their fixed receptive fields limited long-range modeling. Recurrent architectures extended context windows through sequential processing but encountered scaling bottlenecks that prevented genome-wide application. Transformers resolved this tension through attention mechanisms that directly compute dependencies between arbitrary positions while maintaining parallel computation, enabling the foundation models we examine in Part 4. Each architecture reveals fundamental trade-offs in biological sequence modeling that persist in modern approaches.
->
-> Together, these chapters establish the architectural vocabulary necessary for understanding how modern genomic AI systems are constructed and why they make specific design choices.
-
 ## Readability and Engagement
 
 ### Concrete Examples Throughout
@@ -718,10 +848,25 @@ Open subsections with specific numbers, drug names, genes, or patient scenarios.
 
 **Bad**: "The *CYP2D6* gene is clinically important for drug metabolism."
 
+### Balancing Clinical Scenarios
+
+**Use clinical scenario openings strategically, not formulaically.**
+
+Clinical scenarios are powerful but should not open every chapter or section. Reserve them for:
+- Chapters with direct clinical applications
+- Sections where patient stakes illuminate technical choices
+- Moments where concrete examples clarify abstract concepts
+
+**Vary your opening approaches across the book:**
+- Some chapters: Clinical scenario opening
+- Some chapters: Conceptual shift framing
+- Some chapters: Technical limitation opening
+- Some chapters: Surprising finding opening
+
 ### Concrete Specificity Checklist
 
 When mentioning clinical examples, always include:
-- **Percentages**: "25% of clinically used drugs" not "many drugs".  Cite as needed per the "numbers" guideline.
+- **Percentages**: "25% of clinically used drugs" not "many drugs". Cite as needed per the "numbers" guideline.
 - **Drug names**: "codeine, tamoxifen, and many antidepressants" not "various medications"
 - **Gene names**: "*CFTR*, the cystic fibrosis gene" not "a recessive disease gene"
 - **Numbers**: "thousands of variants, fewer than a hundred actionable" not "many variants, few actionable"
@@ -901,7 +1046,7 @@ After first mention, use term normally without formatting.
 - Provide intuition for what equation computes before mathematical form
 - Use standard notation when possible (don't reinvent symbols)
 - Explain what each variable and term represents in context for non-mathematicians
-- Do not lead LaTeX equations with escape characters.  Use "$" or "$$" and not "\$" or "\$$"
+- Do not lead LaTeX equations with escape characters. Use "$" or "$$" and not "\$" or "\$$"
 
 **Example**:
 "The attention score between positions $i$ and $j$ quantifies their interaction strength. Mathematically, this score is computed as the dot product of query and key vectors, scaled by the square root of dimension $d_k$:
@@ -1003,16 +1148,36 @@ Use "yet" to create memorable paradoxes:
 
 **Why it works**: "Yet" creates tension by juxtaposing capability with limitation.
 
-## Quality Checklist
+**Note**: Use this construction sparingly across the book. If multiple chapters use "We can X, yet we cannot Y" as their opening hook, the pattern loses impact.
 
-### Chatper Openings
+## Quality Checklists
+
+### Chapter Openings
 Before finalizing chapter opening, ask:
 - [ ] Does paragraph 1 contain a paradox, tension, or challenge (not just a topic)?
+- [ ] Is this hook DISTINCT from all other chapter hooks in the book?
 - [ ] Are there concrete numbers, scales, or examples in the first 100 words?
 - [ ] Could a smart undergraduate explain "why this matters" after reading paragraph 1?
 - [ ] Did I avoid starting with "This chapter examines..." or "X technology has transformed..."?
+- [ ] Is there at least one memorable, quotable sentence?
 - [ ] Would I keep reading if this were someone else's textbook?
+
 If you answer "no" to any of these, revise the opening before proceeding with the chapter.
+
+### Section Openings
+Before finalizing any section opening:
+- [ ] Does the first paragraph establish stakes or motivation?
+- [ ] Did I avoid formulaic transitions ("Having discussed...", "Building on...")?
+- [ ] Is there a concrete example, specific limitation, or clear question?
+- [ ] Would a reader understand why this section matters before reading the technical content?
+
+### Part Introductions
+Before finalizing any part introduction:
+- [ ] Does paragraph 1 establish intellectual stakes without backward references?
+- [ ] Is there a clear unifying theme for why these chapters belong together?
+- [ ] Does the chapter preview show logical progression, not just list contents?
+- [ ] Is it 300-500 words (not too long, not too short)?
+- [ ] Would a reader understand the part's purpose without having read previous parts?
 
 ### Chapter Sections
 Before finalizing any chapter section:
@@ -1062,7 +1227,7 @@ Before finalizing any chapter section:
 - [ ] "How it works" details added without disrupting narrative flow
 - [ ] Specific numbers ground abstract concepts
 
-- If you answer "no" to any of these, revise the chapter section.
+If you answer "no" to any of these, revise the chapter section.
 
 ## Pre-Generation Self-Check
 
@@ -1075,14 +1240,16 @@ Before generating prose, explicitly verify:
 5. **Clinical stakes awareness**: "I will open major sections with concrete clinical scenarios that establish stakes"
 6. **Explicit framing awareness**: "I will explicitly name tensions, tradeoffs, and key insights rather than leaving them implicit"
 7. **Memorable sentence awareness**: "I will craft at least one quotable sentence for each major opening"
+8. **Distinctiveness awareness**: "I will ensure this opening is unique and not repetitive of other chapters"
 
-If you cannot commit to all seven, stop and review the relevant sections.
+If you cannot commit to all eight, stop and review the relevant sections.
 
 **Additional check for major openings (chapters, major sections):**
 - Have I included a concrete, specific example with numbers in the first paragraph?
 - Have I explicitly named the central tension or challenge?
 - Does at least one sentence feel memorable or quotable?
 - Have I stated consequences explicitly, not just described problems?
+- Is this hook distinct from other chapter/section hooks in the book?
 
 ## Meta-Instruction
 
