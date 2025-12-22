@@ -7,13 +7,13 @@ The challenge is that biological structure operates at multiple scales simultane
 An analogy to natural language processing illuminates the fundamental tradeoffs. Training a language model on English text requires deciding how to segment the continuous character stream into discrete tokens. Character-level tokenization preserves maximum resolution but creates sequences too long for efficient processing. Word-level tokenization compresses the sequence but loses information about morphology and subword structure. Learned subword vocabularies (byte-pair encoding, SentencePiece) balance these concerns by letting corpus statistics guide segmentation. DNA presents similar choices but with critical differences: only four letters rather than dozens, no natural word boundaries, and the biological structure operating at multiple scales that language lacks. This chapter examines the representation strategies that genomic foundation models employ, from fixed k-mer vocabularies through learned tokenization schemes, and traces how each choice shapes what downstream models can learn.
 
 ::: {#fig-tokenization-comparison layout-ncol=2}
-**[FIGURE PLACEHOLDER A]**
+![**FIGURE PLACEHOLDER A**](https://placehold.co/600x400?text=FIGURE%20PLACEHOLDER%20A)
 
-**[FIGURE PLACEHOLDER B]**
+![**FIGURE PLACEHOLDER B**](https://placehold.co/600x400?text=FIGURE%20PLACEHOLDER%20B)
 
-**[FIGURE PLACEHOLDER C]**
+![**FIGURE PLACEHOLDER C**](https://placehold.co/600x400?text=FIGURE%20PLACEHOLDER%20C)
 
-**[FIGURE PLACEHOLDER D]**
+![**FIGURE PLACEHOLDER D**](https://placehold.co/600x400?text=FIGURE%20PLACEHOLDER%20D)
 
 [Essential] Four-panel comparison showing the same 30-nucleotide regulatory sequence tokenized four different ways. Panel A (One-hot): 30 tokens, one per nucleotide, shown as 4×30 binary matrix with color-coded nucleotides. Panel B (Overlapping 6-mers): Still ~30 tokens due to overlap, with brackets showing how tokens share nucleotides. Panel C (BPE): ~10-15 variable-length tokens, with token boundaries marked showing compression of repetitive regions. Panel D (Single-nucleotide for Hyena/Mamba): 30 tokens like one-hot but with learned embeddings indicated. Annotate sequence length, token count, and effective compression ratio for each.
 :::
@@ -80,7 +80,7 @@ Standard tokenization schemes treat DNA as a homogeneous string of characters, i
 For protein-coding regions, the natural unit of sequence is the codon rather than the individual nucleotide. *GenSLMs* pioneered codon-level tokenization for genomic foundation models in 2022, treating each three-nucleotide codon as a single token and exploiting the fact that codons are the biologically meaningful units of protein-coding sequence [@zvyagin_genslms_2022]. The 64-codon vocabulary captures the complete space of possible genetic code words, with each token corresponding to either an amino acid or a stop signal. This alignment with translation semantics means that mutations affecting amino acid identity (nonsynonymous changes) alter the token sequence, while synonymous mutations within a codon alter the specific token used but maintain broader codon-family structure.
 
 ::: {#fig-biological-tokenization}
-**[FIGURE PLACEHOLDER]**
+![**FIGURE PLACEHOLDER**](https://placehold.co/600x400?text=FIGURE%20PLACEHOLDER)
 
 [Enhancing] Comparison of standard vs. biologically-informed tokenization on a gene structure diagram. Show: (1) Standard BPE tokenizing across codon boundaries in coding regions; (2) Codon-aware tokenization (GenSLMs/Life-Code) respecting reading frame with 64-codon vocabulary; (3) BioToken-style representation with explicit variant tokens, regulatory element markers, and structural annotations. Highlight how biological structure can be encoded directly into tokenization.
 :::
@@ -95,11 +95,11 @@ Variant-aware representations hold particular promise for clinical applications,
 The broader principle is that tokenization can and should incorporate biological structure when that structure is known and relevant. BPE learns statistical patterns from the corpus, but those patterns need not correspond to biological units. Codon tokenization imposes biological semantics directly, at the cost of applicability to noncoding regions. Future approaches might combine these strategies: codon-aware tokenization for coding regions, BPE or single-nucleotide tokens for noncoding sequence, and explicit variant tokens for clinical interpretation tasks.
 
 ::: {#fig-embedding-space layout-ncol=3}
-**[FIGURE PLACEHOLDER A]**
+![**FIGURE PLACEHOLDER A**](https://placehold.co/600x400?text=FIGURE%20PLACEHOLDER%20A)
 
-**[FIGURE PLACEHOLDER B]**
+![**FIGURE PLACEHOLDER B**](https://placehold.co/600x400?text=FIGURE%20PLACEHOLDER%20B)
 
-**[FIGURE PLACEHOLDER C]**
+![**FIGURE PLACEHOLDER C**](https://placehold.co/600x400?text=FIGURE%20PLACEHOLDER%20C)
 
 [High] UMAP or t-SNE visualization of k-mer or BPE token embeddings from a trained DNA language model (e.g., DNABERT-2 or GROVER). Color points by: Panel A: GC content (gradient from AT-rich to GC-rich). Panel B: Token frequency (common vs. rare). Panel C: Genomic context (coding, regulatory, repetitive). Show how biologically meaningful structure emerges without explicit supervision.
 :::
@@ -128,13 +128,13 @@ The relationship between tokenization and embedding deserves emphasis. Coarse to
 A regulatory variant 50 kilobases upstream of *MYC* can drive oncogenesis by disrupting an enhancer; the identical sequence change at a different genomic location might have no phenotypic consequence. Position is not merely metadata but fundamental biological information. Yet transformers process tokens as sets rather than sequences. The attention mechanism computes interactions between all pairs of tokens regardless of their positions, treating a sequence as a bag of elements with no inherent order. For language, this creates a problem: "dog bites man" and "man bites dog" contain identical tokens but mean very different things. In language, this positional dependency operates at the scale of sentences or paragraphs; word order determines syntax and meaning, but the relevant context rarely extends beyond a few hundred tokens. Genomic position dependencies operate across fundamentally different scales. A transcription factor binding site functions differently depending on whether it sits in a promoter, an intron, or an intergenic desert, and these distinctions can span tens of kilobases. Enhancer-promoter interactions routinely bridge 50 to 500 kilobases of intervening sequence. Moreover, absolute genomic coordinates carry accumulated knowledge with no linguistic analog: the position chr17:41,276,045 indexes decades of clinical observations, population frequencies, and functional studies that inform variant interpretation before a model processes a single nucleotide.  For genomics, the problem is more severe: a transcription factor binding site has entirely different effects depending on whether it appears in a promoter, an enhancer, or a gene body. **Position must somehow be encoded, and the encoding strategy determines what spatial relationships the model can learn.**
 
 ::: {#fig-position-encodings layout-ncol=2}
-**[FIGURE PLACEHOLDER A]**
+![**FIGURE PLACEHOLDER A**](https://placehold.co/600x400?text=FIGURE%20PLACEHOLDER%20A)
 
-**[FIGURE PLACEHOLDER B]**
+![**FIGURE PLACEHOLDER B**](https://placehold.co/600x400?text=FIGURE%20PLACEHOLDER%20B)
 
-**[FIGURE PLACEHOLDER C]**
+![**FIGURE PLACEHOLDER C**](https://placehold.co/600x400?text=FIGURE%20PLACEHOLDER%20C)
 
-**[FIGURE PLACEHOLDER D]**
+![**FIGURE PLACEHOLDER D**](https://placehold.co/600x400?text=FIGURE%20PLACEHOLDER%20D)
 
 [High] Four-panel comparison of position encoding approaches. Panel A (Absolute/Learned): Heatmap showing learned position embeddings across dimensions, with note about fixed maximum length. Panel B (Sinusoidal): Wave patterns at different frequencies across positions, showing how different dimensions capture different scales. Panel C (ALiBi): Attention bias matrix showing linear decay with distance, highlighting the implicit local preference. Panel D (RoPE): 2D rotation visualization in embedding subspace showing how relative position is encoded through rotation angle.
 :::
@@ -211,7 +211,7 @@ Several heuristics have emerged from practical experience. Single-nucleotide tok
 Every tokenization scheme embodies a trade-off between sequence compression and nucleotide resolution. K-mer tokenization reduces sequence length by a factor of k, enabling longer genomic contexts within fixed attention windows, but a single-nucleotide variant may alter multiple overlapping tokens in ways that obscure the mutation's identity. Byte-pair encoding learns compression patterns from sequence statistics, achieving efficient representation of common motifs while preserving rare sequences at higher resolution. One-hot encoding maintains single-nucleotide precision but offers no compression, limiting context length in attention-based architectures. No choice is universally optimal; the right representation depends on whether the downstream task prioritizes context length, variant sensitivity, or computational efficiency.
 
 ::: {#fig-compression-resolution}
-**[FIGURE PLACEHOLDER]**
+![**FIGURE PLACEHOLDER**](https://placehold.co/600x400?text=FIGURE%20PLACEHOLDER)
 
 [High] Two-axis plot with "Sequence Compression" on x-axis (tokens per kilobase) and "Nucleotide Resolution" on y-axis. Position different approaches: One-hot/single-nucleotide (no compression, full resolution), overlapping k-mers (no compression, k-nucleotide resolution), non-overlapping k-mers (k-fold compression, k-nucleotide resolution), BPE (variable compression, variable resolution). Annotate practical context lengths achievable with standard transformers (~4K tokens) for each approach. Include callout showing clinical implication: "Single SNP affects..." with number of tokens per approach.
 :::
