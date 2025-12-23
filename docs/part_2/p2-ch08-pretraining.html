@@ -1,0 +1,1482 @@
+<!DOCTYPE html>
+<html xmlns="http://www.w3.org/1999/xhtml" lang="en" xml:lang="en"><head>
+
+<meta charset="utf-8">
+<meta name="generator" content="quarto-1.8.26">
+
+<meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=yes">
+
+
+<title>8&nbsp; Pretraining Strategies – Genomic Foundation Models</title>
+<style>
+code{white-space: pre-wrap;}
+span.smallcaps{font-variant: small-caps;}
+div.columns{display: flex; gap: min(4vw, 1.5em);}
+div.column{flex: auto; overflow-x: auto;}
+div.hanging-indent{margin-left: 1.5em; text-indent: -1.5em;}
+ul.task-list{list-style: none;}
+ul.task-list li input[type="checkbox"] {
+  width: 0.8em;
+  margin: 0 0.8em 0.2em -1em; /* quarto-specific, see https://github.com/quarto-dev/quarto-cli/issues/4556 */ 
+  vertical-align: middle;
+}
+/* CSS for citations */
+div.csl-bib-body { }
+div.csl-entry {
+  clear: both;
+  margin-bottom: 0em;
+}
+.hanging-indent div.csl-entry {
+  margin-left:2em;
+  text-indent:-2em;
+}
+div.csl-left-margin {
+  min-width:2em;
+  float:left;
+}
+div.csl-right-inline {
+  margin-left:2em;
+  padding-left:1em;
+}
+div.csl-indent {
+  margin-left: 2em;
+}</style>
+
+
+<script src="../site_libs/quarto-nav/quarto-nav.js"></script>
+<script src="../site_libs/quarto-nav/headroom.min.js"></script>
+<script src="../site_libs/clipboard/clipboard.min.js"></script>
+<script src="../site_libs/quarto-search/autocomplete.umd.js"></script>
+<script src="../site_libs/quarto-search/fuse.min.js"></script>
+<script src="../site_libs/quarto-search/quarto-search.js"></script>
+<meta name="quarto:offset" content="../">
+<link href="../part_2/p2-ch09-transfer.html" rel="next">
+<link href="../part_2/p2-ch07-attention.html" rel="prev">
+<script src="../site_libs/quarto-html/quarto.js" type="module"></script>
+<script src="../site_libs/quarto-html/tabsets/tabsets.js" type="module"></script>
+<script src="../site_libs/quarto-html/axe/axe-check.js" type="module"></script>
+<script src="../site_libs/quarto-html/popper.min.js"></script>
+<script src="../site_libs/quarto-html/tippy.umd.min.js"></script>
+<script src="../site_libs/quarto-html/anchor.min.js"></script>
+<link href="../site_libs/quarto-html/tippy.css" rel="stylesheet">
+<link href="../site_libs/quarto-html/quarto-syntax-highlighting-587c61ba64f3a5504c4d52d930310e48.css" rel="stylesheet" class="quarto-color-scheme" id="quarto-text-highlighting-styles">
+<link href="../site_libs/quarto-html/quarto-syntax-highlighting-dark-b758ccaa5987ceb1b75504551e579abf.css" rel="stylesheet" class="quarto-color-scheme quarto-color-alternate" id="quarto-text-highlighting-styles">
+<link href="../site_libs/quarto-html/quarto-syntax-highlighting-587c61ba64f3a5504c4d52d930310e48.css" rel="stylesheet" class="quarto-color-scheme-extra" id="quarto-text-highlighting-styles">
+<script src="../site_libs/bootstrap/bootstrap.min.js"></script>
+<link href="../site_libs/bootstrap/bootstrap-icons.css" rel="stylesheet">
+<link href="../site_libs/bootstrap/bootstrap-a1553387a0f784068632030e9fbb8a3c.min.css" rel="stylesheet" append-hash="true" class="quarto-color-scheme" id="quarto-bootstrap" data-mode="light">
+<link href="../site_libs/bootstrap/bootstrap-dark-d1e9b63c6b6094879b9f94a7628e3370.min.css" rel="stylesheet" append-hash="true" class="quarto-color-scheme quarto-color-alternate" id="quarto-bootstrap" data-mode="dark">
+<link href="../site_libs/bootstrap/bootstrap-a1553387a0f784068632030e9fbb8a3c.min.css" rel="stylesheet" append-hash="true" class="quarto-color-scheme-extra" id="quarto-bootstrap" data-mode="light">
+<script id="quarto-search-options" type="application/json">{
+  "location": "sidebar",
+  "copy-button": false,
+  "collapse-after": 3,
+  "panel-placement": "start",
+  "type": "textbox",
+  "limit": 50,
+  "keyboard-shortcut": [
+    "f",
+    "/",
+    "s"
+  ],
+  "show-item-context": false,
+  "language": {
+    "search-no-results-text": "No results",
+    "search-matching-documents-text": "matching documents",
+    "search-copy-link-title": "Copy link to search",
+    "search-hide-matches-text": "Hide additional matches",
+    "search-more-match-text": "more match in this document",
+    "search-more-matches-text": "more matches in this document",
+    "search-clear-button-title": "Clear",
+    "search-text-placeholder": "",
+    "search-detached-cancel-button-title": "Cancel",
+    "search-submit-button-title": "Submit",
+    "search-label": "Search"
+  }
+}</script>
+
+  <script src="https://cdnjs.cloudflare.com/polyfill/v3/polyfill.min.js?features=es6"></script>
+  <script src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-chtml-full.js" type="text/javascript"></script>
+
+<script type="text/javascript">
+const typesetMath = (el) => {
+  if (window.MathJax) {
+    // MathJax Typeset
+    window.MathJax.typeset([el]);
+  } else if (window.katex) {
+    // KaTeX Render
+    var mathElements = el.getElementsByClassName("math");
+    var macros = [];
+    for (var i = 0; i < mathElements.length; i++) {
+      var texText = mathElements[i].firstChild;
+      if (mathElements[i].tagName == "SPAN" && texText && texText.data) {
+        window.katex.render(texText.data, mathElements[i], {
+          displayMode: mathElements[i].classList.contains('display'),
+          throwOnError: false,
+          macros: macros,
+          fleqn: false
+        });
+      }
+    }
+  }
+}
+window.Quarto = {
+  typesetMath
+};
+</script>
+
+<link rel="stylesheet" href="../styles.css">
+</head>
+
+<body class="nav-sidebar floating quarto-light"><script id="quarto-html-before-body" type="application/javascript">
+    const toggleBodyColorMode = (bsSheetEl) => {
+      const mode = bsSheetEl.getAttribute("data-mode");
+      const bodyEl = window.document.querySelector("body");
+      if (mode === "dark") {
+        bodyEl.classList.add("quarto-dark");
+        bodyEl.classList.remove("quarto-light");
+      } else {
+        bodyEl.classList.add("quarto-light");
+        bodyEl.classList.remove("quarto-dark");
+      }
+    }
+    const toggleBodyColorPrimary = () => {
+      const bsSheetEl = window.document.querySelector("link#quarto-bootstrap:not([rel=disabled-stylesheet])");
+      if (bsSheetEl) {
+        toggleBodyColorMode(bsSheetEl);
+      }
+    }
+    const setColorSchemeToggle = (alternate) => {
+      const toggles = window.document.querySelectorAll('.quarto-color-scheme-toggle');
+      for (let i=0; i < toggles.length; i++) {
+        const toggle = toggles[i];
+        if (toggle) {
+          if (alternate) {
+            toggle.classList.add("alternate");
+          } else {
+            toggle.classList.remove("alternate");
+          }
+        }
+      }
+    };
+    const toggleColorMode = (alternate) => {
+      // Switch the stylesheets
+      const primaryStylesheets = window.document.querySelectorAll('link.quarto-color-scheme:not(.quarto-color-alternate)');
+      const alternateStylesheets = window.document.querySelectorAll('link.quarto-color-scheme.quarto-color-alternate');
+      manageTransitions('#quarto-margin-sidebar .nav-link', false);
+      if (alternate) {
+        // note: dark is layered on light, we don't disable primary!
+        enableStylesheet(alternateStylesheets);
+        for (const sheetNode of alternateStylesheets) {
+          if (sheetNode.id === "quarto-bootstrap") {
+            toggleBodyColorMode(sheetNode);
+          }
+        }
+      } else {
+        disableStylesheet(alternateStylesheets);
+        enableStylesheet(primaryStylesheets)
+        toggleBodyColorPrimary();
+      }
+      manageTransitions('#quarto-margin-sidebar .nav-link', true);
+      // Switch the toggles
+      setColorSchemeToggle(alternate)
+      // Hack to workaround the fact that safari doesn't
+      // properly recolor the scrollbar when toggling (#1455)
+      if (navigator.userAgent.indexOf('Safari') > 0 && navigator.userAgent.indexOf('Chrome') == -1) {
+        manageTransitions("body", false);
+        window.scrollTo(0, 1);
+        setTimeout(() => {
+          window.scrollTo(0, 0);
+          manageTransitions("body", true);
+        }, 40);
+      }
+    }
+    const disableStylesheet = (stylesheets) => {
+      for (let i=0; i < stylesheets.length; i++) {
+        const stylesheet = stylesheets[i];
+        stylesheet.rel = 'disabled-stylesheet';
+      }
+    }
+    const enableStylesheet = (stylesheets) => {
+      for (let i=0; i < stylesheets.length; i++) {
+        const stylesheet = stylesheets[i];
+        if(stylesheet.rel !== 'stylesheet') { // for Chrome, which will still FOUC without this check
+          stylesheet.rel = 'stylesheet';
+        }
+      }
+    }
+    const manageTransitions = (selector, allowTransitions) => {
+      const els = window.document.querySelectorAll(selector);
+      for (let i=0; i < els.length; i++) {
+        const el = els[i];
+        if (allowTransitions) {
+          el.classList.remove('notransition');
+        } else {
+          el.classList.add('notransition');
+        }
+      }
+    }
+    const isFileUrl = () => {
+      return window.location.protocol === 'file:';
+    }
+    const hasAlternateSentinel = () => {
+      let styleSentinel = getColorSchemeSentinel();
+      if (styleSentinel !== null) {
+        return styleSentinel === "alternate";
+      } else {
+        return false;
+      }
+    }
+    const setStyleSentinel = (alternate) => {
+      const value = alternate ? "alternate" : "default";
+      if (!isFileUrl()) {
+        window.localStorage.setItem("quarto-color-scheme", value);
+      } else {
+        localAlternateSentinel = value;
+      }
+    }
+    const getColorSchemeSentinel = () => {
+      if (!isFileUrl()) {
+        const storageValue = window.localStorage.getItem("quarto-color-scheme");
+        return storageValue != null ? storageValue : localAlternateSentinel;
+      } else {
+        return localAlternateSentinel;
+      }
+    }
+    const toggleGiscusIfUsed = (isAlternate, darkModeDefault) => {
+      const baseTheme = document.querySelector('#giscus-base-theme')?.value ?? 'light';
+      const alternateTheme = document.querySelector('#giscus-alt-theme')?.value ?? 'dark';
+      let newTheme = '';
+      if(authorPrefersDark) {
+        newTheme = isAlternate ? baseTheme : alternateTheme;
+      } else {
+        newTheme = isAlternate ? alternateTheme : baseTheme;
+      }
+      const changeGiscusTheme = () => {
+        // From: https://github.com/giscus/giscus/issues/336
+        const sendMessage = (message) => {
+          const iframe = document.querySelector('iframe.giscus-frame');
+          if (!iframe) return;
+          iframe.contentWindow.postMessage({ giscus: message }, 'https://giscus.app');
+        }
+        sendMessage({
+          setConfig: {
+            theme: newTheme
+          }
+        });
+      }
+      const isGiscussLoaded = window.document.querySelector('iframe.giscus-frame') !== null;
+      if (isGiscussLoaded) {
+        changeGiscusTheme();
+      }
+    };
+    const authorPrefersDark = false;
+    const darkModeDefault = authorPrefersDark;
+      document.querySelector('link#quarto-text-highlighting-styles.quarto-color-scheme-extra').rel = 'disabled-stylesheet';
+      document.querySelector('link#quarto-bootstrap.quarto-color-scheme-extra').rel = 'disabled-stylesheet';
+    let localAlternateSentinel = darkModeDefault ? 'alternate' : 'default';
+    // Dark / light mode switch
+    window.quartoToggleColorScheme = () => {
+      // Read the current dark / light value
+      let toAlternate = !hasAlternateSentinel();
+      toggleColorMode(toAlternate);
+      setStyleSentinel(toAlternate);
+      toggleGiscusIfUsed(toAlternate, darkModeDefault);
+      window.dispatchEvent(new Event('resize'));
+    };
+    // Switch to dark mode if need be
+    if (hasAlternateSentinel()) {
+      toggleColorMode(true);
+    } else {
+      toggleColorMode(false);
+    }
+  </script>
+
+<div id="quarto-search-results"></div>
+  <header id="quarto-header" class="headroom fixed-top">
+  <nav class="quarto-secondary-nav">
+    <div class="container-fluid d-flex">
+      <button type="button" class="quarto-btn-toggle btn" data-bs-toggle="collapse" role="button" data-bs-target=".quarto-sidebar-collapse-item" aria-controls="quarto-sidebar" aria-expanded="false" aria-label="Toggle sidebar navigation" onclick="if (window.quartoToggleHeadroom) { window.quartoToggleHeadroom(); }">
+        <i class="bi bi-layout-text-sidebar-reverse"></i>
+      </button>
+        <nav class="quarto-page-breadcrumbs" aria-label="breadcrumb"><ol class="breadcrumb"><li class="breadcrumb-item"><a href="../part_2/p2--principles.html">Part II: Sequence Architectures</a></li><li class="breadcrumb-item"><a href="../part_2/p2-ch08-pretraining.html"><span class="chapter-number">8</span>&nbsp; <span class="chapter-title">Pretraining Strategies</span></a></li></ol></nav>
+        <a class="flex-grow-1" role="navigation" data-bs-toggle="collapse" data-bs-target=".quarto-sidebar-collapse-item" aria-controls="quarto-sidebar" aria-expanded="false" aria-label="Toggle sidebar navigation" onclick="if (window.quartoToggleHeadroom) { window.quartoToggleHeadroom(); }">      
+        </a>
+      <button type="button" class="btn quarto-search-button" aria-label="Search" onclick="window.quartoOpenSearch();">
+        <i class="bi bi-search"></i>
+      </button>
+    </div>
+  </nav>
+</header>
+<!-- content -->
+<div id="quarto-content" class="quarto-container page-columns page-rows-contents page-layout-article">
+<!-- sidebar -->
+  <nav id="quarto-sidebar" class="sidebar collapse collapse-horizontal quarto-sidebar-collapse-item sidebar-navigation floating overflow-auto">
+    <div class="pt-lg-2 mt-2 text-left sidebar-header">
+    <div class="sidebar-title mb-0 py-0">
+      <a href="../">Genomic Foundation Models</a> 
+        <div class="sidebar-tools-main">
+  <a href="" class="quarto-color-scheme-toggle quarto-navigation-tool  px-1" onclick="window.quartoToggleColorScheme(); return false;" title="Toggle dark mode"><i class="bi"></i></a>
+</div>
+    </div>
+      </div>
+        <div class="mt-2 flex-shrink-0 align-items-center">
+        <div class="sidebar-search">
+        <div id="quarto-search" class="" title="Search"></div>
+        </div>
+        </div>
+    <div class="sidebar-menu-container"> 
+    <ul class="list-unstyled mt-1">
+        <li class="sidebar-item">
+  <div class="sidebar-item-container"> 
+  <a href="../index.html" class="sidebar-item-text sidebar-link">
+ <span class="menu-text">Introduction</span></a>
+  </div>
+</li>
+        <li class="sidebar-item">
+  <div class="sidebar-item-container"> 
+  <a href="../preface.html" class="sidebar-item-text sidebar-link">
+ <span class="menu-text">Preface</span></a>
+  </div>
+</li>
+        <li class="sidebar-item sidebar-item-section">
+      <div class="sidebar-item-container"> 
+            <a href="../part_1/p1--foundations.html" class="sidebar-item-text sidebar-link">
+ <span class="menu-text">Part I: Data Foundations</span></a>
+          <a class="sidebar-item-toggle text-start" data-bs-toggle="collapse" data-bs-target="#quarto-sidebar-section-1" role="navigation" aria-expanded="true" aria-label="Toggle section">
+            <i class="bi bi-chevron-right ms-2"></i>
+          </a> 
+      </div>
+      <ul id="quarto-sidebar-section-1" class="collapse list-unstyled sidebar-section depth1 show">  
+          <li class="sidebar-item">
+  <div class="sidebar-item-container"> 
+  <a href="../part_1/p1-ch01-ngs.html" class="sidebar-item-text sidebar-link">
+ <span class="menu-text"><span class="chapter-number">1</span>&nbsp; <span class="chapter-title">From Reads to Variants</span></span></a>
+  </div>
+</li>
+          <li class="sidebar-item">
+  <div class="sidebar-item-container"> 
+  <a href="../part_1/p1-ch02-data.html" class="sidebar-item-text sidebar-link">
+ <span class="menu-text"><span class="chapter-number">2</span>&nbsp; <span class="chapter-title">The Data Landscape</span></span></a>
+  </div>
+</li>
+          <li class="sidebar-item">
+  <div class="sidebar-item-container"> 
+  <a href="../part_1/p1-ch03-gwas.html" class="sidebar-item-text sidebar-link">
+ <span class="menu-text"><span class="chapter-number">3</span>&nbsp; <span class="chapter-title">GWAS and Polygenic Scores</span></span></a>
+  </div>
+</li>
+          <li class="sidebar-item">
+  <div class="sidebar-item-container"> 
+  <a href="../part_1/p1-ch04-vep-classical.html" class="sidebar-item-text sidebar-link">
+ <span class="menu-text"><span class="chapter-number">4</span>&nbsp; <span class="chapter-title">Classical Variant Prediction</span></span></a>
+  </div>
+</li>
+      </ul>
+  </li>
+        <li class="sidebar-item sidebar-item-section">
+      <div class="sidebar-item-container"> 
+            <a href="../part_2/p2--principles.html" class="sidebar-item-text sidebar-link">
+ <span class="menu-text">Part II: Sequence Architectures</span></a>
+          <a class="sidebar-item-toggle text-start" data-bs-toggle="collapse" data-bs-target="#quarto-sidebar-section-2" role="navigation" aria-expanded="true" aria-label="Toggle section">
+            <i class="bi bi-chevron-right ms-2"></i>
+          </a> 
+      </div>
+      <ul id="quarto-sidebar-section-2" class="collapse list-unstyled sidebar-section depth1 show">  
+          <li class="sidebar-item">
+  <div class="sidebar-item-container"> 
+  <a href="../part_2/p2-ch05-representations.html" class="sidebar-item-text sidebar-link">
+ <span class="menu-text"><span class="chapter-number">5</span>&nbsp; <span class="chapter-title">Tokens and Embeddings</span></span></a>
+  </div>
+</li>
+          <li class="sidebar-item">
+  <div class="sidebar-item-container"> 
+  <a href="../part_2/p2-ch06-cnn.html" class="sidebar-item-text sidebar-link">
+ <span class="menu-text"><span class="chapter-number">6</span>&nbsp; <span class="chapter-title">Convolutional Networks</span></span></a>
+  </div>
+</li>
+          <li class="sidebar-item">
+  <div class="sidebar-item-container"> 
+  <a href="../part_2/p2-ch07-attention.html" class="sidebar-item-text sidebar-link">
+ <span class="menu-text"><span class="chapter-number">7</span>&nbsp; <span class="chapter-title">Transformers and Attention</span></span></a>
+  </div>
+</li>
+          <li class="sidebar-item">
+  <div class="sidebar-item-container"> 
+  <a href="../part_2/p2-ch08-pretraining.html" class="sidebar-item-text sidebar-link active">
+ <span class="menu-text"><span class="chapter-number">8</span>&nbsp; <span class="chapter-title">Pretraining Strategies</span></span></a>
+  </div>
+</li>
+          <li class="sidebar-item">
+  <div class="sidebar-item-container"> 
+  <a href="../part_2/p2-ch09-transfer.html" class="sidebar-item-text sidebar-link">
+ <span class="menu-text"><span class="chapter-number">9</span>&nbsp; <span class="chapter-title">Transfer and Adaptation</span></span></a>
+  </div>
+</li>
+      </ul>
+  </li>
+        <li class="sidebar-item sidebar-item-section">
+      <div class="sidebar-item-container"> 
+            <a href="../part_3/p3--architectures.html" class="sidebar-item-text sidebar-link">
+ <span class="menu-text">Part III: Foundation Model Families</span></a>
+          <a class="sidebar-item-toggle text-start" data-bs-toggle="collapse" data-bs-target="#quarto-sidebar-section-3" role="navigation" aria-expanded="true" aria-label="Toggle section">
+            <i class="bi bi-chevron-right ms-2"></i>
+          </a> 
+      </div>
+      <ul id="quarto-sidebar-section-3" class="collapse list-unstyled sidebar-section depth1 show">  
+          <li class="sidebar-item">
+  <div class="sidebar-item-container"> 
+  <a href="../part_3/p3-ch10-fm-principles.html" class="sidebar-item-text sidebar-link">
+ <span class="menu-text"><span class="chapter-number">10</span>&nbsp; <span class="chapter-title">Foundation Model Paradigm</span></span></a>
+  </div>
+</li>
+          <li class="sidebar-item">
+  <div class="sidebar-item-container"> 
+  <a href="../part_3/p3-ch11-dna-lm.html" class="sidebar-item-text sidebar-link">
+ <span class="menu-text"><span class="chapter-number">11</span>&nbsp; <span class="chapter-title">DNA Language Models</span></span></a>
+  </div>
+</li>
+          <li class="sidebar-item">
+  <div class="sidebar-item-container"> 
+  <a href="../part_3/p3-ch12-protein-lm.html" class="sidebar-item-text sidebar-link">
+ <span class="menu-text"><span class="chapter-number">12</span>&nbsp; <span class="chapter-title">Protein Language Models</span></span></a>
+  </div>
+</li>
+          <li class="sidebar-item">
+  <div class="sidebar-item-container"> 
+  <a href="../part_3/p3-ch13-regulatory.html" class="sidebar-item-text sidebar-link">
+ <span class="menu-text"><span class="chapter-number">13</span>&nbsp; <span class="chapter-title">Regulatory Models</span></span></a>
+  </div>
+</li>
+          <li class="sidebar-item">
+  <div class="sidebar-item-container"> 
+  <a href="../part_3/p3-ch14-vep-fm.html" class="sidebar-item-text sidebar-link">
+ <span class="menu-text"><span class="chapter-number">14</span>&nbsp; <span class="chapter-title">Variant Effect Prediction</span></span></a>
+  </div>
+</li>
+      </ul>
+  </li>
+        <li class="sidebar-item sidebar-item-section">
+      <div class="sidebar-item-container"> 
+            <a href="../part_4/p4--multi-scale.html" class="sidebar-item-text sidebar-link">
+ <span class="menu-text">Part IV: Systems and Scale</span></a>
+          <a class="sidebar-item-toggle text-start" data-bs-toggle="collapse" data-bs-target="#quarto-sidebar-section-4" role="navigation" aria-expanded="true" aria-label="Toggle section">
+            <i class="bi bi-chevron-right ms-2"></i>
+          </a> 
+      </div>
+      <ul id="quarto-sidebar-section-4" class="collapse list-unstyled sidebar-section depth1 show">  
+          <li class="sidebar-item">
+  <div class="sidebar-item-container"> 
+  <a href="../part_4/p4-ch15-rna.html" class="sidebar-item-text sidebar-link">
+ <span class="menu-text"><span class="chapter-number">15</span>&nbsp; <span class="chapter-title">RNA Structure and Function</span></span></a>
+  </div>
+</li>
+          <li class="sidebar-item">
+  <div class="sidebar-item-container"> 
+  <a href="../part_4/p4-ch16-single-cell.html" class="sidebar-item-text sidebar-link">
+ <span class="menu-text"><span class="chapter-number">16</span>&nbsp; <span class="chapter-title">Single-Cell Models</span></span></a>
+  </div>
+</li>
+          <li class="sidebar-item">
+  <div class="sidebar-item-container"> 
+  <a href="../part_4/p4-ch17-3d-genome.html" class="sidebar-item-text sidebar-link">
+ <span class="menu-text"><span class="chapter-number">17</span>&nbsp; <span class="chapter-title">3D Genome Organization</span></span></a>
+  </div>
+</li>
+          <li class="sidebar-item">
+  <div class="sidebar-item-container"> 
+  <a href="../part_4/p4-ch18-networks.html" class="sidebar-item-text sidebar-link">
+ <span class="menu-text"><span class="chapter-number">18</span>&nbsp; <span class="chapter-title">Graph and Network Models</span></span></a>
+  </div>
+</li>
+          <li class="sidebar-item">
+  <div class="sidebar-item-container"> 
+  <a href="../part_4/p4-ch19-multi-omics.html" class="sidebar-item-text sidebar-link">
+ <span class="menu-text"><span class="chapter-number">19</span>&nbsp; <span class="chapter-title">Multi-Omics Integration</span></span></a>
+  </div>
+</li>
+      </ul>
+  </li>
+        <li class="sidebar-item sidebar-item-section">
+      <div class="sidebar-item-container"> 
+            <a href="../part_5/p5--eval-interp.html" class="sidebar-item-text sidebar-link">
+ <span class="menu-text">Part V: Evaluation and Trust</span></a>
+          <a class="sidebar-item-toggle text-start" data-bs-toggle="collapse" data-bs-target="#quarto-sidebar-section-5" role="navigation" aria-expanded="true" aria-label="Toggle section">
+            <i class="bi bi-chevron-right ms-2"></i>
+          </a> 
+      </div>
+      <ul id="quarto-sidebar-section-5" class="collapse list-unstyled sidebar-section depth1 show">  
+          <li class="sidebar-item">
+  <div class="sidebar-item-container"> 
+  <a href="../part_5/p5-ch20-benchmarks.html" class="sidebar-item-text sidebar-link">
+ <span class="menu-text"><span class="chapter-number">20</span>&nbsp; <span class="chapter-title">Benchmarks</span></span></a>
+  </div>
+</li>
+          <li class="sidebar-item">
+  <div class="sidebar-item-container"> 
+  <a href="../part_5/p5-ch21-eval.html" class="sidebar-item-text sidebar-link">
+ <span class="menu-text"><span class="chapter-number">21</span>&nbsp; <span class="chapter-title">Evaluation Principles</span></span></a>
+  </div>
+</li>
+          <li class="sidebar-item">
+  <div class="sidebar-item-container"> 
+  <a href="../part_5/p5-ch22-confounding.html" class="sidebar-item-text sidebar-link">
+ <span class="menu-text"><span class="chapter-number">22</span>&nbsp; <span class="chapter-title">Confounders and Leakage</span></span></a>
+  </div>
+</li>
+          <li class="sidebar-item">
+  <div class="sidebar-item-container"> 
+  <a href="../part_5/p5-ch23-uncertainty.html" class="sidebar-item-text sidebar-link">
+ <span class="menu-text"><span class="chapter-number">23</span>&nbsp; <span class="chapter-title">Uncertainty Quantification</span></span></a>
+  </div>
+</li>
+          <li class="sidebar-item">
+  <div class="sidebar-item-container"> 
+  <a href="../part_5/p5-ch24-interpretability.html" class="sidebar-item-text sidebar-link">
+ <span class="menu-text"><span class="chapter-number">24</span>&nbsp; <span class="chapter-title">Interpretability</span></span></a>
+  </div>
+</li>
+      </ul>
+  </li>
+        <li class="sidebar-item sidebar-item-section">
+      <div class="sidebar-item-container"> 
+            <a href="../part_6/p6--translation.html" class="sidebar-item-text sidebar-link">
+ <span class="menu-text">Part VI: Clinical Translation</span></a>
+          <a class="sidebar-item-toggle text-start" data-bs-toggle="collapse" data-bs-target="#quarto-sidebar-section-6" role="navigation" aria-expanded="true" aria-label="Toggle section">
+            <i class="bi bi-chevron-right ms-2"></i>
+          </a> 
+      </div>
+      <ul id="quarto-sidebar-section-6" class="collapse list-unstyled sidebar-section depth1 show">  
+          <li class="sidebar-item">
+  <div class="sidebar-item-container"> 
+  <a href="../part_6/p6-ch25-clinical-risk.html" class="sidebar-item-text sidebar-link">
+ <span class="menu-text"><span class="chapter-number">25</span>&nbsp; <span class="chapter-title">Clinical Risk Prediction</span></span></a>
+  </div>
+</li>
+          <li class="sidebar-item">
+  <div class="sidebar-item-container"> 
+  <a href="../part_6/p6-ch26-rare-disease.html" class="sidebar-item-text sidebar-link">
+ <span class="menu-text"><span class="chapter-number">26</span>&nbsp; <span class="chapter-title">Rare Disease Diagnosis</span></span></a>
+  </div>
+</li>
+          <li class="sidebar-item">
+  <div class="sidebar-item-container"> 
+  <a href="../part_6/p6-ch27-drug-discovery.html" class="sidebar-item-text sidebar-link">
+ <span class="menu-text"><span class="chapter-number">27</span>&nbsp; <span class="chapter-title">Drug Discovery</span></span></a>
+  </div>
+</li>
+          <li class="sidebar-item">
+  <div class="sidebar-item-container"> 
+  <a href="../part_6/p6-ch28-design.html" class="sidebar-item-text sidebar-link">
+ <span class="menu-text"><span class="chapter-number">28</span>&nbsp; <span class="chapter-title">Sequence Design</span></span></a>
+  </div>
+</li>
+          <li class="sidebar-item">
+  <div class="sidebar-item-container"> 
+  <a href="../part_6/p6-ch29-future.html" class="sidebar-item-text sidebar-link">
+ <span class="menu-text"><span class="chapter-number">29</span>&nbsp; <span class="chapter-title">Ethical and Frontiers</span></span></a>
+  </div>
+</li>
+      </ul>
+  </li>
+        <li class="sidebar-item">
+  <div class="sidebar-item-container"> 
+  <a href="../bib/references.html" class="sidebar-item-text sidebar-link">
+ <span class="menu-text">References</span></a>
+  </div>
+</li>
+        <li class="sidebar-item sidebar-item-section">
+      <div class="sidebar-item-container"> 
+            <a class="sidebar-item-text sidebar-link text-start" data-bs-toggle="collapse" data-bs-target="#quarto-sidebar-section-7" role="navigation" aria-expanded="true">
+ <span class="menu-text">Appendices</span></a>
+          <a class="sidebar-item-toggle text-start" data-bs-toggle="collapse" data-bs-target="#quarto-sidebar-section-7" role="navigation" aria-expanded="true" aria-label="Toggle section">
+            <i class="bi bi-chevron-right ms-2"></i>
+          </a> 
+      </div>
+      <ul id="quarto-sidebar-section-7" class="collapse list-unstyled sidebar-section depth1 show">  
+          <li class="sidebar-item">
+  <div class="sidebar-item-container"> 
+  <a href="../appendix/app-a-dl.html" class="sidebar-item-text sidebar-link">
+ <span class="menu-text"><span class="chapter-number">A</span>&nbsp; <span class="chapter-title">Deep Learning Primer</span></span></a>
+  </div>
+</li>
+          <li class="sidebar-item">
+  <div class="sidebar-item-container"> 
+  <a href="../appendix/app-b-compute.html" class="sidebar-item-text sidebar-link">
+ <span class="menu-text"><span class="chapter-number">B</span>&nbsp; <span class="chapter-title">Deployment and Compute</span></span></a>
+  </div>
+</li>
+          <li class="sidebar-item">
+  <div class="sidebar-item-container"> 
+  <a href="../appendix/app-c-data-curation.html" class="sidebar-item-text sidebar-link">
+ <span class="menu-text"><span class="chapter-number">C</span>&nbsp; <span class="chapter-title">Data Curation</span></span></a>
+  </div>
+</li>
+          <li class="sidebar-item">
+  <div class="sidebar-item-container"> 
+  <a href="../appendix/app-d-models.html" class="sidebar-item-text sidebar-link">
+ <span class="menu-text"><span class="chapter-number">D</span>&nbsp; <span class="chapter-title">Model Reference</span></span></a>
+  </div>
+</li>
+          <li class="sidebar-item">
+  <div class="sidebar-item-container"> 
+  <a href="../appendix/app-e-resources.html" class="sidebar-item-text sidebar-link">
+ <span class="menu-text"><span class="chapter-number">E</span>&nbsp; <span class="chapter-title">Resources</span></span></a>
+  </div>
+</li>
+          <li class="sidebar-item">
+  <div class="sidebar-item-container"> 
+  <a href="../appendix/app-f-glossary.html" class="sidebar-item-text sidebar-link">
+ <span class="menu-text"><span class="chapter-number">F</span>&nbsp; <span class="chapter-title">Glossary</span></span></a>
+  </div>
+</li>
+      </ul>
+  </li>
+    </ul>
+    </div>
+</nav>
+<div id="quarto-sidebar-glass" class="quarto-sidebar-collapse-item" data-bs-toggle="collapse" data-bs-target=".quarto-sidebar-collapse-item"></div>
+<!-- margin-sidebar -->
+    <div id="quarto-margin-sidebar" class="sidebar margin-sidebar">
+        <nav id="TOC" role="doc-toc" class="toc-active">
+    <h2 id="toc-title">Table of contents</h2>
+   
+  <ul>
+  <li><a href="#masked-language-modeling" id="toc-masked-language-modeling" class="nav-link active" data-scroll-target="#masked-language-modeling"><span class="header-section-number">8.1</span> Masked Language Modeling</a>
+  <ul class="collapse">
+  <li><a href="#masking-strategies-and-their-implications" id="toc-masking-strategies-and-their-implications" class="nav-link" data-scroll-target="#masking-strategies-and-their-implications"><span class="header-section-number">8.1.1</span> Masking Strategies and Their Implications</a></li>
+  <li><a href="#what-masked-language-models-learn" id="toc-what-masked-language-models-learn" class="nav-link" data-scroll-target="#what-masked-language-models-learn"><span class="header-section-number">8.1.2</span> What Masked Language Models Learn</a></li>
+  </ul></li>
+  <li><a href="#next-token-prediction" id="toc-next-token-prediction" class="nav-link" data-scroll-target="#next-token-prediction"><span class="header-section-number">8.2</span> Next-Token Prediction</a>
+  <ul class="collapse">
+  <li><a href="#genomic-applications" id="toc-genomic-applications" class="nav-link" data-scroll-target="#genomic-applications"><span class="header-section-number">8.2.1</span> Genomic Applications</a></li>
+  <li><a href="#comparing-mlm-and-autoregressive-objectives" id="toc-comparing-mlm-and-autoregressive-objectives" class="nav-link" data-scroll-target="#comparing-mlm-and-autoregressive-objectives"><span class="header-section-number">8.2.2</span> Comparing MLM and Autoregressive Objectives</a></li>
+  </ul></li>
+  <li><a href="#span-corruption-and-denoising" id="toc-span-corruption-and-denoising" class="nav-link" data-scroll-target="#span-corruption-and-denoising"><span class="header-section-number">8.3</span> Span Corruption and Denoising</a>
+  <ul class="collapse">
+  <li><a href="#biologically-motivated-corruption" id="toc-biologically-motivated-corruption" class="nav-link" data-scroll-target="#biologically-motivated-corruption"><span class="header-section-number">8.3.1</span> Biologically Motivated Corruption</a></li>
+  </ul></li>
+  <li><a href="#contrastive-learning" id="toc-contrastive-learning" class="nav-link" data-scroll-target="#contrastive-learning"><span class="header-section-number">8.4</span> Contrastive Learning</a>
+  <ul class="collapse">
+  <li><a href="#augmentation-design-for-genomic-sequences" id="toc-augmentation-design-for-genomic-sequences" class="nav-link" data-scroll-target="#augmentation-design-for-genomic-sequences"><span class="header-section-number">8.4.1</span> Augmentation Design for Genomic Sequences</a></li>
+  <li><a href="#cross-species-contrastive-learning" id="toc-cross-species-contrastive-learning" class="nav-link" data-scroll-target="#cross-species-contrastive-learning"><span class="header-section-number">8.4.2</span> Cross-Species Contrastive Learning</a></li>
+  </ul></li>
+  <li><a href="#multi-task-pretraining" id="toc-multi-task-pretraining" class="nav-link" data-scroll-target="#multi-task-pretraining"><span class="header-section-number">8.5</span> Multi-Task Pretraining</a>
+  <ul class="collapse">
+  <li><a href="#large-scale-multi-task-examples" id="toc-large-scale-multi-task-examples" class="nav-link" data-scroll-target="#large-scale-multi-task-examples"><span class="header-section-number">8.5.1</span> Large-Scale Multi-Task Examples</a></li>
+  <li><a href="#when-multi-task-helps-and-when-it-hurts" id="toc-when-multi-task-helps-and-when-it-hurts" class="nav-link" data-scroll-target="#when-multi-task-helps-and-when-it-hurts"><span class="header-section-number">8.5.2</span> When Multi-Task Helps and When It Hurts</a></li>
+  </ul></li>
+  <li><a href="#data-strategies-for-pretraining" id="toc-data-strategies-for-pretraining" class="nav-link" data-scroll-target="#data-strategies-for-pretraining"><span class="header-section-number">8.6</span> Data Strategies for Pretraining</a></li>
+  <li><a href="#optimization-and-scaling" id="toc-optimization-and-scaling" class="nav-link" data-scroll-target="#optimization-and-scaling"><span class="header-section-number">8.7</span> Optimization and Scaling</a></li>
+  <li><a href="#monitoring-and-debugging" id="toc-monitoring-and-debugging" class="nav-link" data-scroll-target="#monitoring-and-debugging"><span class="header-section-number">8.8</span> Monitoring and Debugging</a></li>
+  <li><a href="#choosing-the-right-strategy" id="toc-choosing-the-right-strategy" class="nav-link" data-scroll-target="#choosing-the-right-strategy"><span class="header-section-number">8.9</span> Choosing the Right Strategy</a></li>
+  <li><a href="#pretraining-in-practice-case-studies" id="toc-pretraining-in-practice-case-studies" class="nav-link" data-scroll-target="#pretraining-in-practice-case-studies"><span class="header-section-number">8.10</span> Pretraining in Practice: Case Studies</a></li>
+  <li><a href="#open-questions" id="toc-open-questions" class="nav-link" data-scroll-target="#open-questions"><span class="header-section-number">8.11</span> Open Questions</a></li>
+  <li><a href="#from-sequence-statistics-to-biological-knowledge" id="toc-from-sequence-statistics-to-biological-knowledge" class="nav-link" data-scroll-target="#from-sequence-statistics-to-biological-knowledge"><span class="header-section-number">8.12</span> From Sequence Statistics to Biological Knowledge</a></li>
+  </ul>
+</nav>
+    </div>
+<!-- main -->
+<main class="content" id="quarto-document-content">
+
+
+<header id="title-block-header" class="quarto-title-block default"><nav class="quarto-page-breadcrumbs quarto-title-breadcrumbs d-none d-lg-block" aria-label="breadcrumb"><ol class="breadcrumb"><li class="breadcrumb-item"><a href="../part_2/p2--principles.html">Part II: Sequence Architectures</a></li><li class="breadcrumb-item"><a href="../part_2/p2-ch08-pretraining.html"><span class="chapter-number">8</span>&nbsp; <span class="chapter-title">Pretraining Strategies</span></a></li></ol></nav>
+<div class="quarto-title">
+<h1 class="title"><span id="sec-pretraining" class="quarto-section-identifier"><span class="chapter-number">8</span>&nbsp; <span class="chapter-title">Pretraining Strategies</span></span></h1>
+</div>
+
+
+
+<div class="quarto-title-meta">
+
+    
+  
+    
+  </div>
+  
+
+
+</header>
+
+
+<p>The choice of pretraining objective is not merely technical; it encodes assumptions about what matters in biological sequence. Masked language modeling encourages bidirectional context integration: the model learns to predict missing tokens using information from both upstream and downstream sequence. Next-token prediction builds autoregressive capabilities: the model learns to generate sequence one position at a time, enabling design of novel proteins or regulatory elements. Contrastive learning teaches invariance: the model learns that functionally equivalent sequences should map to similar representations regardless of species or polymorphism. Each objective produces a different model, and those differences propagate to downstream performance. A model pretrained with masked language modeling may excel at variant effect prediction (where context on both sides matters) but struggle at sequence generation. A model pretrained for generation may produce plausible sequences but provide representations less suited for classification tasks. Understanding what each objective teaches, and what assumptions each encodes, is prerequisite to selecting the right foundation model for a given application.</p>
+<p>Self-supervised pretraining addresses a fundamental asymmetry in genomic data. Reference genomes span billions of nucleotides across thousands of species. Population sequencing projects catalog genetic variation in millions of individuals. Functional genomics consortia measure chromatin accessibility and gene expression across hundreds of cell types. Yet experimental labels remain sparse: for any given sequence, we typically lack direct measurements of its regulatory function, its effect on splicing, or its contribution to disease risk. Self-supervised objectives extract training signal from the sequences themselves, without requiring experimental labels. The resulting models learn representations that capture evolutionary constraints, sequence grammar, and functional relationships, all from the patterns present in unlabeled data. When these representations are applied to downstream tasks with limited labels, the pretrained knowledge makes scarce labeled data go further.</p>
+<p>This chapter examines the major pretraining strategies employed by genomic foundation models, from masked language modeling in DNABERT and Nucleotide Transformer through autoregressive objectives in generative models. The focus is on understanding what each objective teaches the model to learn, what biological patterns emerge from each training approach, and how objective choice shapes downstream capabilities. The goal is not encyclopedic coverage of every pretraining variant but principled understanding of the design space: which objectives suit which applications, what tradeoffs each involves, and how to reason about novel objectives as the field continues to develop.</p>
+<div id="fig-pretraining-objectives" class="quarto-layout-panel">
+<figure class="quarto-float quarto-float-fig figure">
+<div aria-describedby="fig-pretraining-objectives-caption-0ceaefa1-69ba-4598-a22c-09a6ac19f8ca">
+<div class="quarto-layout-row">
+<div class="quarto-layout-cell" style="flex-basis: 33.3%;justify-content: flex-start;">
+<div class="quarto-figure quarto-figure-center">
+<figure class="figure">
+<p><img src="https://placehold.co/300x200?text=FIGURE%20PLACEHOLDER%20A.png" class="img-fluid figure-img"></p>
+<figcaption><strong>FIGURE PLACEHOLDER A</strong></figcaption>
+</figure>
+</div>
+</div>
+<div class="quarto-layout-cell" style="flex-basis: 33.3%;justify-content: flex-start;">
+<div class="quarto-figure quarto-figure-center">
+<figure class="figure">
+<p><img src="https://placehold.co/300x200?text=FIGURE%20PLACEHOLDER%20B.png" class="img-fluid figure-img"></p>
+<figcaption><strong>FIGURE PLACEHOLDER B</strong></figcaption>
+</figure>
+</div>
+</div>
+<div class="quarto-layout-cell" style="flex-basis: 33.3%;justify-content: flex-start;">
+<div class="quarto-figure quarto-figure-center">
+<figure class="figure">
+<p><img src="https://placehold.co/300x200?text=FIGURE%20PLACEHOLDER%20C.png" class="img-fluid figure-img"></p>
+<figcaption><strong>FIGURE PLACEHOLDER C</strong></figcaption>
+</figure>
+</div>
+</div>
+</div>
+</div>
+<figcaption class="quarto-float-caption-bottom quarto-float-caption quarto-float-fig" id="fig-pretraining-objectives-caption-0ceaefa1-69ba-4598-a22c-09a6ac19f8ca">
+Figure&nbsp;8.1: [Essential] Three-panel schematic comparing major pretraining objectives on the same input sequence. Panel A (MLM): Sequence with masked positions (shown as [MASK]), bidirectional context arrows from both sides, prediction targets at masked positions. Panel B (Next-token prediction): Causal/unidirectional arrows, each position predicting the next, with sampling process for generation. Panel C (Contrastive): Anchor sequence, positive pair (augmented version), negative samples, mapped to embedding space with distance relationships.
+</figcaption>
+</figure>
+</div>
+<section id="masked-language-modeling" class="level2" data-number="8.1">
+<h2 data-number="8.1" class="anchored" data-anchor-id="masked-language-modeling"><span class="header-section-number">8.1</span> Masked Language Modeling</h2>
+<p>Consider predicting whether a splice site variant in <em>DMD</em> will cause exon skipping in Duchenne muscular dystrophy. The model must recognize the canonical GT-AG splice signals, understand how flanking sequences modulate splicing efficiency, and integrate information from both the upstream exon and downstream intron. A model trained only on labeled splice variants would see perhaps a few hundred <em>DMD</em> examples across the entire clinical literature. A model pretrained on billions of nucleotides learns splice grammar across the entire genome, then applies that knowledge to the specific clinical question. <strong>Masked language modeling</strong> provides this pretraining by teaching models to predict missing sequence content from surrounding context, and the bidirectional attention it requires captures exactly the upstream-downstream integration that splice prediction demands.</p>
+<p>MLM treats sequences as partially observed and trains models to reconstruct missing content. The procedure is straightforward: randomly mask portions of an input sequence, feed the corrupted sequence to the model, and train the model to predict the original tokens at masked positions. A <strong>masking strategy</strong> replaces selected tokens with a special <code>[MASK]</code> token, leaving the surrounding context intact. The model processes the masked sequence through its layers and produces predictions for the masked positions, typically optimizing cross-entropy loss over the vocabulary at each masked location.</p>
+<p>The key insight is that accurate prediction requires learning genuine sequence structure. To predict a masked position in a transcription factor binding site, the model must recognize the surrounding motif context. To predict masked splice donor sequences, the model must encode the consensus GT dinucleotide and the flanking patterns that modulate splicing strength. Over millions of training examples, models build distributed representations of motifs, compositional rules, and sequence constraints that transfer to tasks never seen during pretraining. The <em>DMD</em> splice variant can be evaluated using patterns learned from every splice site in the genome.</p>
+<p>MLM encourages bidirectional context integration, and this bidirectionality has direct clinical relevance. Unlike autoregressive models that condition only on preceding tokens, MLM models see both left and right context when predicting masked positions. For genomics, this matches biological reality: regulatory function depends on patterns both upstream and downstream of any given position. A transcription factor binding site is recognized through flanking sequences on both sides. Splicing signals require coordination between donor and acceptor sites separated by hundreds of bases. Missense variants disrupt protein function through effects that depend on the entire domain context, not just the preceding amino acids. The bidirectional attention in MLM naturally captures these dependencies.</p>
+<section id="masking-strategies-and-their-implications" class="level3" data-number="8.1.1">
+<h3 data-number="8.1.1" class="anchored" data-anchor-id="masking-strategies-and-their-implications"><span class="header-section-number">8.1.1</span> Masking Strategies and Their Implications</h3>
+<div id="fig-masking-strategies" class="quarto-layout-panel">
+<figure class="quarto-float quarto-float-fig figure">
+<div aria-describedby="fig-masking-strategies-caption-0ceaefa1-69ba-4598-a22c-09a6ac19f8ca">
+<div class="quarto-layout-row">
+<div class="quarto-layout-cell" style="flex-basis: 50.0%;justify-content: flex-start;">
+<div class="quarto-figure quarto-figure-center">
+<figure class="figure">
+<p><img src="https://placehold.co/300x200?text=FIGURE%20PLACEHOLDER%20A.png" class="img-fluid figure-img"></p>
+<figcaption><strong>FIGURE PLACEHOLDER A</strong></figcaption>
+</figure>
+</div>
+</div>
+<div class="quarto-layout-cell" style="flex-basis: 50.0%;justify-content: flex-start;">
+<div class="quarto-figure quarto-figure-center">
+<figure class="figure">
+<p><img src="https://placehold.co/300x200?text=FIGURE%20PLACEHOLDER%20B.png" class="img-fluid figure-img"></p>
+<figcaption><strong>FIGURE PLACEHOLDER B</strong></figcaption>
+</figure>
+</div>
+</div>
+</div>
+</div>
+<figcaption class="quarto-float-caption-bottom quarto-float-caption quarto-float-fig" id="fig-masking-strategies-caption-0ceaefa1-69ba-4598-a22c-09a6ac19f8ca">
+Figure&nbsp;8.2: [High] Two-panel visualization comparing masking strategies on a regulatory sequence containing a TF binding motif. Panel A (Random token masking): Individual tokens masked throughout, including partial motif masking; show how local context allows easy prediction. Panel B (Span masking): Entire motif region masked as contiguous span; show how prediction requires reasoning from distal regulatory context. Include attention patterns for each, showing how span masking forces longer-range dependencies.
+</figcaption>
+</figure>
+</div>
+<p>Predicting whether a regulatory variant disrupts an entire transcription factor binding site or merely alters its affinity requires models that learn compositional patterns, not just local nucleotide statistics. The tension between local and compositional learning plays out in masking strategy design.</p>
+<p>Random masking of individual tokens creates predictions that are relatively local: each masked position can often be inferred from immediately adjacent nucleotides. This approach is efficient but may not force models to learn higher-order structure. <strong>Span masking</strong>, which masks contiguous blocks of tokens, forces models to infer longer-range dependencies and compositional patterns. If an entire transcription factor binding motif is masked, the model cannot rely on partial motif information and must instead recognize the motif’s role from surrounding regulatory context. For clinical variant interpretation, span masking may better capture the compositional grammar that determines whether a regulatory variant disrupts an entire binding site or merely modulates its affinity.</p>
+<p>Masking rates present a fundamental tradeoff between supervision density and prediction difficulty. Higher masking rates (30-40% of tokens) provide more supervision per sequence but make prediction harder and may destabilize training. Lower masking rates (10-15%) produce more stable training but require more data to achieve equivalent coverage. The standard 15% rate from BERT <span class="citation" data-cites="devlin_bert_2019">(<a href="../bib/references.html#ref-devlin_bert_2019" role="doc-biblioref">Devlin et al. 2019</a>)</span> represents a reasonable compromise, though genomic models have explored values ranging from 10% to 40% depending on context length and tokenization granularity. <em>DNABERT</em> used 15% masking on 6-mer tokens <span class="citation" data-cites="ji_dnabert_2021">(<a href="../bib/references.html#ref-ji_dnabert_2021" role="doc-biblioref">Ji et al. 2021</a>)</span>, while later models have experimented with adaptive masking rates that increase as training progresses, starting conservatively and becoming more aggressive as the model’s predictions improve.</p>
+<p>Tokenization interacts with masking in ways that affect what biological patterns models learn. <em>DNABERT</em> pioneered MLM for genomic sequences by applying it to overlapping k-mer tokens: rather than treating DNA as individual nucleotides, <em>DNABERT</em> tokenizes sequences into all possible 6-mers with overlapping windows <span class="citation" data-cites="ji_dnabert_2021">(<a href="../bib/references.html#ref-ji_dnabert_2021" role="doc-biblioref">Ji et al. 2021</a>)</span>. Masking then operates at the k-mer level, with entire 6-mers masked as units. This design encourages learning of k-mer level patterns corresponding to transcription factor binding motifs (typically 6-12 base pairs) and other short functional elements. <em>DNABERT-2</em> adopted <strong>byte-pair encoding</strong> tokenization, which learns a vocabulary of variable-length subword units from the training corpus <span class="citation" data-cites="zhou_dnabert2_2023">(<a href="../bib/references.html#ref-zhou_dnabert2_2023" role="doc-biblioref">Zhou et al. 2024</a>)</span>. BPE tokens represent single nucleotides, common motifs, or repeated elements depending on their frequency. MLM with BPE balances flexibility with compositional structure, though the learned vocabulary may not align with biological functional units in interpretable ways.</p>
+<p>The design decisions explored by <em>DNABERT</em> and <em>DNABERT-2</em> established patterns that subsequent DNA language models have built upon and refined. <a href="../part_3/p3-ch11-dna-lm.html" class="quarto-xref"><span>Chapter 11</span></a> examines how these architectural and tokenization choices have evolved as the field has scaled to longer contexts and larger training corpora.</p>
+</section>
+<section id="what-masked-language-models-learn" class="level3" data-number="8.1.2">
+<h3 data-number="8.1.2" class="anchored" data-anchor-id="what-masked-language-models-learn"><span class="header-section-number">8.1.2</span> What Masked Language Models Learn</h3>
+<p>MLM objectives drive models to capture multiple levels of sequence organization, from local nucleotide statistics to long-range regulatory grammar. At the lowest level, models learn base composition and local constraints: CpG dinucleotide frequencies, GC content biases, and simple repeat patterns. These basic properties are necessary but not sufficient for biological function prediction.</p>
+<p>At higher levels, MLM captures motif patterns and sequence grammar. Predicting masked positions in regulatory regions requires recognizing transcription factor binding sites, understanding how motifs combine in enhancers and promoters, and learning context-dependent usage patterns. If certain transcription factor motifs co-occur at specific distances (as they do in developmental enhancers where factors like <em>HOX</em> proteins bind cooperatively), masking one motif and predicting it from the other reinforces this grammatical relationship. This compositional learning is difficult to achieve with supervised learning alone, which typically provides coarse binary labels (“enhancer” versus “non-enhancer”) rather than fine-grained structural information about sequence organization.</p>
+<p>MLM also captures evolutionary conservation patterns implicitly, and this has direct relevance for clinical variant interpretation. Conserved sequences are constrained because mutations would disrupt function. By learning to predict conserved patterns from surrounding context, models encode which sequence features are under selection. This knowledge transfers to variant effect prediction, where the model recognizes when a mutation disrupts a learned conserved pattern. A variant that replaces a highly predictable position (one the model confidently fills in during MLM) is more likely to be damaging than one at a position where the model is uncertain. The connection between pretraining on raw sequence and downstream variant interpretation illustrates how self-supervised objectives capture biologically meaningful structure without explicit functional labels.</p>
+</section>
+</section>
+<section id="next-token-prediction" class="level2" data-number="8.2">
+<h2 data-number="8.2" class="anchored" data-anchor-id="next-token-prediction"><span class="header-section-number">8.2</span> Next-Token Prediction</h2>
+<p>Designing a novel promoter sequence for gene therapy requires generating DNA that respects learned regulatory grammar while achieving specific expression characteristics. Masked language modeling can evaluate whether a candidate sequence looks “natural,” but it cannot generate sequences from scratch. A gene therapy team optimizing a CAR-T construct needs promoter variants to test; they cannot simply evaluate candidates one by one when the search space spans <span class="math inline">\(4^{500}\)</span> possible 500-base-pair sequences. Next-token prediction provides the generative capability missing from MLM, learning to predict each token given only preceding tokens and thereby acquiring the ability to sample coherent novel sequences that respect learned biological constraints.</p>
+<p><strong>Next-token prediction</strong> represents an alternative paradigm where models learn to predict each token in a sequence given only the preceding tokens. This <strong>autoregressive</strong> approach, popularized by GPT-style language models, treats sequence generation as a core capability rather than a secondary feature. For a sequence of length <span class="math inline">\(T\)</span>, the model predicts token <span class="math inline">\(t\)</span> from tokens <span class="math inline">\(1\)</span> through <span class="math inline">\(t-1\)</span>, maximizing the likelihood of the observed sequence under the model’s learned distribution. The probability of a sequence factors as the product of conditional probabilities for each token given its predecessors:</p>
+<p><span class="math display">\[P(x_1, x_2, \ldots, x_T) = \prod_{t=1}^{T} P(x_t | x_1, \ldots, x_{t-1})\]</span></p>
+<p>Algorithmically, next-token prediction requires <strong>causal masking</strong> in the attention mechanism. Each position attends only to earlier positions, ensuring predictions at position <span class="math inline">\(t\)</span> depend exclusively on positions <span class="math inline">\(1\)</span> through <span class="math inline">\(t-1\)</span>. The loss function is cross-entropy over the vocabulary, computed at every position rather than only at masked locations. During training, <strong>teacher forcing</strong> allows efficient parallel computation: the model predicts all positions simultaneously by feeding in the ground truth sequence shifted by one position. Generation at inference time is inherently sequential, predicting one token at a time and conditioning each prediction on all previous outputs.</p>
+<p>The fundamental difference from MLM lies in what the model can see during prediction. Autoregressive models build representations from unidirectional context, learning to generate sequences that respect learned constraints. This makes autoregressive pretraining attractive for sequence design applications. Sampling new sequences proceeds naturally: predict the first token, condition on it to predict the second, and continue token by token. The generation process directly uses the learned conditional distributions without requiring additional architectural modifications or iterative refinement procedures.</p>
+<section id="genomic-applications" class="level3" data-number="8.2.1">
+<h3 data-number="8.2.1" class="anchored" data-anchor-id="genomic-applications"><span class="header-section-number">8.2.1</span> Genomic Applications</h3>
+<p>DNA sequences present a complication that natural language does not: they have no inherent directionality. Both strands encode information, and regulatory function is often strand-agnostic. A transcription factor binding site functions identically whether read 5’-to-3’ or on the reverse complement strand. This contrasts with natural language, where left-to-right reading order carries meaning. Early autoregressive genomic models addressed this by training separate models for forward and reverse strands or by augmenting training data with reverse-complement sequences. More recent approaches treat strand symmetry as an architectural constraint, ensuring that forward and reverse complement sequences produce equivalent representations through weight sharing or explicit symmetrization.</p>
+<p><em>Evo</em> represents a large-scale autoregressive genomic model trained on whole genomes with long-context architectures <span class="citation" data-cites="nguyen_sequence_2024">(<a href="../bib/references.html#ref-nguyen_sequence_2024" role="doc-biblioref"><span>“Placeholder: Nguyen Sequence 2024”</span> 2024</a>)</span>. Using StripedHyena layers to achieve contexts exceeding 100 kilobases, <em>Evo</em> learns long-range dependencies including gene structure, repeat organization, and regulatory architecture spanning tens of kilobases. This enables generating coherent synthetic genomes that respect higher-order structure, not just local motif patterns. For therapeutic applications, <em>Evo</em>’s generative capability could design synthetic regulatory circuits, generate diverse candidate sequences for directed evolution, or produce training data through synthetic augmentation when real labeled data is scarce.</p>
+<p>Protein sequence models benefit from autoregressive pretraining with clearer biological justification. The N-terminus to C-terminus directionality of protein synthesis provides a natural left-to-right ordering: ribosomes translate mRNA sequentially, and co-translational folding means that protein structure emerges progressively from the N-terminus. <em>ESM</em> models and protein design systems like <em>ProtGPT2</em> predict amino acid sequences autoregressively, learning protein grammar and evolutionary constraints that transfer to structure prediction and function annotation <span class="citation" data-cites="ferruz_protgpt2_2022">(<a href="../bib/references.html#ref-ferruz_protgpt2_2022" role="doc-biblioref">Ferruz, Schmidt, and Höcker 2022</a>)</span>. For designing therapeutic proteins (antibodies, enzymes, peptide drugs), autoregressive generation produces candidates that respect learned constraints on foldability and function.</p>
+</section>
+<section id="comparing-mlm-and-autoregressive-objectives" class="level3" data-number="8.2.2">
+<h3 data-number="8.2.2" class="anchored" data-anchor-id="comparing-mlm-and-autoregressive-objectives"><span class="header-section-number">8.2.2</span> Comparing MLM and Autoregressive Objectives</h3>
+<div id="fig-bidirectional-vs-autoregressive" class="quarto-layout-panel">
+<figure class="quarto-float quarto-float-fig figure">
+<div aria-describedby="fig-bidirectional-vs-autoregressive-caption-0ceaefa1-69ba-4598-a22c-09a6ac19f8ca">
+<div class="quarto-layout-row">
+<div class="quarto-layout-cell" style="flex-basis: 50.0%;justify-content: flex-start;">
+<div class="quarto-figure quarto-figure-center">
+<figure class="figure">
+<p><img src="https://placehold.co/300x200?text=FIGURE%20PLACEHOLDER%20A.png" class="img-fluid figure-img"></p>
+<figcaption><strong>FIGURE PLACEHOLDER A</strong></figcaption>
+</figure>
+</div>
+</div>
+<div class="quarto-layout-cell" style="flex-basis: 50.0%;justify-content: flex-start;">
+<div class="quarto-figure quarto-figure-center">
+<figure class="figure">
+<p><img src="https://placehold.co/300x200?text=FIGURE%20PLACEHOLDER%20B.png" class="img-fluid figure-img"></p>
+<figcaption><strong>FIGURE PLACEHOLDER B</strong></figcaption>
+</figure>
+</div>
+</div>
+</div>
+</div>
+<figcaption class="quarto-float-caption-bottom quarto-float-caption quarto-float-fig" id="fig-bidirectional-vs-autoregressive-caption-0ceaefa1-69ba-4598-a22c-09a6ac19f8ca">
+Figure&nbsp;8.3: [Essential] Two-panel figure showing information flow during prediction. Panel A (MLM): Position in center of sequence with arrows coming from BOTH left and right context, showing bidirectional conditioning. Annotate: “Sees full context → better for understanding.” Panel B (Autoregressive): Same position with arrows only from left (preceding tokens), showing causal restriction. Annotate: “Sees only past → enables generation.”
+</figcaption>
+</figure>
+</div>
+<p>The tension between bidirectional understanding and generative capability represents the fundamental tradeoff between these objectives. For tasks requiring understanding of full sequence context, MLM’s bidirectional attention provides richer representations. Predicting transcription factor binding at a specific location benefits from seeing both upstream and downstream sequence, information that autoregressive models cannot access during inference. Variant effect prediction similarly benefits from full context: a missense variant’s impact depends on the entire domain, not just the preceding residues.</p>
+<p>Autoregressive models offer more principled generation. Their sequential prediction structure matches the generation process exactly, whereas generating from MLM models requires iterative masking and filling procedures that were not part of pretraining. A promoter design task using MLM would require starting with random sequence, masking positions, predicting fills, remasking, and iterating until convergence. This procedure is ad hoc and may not produce sequences that lie on the learned distribution. Autoregressive generation is direct: sample token by token from learned conditionals.</p>
+<p>Training efficiency differs between objectives in ways that affect practical decisions. MLM predicts only 15% of tokens per sequence but uses bidirectional context for each prediction. Autoregressive models predict all tokens but with unidirectional context. The effective supervision per sequence is higher for autoregressive training, but each prediction is less informed. For fixed compute budgets, the tradeoffs roughly balance, with optimal choice depending on downstream applications rather than training efficiency alone.</p>
+<p>Task-specific performance depends on alignment between pretraining and downstream objectives. If the downstream task involves predicting missing information from context (variant effect prediction, binding site identification, conservation scoring), MLM pretraining provides better transfer. If the downstream task involves generation or sequential decision-making (sequence design, sampling from conditional distributions, therapeutic protein generation), autoregressive pretraining aligns more naturally. For applications requiring both understanding and generation, hybrid architectures that combine bidirectional encoding with autoregressive decoding offer a middle ground, though these add complexity.</p>
+</section>
+</section>
+<section id="span-corruption-and-denoising" class="level2" data-number="8.3">
+<h2 data-number="8.3" class="anchored" data-anchor-id="span-corruption-and-denoising"><span class="header-section-number">8.3</span> Span Corruption and Denoising</h2>
+<p>Clinical variant interpretation must be robust to sequencing errors, population polymorphisms, and batch effects between discovery and validation cohorts. A pathogenic variant identified in a research study must remain classifiable as pathogenic when sequenced on a different platform in a clinical laboratory, surrounded by different technical artifacts and population-specific polymorphisms. A model trained only on pristine reference sequence may fail when encountering the noise and variation present in real patient data. <strong>Denoising objectives</strong> address this by training models on corrupted inputs, building tolerance to the kinds of perturbations that occur in clinical genomics pipelines.</p>
+<p><strong>Span corruption</strong> generalizes masked language modeling by introducing more complex forms of input degradation. The T5 model popularized this approach for natural language <span class="citation" data-cites="raffel_t5_2019">(<a href="../bib/references.html#ref-raffel_t5_2019" role="doc-biblioref">Raffel et al. 2019</a>)</span>, and the principles transfer to genomic sequences with biological adaptations. Rather than masking individual tokens, span corruption masks contiguous spans of variable length and replaces each span with a single sentinel token. The model then generates the original content of all masked spans in sequence, learning to reconstruct substantial missing regions rather than isolated positions.</p>
+<p>This objective teaches different aspects of sequence structure than standard MLM. Reconstructing entire spans requires understanding longer-range dependencies and compositional patterns. If a span encompasses an entire transcription factor binding motif (typically 6-12 base pairs), the model cannot infer the motif from partial information and must instead reason about the motif’s role from surrounding regulatory context. Span lengths are typically sampled from a distribution (geometric or uniform) with a mean around 3-5 tokens, creating a mix of short and long reconstruction challenges within each training example.</p>
+<p>Denoising objectives extend beyond masking to include other forms of corruption that mirror real-world data degradation. <strong>Token substitution</strong> replaces input tokens with random tokens from the vocabulary, creating corrupted sequences that resemble sequencing errors or natural variation. The model learns to distinguish correct from incorrect tokens based on surrounding context, encouraging representations that capture local consistency and motif structure. <strong>Deletion and insertion corruptions</strong> remove or add tokens at random positions, teaching models about position-invariant features that remain identifiable despite surrounding changes. For genomics, insertions and deletions are biologically realistic mutation types (indels account for approximately 15% of pathogenic variants in ClinVar <span class="citation" data-cites="landrum_clinvar_2018">(<a href="../bib/references.html#ref-landrum_clinvar_2018" role="doc-biblioref">Landrum et al. 2018</a>)</span>), and models that handle them during pretraining may better predict their effects downstream.</p>
+<section id="biologically-motivated-corruption" class="level3" data-number="8.3.1">
+<h3 data-number="8.3.1" class="anchored" data-anchor-id="biologically-motivated-corruption"><span class="header-section-number">8.3.1</span> Biologically Motivated Corruption</h3>
+<p>The most effective corruption strategies mirror actual sources of noise in clinical genomics data. Simulating sequencing errors provides corruption strategies that match experimental reality. Base miscalls follow platform-specific patterns: Illumina sequencing shows characteristic substitution biases (favoring certain nucleotide transitions over transversions, with error rates of 0.1-1% depending on read position and quality score), while nanopore sequencing exhibits distinct error profiles concentrated in homopolymer regions where the signal for consecutive identical bases becomes ambiguous. Training with corruptions that mimic these error patterns may improve generalization to real sequencing data with platform-specific artifacts.</p>
+<p><strong>Variant augmentation</strong> introduces biologically realistic sequence changes based on population variation. Randomly substituting alleles at known polymorphic sites or injecting variants from databases like gnomAD <span class="citation" data-cites="karczewski_gnomad_2020">(<a href="../bib/references.html#ref-karczewski_gnomad_2020" role="doc-biblioref">Karczewski et al. 2020</a>)</span> creates corrupted sequences reflecting natural genetic diversity. This teaches models that common polymorphisms are normal variation rather than errors to be corrected, potentially improving robustness for variant effect prediction where distinguishing pathogenic variants from benign polymorphisms is the central challenge. A model trained only on reference sequence might flag any deviation as potentially damaging; a model trained with variant augmentation learns which deviations are within normal population variation.</p>
+<p>Structural variation simulation models larger-scale genomic changes: tandem duplications, copy number variation, and segmental rearrangements. These corruptions are harder to implement but capture realistic sources of genomic diversity beyond single-nucleotide changes. Models trained with structural variation corruptions may better understand how gene dosage changes, enhancer duplications, or domain boundary disruptions affect function. For clinical applications involving copy number variants (which underlie conditions ranging from developmental disorders like DiGeorge syndrome to cancer predisposition in hereditary breast cancer), this training signal could improve predictive accuracy.</p>
+<p>The benefit of denoising pretraining extends to robustness under distribution shift. If downstream applications involve sequences from different populations, experimental platforms, or tissue contexts than the pretraining corpus, models pretrained with appropriate corruptions can maintain performance despite distribution mismatch. This matters in clinical genomics, where validation cohorts often differ from discovery cohorts in ancestry composition, sequencing technology, or phenotyping protocols. A model trained with corruptions spanning these sources of variation generalizes more reliably than one trained only on pristine reference sequence.</p>
+</section>
+</section>
+<section id="contrastive-learning" class="level2" data-number="8.4">
+<h2 data-number="8.4" class="anchored" data-anchor-id="contrastive-learning"><span class="header-section-number">8.4</span> Contrastive Learning</h2>
+<p>Cross-population generalization presents a persistent challenge in clinical genomics. A variant classifier trained on European ancestry cohorts may perform poorly on African ancestry patients due to different patterns of linkage disequilibrium and background polymorphism. The classifier learned to recognize pathogenic variants against a European genetic background; African genomes present the same functional variants but surrounded by different neutral polymorphisms. <strong>Contrastive learning</strong> addresses this by teaching models to recognize functional equivalence despite sequence-level differences, producing representations where a regulatory element is recognizable regardless of the population-specific variants surrounding it.</p>
+<p>Contrastive learning takes a fundamentally different approach to self-supervised pretraining than reconstruction-based objectives. Rather than recovering corrupted inputs, contrastive objectives train models to produce similar representations for different views of the same sequence while distinguishing them from representations of unrelated sequences. The intuition is that augmented versions of a sequence (with minor corruptions, reverse complementation, or variants) should map to nearby points in representation space, while unrelated sequences should map to distant points. This teaches invariance to transformations that do not change function.</p>
+<p>The algorithmic framework constructs <strong>positive pairs</strong> and <strong>negative samples</strong>. For a given anchor sequence, positive pairs are created through augmentation: reverse complementation, random cropping, variant injection, or other transformations that preserve functional identity. Negative samples are drawn from other sequences in the training batch. The model produces <strong>embeddings</strong> for all sequences, and the contrastive loss encourages anchor and positive embeddings to be similar (high cosine similarity) while pushing apart anchor and negative embeddings.</p>
+<p><strong>InfoNCE loss</strong> is the most common contrastive objective <span class="citation" data-cites="oord_representation_2018">(<a href="../bib/references.html#ref-oord_representation_2018" role="doc-biblioref"><span>“Placeholder: Oord Representation 2018”</span> 2018</a>)</span>. For an anchor embedding <span class="math inline">\(z_i\)</span> and positive embedding <span class="math inline">\(z_i^+\)</span>, InfoNCE maximizes:</p>
+<p><span class="math display">\[\mathcal{L} = -\log \frac{\exp(z_i \cdot z_i^+ / \tau)}{\sum_j \exp(z_i \cdot z_j / \tau)}\]</span></p>
+<p>where the sum runs over the positive and all negative samples, and <span class="math inline">\(\tau\)</span> is a temperature parameter controlling the sharpness of the distribution. Lower temperatures make the model more discriminative, requiring cleaner separation between positives and negatives. The objective is equivalent to classifying the positive pair among all possible pairs, and the model learns representations that make this classification easy.</p>
+<section id="augmentation-design-for-genomic-sequences" class="level3" data-number="8.4.1">
+<h3 data-number="8.4.1" class="anchored" data-anchor-id="augmentation-design-for-genomic-sequences"><span class="header-section-number">8.4.1</span> Augmentation Design for Genomic Sequences</h3>
+<p>A CTCF binding site must be recognizable whether it appears on a European or African genetic background, whether read on the forward or reverse strand, and whether the surrounding sequence contains common polymorphisms or reference alleles. Augmentation design is critical for contrastive learning because augmentations must preserve functional identity while introducing variability. If augmentations change function, the contrastive objective will learn meaningless invariances. Several augmentation strategies are biologically grounded and preserve the functional relationships that matter for downstream clinical applications.</p>
+<p><strong>Reverse complementation</strong> is the simplest and most reliable augmentation. DNA is double-stranded, and many regulatory elements function identically on either strand. Training the model to treat forward and reverse complement sequences as equivalent captures strand symmetry inherent in molecular biology. This augmentation is universally applicable and introduces no risk of changing functional identity.</p>
+<p><strong>Random cropping</strong> extracts overlapping windows from longer sequences. If a transcription factor binding site appears in multiple cropped windows, the model learns that the binding site is the functionally relevant feature regardless of absolute position or surrounding context. This teaches position-invariant representations useful for tasks where genomic coordinates matter less than local sequence content. A binding site predictor benefits from learning that the core motif is what matters, not its position within the input window.</p>
+<p><strong>Variant injection</strong> introduces common polymorphisms or simulated mutations. If the variants are neutral (common variants from gnomAD with high allele frequency, which are unlikely to be damaging), treating variant and reference sequences as positive pairs teaches robustness to genetic variation. This is particularly valuable for cross-population generalization, where models must recognize functional elements despite surrounding sequence polymorphism that differs between ancestry groups. A model trained with variant augmentation learns that a CTCF binding site is functionally equivalent whether it appears surrounded by European or African background variants.</p>
+<p>Negative sampling strategies also affect what models learn. Random genomic sequences provide straightforward negatives but may be too easy to distinguish: any functional regulatory sequence is readily separable from random intergenic sequence. Harder negatives, such as sequences from paralogous genes, pseudogenes, or orthologous regions in distant species, provide more informative supervision that forces the model to learn subtle discriminative features.</p>
+</section>
+<section id="cross-species-contrastive-learning" class="level3" data-number="8.4.2">
+<h3 data-number="8.4.2" class="anchored" data-anchor-id="cross-species-contrastive-learning"><span class="header-section-number">8.4.2</span> Cross-Species Contrastive Learning</h3>
+<div id="fig-cross-species-contrastive" class="quarto-float quarto-figure quarto-figure-center anchored">
+<figure class="quarto-float quarto-float-fig figure">
+<div aria-describedby="fig-cross-species-contrastive-caption-0ceaefa1-69ba-4598-a22c-09a6ac19f8ca">
+<div class="quarto-figure quarto-figure-center">
+<figure class="figure">
+<p><img src="https://placehold.co/300x200?text=FIGURE%20PLACEHOLDER.png" class="img-fluid figure-img"></p>
+<figcaption><strong>FIGURE PLACEHOLDER</strong></figcaption>
+</figure>
+</div>
+</div>
+<figcaption class="quarto-float-caption-bottom quarto-float-caption quarto-float-fig" id="fig-cross-species-contrastive-caption-0ceaefa1-69ba-4598-a22c-09a6ac19f8ca">
+Figure&nbsp;8.4: [Enhancing] Illustration of contrastive pretraining using orthologous sequences. Show: Human enhancer sequence and mouse ortholog (aligned, showing nucleotide divergence but conserved functional elements). Both mapped to embedding space as nearby points (positive pair). Non-orthologous sequence mapped to distant point (negative). Include phylogenetic context showing ~75 million years of divergence. Annotate: “Same function despite sequence divergence → learns species-invariant features.”
+</figcaption>
+</figure>
+</div>
+<p>Leveraging evolutionary relationships for self-supervision enables a particularly powerful form of contrastive learning. Orthologous sequences from different species share functional identity despite nucleotide divergence accumulated over millions of years of evolution. Treating orthologous pairs as positives and non-orthologous pairs as negatives teaches the model to extract species-invariant functional features. A human enhancer and its mouse ortholog should map to similar embeddings despite 75 million years of sequence divergence, while unrelated sequences should map to distant embeddings.</p>
+<p>This approach has direct implications for drug development and therapeutic translation. Many drug targets are validated in mouse models before human clinical trials; roughly 95% of cancer drugs that succeed in mouse models fail in human trials, often because the models do not adequately capture human biology. A model pretrained with human-mouse contrastive pairs may generalize better to predicting drug response in humans based on mouse efficacy data, or to transferring regulatory circuit designs from model organisms to human cell types. The evolutionary record provides implicit labels about functional equivalence that would be expensive to obtain through direct experimental annotation.</p>
+<p>Sequence <strong>embedding</strong> quality improves with contrastive pretraining in ways that benefit clinical applications. Models trained contrastively produce embedding spaces where functionally similar sequences cluster together, enabling nearest-neighbor search for annotating novel variants (finding similar characterized variants), sequence retrieval for identifying regulatory homologs, and unsupervised clustering of regulatory elements. For variant effect prediction, contrastive pretraining improves robustness: if the model learns that sequences differing only by neutral variants are functionally equivalent, it will better distinguish truly disruptive variants from benign polymorphisms.</p>
+</section>
+</section>
+<section id="multi-task-pretraining" class="level2" data-number="8.5">
+<h2 data-number="8.5" class="anchored" data-anchor-id="multi-task-pretraining"><span class="header-section-number">8.5</span> Multi-Task Pretraining</h2>
+<p>Predicting variant pathogenicity requires integrating multiple lines of evidence: evolutionary conservation, protein structure effects, splicing changes, and regulatory disruption. A variant in <em>TTN</em> (the gene encoding titin, mutated in 25% of dilated cardiomyopathy cases) might be pathogenic because it disrupts protein folding, because it alters splicing, or because it affects regulatory binding sites. No single assay captures all these dimensions. <strong>Multi-task pretraining</strong> addresses this by jointly optimizing for diverse prediction tasks, learning representations that capture the multiple facets of genomic function relevant to clinical interpretation.</p>
+<p>Multi-task pretraining combines multiple related objectives during the same training run, jointly optimizing for several prediction tasks. Different tasks provide complementary supervision signals: masking captures local sequence patterns, chromatin prediction captures regulatory function, conservation scoring captures evolutionary constraint, and expression prediction captures transcriptional consequences. Representations that satisfy all tasks simultaneously develop richer and more general features than any single objective alone.</p>
+<p><strong>Task selection</strong> is the first design decision. Ideally, tasks should be diverse enough to provide distinct supervision signals but related enough to benefit from shared representations. For genomic models, effective combinations include masked language modeling for general sequence structure, chromatin accessibility prediction for regulatory function, gene expression prediction for transcriptional output, evolutionary conservation scoring for functional constraint, and variant frequency prediction from population databases. Each task operates on the same input sequence but predicts different outputs using task-specific head layers. The shared backbone encoder processes the sequence into intermediate representations, and separate prediction heads map these representations to task-specific outputs.</p>
+<p><strong>Task weighting</strong> determines how much each task contributes to the total loss. With <span class="math inline">\(\mathcal{L}_1, \ldots, \mathcal{L}_K\)</span> representing individual task losses, the multi-task loss combines them:</p>
+<p><span class="math display">\[\mathcal{L}_{\text{total}} = \sum_{k=1}^K w_k \mathcal{L}_k\]</span></p>
+<p>where <span class="math inline">\(w_k\)</span> are task weights. Equal weighting is simple but may lead to imbalanced learning if tasks have different scales or difficulties. A task with high variance loss may dominate gradient updates, starving other tasks of learning signal. <strong>Dynamic weighting</strong> approaches adjust weights during training based on learning progress, using uncertainty estimation, gradient norms, or task-specific validation performance as signals for rebalancing.</p>
+<section id="large-scale-multi-task-examples" class="level3" data-number="8.5.1">
+<h3 data-number="8.5.1" class="anchored" data-anchor-id="large-scale-multi-task-examples"><span class="header-section-number">8.5.1</span> Large-Scale Multi-Task Examples</h3>
+<p><em>Enformer</em> exemplifies large-scale multi-task pretraining for genomics <span class="citation" data-cites="avsec_enformer_2021">(<a href="../bib/references.html#ref-avsec_enformer_2021" role="doc-biblioref">Avsec et al. 2021</a>)</span>. The model predicts over 5,000 genomic assays simultaneously: ChIP-seq signals for hundreds of transcription factors and histone marks, DNase-seq and ATAC-seq accessibility across cell types, CAGE transcription initiation profiles, and more. This massive multi-task objective (covering 674 DNase-seq, 4,675 ChIP-seq, and 638 CAGE experiments from ENCODE and Roadmap Epigenomics <span class="citation" data-cites="encode_project_integrated_2012">(<a href="../bib/references.html#ref-encode_project_integrated_2012" role="doc-biblioref"><span>“Placeholder: Encode Project Integrated 2012”</span> 2012</a>)</span>) forces the model to learn representations capturing diverse regulatory signals.</p>
+<p>The task diversity in <em>Enformer</em> provides supervision far richer than any single assay. A model trained only on DNase-seq learns general accessibility patterns but misses transcription factor specificity: it cannot distinguish which factors bind to accessible regions. A model trained only on H3K27ac ChIP-seq captures active enhancers but misses repressive marks that indicate silenced regulatory elements. Training on all assays jointly allows the model to disentangle overlapping and complementary signals, learning representations that generalize across regulatory contexts. For clinical variant interpretation, this means <em>Enformer</em> can predict how a regulatory variant affects enhancer activity, chromatin state, transcription factor binding, and gene expression simultaneously.</p>
+<div id="fig-multitask-pretraining" class="quarto-float quarto-figure quarto-figure-center anchored">
+<figure class="quarto-float quarto-float-fig figure">
+<div aria-describedby="fig-multitask-pretraining-caption-0ceaefa1-69ba-4598-a22c-09a6ac19f8ca">
+<div class="quarto-figure quarto-figure-center">
+<figure class="figure">
+<p><img src="https://placehold.co/300x200?text=FIGURE%20PLACEHOLDER.png" class="img-fluid figure-img"></p>
+<figcaption><strong>FIGURE PLACEHOLDER</strong></figcaption>
+</figure>
+</div>
+</div>
+<figcaption class="quarto-float-caption-bottom quarto-float-caption quarto-float-fig" id="fig-multitask-pretraining-caption-0ceaefa1-69ba-4598-a22c-09a6ac19f8ca">
+Figure&nbsp;8.5: [High] Diagram showing shared encoder with multiple prediction heads. Structure: Sequence input → Convolutional layers → Transformer layers (labeled “Shared Backbone”) → Branching to separate heads for: Chromatin accessibility (DNase-seq, ATAC-seq), Histone modifications (H3K27ac, H3K4me3, etc.), Transcription factor binding (hundreds of factors), Gene expression (CAGE). Annotate approximate task counts from ENCODE: “674 DNase + 4,675 ChIP-seq + 638 CAGE.”
+</figcaption>
+</figure>
+</div>
+<p><em>Borzoi</em> extends this paradigm to full RNA-seq coverage prediction, jointly modeling transcription initiation, splicing, and transcript abundance <span class="citation" data-cites="linder_borzoi_2023">(<a href="../bib/references.html#ref-linder_borzoi_2023" role="doc-biblioref">Linder et al. 2025</a>)</span>. By predicting continuous coverage across gene bodies rather than just expression levels, <em>Borzoi</em> captures splicing patterns that are invisible to models predicting only total expression. This has direct clinical relevance: many pathogenic variants act through splicing disruption rather than protein-coding changes, and models that capture splicing patterns can identify variants that traditional expression-based approaches miss.</p>
+<p>Combining MLM with functional prediction represents another multi-task configuration. The model predicts masked tokens through a language modeling head while simultaneously predicting chromatin accessibility or other functional readouts through regression heads. This hybrid objective balances sequence-level pretraining with functional supervision. The MLM component ensures the model learns general sequence patterns even in regions without functional annotations (the majority of the genome lacks chromatin or expression measurements in any given cell type), while the functional prediction component focuses learning on biologically relevant features.</p>
+</section>
+<section id="when-multi-task-helps-and-when-it-hurts" class="level3" data-number="8.5.2">
+<h3 data-number="8.5.2" class="anchored" data-anchor-id="when-multi-task-helps-and-when-it-hurts"><span class="header-section-number">8.5.2</span> When Multi-Task Helps and When It Hurts</h3>
+<p><strong>Task interference</strong> is the primary concern with multi-task learning. If tasks require conflicting representations, jointly optimizing for both may compromise performance on each compared to single-task baselines. In genomics, this might occur if one task benefits from very local features (splice site prediction, which depends on short consensus sequences spanning roughly 10 base pairs) while another requires long-range context (enhancer activity prediction, which depends on distant promoter interactions spanning 100 kilobases). The shared backbone must compromise, potentially learning suboptimal representations for both.</p>
+<p><strong>Negative transfer</strong> occurs when adding a task actually hurts downstream performance compared to training without it. This can happen if the additional task introduces noise (poorly measured assays with high experimental variance), if task weights are poorly balanced (causing one task to dominate gradients), or if the auxiliary task shifts learned representations away from features useful for target applications. The risk of negative transfer increases with task diversity: distantly related tasks are more likely to require conflicting representations.</p>
+<p>The benefits of multi-task pretraining are largest when tasks are complementary and data for individual tasks is limited. If chromatin data is sparse for a particular cell type but gene expression data is abundant, jointly training on both may improve performance on both compared to single-task models. The shared representations allow information to flow between tasks, compensating for data scarcity in any single modality. When functional labels exist at scale and tasks are genuinely related, multi-task pretraining consistently outperforms single-task alternatives.</p>
+</section>
+</section>
+<section id="data-strategies-for-pretraining" class="level2" data-number="8.6">
+<h2 data-number="8.6" class="anchored" data-anchor-id="data-strategies-for-pretraining"><span class="header-section-number">8.6</span> Data Strategies for Pretraining</h2>
+<p>Corpus construction establishes the foundation for pretraining and determines what patterns the model can learn. A clinical variant classifier is only as good as the evolutionary and population diversity captured in its pretraining corpus. If the training data underrepresents African genetic variation (African populations harbor more genetic diversity than all other continental populations combined, yet constitute a small fraction of most reference panels), the resulting model will underperform on African ancestry patients. These data decisions have direct consequences for health equity and clinical utility.</p>
+<p><strong>Reference genomes</strong> are the standard starting point. Human genome assemblies like GRCh38 provide high-quality, contiguous sequence spanning all chromosomes (roughly 3.1 billion base pairs of assembled sequence, representing about 92% of the full genome before telomere-to-telomere completion). Training on the reference genome allows models to learn patterns characteristic of human DNA: base composition, repeat structure, gene organization, and regulatory architecture. The reference genome represents a single haploid consensus, missing variation present in human populations, but provides the foundation for most pretraining approaches.</p>
+<p>Population-scale variation can be incorporated through variant databases. Rather than training only on reference sequence, injecting variants at observed population frequencies creates synthetic diploid genomes reflecting real genetic diversity. This teaches models that common polymorphisms are normal variation, potentially improving robustness and variant effect prediction. gnomAD provides allele frequencies across over 800,000 individuals spanning diverse ancestries <span class="citation" data-cites="karczewski_gnomad_2020">(<a href="../bib/references.html#ref-karczewski_gnomad_2020" role="doc-biblioref">Karczewski et al. 2020</a>)</span>, enabling population-aware training. <strong>Pan-genome</strong> approaches extend this by representing multiple high-quality assemblies from diverse individuals, capturing structural variation and population-specific haplotypes that a single reference cannot represent.</p>
+<p>Repeat handling impacts pretraining in ways that depend on downstream applications. Simple repeats, tandem repeats, and transposable elements occupy roughly half of the human genome but contribute less directly to protein-coding function than unique sequences. <strong>Hard-masking</strong> repeats (replacing them with Ns) reduces training data but may discard information relevant to some tasks; many regulatory elements derive from transposable elements, and some disease-associated repeats (like the CGG expansion in <em>FMR1</em> causing Fragile X syndrome, or the CAG expansion in <em>HTT</em> causing Huntington disease) are clinically important. <strong>Soft-masking</strong> retains sequence information while marking repetitive regions, allowing models to learn differential representations for repeats and unique sequences.</p>
+<p><strong>Multi-species pretraining</strong> incorporates genomes from model organisms and related species. Including mouse, zebrafish, and other commonly used experimental organisms enables models to learn evolutionary conservation patterns and may improve transfer between species. For therapeutic development that relies on animal model data, multi-species pretraining provides the foundation for cross-species generalization.</p>
+<p><strong>Data augmentation</strong> artificially increases training diversity. Reverse complementation exploits DNA strand symmetry, effectively doubling training data without collecting new sequences. Random cropping extracts variable-length windows, teaching position-invariant features. Variant injection simulates genetic variation, building robustness to population diversity. These augmentations are typically applied on-the-fly during training rather than pre-computed, maintaining flexibility in the training pipeline.</p>
+</section>
+<section id="optimization-and-scaling" class="level2" data-number="8.7">
+<h2 data-number="8.7" class="anchored" data-anchor-id="optimization-and-scaling"><span class="header-section-number">8.7</span> Optimization and Scaling</h2>
+<p>Training a model to predict variant effects in genes like <em>BRCA1</em> requires not just the right objective but also stable optimization that converges to useful representations. A model that diverges during training or gets stuck in poor local minima will fail clinically regardless of how well-designed its architecture may be. The optimization details that seem merely technical have direct consequences for whether the final model can reliably distinguish pathogenic from benign variants.</p>
+<p><strong>Learning rate warmup</strong> gradually increases the learning rate from near-zero over the first several thousand steps. This prevents early training instability when the model has random initializations and large gradient variance. After warmup, <strong>cosine decay</strong> schedules reduce the learning rate following a cosine curve from peak to near-zero over training, providing aggressive learning early when gradients are most informative and gentle refinement late as the model approaches convergence.</p>
+<p><strong>Gradient clipping</strong> prevents training instability from occasional large gradients. Clipping by global norm scales all gradients proportionally when the total norm exceeds a threshold (typically 1.0), maintaining gradient direction while controlling magnitude. This is standard practice for transformer models where exploding gradients can occur, particularly with long sequences where attention matrices span many positions.</p>
+<p><strong>Mixed precision training</strong> uses lower-precision arithmetic (<code>float16</code> or <code>bfloat16</code> instead of <code>float32</code>) to reduce memory consumption and accelerate computation on modern GPUs. Loss scaling prevents numerical underflow in <code>float16</code>, and careful handling of gradient updates ensures stability. Mixed precision is now standard for large-scale pretraining, roughly doubling throughput with minimal impact on model quality.</p>
+<p>Pretraining scales with model size, sequence length, and dataset size in predictable ways that have profound implications for what models can learn. Larger models with more parameters capture more complex patterns but require more data and compute to train. <em>ESM-2</em>’s largest variant has 15 billion parameters <span class="citation" data-cites="lin_evolutionary_2023">(<a href="../bib/references.html#ref-lin_evolutionary_2023" role="doc-biblioref"><span>“Placeholder: Lin Evolutionary 2023”</span> 2023</a>)</span> (roughly one parameter for every two amino acids in its training corpus), enabling it to capture subtle evolutionary constraints invisible to smaller models. Longer sequence contexts enable learning of long-range dependencies but increase memory requirements quadratically for standard attention. More diverse training data improves generalization but requires proportionally more training time.</p>
+<p>The relationships between scale and capability follow power laws that predict optimal resource allocation <span class="citation" data-cites="hoffmann_training_2022">(<a href="../bib/references.html#ref-hoffmann_training_2022" role="doc-biblioref"><span>“Placeholder: Hoffmann Training 2022”</span> 2022</a>)</span>. For a fixed computational budget, there exists an optimal balance between model size and training data: models that are too large undertrain on available data, while models that are too small cannot capture the complexity present in abundant data. These <strong>scaling laws</strong>, first characterized systematically for language models <span class="citation" data-cites="kaplan_scaling_2020">(<a href="../bib/references.html#ref-kaplan_scaling_2020" role="doc-biblioref"><span>“Placeholder: Kaplan Scaling 2020”</span> 2020</a>)</span>, appear to hold for genomic foundation models as well, though the precise exponents and constants differ. Understanding these relationships guides decisions about when to scale up versus when to improve data quality or model architecture. <a href="../part_3/p3-ch10-fm-principles.html" class="quarto-xref"><span>Chapter 10</span></a> examines these scaling relationships in detail, formalizing the observations introduced here into quantitative laws that define the foundation model paradigm.</p>
+<p>Beyond smooth improvements in loss, scale produces qualitative changes in model capabilities that were absent at smaller scales. Language models exhibit <strong>emergent behaviors</strong> (in-context learning, chain-of-thought reasoning, few-shot generalization) that appear only above certain parameter thresholds. Whether genomic models exhibit analogous emergent capabilities remains an active research question with early evidence suggesting they do. <em>ESM-2</em>, trained on evolutionary sequence databases containing hundreds of millions of protein sequences from UniRef <span class="citation" data-cites="suzek_uniref_2015">(<a href="../bib/references.html#ref-suzek_uniref_2015" role="doc-biblioref">Suzek et al. 2007</a>)</span>, develops structural understanding of proteins despite receiving no explicit structural supervision: the three-dimensional contacts emerge from predicting amino acid sequences alone. <em>Evo</em>, trained autoregressively on genomes, learns to generate sequences with realistic gene structure and regulatory organization. These emergent properties cannot be predicted by extrapolating from smaller models, making them both scientifically interesting and practically difficult to anticipate.</p>
+</section>
+<section id="monitoring-and-debugging" class="level2" data-number="8.8">
+<h2 data-number="8.8" class="anchored" data-anchor-id="monitoring-and-debugging"><span class="header-section-number">8.8</span> Monitoring and Debugging</h2>
+<p>A two-week pretraining run that fails on day thirteen represents not just wasted compute but delayed clinical deployment and missed opportunities for patient benefit. Early detection of training issues is essential for avoiding wasted computation and ensuring models achieve the representations necessary for clinical utility.</p>
+<p><strong>Training loss curves</strong> should decrease smoothly in early stages, eventually plateauing as the model approaches convergence. Sudden spikes suggest numerical instability (often from learning rate issues or gradient explosion), inappropriate optimization hyperparameters, or corrupted data batches. Persistent plateaus may indicate insufficient model capacity, inappropriate objectives, or learning rates that prevent further improvement. Tracking loss on held-out validation data monitors generalization: if training loss decreases while validation loss increases, the model is <strong>overfitting</strong> to the training corpus.</p>
+<p><strong>Gradient norms</strong> indicate whether optimization is proceeding normally. Very small gradients suggest the <strong>vanishing gradient problem</strong>, preventing effective learning in early layers. Very large gradients suggest instability that gradient clipping should catch. Tracking per-layer gradient norms helps diagnose where problems originate in deep networks.</p>
+<p><strong>Probing tasks</strong> provide functional sanity checks during pretraining. Simple downstream evaluations (predicting known splice sites, identifying transcription factor binding motifs, distinguishing exons from introns) can be run periodically on intermediate checkpoints to verify that learned representations capture biologically meaningful patterns. If probing performance plateaus or degrades while pretraining loss continues improving, the model may be learning patterns that do not transfer to downstream tasks.</p>
+</section>
+<section id="choosing-the-right-strategy" class="level2" data-number="8.9">
+<h2 data-number="8.9" class="anchored" data-anchor-id="choosing-the-right-strategy"><span class="header-section-number">8.9</span> Choosing the Right Strategy</h2>
+<p>A clinician asking “will this <em>BRCA1</em> variant cause disease?” needs a model pretrained with objectives that capture protein function and evolutionary constraint. A synthetic biologist asking “can you design me a promoter with 10-fold higher expression?” needs generative capabilities that MLM does not provide. Selecting a pretraining approach involves matching computational investment to the clinical or research questions the model must ultimately answer.</p>
+<p>For most general-purpose DNA or protein models, MLM pretraining provides a strong default. It learns bidirectional context, scales efficiently, and transfers well to diverse downstream tasks. <em>DNABERT</em> and <em>DNABERT-2</em> exemplify this approach for genomics, while <em>ESM</em> models demonstrate its effectiveness for proteins. Start with MLM unless there is a specific reason to prefer alternatives.</p>
+<p>Next-token prediction is preferred when generation is the primary goal. If designing sequences from scratch (therapeutic proteins, synthetic promoters, regulatory circuits), sampling from autoregressive models produces coherent outputs respecting learned grammar. <em>Evo</em> and similar models demonstrate this for genomic sequence generation. The autoregressive structure makes conditional generation straightforward, enabling design applications that MLM does not naturally support.</p>
+<p>Multi-task pretraining makes sense when functional labels are available at scale and tasks are complementary. <em>Enformer</em>’s success with thousands of chromatin assays demonstrates the power of multi-task learning when data supports it. The infrastructure requirements are higher (handling heterogeneous data, balancing losses across tasks, maintaining separate prediction heads), but the resulting representations capture functional information that pure sequence-based objectives miss.</p>
+<p>Contrastive learning is valuable for cross-species applications or when robustness to variation is critical. If transferring models trained on model organisms to related species, or improving robustness to genetic polymorphism across human populations, contrastive pretraining on orthologous pairs or variant-augmented sequences provides targeted benefits.</p>
+<p>When deciding whether to pretrain from scratch or start from existing models, starting from pretrained checkpoints is almost always preferable if an appropriate model exists. <strong>Fine-tuning</strong> a <em>DNABERT-2</em> checkpoint on a new task is faster and more data-efficient than training from scratch. Pretraining from scratch is necessary when using new tokenization schemes (incompatible vocabularies prevent weight transfer), targeting species without suitable existing models, or experimenting with fundamentally different architectures where pretrained weights cannot transfer.</p>
+</section>
+<section id="pretraining-in-practice-case-studies" class="level2" data-number="8.10">
+<h2 data-number="8.10" class="anchored" data-anchor-id="pretraining-in-practice-case-studies"><span class="header-section-number">8.10</span> Pretraining in Practice: Case Studies</h2>
+<p>Examining how successful models were pretrained provides concrete lessons and design patterns that inform new projects. Each case study illustrates how architectural choices, data decisions, and optimization strategies combine to produce models with distinct capabilities.</p>
+<p><em>DNABERT</em> introduced MLM pretraining to genomics by adapting BERT’s architecture to DNA sequences with overlapping k-mer tokenization <span class="citation" data-cites="ji_dnabert_2021">(<a href="../bib/references.html#ref-ji_dnabert_2021" role="doc-biblioref">Ji et al. 2021</a>)</span>. The model was pretrained on the human genome with 6-mer tokens, masking 15% of tokens at random. Standard BERT hyperparameters proved effective: AdamW optimizer with warmup, dropout regularization, and layer normalization. The key lessons include the importance of tokenization choice (k-mers capture motif-level patterns better than single nucleotides for regulatory prediction), the value of reverse complement augmentation for strand symmetry, and the transferability of representations across tasks never seen during pretraining.</p>
+<p><em>HyenaDNA</em> demonstrated that efficient long-range architectures enable pretraining on extremely long contexts <span class="citation" data-cites="nguyen_hyenadna_2023">(<a href="../bib/references.html#ref-nguyen_hyenadna_2023" role="doc-biblioref">Nguyen et al. 2023</a>)</span>. By using Hyena layers with subquadratic complexity, <em>HyenaDNA</em> scaled to contexts spanning one million bases (compared to typical transformer limits of a few thousand bases), far beyond standard transformers. Pretraining used single-nucleotide next-token prediction with a <strong>curriculum</strong> that progressively increased context length from shorter windows to full million-base sequences. This curriculum learning proved essential: training directly on long contexts without warmup led to instability. The lessons include the feasibility of million-base contexts with appropriate architectures, the benefits of curriculum learning for context scaling, and the emergence of long-range regulatory patterns when models have sufficient receptive field.</p>
+<p><em>Enformer</em> pioneered multi-task chromatin prediction at scale <span class="citation" data-cites="avsec_enformer_2021">(<a href="../bib/references.html#ref-avsec_enformer_2021" role="doc-biblioref">Avsec et al. 2021</a>)</span>. The model was pretrained jointly on over 5,000 assays from ENCODE, Roadmap Epigenomics, and related consortia, using a hybrid convolutional-transformer architecture with 200 kilobase context (spanning typical enhancer-promoter distances in mammalian genomes). Task weighting was balanced to prevent any single assay from dominating. Key insights include the power of large-scale multi-task learning for capturing diverse regulatory signals, the effectiveness of combining convolutions for local patterns with transformers for long-range interactions, and the interpretability benefits of attention patterns that reveal learned enhancer-promoter relationships.</p>
+<p><em>ESM-2</em> represents the state of the art for protein language models, scaling to 15 billion parameters trained on UniRef databases containing sequences from hundreds of millions of protein families <span class="citation" data-cites="lin_evolutionary_2023">(<a href="../bib/references.html#ref-lin_evolutionary_2023" role="doc-biblioref"><span>“Placeholder: Lin Evolutionary 2023”</span> 2023</a>)</span>. Pretraining used standard MLM on amino acid sequences at unprecedented scale. The lessons include the continued benefit of scaling (larger models and more data improve even at billions of parameters, with no plateau in sight), the value of evolutionary diversity (pretraining on distinct protein families captures constraints invisible in any single genome), and the emergence of structural understanding from sequence alone (<em>ESM-2</em> representations encode three-dimensional contacts despite no explicit structural supervision during pretraining).</p>
+</section>
+<section id="open-questions" class="level2" data-number="8.11">
+<h2 data-number="8.11" class="anchored" data-anchor-id="open-questions"><span class="header-section-number">8.11</span> Open Questions</h2>
+<p>Despite rapid progress, fundamental questions about genomic pretraining remain open, and resolving them will determine whether the next generation of models can achieve clinical-grade reliability.</p>
+<p>Optimal objective combinations remain unclear: should we jointly train with MLM and chromatin prediction, or train sequentially? How many auxiliary tasks help before diminishing returns? Do contrastive and generative objectives complement each other or interfere? These questions have different answers for different downstream applications, and systematic characterization is incomplete.</p>
+<p>Incorporating biological priors versus learning from scratch presents a design tension. Known motifs, pathway structure, and evolutionary constraints could be encoded in model architecture or initialization. Hand-engineered features risk encoding false assumptions, but pure data-driven learning may rediscover basic biology inefficiently. Hybrid approaches combining priors with learned representations remain underexplored.</p>
+<p><strong>Continual pretraining</strong> as new data arrives is increasingly relevant. As sequencing technologies improve and new assays emerge, updating pretrained models without catastrophic forgetting of prior knowledge presents challenges. Online learning and elastic weight consolidation are potential solutions that remain largely untested in genomics at scale.</p>
+<p>The relationship between pretraining scale and downstream performance follows predictable patterns that are still being characterized for genomic models. Understanding these relationships more precisely would guide resource allocation and set realistic expectations for what different scales of pretraining can achieve. These scaling considerations connect to the broader foundation model paradigm examined in <a href="../part_3/p3-ch10-fm-principles.html" class="quarto-xref"><span>Chapter 10</span></a>.</p>
+</section>
+<section id="from-sequence-statistics-to-biological-knowledge" class="level2" data-number="8.12">
+<h2 data-number="8.12" class="anchored" data-anchor-id="from-sequence-statistics-to-biological-knowledge"><span class="header-section-number">8.12</span> From Sequence Statistics to Biological Knowledge</h2>
+<p>The fundamental insight underlying self-supervised pretraining is that patterns relevant to biological function are embedded in sequence statistics themselves. A model that learns to predict masked nucleotides must implicitly capture the evolutionary constraints, regulatory grammar, and structural requirements that determine what sequences are viable. A model that learns to generate plausible protein sequences must internalize the constraints that distinguish functional proteins from random polymers. These objectives extract biological knowledge from sequence without requiring explicit functional labels, transforming abundant unlabeled data into learned representations that improve data efficiency for downstream applications.</p>
+<p>The choice of pretraining objective shapes what models learn in ways that propagate to clinical utility. Masked language modeling teaches bidirectional sequence understanding, making it the natural choice for variant interpretation and regulatory prediction where full flanking context informs the prediction. Next-token prediction teaches generative capabilities essential for therapeutic protein design and synthetic sequence generation. Contrastive learning teaches invariance to perturbations, building robustness that transfers across species and populations. Aligning pretraining objectives with intended applications improves transfer; misalignment creates representational gaps that fine-tuning may struggle to bridge.</p>
+<p>Self-supervised pretraining has become the default approach for building genomic foundation models. The DNA language models in <a href="../part_3/p3-ch11-dna-lm.html" class="quarto-xref"><span>Chapter 11</span></a>, protein language models in <a href="../part_3/p3-ch12-protein-lm.html" class="quarto-xref"><span>Chapter 12</span></a>, and regulatory sequence models in <a href="../part_3/p3-ch13-regulatory.html" class="quarto-xref"><span>Chapter 13</span></a> each employ variants of these objectives tailored to their sequence modalities and downstream applications. The transfer learning methods examined next determine how effectively pretrained representations can be adapted to specific clinical and research tasks, completing the pipeline from raw sequence through learned representation to deployed application.</p>
+
+
+<div id="refs" class="references csl-bib-body hanging-indent" data-entry-spacing="0" role="list" style="display: none">
+<div id="ref-avsec_enformer_2021" class="csl-entry" role="listitem">
+Avsec, Žiga, Vikram Agarwal, D. Visentin, J. Ledsam, A. Grabska-Barwinska, Kyle R. Taylor, Yannis Assael, J. Jumper, Pushmeet Kohli, and David R. Kelley. 2021. <span>“[<span>Enformer</span>] <span>Effective</span> Gene Expression Prediction from Sequence by Integrating Long-Range Interactions.”</span> <em>Nature Methods</em> 18 (October): 1196–1203. <a href="https://doi.org/10.1038/s41592-021-01252-x">https://doi.org/10.1038/s41592-021-01252-x</a>.
+</div>
+<div id="ref-devlin_bert_2019" class="csl-entry" role="listitem">
+Devlin, Jacob, Ming-Wei Chang, Kenton Lee, and Kristina Toutanova. 2019. <span>“<span>BERT</span>: <span>Pre</span>-Training of <span>Deep</span> <span>Bidirectional</span> <span>Transformers</span> for <span>Language</span> <span>Understanding</span>.”</span> arXiv. <a href="https://doi.org/10.48550/arXiv.1810.04805">https://doi.org/10.48550/arXiv.1810.04805</a>.
+</div>
+<div id="ref-ferruz_protgpt2_2022" class="csl-entry" role="listitem">
+Ferruz, Noelia, Steffen Schmidt, and Birte Höcker. 2022. <span>“<span>ProtGPT2</span> Is a Deep Unsupervised Language Model for Protein Design.”</span> <em>Nature Communications</em> 13 (1): 4348. <a href="https://doi.org/10.1038/s41467-022-32007-7">https://doi.org/10.1038/s41467-022-32007-7</a>.
+</div>
+<div id="ref-ji_dnabert_2021" class="csl-entry" role="listitem">
+Ji, Yanrong, Zhihan Zhou, Han Liu, and Ramana V Davuluri. 2021. <span>“<span>DNABERT</span>: Pre-Trained <span>Bidirectional</span> <span>Encoder</span> <span>Representations</span> from <span>Transformers</span> Model for <span>DNA</span>-Language in Genome.”</span> <em>Bioinformatics</em> 37 (15): 2112–20. <a href="https://doi.org/10.1093/bioinformatics/btab083">https://doi.org/10.1093/bioinformatics/btab083</a>.
+</div>
+<div id="ref-karczewski_gnomad_2020" class="csl-entry" role="listitem">
+Karczewski, Konrad J., Laurent C. Francioli, Grace Tiao, Beryl B. Cummings, Jessica Alföldi, Qingbo Wang, Ryan L. Collins, et al. 2020. <span>“The Mutational Constraint Spectrum Quantified from Variation in 141,456 Humans.”</span> <em>Nature</em> 581 (7809): 434–43. <a href="https://doi.org/10.1038/s41586-020-2308-7">https://doi.org/10.1038/s41586-020-2308-7</a>.
+</div>
+<div id="ref-landrum_clinvar_2018" class="csl-entry" role="listitem">
+Landrum, Melissa J, Jennifer M Lee, Mark Benson, Garth R Brown, Chen Chao, Shanmuga Chitipiralla, Baoshan Gu, et al. 2018. <span>“<span>ClinVar</span>: Improving Access to Variant Interpretations and Supporting Evidence.”</span> <em>Nucleic Acids Research</em> 46 (D1): D1062–67. <a href="https://doi.org/10.1093/nar/gkx1153">https://doi.org/10.1093/nar/gkx1153</a>.
+</div>
+<div id="ref-linder_borzoi_2023" class="csl-entry" role="listitem">
+Linder, Johannes, Divyanshi Srivastava, Han Yuan, Vikram Agarwal, and David R. Kelley. 2025. <span>“[<span>Borzoi</span>] <span>Predicting</span> <span>RNA</span>-Seq Coverage from <span>DNA</span> Sequence as a Unifying Model of Gene Regulation.”</span> <em>Nature Genetics</em> 57 (4): 949–61. <a href="https://doi.org/10.1038/s41588-024-02053-6">https://doi.org/10.1038/s41588-024-02053-6</a>.
+</div>
+<div id="ref-nguyen_hyenadna_2023" class="csl-entry" role="listitem">
+Nguyen, Eric, Michael Poli, Marjan Faizi, Armin Thomas, Callum Birch-Sykes, Michael Wornow, Aman Patel, et al. 2023. <span>“<span>HyenaDNA</span>: <span>Long</span>-<span>Range</span> <span>Genomic</span> <span>Sequence</span> <span>Modeling</span> at <span>Single</span> <span>Nucleotide</span> <span>Resolution</span>.”</span> arXiv. <a href="https://doi.org/10.48550/arXiv.2306.15794">https://doi.org/10.48550/arXiv.2306.15794</a>.
+</div>
+<div id="ref-encode_project_integrated_2012" class="csl-entry" role="listitem">
+<span>“Placeholder: Encode Project Integrated 2012.”</span> 2012.
+</div>
+<div id="ref-hoffmann_training_2022" class="csl-entry" role="listitem">
+<span>“Placeholder: Hoffmann Training 2022.”</span> 2022.
+</div>
+<div id="ref-kaplan_scaling_2020" class="csl-entry" role="listitem">
+<span>“Placeholder: Kaplan Scaling 2020.”</span> 2020.
+</div>
+<div id="ref-lin_evolutionary_2023" class="csl-entry" role="listitem">
+<span>“Placeholder: Lin Evolutionary 2023.”</span> 2023.
+</div>
+<div id="ref-nguyen_sequence_2024" class="csl-entry" role="listitem">
+<span>“Placeholder: Nguyen Sequence 2024.”</span> 2024.
+</div>
+<div id="ref-oord_representation_2018" class="csl-entry" role="listitem">
+<span>“Placeholder: Oord Representation 2018.”</span> 2018.
+</div>
+<div id="ref-raffel_t5_2019" class="csl-entry" role="listitem">
+Raffel, Colin, Noam Shazeer, Adam Roberts, Katherine Lee, Sharan Narang, Michael Matena, Yanqi Zhou, Wei Li, and Peter J. Liu. 2019. <span>“Exploring the <span>Limits</span> of <span>Transfer</span> <span>Learning</span> with a <span>Unified</span> <span>Text</span>-to-<span>Text</span> <span>Transformer</span>.”</span> arXiv. <a href="https://doi.org/10.48550/arXiv.1910.10683">https://doi.org/10.48550/arXiv.1910.10683</a>.
+</div>
+<div id="ref-suzek_uniref_2015" class="csl-entry" role="listitem">
+Suzek, Baris E., Hongzhan Huang, Peter McGarvey, Raja Mazumder, and Cathy H. Wu. 2007. <span>“<span>UniRef</span>: Comprehensive and Non-Redundant <span>UniProt</span> Reference Clusters.”</span> <em>Bioinformatics</em> 23 (10): 1282–88. <a href="https://doi.org/10.1093/bioinformatics/btm098">https://doi.org/10.1093/bioinformatics/btm098</a>.
+</div>
+<div id="ref-zhou_dnabert2_2023" class="csl-entry" role="listitem">
+Zhou, Zhihan, Yanrong Ji, Weijian Li, Pratik Dutta, Ramana Davuluri, and Han Liu. 2024. <span>“<span>DNABERT</span>-2: <span>Efficient</span> <span>Foundation</span> <span>Model</span> and <span>Benchmark</span> <span>For</span> <span>Multi</span>-<span>Species</span> <span>Genome</span>.”</span> arXiv. <a href="https://doi.org/10.48550/arXiv.2306.15006">https://doi.org/10.48550/arXiv.2306.15006</a>.
+</div>
+</div>
+</section>
+
+</main> <!-- /main -->
+<script id="quarto-html-after-body" type="application/javascript">
+  window.document.addEventListener("DOMContentLoaded", function (event) {
+    // Ensure there is a toggle, if there isn't float one in the top right
+    if (window.document.querySelector('.quarto-color-scheme-toggle') === null) {
+      const a = window.document.createElement('a');
+      a.classList.add('top-right');
+      a.classList.add('quarto-color-scheme-toggle');
+      a.href = "";
+      a.onclick = function() { try { window.quartoToggleColorScheme(); } catch {} return false; };
+      const i = window.document.createElement("i");
+      i.classList.add('bi');
+      a.appendChild(i);
+      window.document.body.appendChild(a);
+    }
+    setColorSchemeToggle(hasAlternateSentinel())
+    const icon = "";
+    const anchorJS = new window.AnchorJS();
+    anchorJS.options = {
+      placement: 'right',
+      icon: icon
+    };
+    anchorJS.add('.anchored');
+    const isCodeAnnotation = (el) => {
+      for (const clz of el.classList) {
+        if (clz.startsWith('code-annotation-')) {                     
+          return true;
+        }
+      }
+      return false;
+    }
+    const onCopySuccess = function(e) {
+      // button target
+      const button = e.trigger;
+      // don't keep focus
+      button.blur();
+      // flash "checked"
+      button.classList.add('code-copy-button-checked');
+      var currentTitle = button.getAttribute("title");
+      button.setAttribute("title", "Copied!");
+      let tooltip;
+      if (window.bootstrap) {
+        button.setAttribute("data-bs-toggle", "tooltip");
+        button.setAttribute("data-bs-placement", "left");
+        button.setAttribute("data-bs-title", "Copied!");
+        tooltip = new bootstrap.Tooltip(button, 
+          { trigger: "manual", 
+            customClass: "code-copy-button-tooltip",
+            offset: [0, -8]});
+        tooltip.show();    
+      }
+      setTimeout(function() {
+        if (tooltip) {
+          tooltip.hide();
+          button.removeAttribute("data-bs-title");
+          button.removeAttribute("data-bs-toggle");
+          button.removeAttribute("data-bs-placement");
+        }
+        button.setAttribute("title", currentTitle);
+        button.classList.remove('code-copy-button-checked');
+      }, 1000);
+      // clear code selection
+      e.clearSelection();
+    }
+    const getTextToCopy = function(trigger) {
+      const outerScaffold = trigger.parentElement.cloneNode(true);
+      const codeEl = outerScaffold.querySelector('code');
+      for (const childEl of codeEl.children) {
+        if (isCodeAnnotation(childEl)) {
+          childEl.remove();
+        }
+      }
+      return codeEl.innerText;
+    }
+    const clipboard = new window.ClipboardJS('.code-copy-button:not([data-in-quarto-modal])', {
+      text: getTextToCopy
+    });
+    clipboard.on('success', onCopySuccess);
+    if (window.document.getElementById('quarto-embedded-source-code-modal')) {
+      const clipboardModal = new window.ClipboardJS('.code-copy-button[data-in-quarto-modal]', {
+        text: getTextToCopy,
+        container: window.document.getElementById('quarto-embedded-source-code-modal')
+      });
+      clipboardModal.on('success', onCopySuccess);
+    }
+      var localhostRegex = new RegExp(/^(?:http|https):\/\/localhost\:?[0-9]*\//);
+      var mailtoRegex = new RegExp(/^mailto:/);
+        var filterRegex = new RegExp('/' + window.location.host + '/');
+      var isInternal = (href) => {
+          return filterRegex.test(href) || localhostRegex.test(href) || mailtoRegex.test(href);
+      }
+      // Inspect non-navigation links and adorn them if external
+     var links = window.document.querySelectorAll('a[href]:not(.nav-link):not(.navbar-brand):not(.toc-action):not(.sidebar-link):not(.sidebar-item-toggle):not(.pagination-link):not(.no-external):not([aria-hidden]):not(.dropdown-item):not(.quarto-navigation-tool):not(.about-link)');
+      for (var i=0; i<links.length; i++) {
+        const link = links[i];
+        if (!isInternal(link.href)) {
+          // undo the damage that might have been done by quarto-nav.js in the case of
+          // links that we want to consider external
+          if (link.dataset.originalHref !== undefined) {
+            link.href = link.dataset.originalHref;
+          }
+        }
+      }
+    function tippyHover(el, contentFn, onTriggerFn, onUntriggerFn) {
+      const config = {
+        allowHTML: true,
+        maxWidth: 500,
+        delay: 100,
+        arrow: false,
+        appendTo: function(el) {
+            return el.parentElement;
+        },
+        interactive: true,
+        interactiveBorder: 10,
+        theme: 'quarto',
+        placement: 'bottom-start',
+      };
+      if (contentFn) {
+        config.content = contentFn;
+      }
+      if (onTriggerFn) {
+        config.onTrigger = onTriggerFn;
+      }
+      if (onUntriggerFn) {
+        config.onUntrigger = onUntriggerFn;
+      }
+      window.tippy(el, config); 
+    }
+    const noterefs = window.document.querySelectorAll('a[role="doc-noteref"]');
+    for (var i=0; i<noterefs.length; i++) {
+      const ref = noterefs[i];
+      tippyHover(ref, function() {
+        // use id or data attribute instead here
+        let href = ref.getAttribute('data-footnote-href') || ref.getAttribute('href');
+        try { href = new URL(href).hash; } catch {}
+        const id = href.replace(/^#\/?/, "");
+        const note = window.document.getElementById(id);
+        if (note) {
+          return note.innerHTML;
+        } else {
+          return "";
+        }
+      });
+    }
+    const xrefs = window.document.querySelectorAll('a.quarto-xref');
+    const processXRef = (id, note) => {
+      // Strip column container classes
+      const stripColumnClz = (el) => {
+        el.classList.remove("page-full", "page-columns");
+        if (el.children) {
+          for (const child of el.children) {
+            stripColumnClz(child);
+          }
+        }
+      }
+      stripColumnClz(note)
+      if (id === null || id.startsWith('sec-')) {
+        // Special case sections, only their first couple elements
+        const container = document.createElement("div");
+        if (note.children && note.children.length > 2) {
+          container.appendChild(note.children[0].cloneNode(true));
+          for (let i = 1; i < note.children.length; i++) {
+            const child = note.children[i];
+            if (child.tagName === "P" && child.innerText === "") {
+              continue;
+            } else {
+              container.appendChild(child.cloneNode(true));
+              break;
+            }
+          }
+          if (window.Quarto?.typesetMath) {
+            window.Quarto.typesetMath(container);
+          }
+          return container.innerHTML
+        } else {
+          if (window.Quarto?.typesetMath) {
+            window.Quarto.typesetMath(note);
+          }
+          return note.innerHTML;
+        }
+      } else {
+        // Remove any anchor links if they are present
+        const anchorLink = note.querySelector('a.anchorjs-link');
+        if (anchorLink) {
+          anchorLink.remove();
+        }
+        if (window.Quarto?.typesetMath) {
+          window.Quarto.typesetMath(note);
+        }
+        if (note.classList.contains("callout")) {
+          return note.outerHTML;
+        } else {
+          return note.innerHTML;
+        }
+      }
+    }
+    for (var i=0; i<xrefs.length; i++) {
+      const xref = xrefs[i];
+      tippyHover(xref, undefined, function(instance) {
+        instance.disable();
+        let url = xref.getAttribute('href');
+        let hash = undefined; 
+        if (url.startsWith('#')) {
+          hash = url;
+        } else {
+          try { hash = new URL(url).hash; } catch {}
+        }
+        if (hash) {
+          const id = hash.replace(/^#\/?/, "");
+          const note = window.document.getElementById(id);
+          if (note !== null) {
+            try {
+              const html = processXRef(id, note.cloneNode(true));
+              instance.setContent(html);
+            } finally {
+              instance.enable();
+              instance.show();
+            }
+          } else {
+            // See if we can fetch this
+            fetch(url.split('#')[0])
+            .then(res => res.text())
+            .then(html => {
+              const parser = new DOMParser();
+              const htmlDoc = parser.parseFromString(html, "text/html");
+              const note = htmlDoc.getElementById(id);
+              if (note !== null) {
+                const html = processXRef(id, note);
+                instance.setContent(html);
+              } 
+            }).finally(() => {
+              instance.enable();
+              instance.show();
+            });
+          }
+        } else {
+          // See if we can fetch a full url (with no hash to target)
+          // This is a special case and we should probably do some content thinning / targeting
+          fetch(url)
+          .then(res => res.text())
+          .then(html => {
+            const parser = new DOMParser();
+            const htmlDoc = parser.parseFromString(html, "text/html");
+            const note = htmlDoc.querySelector('main.content');
+            if (note !== null) {
+              // This should only happen for chapter cross references
+              // (since there is no id in the URL)
+              // remove the first header
+              if (note.children.length > 0 && note.children[0].tagName === "HEADER") {
+                note.children[0].remove();
+              }
+              const html = processXRef(null, note);
+              instance.setContent(html);
+            } 
+          }).finally(() => {
+            instance.enable();
+            instance.show();
+          });
+        }
+      }, function(instance) {
+      });
+    }
+        let selectedAnnoteEl;
+        const selectorForAnnotation = ( cell, annotation) => {
+          let cellAttr = 'data-code-cell="' + cell + '"';
+          let lineAttr = 'data-code-annotation="' +  annotation + '"';
+          const selector = 'span[' + cellAttr + '][' + lineAttr + ']';
+          return selector;
+        }
+        const selectCodeLines = (annoteEl) => {
+          const doc = window.document;
+          const targetCell = annoteEl.getAttribute("data-target-cell");
+          const targetAnnotation = annoteEl.getAttribute("data-target-annotation");
+          const annoteSpan = window.document.querySelector(selectorForAnnotation(targetCell, targetAnnotation));
+          const lines = annoteSpan.getAttribute("data-code-lines").split(",");
+          const lineIds = lines.map((line) => {
+            return targetCell + "-" + line;
+          })
+          let top = null;
+          let height = null;
+          let parent = null;
+          if (lineIds.length > 0) {
+              //compute the position of the single el (top and bottom and make a div)
+              const el = window.document.getElementById(lineIds[0]);
+              top = el.offsetTop;
+              height = el.offsetHeight;
+              parent = el.parentElement.parentElement;
+            if (lineIds.length > 1) {
+              const lastEl = window.document.getElementById(lineIds[lineIds.length - 1]);
+              const bottom = lastEl.offsetTop + lastEl.offsetHeight;
+              height = bottom - top;
+            }
+            if (top !== null && height !== null && parent !== null) {
+              // cook up a div (if necessary) and position it 
+              let div = window.document.getElementById("code-annotation-line-highlight");
+              if (div === null) {
+                div = window.document.createElement("div");
+                div.setAttribute("id", "code-annotation-line-highlight");
+                div.style.position = 'absolute';
+                parent.appendChild(div);
+              }
+              div.style.top = top - 2 + "px";
+              div.style.height = height + 4 + "px";
+              div.style.left = 0;
+              let gutterDiv = window.document.getElementById("code-annotation-line-highlight-gutter");
+              if (gutterDiv === null) {
+                gutterDiv = window.document.createElement("div");
+                gutterDiv.setAttribute("id", "code-annotation-line-highlight-gutter");
+                gutterDiv.style.position = 'absolute';
+                const codeCell = window.document.getElementById(targetCell);
+                const gutter = codeCell.querySelector('.code-annotation-gutter');
+                gutter.appendChild(gutterDiv);
+              }
+              gutterDiv.style.top = top - 2 + "px";
+              gutterDiv.style.height = height + 4 + "px";
+            }
+            selectedAnnoteEl = annoteEl;
+          }
+        };
+        const unselectCodeLines = () => {
+          const elementsIds = ["code-annotation-line-highlight", "code-annotation-line-highlight-gutter"];
+          elementsIds.forEach((elId) => {
+            const div = window.document.getElementById(elId);
+            if (div) {
+              div.remove();
+            }
+          });
+          selectedAnnoteEl = undefined;
+        };
+          // Handle positioning of the toggle
+      window.addEventListener(
+        "resize",
+        throttle(() => {
+          elRect = undefined;
+          if (selectedAnnoteEl) {
+            selectCodeLines(selectedAnnoteEl);
+          }
+        }, 10)
+      );
+      function throttle(fn, ms) {
+      let throttle = false;
+      let timer;
+        return (...args) => {
+          if(!throttle) { // first call gets through
+              fn.apply(this, args);
+              throttle = true;
+          } else { // all the others get throttled
+              if(timer) clearTimeout(timer); // cancel #2
+              timer = setTimeout(() => {
+                fn.apply(this, args);
+                timer = throttle = false;
+              }, ms);
+          }
+        };
+      }
+        // Attach click handler to the DT
+        const annoteDls = window.document.querySelectorAll('dt[data-target-cell]');
+        for (const annoteDlNode of annoteDls) {
+          annoteDlNode.addEventListener('click', (event) => {
+            const clickedEl = event.target;
+            if (clickedEl !== selectedAnnoteEl) {
+              unselectCodeLines();
+              const activeEl = window.document.querySelector('dt[data-target-cell].code-annotation-active');
+              if (activeEl) {
+                activeEl.classList.remove('code-annotation-active');
+              }
+              selectCodeLines(clickedEl);
+              clickedEl.classList.add('code-annotation-active');
+            } else {
+              // Unselect the line
+              unselectCodeLines();
+              clickedEl.classList.remove('code-annotation-active');
+            }
+          });
+        }
+    const findCites = (el) => {
+      const parentEl = el.parentElement;
+      if (parentEl) {
+        const cites = parentEl.dataset.cites;
+        if (cites) {
+          return {
+            el,
+            cites: cites.split(' ')
+          };
+        } else {
+          return findCites(el.parentElement)
+        }
+      } else {
+        return undefined;
+      }
+    };
+    var bibliorefs = window.document.querySelectorAll('a[role="doc-biblioref"]');
+    for (var i=0; i<bibliorefs.length; i++) {
+      const ref = bibliorefs[i];
+      const citeInfo = findCites(ref);
+      if (citeInfo) {
+        tippyHover(citeInfo.el, function() {
+          var popup = window.document.createElement('div');
+          citeInfo.cites.forEach(function(cite) {
+            var citeDiv = window.document.createElement('div');
+            citeDiv.classList.add('hanging-indent');
+            citeDiv.classList.add('csl-entry');
+            var biblioDiv = window.document.getElementById('ref-' + cite);
+            if (biblioDiv) {
+              citeDiv.innerHTML = biblioDiv.innerHTML;
+            }
+            popup.appendChild(citeDiv);
+          });
+          return popup.innerHTML;
+        });
+      }
+    }
+  });
+  </script>
+<nav class="page-navigation">
+  <div class="nav-page nav-page-previous">
+      <a href="../part_2/p2-ch07-attention.html" class="pagination-link" aria-label="Transformers and Attention">
+        <i class="bi bi-arrow-left-short"></i> <span class="nav-page-text"><span class="chapter-number">7</span>&nbsp; <span class="chapter-title">Transformers and Attention</span></span>
+      </a>          
+  </div>
+  <div class="nav-page nav-page-next">
+      <a href="../part_2/p2-ch09-transfer.html" class="pagination-link" aria-label="Transfer and Adaptation">
+        <span class="nav-page-text"><span class="chapter-number">9</span>&nbsp; <span class="chapter-title">Transfer and Adaptation</span></span> <i class="bi bi-arrow-right-short"></i>
+      </a>
+  </div>
+</nav>
+</div> <!-- /content -->
+<footer class="footer">
+  <div class="nav-footer">
+    <div class="nav-footer-left">
+      &nbsp;
+    </div>   
+    <div class="nav-footer-center">
+<p>Copyright 2025, Josh Meehl</p>
+</div>
+    <div class="nav-footer-right">
+      &nbsp;
+    </div>
+  </div>
+</footer>
+
+
+
+
+</body></html>

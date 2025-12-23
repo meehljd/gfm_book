@@ -1,0 +1,1481 @@
+<!DOCTYPE html>
+<html xmlns="http://www.w3.org/1999/xhtml" lang="en" xml:lang="en"><head>
+
+<meta charset="utf-8">
+<meta name="generator" content="quarto-1.8.26">
+
+<meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=yes">
+
+
+<title>6&nbsp; Convolutional Networks – Genomic Foundation Models</title>
+<style>
+code{white-space: pre-wrap;}
+span.smallcaps{font-variant: small-caps;}
+div.columns{display: flex; gap: min(4vw, 1.5em);}
+div.column{flex: auto; overflow-x: auto;}
+div.hanging-indent{margin-left: 1.5em; text-indent: -1.5em;}
+ul.task-list{list-style: none;}
+ul.task-list li input[type="checkbox"] {
+  width: 0.8em;
+  margin: 0 0.8em 0.2em -1em; /* quarto-specific, see https://github.com/quarto-dev/quarto-cli/issues/4556 */ 
+  vertical-align: middle;
+}
+/* CSS for citations */
+div.csl-bib-body { }
+div.csl-entry {
+  clear: both;
+  margin-bottom: 0em;
+}
+.hanging-indent div.csl-entry {
+  margin-left:2em;
+  text-indent:-2em;
+}
+div.csl-left-margin {
+  min-width:2em;
+  float:left;
+}
+div.csl-right-inline {
+  margin-left:2em;
+  padding-left:1em;
+}
+div.csl-indent {
+  margin-left: 2em;
+}</style>
+
+
+<script src="../site_libs/quarto-nav/quarto-nav.js"></script>
+<script src="../site_libs/quarto-nav/headroom.min.js"></script>
+<script src="../site_libs/clipboard/clipboard.min.js"></script>
+<script src="../site_libs/quarto-search/autocomplete.umd.js"></script>
+<script src="../site_libs/quarto-search/fuse.min.js"></script>
+<script src="../site_libs/quarto-search/quarto-search.js"></script>
+<meta name="quarto:offset" content="../">
+<link href="../part_2/p2-ch07-attention.html" rel="next">
+<link href="../part_2/p2-ch05-representations.html" rel="prev">
+<script src="../site_libs/quarto-html/quarto.js" type="module"></script>
+<script src="../site_libs/quarto-html/tabsets/tabsets.js" type="module"></script>
+<script src="../site_libs/quarto-html/axe/axe-check.js" type="module"></script>
+<script src="../site_libs/quarto-html/popper.min.js"></script>
+<script src="../site_libs/quarto-html/tippy.umd.min.js"></script>
+<script src="../site_libs/quarto-html/anchor.min.js"></script>
+<link href="../site_libs/quarto-html/tippy.css" rel="stylesheet">
+<link href="../site_libs/quarto-html/quarto-syntax-highlighting-587c61ba64f3a5504c4d52d930310e48.css" rel="stylesheet" class="quarto-color-scheme" id="quarto-text-highlighting-styles">
+<link href="../site_libs/quarto-html/quarto-syntax-highlighting-dark-b758ccaa5987ceb1b75504551e579abf.css" rel="stylesheet" class="quarto-color-scheme quarto-color-alternate" id="quarto-text-highlighting-styles">
+<link href="../site_libs/quarto-html/quarto-syntax-highlighting-587c61ba64f3a5504c4d52d930310e48.css" rel="stylesheet" class="quarto-color-scheme-extra" id="quarto-text-highlighting-styles">
+<script src="../site_libs/bootstrap/bootstrap.min.js"></script>
+<link href="../site_libs/bootstrap/bootstrap-icons.css" rel="stylesheet">
+<link href="../site_libs/bootstrap/bootstrap-a1553387a0f784068632030e9fbb8a3c.min.css" rel="stylesheet" append-hash="true" class="quarto-color-scheme" id="quarto-bootstrap" data-mode="light">
+<link href="../site_libs/bootstrap/bootstrap-dark-d1e9b63c6b6094879b9f94a7628e3370.min.css" rel="stylesheet" append-hash="true" class="quarto-color-scheme quarto-color-alternate" id="quarto-bootstrap" data-mode="dark">
+<link href="../site_libs/bootstrap/bootstrap-a1553387a0f784068632030e9fbb8a3c.min.css" rel="stylesheet" append-hash="true" class="quarto-color-scheme-extra" id="quarto-bootstrap" data-mode="light">
+<script id="quarto-search-options" type="application/json">{
+  "location": "sidebar",
+  "copy-button": false,
+  "collapse-after": 3,
+  "panel-placement": "start",
+  "type": "textbox",
+  "limit": 50,
+  "keyboard-shortcut": [
+    "f",
+    "/",
+    "s"
+  ],
+  "show-item-context": false,
+  "language": {
+    "search-no-results-text": "No results",
+    "search-matching-documents-text": "matching documents",
+    "search-copy-link-title": "Copy link to search",
+    "search-hide-matches-text": "Hide additional matches",
+    "search-more-match-text": "more match in this document",
+    "search-more-matches-text": "more matches in this document",
+    "search-clear-button-title": "Clear",
+    "search-text-placeholder": "",
+    "search-detached-cancel-button-title": "Cancel",
+    "search-submit-button-title": "Submit",
+    "search-label": "Search"
+  }
+}</script>
+
+  <script src="https://cdnjs.cloudflare.com/polyfill/v3/polyfill.min.js?features=es6"></script>
+  <script src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-chtml-full.js" type="text/javascript"></script>
+
+<script type="text/javascript">
+const typesetMath = (el) => {
+  if (window.MathJax) {
+    // MathJax Typeset
+    window.MathJax.typeset([el]);
+  } else if (window.katex) {
+    // KaTeX Render
+    var mathElements = el.getElementsByClassName("math");
+    var macros = [];
+    for (var i = 0; i < mathElements.length; i++) {
+      var texText = mathElements[i].firstChild;
+      if (mathElements[i].tagName == "SPAN" && texText && texText.data) {
+        window.katex.render(texText.data, mathElements[i], {
+          displayMode: mathElements[i].classList.contains('display'),
+          throwOnError: false,
+          macros: macros,
+          fleqn: false
+        });
+      }
+    }
+  }
+}
+window.Quarto = {
+  typesetMath
+};
+</script>
+
+<link rel="stylesheet" href="../styles.css">
+</head>
+
+<body class="nav-sidebar floating quarto-light"><script id="quarto-html-before-body" type="application/javascript">
+    const toggleBodyColorMode = (bsSheetEl) => {
+      const mode = bsSheetEl.getAttribute("data-mode");
+      const bodyEl = window.document.querySelector("body");
+      if (mode === "dark") {
+        bodyEl.classList.add("quarto-dark");
+        bodyEl.classList.remove("quarto-light");
+      } else {
+        bodyEl.classList.add("quarto-light");
+        bodyEl.classList.remove("quarto-dark");
+      }
+    }
+    const toggleBodyColorPrimary = () => {
+      const bsSheetEl = window.document.querySelector("link#quarto-bootstrap:not([rel=disabled-stylesheet])");
+      if (bsSheetEl) {
+        toggleBodyColorMode(bsSheetEl);
+      }
+    }
+    const setColorSchemeToggle = (alternate) => {
+      const toggles = window.document.querySelectorAll('.quarto-color-scheme-toggle');
+      for (let i=0; i < toggles.length; i++) {
+        const toggle = toggles[i];
+        if (toggle) {
+          if (alternate) {
+            toggle.classList.add("alternate");
+          } else {
+            toggle.classList.remove("alternate");
+          }
+        }
+      }
+    };
+    const toggleColorMode = (alternate) => {
+      // Switch the stylesheets
+      const primaryStylesheets = window.document.querySelectorAll('link.quarto-color-scheme:not(.quarto-color-alternate)');
+      const alternateStylesheets = window.document.querySelectorAll('link.quarto-color-scheme.quarto-color-alternate');
+      manageTransitions('#quarto-margin-sidebar .nav-link', false);
+      if (alternate) {
+        // note: dark is layered on light, we don't disable primary!
+        enableStylesheet(alternateStylesheets);
+        for (const sheetNode of alternateStylesheets) {
+          if (sheetNode.id === "quarto-bootstrap") {
+            toggleBodyColorMode(sheetNode);
+          }
+        }
+      } else {
+        disableStylesheet(alternateStylesheets);
+        enableStylesheet(primaryStylesheets)
+        toggleBodyColorPrimary();
+      }
+      manageTransitions('#quarto-margin-sidebar .nav-link', true);
+      // Switch the toggles
+      setColorSchemeToggle(alternate)
+      // Hack to workaround the fact that safari doesn't
+      // properly recolor the scrollbar when toggling (#1455)
+      if (navigator.userAgent.indexOf('Safari') > 0 && navigator.userAgent.indexOf('Chrome') == -1) {
+        manageTransitions("body", false);
+        window.scrollTo(0, 1);
+        setTimeout(() => {
+          window.scrollTo(0, 0);
+          manageTransitions("body", true);
+        }, 40);
+      }
+    }
+    const disableStylesheet = (stylesheets) => {
+      for (let i=0; i < stylesheets.length; i++) {
+        const stylesheet = stylesheets[i];
+        stylesheet.rel = 'disabled-stylesheet';
+      }
+    }
+    const enableStylesheet = (stylesheets) => {
+      for (let i=0; i < stylesheets.length; i++) {
+        const stylesheet = stylesheets[i];
+        if(stylesheet.rel !== 'stylesheet') { // for Chrome, which will still FOUC without this check
+          stylesheet.rel = 'stylesheet';
+        }
+      }
+    }
+    const manageTransitions = (selector, allowTransitions) => {
+      const els = window.document.querySelectorAll(selector);
+      for (let i=0; i < els.length; i++) {
+        const el = els[i];
+        if (allowTransitions) {
+          el.classList.remove('notransition');
+        } else {
+          el.classList.add('notransition');
+        }
+      }
+    }
+    const isFileUrl = () => {
+      return window.location.protocol === 'file:';
+    }
+    const hasAlternateSentinel = () => {
+      let styleSentinel = getColorSchemeSentinel();
+      if (styleSentinel !== null) {
+        return styleSentinel === "alternate";
+      } else {
+        return false;
+      }
+    }
+    const setStyleSentinel = (alternate) => {
+      const value = alternate ? "alternate" : "default";
+      if (!isFileUrl()) {
+        window.localStorage.setItem("quarto-color-scheme", value);
+      } else {
+        localAlternateSentinel = value;
+      }
+    }
+    const getColorSchemeSentinel = () => {
+      if (!isFileUrl()) {
+        const storageValue = window.localStorage.getItem("quarto-color-scheme");
+        return storageValue != null ? storageValue : localAlternateSentinel;
+      } else {
+        return localAlternateSentinel;
+      }
+    }
+    const toggleGiscusIfUsed = (isAlternate, darkModeDefault) => {
+      const baseTheme = document.querySelector('#giscus-base-theme')?.value ?? 'light';
+      const alternateTheme = document.querySelector('#giscus-alt-theme')?.value ?? 'dark';
+      let newTheme = '';
+      if(authorPrefersDark) {
+        newTheme = isAlternate ? baseTheme : alternateTheme;
+      } else {
+        newTheme = isAlternate ? alternateTheme : baseTheme;
+      }
+      const changeGiscusTheme = () => {
+        // From: https://github.com/giscus/giscus/issues/336
+        const sendMessage = (message) => {
+          const iframe = document.querySelector('iframe.giscus-frame');
+          if (!iframe) return;
+          iframe.contentWindow.postMessage({ giscus: message }, 'https://giscus.app');
+        }
+        sendMessage({
+          setConfig: {
+            theme: newTheme
+          }
+        });
+      }
+      const isGiscussLoaded = window.document.querySelector('iframe.giscus-frame') !== null;
+      if (isGiscussLoaded) {
+        changeGiscusTheme();
+      }
+    };
+    const authorPrefersDark = false;
+    const darkModeDefault = authorPrefersDark;
+      document.querySelector('link#quarto-text-highlighting-styles.quarto-color-scheme-extra').rel = 'disabled-stylesheet';
+      document.querySelector('link#quarto-bootstrap.quarto-color-scheme-extra').rel = 'disabled-stylesheet';
+    let localAlternateSentinel = darkModeDefault ? 'alternate' : 'default';
+    // Dark / light mode switch
+    window.quartoToggleColorScheme = () => {
+      // Read the current dark / light value
+      let toAlternate = !hasAlternateSentinel();
+      toggleColorMode(toAlternate);
+      setStyleSentinel(toAlternate);
+      toggleGiscusIfUsed(toAlternate, darkModeDefault);
+      window.dispatchEvent(new Event('resize'));
+    };
+    // Switch to dark mode if need be
+    if (hasAlternateSentinel()) {
+      toggleColorMode(true);
+    } else {
+      toggleColorMode(false);
+    }
+  </script>
+
+<div id="quarto-search-results"></div>
+  <header id="quarto-header" class="headroom fixed-top">
+  <nav class="quarto-secondary-nav">
+    <div class="container-fluid d-flex">
+      <button type="button" class="quarto-btn-toggle btn" data-bs-toggle="collapse" role="button" data-bs-target=".quarto-sidebar-collapse-item" aria-controls="quarto-sidebar" aria-expanded="false" aria-label="Toggle sidebar navigation" onclick="if (window.quartoToggleHeadroom) { window.quartoToggleHeadroom(); }">
+        <i class="bi bi-layout-text-sidebar-reverse"></i>
+      </button>
+        <nav class="quarto-page-breadcrumbs" aria-label="breadcrumb"><ol class="breadcrumb"><li class="breadcrumb-item"><a href="../part_2/p2--principles.html">Part II: Sequence Architectures</a></li><li class="breadcrumb-item"><a href="../part_2/p2-ch06-cnn.html"><span class="chapter-number">6</span>&nbsp; <span class="chapter-title">Convolutional Networks</span></a></li></ol></nav>
+        <a class="flex-grow-1" role="navigation" data-bs-toggle="collapse" data-bs-target=".quarto-sidebar-collapse-item" aria-controls="quarto-sidebar" aria-expanded="false" aria-label="Toggle sidebar navigation" onclick="if (window.quartoToggleHeadroom) { window.quartoToggleHeadroom(); }">      
+        </a>
+      <button type="button" class="btn quarto-search-button" aria-label="Search" onclick="window.quartoOpenSearch();">
+        <i class="bi bi-search"></i>
+      </button>
+    </div>
+  </nav>
+</header>
+<!-- content -->
+<div id="quarto-content" class="quarto-container page-columns page-rows-contents page-layout-article">
+<!-- sidebar -->
+  <nav id="quarto-sidebar" class="sidebar collapse collapse-horizontal quarto-sidebar-collapse-item sidebar-navigation floating overflow-auto">
+    <div class="pt-lg-2 mt-2 text-left sidebar-header">
+    <div class="sidebar-title mb-0 py-0">
+      <a href="../">Genomic Foundation Models</a> 
+        <div class="sidebar-tools-main">
+  <a href="" class="quarto-color-scheme-toggle quarto-navigation-tool  px-1" onclick="window.quartoToggleColorScheme(); return false;" title="Toggle dark mode"><i class="bi"></i></a>
+</div>
+    </div>
+      </div>
+        <div class="mt-2 flex-shrink-0 align-items-center">
+        <div class="sidebar-search">
+        <div id="quarto-search" class="" title="Search"></div>
+        </div>
+        </div>
+    <div class="sidebar-menu-container"> 
+    <ul class="list-unstyled mt-1">
+        <li class="sidebar-item">
+  <div class="sidebar-item-container"> 
+  <a href="../index.html" class="sidebar-item-text sidebar-link">
+ <span class="menu-text">Introduction</span></a>
+  </div>
+</li>
+        <li class="sidebar-item">
+  <div class="sidebar-item-container"> 
+  <a href="../preface.html" class="sidebar-item-text sidebar-link">
+ <span class="menu-text">Preface</span></a>
+  </div>
+</li>
+        <li class="sidebar-item sidebar-item-section">
+      <div class="sidebar-item-container"> 
+            <a href="../part_1/p1--foundations.html" class="sidebar-item-text sidebar-link">
+ <span class="menu-text">Part I: Data Foundations</span></a>
+          <a class="sidebar-item-toggle text-start" data-bs-toggle="collapse" data-bs-target="#quarto-sidebar-section-1" role="navigation" aria-expanded="true" aria-label="Toggle section">
+            <i class="bi bi-chevron-right ms-2"></i>
+          </a> 
+      </div>
+      <ul id="quarto-sidebar-section-1" class="collapse list-unstyled sidebar-section depth1 show">  
+          <li class="sidebar-item">
+  <div class="sidebar-item-container"> 
+  <a href="../part_1/p1-ch01-ngs.html" class="sidebar-item-text sidebar-link">
+ <span class="menu-text"><span class="chapter-number">1</span>&nbsp; <span class="chapter-title">From Reads to Variants</span></span></a>
+  </div>
+</li>
+          <li class="sidebar-item">
+  <div class="sidebar-item-container"> 
+  <a href="../part_1/p1-ch02-data.html" class="sidebar-item-text sidebar-link">
+ <span class="menu-text"><span class="chapter-number">2</span>&nbsp; <span class="chapter-title">The Data Landscape</span></span></a>
+  </div>
+</li>
+          <li class="sidebar-item">
+  <div class="sidebar-item-container"> 
+  <a href="../part_1/p1-ch03-gwas.html" class="sidebar-item-text sidebar-link">
+ <span class="menu-text"><span class="chapter-number">3</span>&nbsp; <span class="chapter-title">GWAS and Polygenic Scores</span></span></a>
+  </div>
+</li>
+          <li class="sidebar-item">
+  <div class="sidebar-item-container"> 
+  <a href="../part_1/p1-ch04-vep-classical.html" class="sidebar-item-text sidebar-link">
+ <span class="menu-text"><span class="chapter-number">4</span>&nbsp; <span class="chapter-title">Classical Variant Prediction</span></span></a>
+  </div>
+</li>
+      </ul>
+  </li>
+        <li class="sidebar-item sidebar-item-section">
+      <div class="sidebar-item-container"> 
+            <a href="../part_2/p2--principles.html" class="sidebar-item-text sidebar-link">
+ <span class="menu-text">Part II: Sequence Architectures</span></a>
+          <a class="sidebar-item-toggle text-start" data-bs-toggle="collapse" data-bs-target="#quarto-sidebar-section-2" role="navigation" aria-expanded="true" aria-label="Toggle section">
+            <i class="bi bi-chevron-right ms-2"></i>
+          </a> 
+      </div>
+      <ul id="quarto-sidebar-section-2" class="collapse list-unstyled sidebar-section depth1 show">  
+          <li class="sidebar-item">
+  <div class="sidebar-item-container"> 
+  <a href="../part_2/p2-ch05-representations.html" class="sidebar-item-text sidebar-link">
+ <span class="menu-text"><span class="chapter-number">5</span>&nbsp; <span class="chapter-title">Tokens and Embeddings</span></span></a>
+  </div>
+</li>
+          <li class="sidebar-item">
+  <div class="sidebar-item-container"> 
+  <a href="../part_2/p2-ch06-cnn.html" class="sidebar-item-text sidebar-link active">
+ <span class="menu-text"><span class="chapter-number">6</span>&nbsp; <span class="chapter-title">Convolutional Networks</span></span></a>
+  </div>
+</li>
+          <li class="sidebar-item">
+  <div class="sidebar-item-container"> 
+  <a href="../part_2/p2-ch07-attention.html" class="sidebar-item-text sidebar-link">
+ <span class="menu-text"><span class="chapter-number">7</span>&nbsp; <span class="chapter-title">Transformers and Attention</span></span></a>
+  </div>
+</li>
+          <li class="sidebar-item">
+  <div class="sidebar-item-container"> 
+  <a href="../part_2/p2-ch08-pretraining.html" class="sidebar-item-text sidebar-link">
+ <span class="menu-text"><span class="chapter-number">8</span>&nbsp; <span class="chapter-title">Pretraining Strategies</span></span></a>
+  </div>
+</li>
+          <li class="sidebar-item">
+  <div class="sidebar-item-container"> 
+  <a href="../part_2/p2-ch09-transfer.html" class="sidebar-item-text sidebar-link">
+ <span class="menu-text"><span class="chapter-number">9</span>&nbsp; <span class="chapter-title">Transfer and Adaptation</span></span></a>
+  </div>
+</li>
+      </ul>
+  </li>
+        <li class="sidebar-item sidebar-item-section">
+      <div class="sidebar-item-container"> 
+            <a href="../part_3/p3--architectures.html" class="sidebar-item-text sidebar-link">
+ <span class="menu-text">Part III: Foundation Model Families</span></a>
+          <a class="sidebar-item-toggle text-start" data-bs-toggle="collapse" data-bs-target="#quarto-sidebar-section-3" role="navigation" aria-expanded="true" aria-label="Toggle section">
+            <i class="bi bi-chevron-right ms-2"></i>
+          </a> 
+      </div>
+      <ul id="quarto-sidebar-section-3" class="collapse list-unstyled sidebar-section depth1 show">  
+          <li class="sidebar-item">
+  <div class="sidebar-item-container"> 
+  <a href="../part_3/p3-ch10-fm-principles.html" class="sidebar-item-text sidebar-link">
+ <span class="menu-text"><span class="chapter-number">10</span>&nbsp; <span class="chapter-title">Foundation Model Paradigm</span></span></a>
+  </div>
+</li>
+          <li class="sidebar-item">
+  <div class="sidebar-item-container"> 
+  <a href="../part_3/p3-ch11-dna-lm.html" class="sidebar-item-text sidebar-link">
+ <span class="menu-text"><span class="chapter-number">11</span>&nbsp; <span class="chapter-title">DNA Language Models</span></span></a>
+  </div>
+</li>
+          <li class="sidebar-item">
+  <div class="sidebar-item-container"> 
+  <a href="../part_3/p3-ch12-protein-lm.html" class="sidebar-item-text sidebar-link">
+ <span class="menu-text"><span class="chapter-number">12</span>&nbsp; <span class="chapter-title">Protein Language Models</span></span></a>
+  </div>
+</li>
+          <li class="sidebar-item">
+  <div class="sidebar-item-container"> 
+  <a href="../part_3/p3-ch13-regulatory.html" class="sidebar-item-text sidebar-link">
+ <span class="menu-text"><span class="chapter-number">13</span>&nbsp; <span class="chapter-title">Regulatory Models</span></span></a>
+  </div>
+</li>
+          <li class="sidebar-item">
+  <div class="sidebar-item-container"> 
+  <a href="../part_3/p3-ch14-vep-fm.html" class="sidebar-item-text sidebar-link">
+ <span class="menu-text"><span class="chapter-number">14</span>&nbsp; <span class="chapter-title">Variant Effect Prediction</span></span></a>
+  </div>
+</li>
+      </ul>
+  </li>
+        <li class="sidebar-item sidebar-item-section">
+      <div class="sidebar-item-container"> 
+            <a href="../part_4/p4--multi-scale.html" class="sidebar-item-text sidebar-link">
+ <span class="menu-text">Part IV: Systems and Scale</span></a>
+          <a class="sidebar-item-toggle text-start" data-bs-toggle="collapse" data-bs-target="#quarto-sidebar-section-4" role="navigation" aria-expanded="true" aria-label="Toggle section">
+            <i class="bi bi-chevron-right ms-2"></i>
+          </a> 
+      </div>
+      <ul id="quarto-sidebar-section-4" class="collapse list-unstyled sidebar-section depth1 show">  
+          <li class="sidebar-item">
+  <div class="sidebar-item-container"> 
+  <a href="../part_4/p4-ch15-rna.html" class="sidebar-item-text sidebar-link">
+ <span class="menu-text"><span class="chapter-number">15</span>&nbsp; <span class="chapter-title">RNA Structure and Function</span></span></a>
+  </div>
+</li>
+          <li class="sidebar-item">
+  <div class="sidebar-item-container"> 
+  <a href="../part_4/p4-ch16-single-cell.html" class="sidebar-item-text sidebar-link">
+ <span class="menu-text"><span class="chapter-number">16</span>&nbsp; <span class="chapter-title">Single-Cell Models</span></span></a>
+  </div>
+</li>
+          <li class="sidebar-item">
+  <div class="sidebar-item-container"> 
+  <a href="../part_4/p4-ch17-3d-genome.html" class="sidebar-item-text sidebar-link">
+ <span class="menu-text"><span class="chapter-number">17</span>&nbsp; <span class="chapter-title">3D Genome Organization</span></span></a>
+  </div>
+</li>
+          <li class="sidebar-item">
+  <div class="sidebar-item-container"> 
+  <a href="../part_4/p4-ch18-networks.html" class="sidebar-item-text sidebar-link">
+ <span class="menu-text"><span class="chapter-number">18</span>&nbsp; <span class="chapter-title">Graph and Network Models</span></span></a>
+  </div>
+</li>
+          <li class="sidebar-item">
+  <div class="sidebar-item-container"> 
+  <a href="../part_4/p4-ch19-multi-omics.html" class="sidebar-item-text sidebar-link">
+ <span class="menu-text"><span class="chapter-number">19</span>&nbsp; <span class="chapter-title">Multi-Omics Integration</span></span></a>
+  </div>
+</li>
+      </ul>
+  </li>
+        <li class="sidebar-item sidebar-item-section">
+      <div class="sidebar-item-container"> 
+            <a href="../part_5/p5--eval-interp.html" class="sidebar-item-text sidebar-link">
+ <span class="menu-text">Part V: Evaluation and Trust</span></a>
+          <a class="sidebar-item-toggle text-start" data-bs-toggle="collapse" data-bs-target="#quarto-sidebar-section-5" role="navigation" aria-expanded="true" aria-label="Toggle section">
+            <i class="bi bi-chevron-right ms-2"></i>
+          </a> 
+      </div>
+      <ul id="quarto-sidebar-section-5" class="collapse list-unstyled sidebar-section depth1 show">  
+          <li class="sidebar-item">
+  <div class="sidebar-item-container"> 
+  <a href="../part_5/p5-ch20-benchmarks.html" class="sidebar-item-text sidebar-link">
+ <span class="menu-text"><span class="chapter-number">20</span>&nbsp; <span class="chapter-title">Benchmarks</span></span></a>
+  </div>
+</li>
+          <li class="sidebar-item">
+  <div class="sidebar-item-container"> 
+  <a href="../part_5/p5-ch21-eval.html" class="sidebar-item-text sidebar-link">
+ <span class="menu-text"><span class="chapter-number">21</span>&nbsp; <span class="chapter-title">Evaluation Principles</span></span></a>
+  </div>
+</li>
+          <li class="sidebar-item">
+  <div class="sidebar-item-container"> 
+  <a href="../part_5/p5-ch22-confounding.html" class="sidebar-item-text sidebar-link">
+ <span class="menu-text"><span class="chapter-number">22</span>&nbsp; <span class="chapter-title">Confounders and Leakage</span></span></a>
+  </div>
+</li>
+          <li class="sidebar-item">
+  <div class="sidebar-item-container"> 
+  <a href="../part_5/p5-ch23-uncertainty.html" class="sidebar-item-text sidebar-link">
+ <span class="menu-text"><span class="chapter-number">23</span>&nbsp; <span class="chapter-title">Uncertainty Quantification</span></span></a>
+  </div>
+</li>
+          <li class="sidebar-item">
+  <div class="sidebar-item-container"> 
+  <a href="../part_5/p5-ch24-interpretability.html" class="sidebar-item-text sidebar-link">
+ <span class="menu-text"><span class="chapter-number">24</span>&nbsp; <span class="chapter-title">Interpretability</span></span></a>
+  </div>
+</li>
+      </ul>
+  </li>
+        <li class="sidebar-item sidebar-item-section">
+      <div class="sidebar-item-container"> 
+            <a href="../part_6/p6--translation.html" class="sidebar-item-text sidebar-link">
+ <span class="menu-text">Part VI: Clinical Translation</span></a>
+          <a class="sidebar-item-toggle text-start" data-bs-toggle="collapse" data-bs-target="#quarto-sidebar-section-6" role="navigation" aria-expanded="true" aria-label="Toggle section">
+            <i class="bi bi-chevron-right ms-2"></i>
+          </a> 
+      </div>
+      <ul id="quarto-sidebar-section-6" class="collapse list-unstyled sidebar-section depth1 show">  
+          <li class="sidebar-item">
+  <div class="sidebar-item-container"> 
+  <a href="../part_6/p6-ch25-clinical-risk.html" class="sidebar-item-text sidebar-link">
+ <span class="menu-text"><span class="chapter-number">25</span>&nbsp; <span class="chapter-title">Clinical Risk Prediction</span></span></a>
+  </div>
+</li>
+          <li class="sidebar-item">
+  <div class="sidebar-item-container"> 
+  <a href="../part_6/p6-ch26-rare-disease.html" class="sidebar-item-text sidebar-link">
+ <span class="menu-text"><span class="chapter-number">26</span>&nbsp; <span class="chapter-title">Rare Disease Diagnosis</span></span></a>
+  </div>
+</li>
+          <li class="sidebar-item">
+  <div class="sidebar-item-container"> 
+  <a href="../part_6/p6-ch27-drug-discovery.html" class="sidebar-item-text sidebar-link">
+ <span class="menu-text"><span class="chapter-number">27</span>&nbsp; <span class="chapter-title">Drug Discovery</span></span></a>
+  </div>
+</li>
+          <li class="sidebar-item">
+  <div class="sidebar-item-container"> 
+  <a href="../part_6/p6-ch28-design.html" class="sidebar-item-text sidebar-link">
+ <span class="menu-text"><span class="chapter-number">28</span>&nbsp; <span class="chapter-title">Sequence Design</span></span></a>
+  </div>
+</li>
+          <li class="sidebar-item">
+  <div class="sidebar-item-container"> 
+  <a href="../part_6/p6-ch29-future.html" class="sidebar-item-text sidebar-link">
+ <span class="menu-text"><span class="chapter-number">29</span>&nbsp; <span class="chapter-title">Ethical and Frontiers</span></span></a>
+  </div>
+</li>
+      </ul>
+  </li>
+        <li class="sidebar-item">
+  <div class="sidebar-item-container"> 
+  <a href="../bib/references.html" class="sidebar-item-text sidebar-link">
+ <span class="menu-text">References</span></a>
+  </div>
+</li>
+        <li class="sidebar-item sidebar-item-section">
+      <div class="sidebar-item-container"> 
+            <a class="sidebar-item-text sidebar-link text-start" data-bs-toggle="collapse" data-bs-target="#quarto-sidebar-section-7" role="navigation" aria-expanded="true">
+ <span class="menu-text">Appendices</span></a>
+          <a class="sidebar-item-toggle text-start" data-bs-toggle="collapse" data-bs-target="#quarto-sidebar-section-7" role="navigation" aria-expanded="true" aria-label="Toggle section">
+            <i class="bi bi-chevron-right ms-2"></i>
+          </a> 
+      </div>
+      <ul id="quarto-sidebar-section-7" class="collapse list-unstyled sidebar-section depth1 show">  
+          <li class="sidebar-item">
+  <div class="sidebar-item-container"> 
+  <a href="../appendix/app-a-dl.html" class="sidebar-item-text sidebar-link">
+ <span class="menu-text"><span class="chapter-number">A</span>&nbsp; <span class="chapter-title">Deep Learning Primer</span></span></a>
+  </div>
+</li>
+          <li class="sidebar-item">
+  <div class="sidebar-item-container"> 
+  <a href="../appendix/app-b-compute.html" class="sidebar-item-text sidebar-link">
+ <span class="menu-text"><span class="chapter-number">B</span>&nbsp; <span class="chapter-title">Deployment and Compute</span></span></a>
+  </div>
+</li>
+          <li class="sidebar-item">
+  <div class="sidebar-item-container"> 
+  <a href="../appendix/app-c-data-curation.html" class="sidebar-item-text sidebar-link">
+ <span class="menu-text"><span class="chapter-number">C</span>&nbsp; <span class="chapter-title">Data Curation</span></span></a>
+  </div>
+</li>
+          <li class="sidebar-item">
+  <div class="sidebar-item-container"> 
+  <a href="../appendix/app-d-models.html" class="sidebar-item-text sidebar-link">
+ <span class="menu-text"><span class="chapter-number">D</span>&nbsp; <span class="chapter-title">Model Reference</span></span></a>
+  </div>
+</li>
+          <li class="sidebar-item">
+  <div class="sidebar-item-container"> 
+  <a href="../appendix/app-e-resources.html" class="sidebar-item-text sidebar-link">
+ <span class="menu-text"><span class="chapter-number">E</span>&nbsp; <span class="chapter-title">Resources</span></span></a>
+  </div>
+</li>
+          <li class="sidebar-item">
+  <div class="sidebar-item-container"> 
+  <a href="../appendix/app-f-glossary.html" class="sidebar-item-text sidebar-link">
+ <span class="menu-text"><span class="chapter-number">F</span>&nbsp; <span class="chapter-title">Glossary</span></span></a>
+  </div>
+</li>
+      </ul>
+  </li>
+    </ul>
+    </div>
+</nav>
+<div id="quarto-sidebar-glass" class="quarto-sidebar-collapse-item" data-bs-toggle="collapse" data-bs-target=".quarto-sidebar-collapse-item"></div>
+<!-- margin-sidebar -->
+    <div id="quarto-margin-sidebar" class="sidebar margin-sidebar">
+        <nav id="TOC" role="doc-toc" class="toc-active">
+    <h2 id="toc-title">Table of contents</h2>
+   
+  <ul>
+  <li><a href="#convolutions-as-sequence-pattern-detectors" id="toc-convolutions-as-sequence-pattern-detectors" class="nav-link active" data-scroll-target="#convolutions-as-sequence-pattern-detectors"><span class="header-section-number">6.1</span> Convolutions as Sequence Pattern Detectors</a></li>
+  <li><a href="#sec-deepsea" id="toc-sec-deepsea" class="nav-link" data-scroll-target="#sec-deepsea"><span class="header-section-number">6.2</span> DeepSEA: Regulatory Prediction from Sequence</a>
+  <ul class="collapse">
+  <li><a href="#the-noncoding-variant-problem" id="toc-the-noncoding-variant-problem" class="nav-link" data-scroll-target="#the-noncoding-variant-problem"><span class="header-section-number">6.2.1</span> The Noncoding Variant Problem</a></li>
+  <li><a href="#architecture-and-training" id="toc-architecture-and-training" class="nav-link" data-scroll-target="#architecture-and-training"><span class="header-section-number">6.2.2</span> Architecture and Training</a></li>
+  <li><a href="#learned-representations-and-biological-validation" id="toc-learned-representations-and-biological-validation" class="nav-link" data-scroll-target="#learned-representations-and-biological-validation"><span class="header-section-number">6.2.3</span> Learned Representations and Biological Validation</a></li>
+  <li><a href="#variant-effect-prediction" id="toc-variant-effect-prediction" class="nav-link" data-scroll-target="#variant-effect-prediction"><span class="header-section-number">6.2.4</span> Variant Effect Prediction</a></li>
+  </ul></li>
+  <li><a href="#sec-basset-danq" id="toc-sec-basset-danq" class="nav-link" data-scroll-target="#sec-basset-danq"><span class="header-section-number">6.3</span> Cell-Type Specificity and Regulatory Grammar</a></li>
+  <li><a href="#sec-expecto" id="toc-sec-expecto" class="nav-link" data-scroll-target="#sec-expecto"><span class="header-section-number">6.4</span> ExPecto: From Chromatin to Expression</a>
+  <ul class="collapse">
+  <li><a href="#beyond-intermediate-phenotypes" id="toc-beyond-intermediate-phenotypes" class="nav-link" data-scroll-target="#beyond-intermediate-phenotypes"><span class="header-section-number">6.4.1</span> Beyond Intermediate Phenotypes</a></li>
+  <li><a href="#the-modular-architecture" id="toc-the-modular-architecture" class="nav-link" data-scroll-target="#the-modular-architecture"><span class="header-section-number">6.4.2</span> The Modular Architecture</a></li>
+  <li><a href="#expression-prediction-and-variant-effects" id="toc-expression-prediction-and-variant-effects" class="nav-link" data-scroll-target="#expression-prediction-and-variant-effects"><span class="header-section-number">6.4.3</span> Expression Prediction and Variant Effects</a></li>
+  </ul></li>
+  <li><a href="#sec-spliceai" id="toc-sec-spliceai" class="nav-link" data-scroll-target="#sec-spliceai"><span class="header-section-number">6.5</span> SpliceAI: Clinical-Grade Splicing Prediction</a>
+  <ul class="collapse">
+  <li><a href="#the-cryptic-splice-problem" id="toc-the-cryptic-splice-problem" class="nav-link" data-scroll-target="#the-cryptic-splice-problem"><span class="header-section-number">6.5.1</span> The Cryptic Splice Problem</a></li>
+  <li><a href="#architecture-depth-and-dilation" id="toc-architecture-depth-and-dilation" class="nav-link" data-scroll-target="#architecture-depth-and-dilation"><span class="header-section-number">6.5.2</span> Architecture: Depth and Dilation</a></li>
+  <li><a href="#performance-and-validation" id="toc-performance-and-validation" class="nav-link" data-scroll-target="#performance-and-validation"><span class="header-section-number">6.5.3</span> Performance and Validation</a></li>
+  <li><a href="#clinical-impact" id="toc-clinical-impact" class="nav-link" data-scroll-target="#clinical-impact"><span class="header-section-number">6.5.4</span> Clinical Impact</a></li>
+  </ul></li>
+  <li><a href="#sec-receptive-field" id="toc-sec-receptive-field" class="nav-link" data-scroll-target="#sec-receptive-field"><span class="header-section-number">6.6</span> The Receptive Field Ceiling</a></li>
+  <li><a href="#sec-rnn" id="toc-sec-rnn" class="nav-link" data-scroll-target="#sec-rnn"><span class="header-section-number">6.7</span> Sequential Processing and Its Costs</a>
+  <ul class="collapse">
+  <li><a href="#the-vanishing-gradient-problem" id="toc-the-vanishing-gradient-problem" class="nav-link" data-scroll-target="#the-vanishing-gradient-problem"><span class="header-section-number">6.7.1</span> The Vanishing Gradient Problem</a></li>
+  <li><a href="#danq-combining-convolutions-and-recurrence" id="toc-danq-combining-convolutions-and-recurrence" class="nav-link" data-scroll-target="#danq-combining-convolutions-and-recurrence"><span class="header-section-number">6.7.2</span> DanQ: Combining Convolutions and Recurrence</a></li>
+  <li><a href="#the-sequential-bottleneck" id="toc-the-sequential-bottleneck" class="nav-link" data-scroll-target="#the-sequential-bottleneck"><span class="header-section-number">6.7.3</span> The Sequential Bottleneck</a></li>
+  </ul></li>
+  <li><a href="#specialization-and-its-limits" id="toc-specialization-and-its-limits" class="nav-link" data-scroll-target="#specialization-and-its-limits"><span class="header-section-number">6.8</span> Specialization and Its Limits</a></li>
+  </ul>
+</nav>
+    </div>
+<!-- main -->
+<main class="content" id="quarto-document-content">
+
+
+<header id="title-block-header" class="quarto-title-block default"><nav class="quarto-page-breadcrumbs quarto-title-breadcrumbs d-none d-lg-block" aria-label="breadcrumb"><ol class="breadcrumb"><li class="breadcrumb-item"><a href="../part_2/p2--principles.html">Part II: Sequence Architectures</a></li><li class="breadcrumb-item"><a href="../part_2/p2-ch06-cnn.html"><span class="chapter-number">6</span>&nbsp; <span class="chapter-title">Convolutional Networks</span></a></li></ol></nav>
+<div class="quarto-title">
+<h1 class="title"><span id="sec-cnn" class="quarto-section-identifier"><span class="chapter-number">6</span>&nbsp; <span class="chapter-title">Convolutional Networks</span></span></h1>
+</div>
+
+
+
+<div class="quarto-title-meta">
+
+    
+  
+    
+  </div>
+  
+
+
+</header>
+
+
+<p>In 2015, a convolutional neural network trained on ENCODE chromatin data learned to recognize transcription factor binding motifs that matched entries in the JASPAR database, despite never seeing those motifs during training <span class="citation" data-cites="zhou_deepsea_2015">(<a href="../bib/references.html#ref-zhou_deepsea_2015" role="doc-biblioref">Zhou and Troyanskaya 2015</a>)</span>. The network had discovered, through gradient descent on raw sequence, patterns that experimental biologists had spent decades cataloging. This was not merely a demonstration that deep learning could match human-curated databases. The deeper insight was that learned representations could transcend existing annotations: predicting regulatory effects for any sequence, in any genomic context, including regions never assayed in any experiment. For the first time, computational methods could move beyond annotating known regulatory elements to predicting the functional consequences of sequence variation genome-wide.</p>
+<p>The models examined in this chapter established paradigms that persist in modern genomic AI. DeepSEA demonstrated that CNNs could predict chromatin marks and transcription factor binding directly from DNA sequence, enabling variant effect prediction without requiring experimental measurements for every variant of interest. Basset extended this approach to chromatin accessibility across cell types, learning representations that transferred to new cellular contexts. SpliceAI achieved clinical-grade accuracy for splice site prediction, demonstrating that deep learning could match or exceed hand-crafted algorithms developed over decades. Each model followed a common pattern: train on functional genomics data, learn sequence features through convolutional filters, and apply to variant interpretation. The success was remarkable; the paradigm seemed complete.</p>
+<p>Yet these models revealed a fundamental architectural limitation. Convolutional networks integrate information only within their receptive fields, the local region of input that contributes to each output position. Genomic regulation routinely operates across distances that exceed practical receptive field sizes: enhancers control genes across tens of kilobases, topologically associating domains span megabases, GWAS variants often lie far from the genes they affect. A model analyzing a variant 50 kilobases from a gene promoter cannot connect the variant to its target using local convolutions alone. Understanding both what CNNs achieved and where they reached this architectural ceiling establishes the foundation for the attention mechanisms examined in the following chapter.</p>
+<section id="convolutions-as-sequence-pattern-detectors" class="level2" data-number="6.1">
+<h2 data-number="6.1" class="anchored" data-anchor-id="convolutions-as-sequence-pattern-detectors"><span class="header-section-number">6.1</span> Convolutions as Sequence Pattern Detectors</h2>
+<p>A variant in an enhancer 50 kilobases from its target gene cannot be connected to that gene by a model that sees only 1,000 base pairs of context. Consider a patient with familial hypercholesterolemia whose whole-genome sequencing reveals a novel variant upstream of <em>LDLR</em>. The variant sits within a known enhancer region, but the enhancer and the <em>LDLR</em> promoter lie beyond the window any convolutional layer can span. The model might correctly identify regulatory features at the variant position, but it cannot learn that those features regulate <em>LDLR</em> rather than some other gene. This receptive field constraint, inherent to convolutional architectures, determines what relationships these networks can and cannot discover. The constraint is not a limitation of training data or compute; it is architectural.</p>
+<p>A convolutional filter slides across an input sequence, computing similarity scores at each position. For genomic applications, the input is typically <strong>one-hot encoded</strong> DNA: a binary matrix with four rows (A, C, G, T) and columns for each position. Filters learn weight patterns that respond to specific nucleotide arrangements. A filter of width 8 nucleotides, for instance, computes a weighted sum of the underlying nucleotides at each position, producing high activation when the sequence matches its learned pattern and low activation otherwise. This operation is mathematically equivalent to scanning a position weight matrix across the sequence, but with a crucial difference: the filter weights are learned during training rather than derived from aligned binding site sequences.</p>
+<p>The first layer of a genomic CNN typically contains hundreds of such filters, each learning to detect different local patterns. Analysis of trained filters consistently reveals correspondence to known transcription factor binding motifs. The CTCF insulator motif, the ETS family consensus sequence, the AP-1 binding site: these patterns emerge from training on chromatin data without any explicit motif supervision. The network identifies them because they predict the training labels. Supervision on chromatin state induces discovery of the sequence patterns that create chromatin state, providing unsupervised motif learning as a byproduct of supervised prediction.</p>
+<p>Deeper layers operate on the output of earlier layers rather than raw sequence. A second-layer filter might learn to detect specific arrangements of first-layer motifs: two ETS sites within 20 base pairs, or a CTCF motif flanked by particular spacing patterns. This hierarchical feature learning enables CNNs to capture regulatory grammar beyond individual motifs, including spacing constraints, orientation preferences, and combinatorial requirements that govern transcription factor cooperativity.</p>
+<div id="fig-conv-pattern-detector" class="quarto-layout-panel">
+<figure class="quarto-float quarto-float-fig figure">
+<div aria-describedby="fig-conv-pattern-detector-caption-0ceaefa1-69ba-4598-a22c-09a6ac19f8ca">
+<div class="quarto-layout-row">
+<div class="quarto-layout-cell" style="flex-basis: 33.3%;justify-content: flex-start;">
+<div class="quarto-figure quarto-figure-center">
+<figure class="figure">
+<p><img src="https://placehold.co/300x200?text=FIGURE%20PLACEHOLDER%20A.png" class="img-fluid figure-img"></p>
+<figcaption><strong>FIGURE PLACEHOLDER A</strong></figcaption>
+</figure>
+</div>
+</div>
+<div class="quarto-layout-cell" style="flex-basis: 33.3%;justify-content: flex-start;">
+<div class="quarto-figure quarto-figure-center">
+<figure class="figure">
+<p><img src="https://placehold.co/300x200?text=FIGURE%20PLACEHOLDER%20B.png" class="img-fluid figure-img"></p>
+<figcaption><strong>FIGURE PLACEHOLDER B</strong></figcaption>
+</figure>
+</div>
+</div>
+<div class="quarto-layout-cell" style="flex-basis: 33.3%;justify-content: flex-start;">
+<div class="quarto-figure quarto-figure-center">
+<figure class="figure">
+<p><img src="https://placehold.co/300x200?text=FIGURE%20PLACEHOLDER%20C.png" class="img-fluid figure-img"></p>
+<figcaption><strong>FIGURE PLACEHOLDER C</strong></figcaption>
+</figure>
+</div>
+</div>
+</div>
+</div>
+<figcaption class="quarto-float-caption-bottom quarto-float-caption quarto-float-fig" id="fig-conv-pattern-detector-caption-0ceaefa1-69ba-4598-a22c-09a6ac19f8ca">
+Figure&nbsp;6.1: [Essential] Three-panel figure showing convolution mechanics. Panel A: Single convolutional filter (width 8) sliding across one-hot encoded DNA, producing activation scores at each position; show high activation where filter matches a motif. Panel B: Learned filter weights visualized as sequence logo (PWM-style), aligned to corresponding JASPAR motif showing the biological pattern discovered. Panel C: Multiple filters from first convolutional layer, each detecting different motifs (CTCF, ETS, AP-1), showing diverse pattern detection.
+</figcaption>
+</figure>
+</div>
+<p><strong>Pooling operations</strong> between convolutional layers reduce spatial resolution while increasing the receptive field. Max pooling selects the strongest activation within a window, achieving position-invariant detection where the network responds to a motif’s presence somewhere in a region rather than its exact position. This property suits regulatory genomics, where binding site positions within an enhancer often matter less than their presence and combination.</p>
+<p>The receptive field of a convolutional network defines how much input sequence can influence a single output prediction. For a network with kernel width <span class="math inline">\(k\)</span>, pooling factor <span class="math inline">\(p\)</span>, and <span class="math inline">\(L\)</span> layers, the receptive field grows with depth but remains fundamentally limited by architecture. A three-layer network with typical parameters might integrate information from 200 to 1,000 base pairs. Reaching further requires either more layers (increasing computational cost and training difficulty) or <strong>dilated convolutions</strong> that space filter weights to sample larger regions. When biological dependencies span tens of kilobases, this receptive field ceiling becomes the fundamental constraint that no amount of training data can overcome.</p>
+</section>
+<section id="sec-deepsea" class="level2" data-number="6.2">
+<h2 data-number="6.2" class="anchored" data-anchor-id="sec-deepsea"><span class="header-section-number">6.2</span> DeepSEA: Regulatory Prediction from Sequence</h2>
+<section id="the-noncoding-variant-problem" class="level3" data-number="6.2.1">
+<h3 data-number="6.2.1" class="anchored" data-anchor-id="the-noncoding-variant-problem"><span class="header-section-number">6.2.1</span> The Noncoding Variant Problem</h3>
+<p>A patient presents with a rare disease phenotype, and whole-genome sequencing reveals a novel variant in an intron 15 kilobases from the nearest exon. The variant does not disrupt any annotated regulatory element. No prior patient in any database carries this exact change. The clinician must decide: is this variant pathogenic, or is it an irrelevant passenger? Annotation-based methods offer no guidance. The variant overlaps nothing cataloged, so overlap-based interpretation returns nothing useful. Yet introns harbor splice regulatory elements, and 15 kilobases places the variant well within range of enhancers that might control the adjacent gene.</p>
+<p>Existing approaches to noncoding variant interpretation relied on this overlap paradigm. If a variant fell within a ChIP-seq peak or DNase hypersensitive site, it might be flagged as potentially regulatory. The strategy grounded predictions in experimental observations, but it could not predict whether a variant would strengthen or weaken regulatory activity, could not score variants in regions lacking experimental coverage, and provided no mechanism for quantifying effect magnitude. A variant might fall within an enhancer, but would it matter? The data indicated where regulatory elements existed; they did not indicate how sequence changes would affect them.</p>
+<p>DeepSEA, introduced by Zhou and Troyanskaya, reframed the problem: rather than asking whether a variant overlaps known annotations, ask what regulatory activities a sequence encodes and how mutations would alter them <span class="citation" data-cites="zhou_deepsea_2015">(<a href="../bib/references.html#ref-zhou_deepsea_2015" role="doc-biblioref">Zhou and Troyanskaya 2015</a>)</span>. The shift from annotation lookup to sequence-based prediction enabled scoring any variant in any genomic context, including regions never assayed in any experiment. This reframing would prove more consequential than any specific architectural choice.</p>
+<div id="fig-deepsea-architecture" class="quarto-layout-panel">
+<figure class="quarto-float quarto-float-fig figure">
+<div aria-describedby="fig-deepsea-architecture-caption-0ceaefa1-69ba-4598-a22c-09a6ac19f8ca">
+<div class="quarto-layout-row">
+<div class="quarto-layout-cell" style="flex-basis: 33.3%;justify-content: flex-start;">
+<div class="quarto-figure quarto-figure-center">
+<figure class="figure">
+<p><img src="https://placehold.co/300x200?text=FIGURE%20PLACEHOLDER%20A.png" class="img-fluid figure-img"></p>
+<figcaption><strong>FIGURE PLACEHOLDER A</strong></figcaption>
+</figure>
+</div>
+</div>
+<div class="quarto-layout-cell" style="flex-basis: 33.3%;justify-content: flex-start;">
+<div class="quarto-figure quarto-figure-center">
+<figure class="figure">
+<p><img src="https://placehold.co/300x200?text=FIGURE%20PLACEHOLDER%20B.png" class="img-fluid figure-img"></p>
+<figcaption><strong>FIGURE PLACEHOLDER B</strong></figcaption>
+</figure>
+</div>
+</div>
+<div class="quarto-layout-cell" style="flex-basis: 33.3%;justify-content: flex-start;">
+<div class="quarto-figure quarto-figure-center">
+<figure class="figure">
+<p><img src="https://placehold.co/300x200?text=FIGURE%20PLACEHOLDER%20C.png" class="img-fluid figure-img"></p>
+<figcaption><strong>FIGURE PLACEHOLDER C</strong></figcaption>
+</figure>
+</div>
+</div>
+</div>
+</div>
+<figcaption class="quarto-float-caption-bottom quarto-float-caption quarto-float-fig" id="fig-deepsea-architecture-caption-0ceaefa1-69ba-4598-a22c-09a6ac19f8ca">
+Figure&nbsp;6.2: [High] Three-panel figure. Panel A: Architecture schematic showing input (1000bp one-hot), three convolutional layers with pooling (320→480→960 filters), fully connected layer, and 919 sigmoid outputs for chromatin features. Panel B: First-layer filter aligned to JASPAR motif (e.g., CTCF), demonstrating learned = known biology. Panel C: Scatter plot of predicted vs.&nbsp;observed allelic imbalance for DNase-seq, showing correlation that validates variant effect prediction.
+</figcaption>
+</figure>
+</div>
+</section>
+<section id="architecture-and-training" class="level3" data-number="6.2.2">
+<h3 data-number="6.2.2" class="anchored" data-anchor-id="architecture-and-training"><span class="header-section-number">6.2.2</span> Architecture and Training</h3>
+<p>The clinical scenario described above demands a model that can predict function from sequence alone. DeepSEA’s architecture was deliberately simple by contemporary standards (placing the emphasis on the learning framework rather than architectural complexity).</p>
+<p>Input sequences of 1,000 base pairs, one-hot encoded, passed through three convolutional layers with 320, 480, and 960 filters respectively. Max pooling after each convolution compressed spatial dimensions. A fully connected layer with 925 units integrated information across the compressed representation, and a final output layer with 919 sigmoid units produced independent probability predictions for each chromatin profile.</p>
+<p>Training data came from ENCODE and Roadmap Epigenomics: 690 transcription factor binding profiles, 104 histone modification profiles, and 125 DNase I hypersensitivity profiles spanning diverse cell types <span class="citation" data-cites="kagda_encode_2025 kundaje_roadmap_2015">(<a href="../bib/references.html#ref-kagda_encode_2025" role="doc-biblioref">Kagda et al. 2025</a>; <a href="../bib/references.html#ref-kundaje_roadmap_2015" role="doc-biblioref">Kundaje et al. 2015</a>)</span>. For each 1,000 bp input, the model predicted whether the central 200 bp region exhibited each chromatin feature. Chromosome 8 was held out for evaluation.</p>
+<p>The <strong>multi-task learning</strong> formulation proved essential for generalization. Predicting 919 features simultaneously forced the network to learn shared representations useful across many prediction problems. The first convolutional layer learns general sequence patterns (GC content, common dinucleotides, ubiquitous motifs); these representations then feed task-specific combinations in later layers. Joint training provides implicit regularization, preventing overfitting to any single task while amortizing the cost of learning basic sequence features across all outputs.</p>
+</section>
+<section id="learned-representations-and-biological-validation" class="level3" data-number="6.2.3">
+<h3 data-number="6.2.3" class="anchored" data-anchor-id="learned-representations-and-biological-validation"><span class="header-section-number">6.2.3</span> Learned Representations and Biological Validation</h3>
+<p>Any sequence model faces a fundamental question: do learned features correspond to biological reality, or do they exploit statistical shortcuts that happen to correlate with labels? DeepSEA provided the first large-scale evidence that deep learning could recover genuine regulatory logic.</p>
+<p>Analysis of first-layer filters revealed learned patterns matching known transcription factor motifs. The network had independently recovered sequence preferences cataloged in JASPAR and TRANSFAC, confirming that the training objective (predicting chromatin state) induced biologically meaningful feature extraction. This interpretability distinguished deep learning from prior black-box approaches and suggested that the models captured genuine regulatory logic rather than spurious correlations. Systematic methods for extracting and visualizing these learned representations, from filter analysis to attribution mapping, are examined in <a href="../part_5/p5-ch24-interpretability.html" class="quarto-xref"><span>Chapter 24</span></a>.</p>
+<p>Deeper layers combined first-layer patterns into more complex representations, capturing motif spacing requirements, orientation preferences, and cooperative binding arrangements. The network encoded relationships between sequence features that position weight matrices, operating independently at each motif, could not represent.</p>
+<p>DeepSEA outperformed gkm-SVM (gapped k-mer support vector machines) on nearly all transcription factor binding prediction tasks. The pattern of improvement revealed something fundamental: gkm-SVM showed no benefit from longer input sequences, while DeepSEA performance improved substantially with additional context. K-mer methods tally motif occurrences but cannot learn relationships between patterns at different positions. Hierarchical feature learning enables exactly what k-mer methods cannot provide: representations of combinatorial regulatory logic.</p>
+</section>
+<section id="variant-effect-prediction" class="level3" data-number="6.2.4">
+<h3 data-number="6.2.4" class="anchored" data-anchor-id="variant-effect-prediction"><span class="header-section-number">6.2.4</span> Variant Effect Prediction</h3>
+<p>With a trained sequence-to-chromatin model, variant scoring becomes straightforward: predict chromatin profiles for reference and alternative sequences, compute the difference. This <strong>in silico mutagenesis</strong> produces a 919-dimensional vector describing predicted changes across all features. The model never encounters variant data during training; effect prediction emerges from learned sequence-function relationships applied to mutations the model has never seen.</p>
+<p>Validation used allelic imbalance data from digital genomic footprinting. For variants showing allele-specific DNase I sensitivity, DeepSEA predictions correlated with experimentally observed biases: variants predicted to increase accessibility tended to show higher accessibility on the corresponding allele. This correlation would not exist if the model merely learned coarse sequence features insensitive to point mutations.</p>
+<p><strong>In silico saturation mutagenesis</strong> extends single-variant scoring to systematic characterization. By predicting effects of all possible substitutions across a regulatory element, one identifies positions where mutations most strongly perturb function. These critical positions typically correspond to transcription factor binding motifs, providing motif discovery that emerges from learned representations rather than explicit sequence alignment. The approach enables characterization of any regulatory element, including those in cell types or conditions never experimentally profiled.</p>
+</section>
+</section>
+<section id="sec-basset-danq" class="level2" data-number="6.3">
+<h2 data-number="6.3" class="anchored" data-anchor-id="sec-basset-danq"><span class="header-section-number">6.3</span> Cell-Type Specificity and Regulatory Grammar</h2>
+<p>A variant that disrupts cardiac-specific gene regulation may be lethal in the heart but entirely silent in neurons. A regulatory element active during embryonic development may be permanently silenced in adult tissues. Clinical variant interpretation therefore requires models that capture not just what sequence patterns predict regulatory activity, but how those predictions vary across the dozens of cell types and developmental stages where a variant might act. DeepSEA’s 919 chromatin features spanned multiple cell types, but the question remained: could architectural modifications better capture cell-type-specific programs or learn richer representations of the combinatorial grammar governing transcription factor cooperativity?</p>
+<p>Basset, introduced by Kelley et al.&nbsp;in 2016, focused specifically on predicting chromatin accessibility from sequence <span class="citation" data-cites="kelley_basset_2016">(<a href="../bib/references.html#ref-kelley_basset_2016" role="doc-biblioref"><span>“Placeholder: Kelley Basset 2016”</span> 2016</a>)</span>. Rather than DeepSEA’s diverse chromatin features, Basset predicted DNase-seq peaks across 164 cell types, enabling detailed analysis of cell-type-specific regulatory activity. The architectural refinements Basset introduced would influence subsequent models: <strong>batch normalization</strong> after convolutional layers stabilized training and enabled deeper networks, while larger filters in early layers (19 nucleotides in the first layer) captured longer motifs directly rather than requiring the network to compose them from smaller patterns.</p>
+<p>The key contribution was demonstrating that in silico saturation mutagenesis profiles from trained models could identify causal variants underlying disease-associated haplotypes. GWAS identifies associated regions but cannot distinguish the causal variant from nearby variants in linkage disequilibrium. Basset’s saturation mutagenesis provided a principled approach: the variant with the strongest predicted regulatory effect within an associated haplotype is the most likely causal candidate. This moved beyond simple peak overlap toward mechanistic variant prioritization, and subsequent validation studies confirmed that model-prioritized variants showed higher rates of experimental confirmation than lead SNPs selected purely by association strength.</p>
+<p>DanQ explored whether regulatory grammar involves sequential dependencies that convolutions alone might miss, combining convolutional layers with bidirectional LSTMs to integrate motif detections across the input window <span class="citation" data-cites="quang_danq_2016">(<a href="../bib/references.html#ref-quang_danq_2016" role="doc-biblioref"><span>“Placeholder: Quang Danq 2016”</span> 2016</a>)</span>. The hybrid architecture achieved modest improvements on chromatin prediction benchmarks, though the recurrent components introduced costs examined in <a href="#sec-rnn" class="quarto-xref"><span>Section 6.7</span></a>.</p>
+<p>These variations illustrated a broader principle: multiple architectures could learn useful regulatory representations from sequence. The specific choices (filter sizes, layer depths, recurrent components) mattered less than the fundamental framework of learning from one-hot encoded sequence to predict chromatin labels. This robustness suggested that the underlying signal, sequence determinants of regulatory activity, was strong enough to be captured by diverse architectural approaches. For clinical applications, prediction quality depends more on training data quality and task definition than on architectural details within the CNN family.</p>
+</section>
+<section id="sec-expecto" class="level2" data-number="6.4">
+<h2 data-number="6.4" class="anchored" data-anchor-id="sec-expecto"><span class="header-section-number">6.4</span> ExPecto: From Chromatin to Expression</h2>
+<section id="beyond-intermediate-phenotypes" class="level3" data-number="6.4.1">
+<h3 data-number="6.4.1" class="anchored" data-anchor-id="beyond-intermediate-phenotypes"><span class="header-section-number">6.4.1</span> Beyond Intermediate Phenotypes</h3>
+<p>A patient’s tumor harbors a somatic variant in a putative enhancer region. Chromatin profiling in matching tissue shows the region is accessible. The variant is predicted to disrupt a transcription factor binding site. Yet the clinician’s question remains unanswered: does this variant actually change expression of a target gene? Which gene? By how much? In which tissues?</p>
+<p>Chromatin accessibility and transcription factor binding are intermediate phenotypes, means rather than ends. The ultimate functional readout for most regulatory variants is their effect on gene expression. A variant might disrupt a binding site, but sites can be redundant, effects can be buffered, and the relationship between binding and expression is not one-to-one. Predicting expression change from sequence requires integrating regulatory signals across distances that determine which enhancers control which promoters. A variant that disrupts binding but does not alter expression is unlikely to be pathogenic, while a variant with modest chromatin effects but strong expression consequences may drive disease.</p>
+<p>ExPecto, introduced by Zhou et al.&nbsp;in 2018, addressed these questions by extending sequence-to-chromatin prediction toward tissue-specific gene expression <span class="citation" data-cites="zhou_expecto_2018">(<a href="../bib/references.html#ref-zhou_expecto_2018" role="doc-biblioref">Zhou et al. 2018</a>)</span>. The framework predicts expression levels across 218 tissues and cell types by integrating predicted chromatin signals across a 40 kb promoter-proximal window. This context expansion, from DeepSEA’s 1 kb to ExPecto’s 40 kb, represented a significant architectural commitment: expression prediction requires integrating regulatory signals from distances far exceeding typical motif sizes.</p>
+<div id="fig-expecto-pipeline" class="quarto-float quarto-figure quarto-figure-center anchored">
+<figure class="quarto-float quarto-float-fig figure">
+<div aria-describedby="fig-expecto-pipeline-caption-0ceaefa1-69ba-4598-a22c-09a6ac19f8ca">
+<div class="quarto-figure quarto-figure-center">
+<figure class="figure">
+<p><img src="https://placehold.co/300x200?text=FIGURE%20PLACEHOLDER.png" class="img-fluid figure-img"></p>
+<figcaption><strong>FIGURE PLACEHOLDER</strong></figcaption>
+</figure>
+</div>
+</div>
+<figcaption class="quarto-float-caption-bottom quarto-float-caption quarto-float-fig" id="fig-expecto-pipeline-caption-0ceaefa1-69ba-4598-a22c-09a6ac19f8ca">
+Figure&nbsp;6.3: [Enhancing] Three-component pipeline diagram. Component 1: Beluga CNN scanning 40kb window around TSS with sliding 2kb windows, producing chromatin predictions at 200 spatial positions. Component 2: Spatial transformation with exponential decay functions (upstream and downstream), reducing to ~20,000 features. Component 3: 218 tissue-specific linear regression models, producing per-tissue expression predictions. Show example delta scores for variant effect.
+</figcaption>
+</figure>
+</div>
+</section>
+<section id="the-modular-architecture" class="level3" data-number="6.4.2">
+<h3 data-number="6.4.2" class="anchored" data-anchor-id="the-modular-architecture"><span class="header-section-number">6.4.2</span> The Modular Architecture</h3>
+<p>ExPecto comprises three sequential components, each addressing a distinct computational challenge. The separation proved essential: jointly optimizing all components end-to-end would be computationally prohibitive, and the modular design enables interpretability at each stage.</p>
+<p>The first component, an enhanced CNN called Beluga, predicts 2,002 chromatin profiles from 2,000 bp input sequences. Beluga incorporated architectural improvements over DeepSEA: six convolutional layers with <strong>residual connections</strong>, expanded chromatin targets, and broader cell-type coverage. This CNN scans the 40 kb region surrounding each transcription start site with a moving window, generating chromatin predictions at 200 spatial positions and producing over 400,000 features per gene.</p>
+<p>The second component transforms these high-dimensional features through spatial aggregation. Ten exponential decay functions, applied separately to upstream and downstream regions, encode the prior belief that nearby elements contribute more than distant ones. This transformation reduces dimensionality while preserving spatial relationships, producing approximately 20,000 features per gene that capture both which chromatin features are predicted and where they occur relative to the TSS.</p>
+<p>The final component comprises 218 L2-regularized linear regression models, one per tissue, predicting log expression from spatially-transformed features. Linear models were chosen deliberately: they provide interpretability, prevent overfitting given the high-dimensional feature space, and enable coefficient analysis to identify which chromatin features drive expression in each tissue. The combination of a shared sequence-to-chromatin CNN with separate tissue-specific linear heads cleanly separates sequence-level regulatory grammar from tissue-specific regulatory programs.</p>
+</section>
+<section id="expression-prediction-and-variant-effects" class="level3" data-number="6.4.3">
+<h3 data-number="6.4.3" class="anchored" data-anchor-id="expression-prediction-and-variant-effects"><span class="header-section-number">6.4.3</span> Expression Prediction and Variant Effects</h3>
+<p>ExPecto achieved 0.819 median Spearman correlation between predicted and observed expression across tissues. Analysis of model coefficients revealed automatic learning of cell-type-relevant features: the liver expression model weighted HepG2-derived transcription factor features most heavily; breast tissue models emphasized estrogen receptor features from breast cancer cell lines. These tissue-specific patterns emerged purely from learning to predict expression, without tissue identity information provided to the chromatin model.</p>
+<p>Variant effect prediction follows the same logic as DeepSEA: compare expression predictions for reference and alternative sequences. Because the model never trains on variant data, predictions are unconfounded by linkage disequilibrium, a critical distinction from association-based methods. ExPecto correctly predicted expression change direction for 92% of the strongest GTEx eQTL variants, and experimental validation confirmed that model-prioritized variants (not the GWAS lead SNPs) showed allele-specific regulatory activity in reporter assays.</p>
+<p>The 40 kb window represents an empirically optimized trade-off. Smaller windows decreased performance; larger windows showed negligible improvement. Most promoter-proximal regulatory information lies within 40 kb of the TSS, at least within ExPecto’s linear modeling framework. Distal enhancers beyond this window, while biologically important, require architectural approaches that can model longer-range dependencies. This limitation points toward the transformer architectures examined in <a href="../part_3/p3-ch13-regulatory.html" class="quarto-xref"><span>Chapter 13</span></a>.</p>
+</section>
+</section>
+<section id="sec-spliceai" class="level2" data-number="6.5">
+<h2 data-number="6.5" class="anchored" data-anchor-id="sec-spliceai"><span class="header-section-number">6.5</span> SpliceAI: Clinical-Grade Splicing Prediction</h2>
+<section id="the-cryptic-splice-problem" class="level3" data-number="6.5.1">
+<h3 data-number="6.5.1" class="anchored" data-anchor-id="the-cryptic-splice-problem"><span class="header-section-number">6.5.1</span> The Cryptic Splice Problem</h3>
+<p>A child presents with developmental delay and dysmorphic features consistent with a known genetic syndrome. Clinical exome sequencing reveals no pathogenic coding variants in the implicated gene. The case is signed out as “unsolved,” the family left without answers. Three years later, research RNA sequencing identifies aberrant splicing in the syndromic gene: an intronic variant 150 base pairs from the nearest exon creates a cryptic splice site, inserting a premature stop codon. The diagnosis was hiding in plain sight, invisible to methods that only examine canonical splice dinucleotides.</p>
+<p>This scenario, replicated across thousands of unsolved rare disease cases, illustrates a systematic blind spot in clinical genomics. Splice-disrupting mutations represent a major mechanism of Mendelian disease, yet variants affecting splicing outside canonical GT/AG dinucleotides are systematically underascertained. Prior splice prediction methods captured essential splice site motifs but could not model the long-range determinants contributing to splicing specificity. MaxEntScan operates on approximately 9 bp of context around donor and acceptor sites <span class="citation" data-cites="yeo_maxentscan_2004">(<a href="../bib/references.html#ref-yeo_maxentscan_2004" role="doc-biblioref">Yeo and Burge 2004</a>)</span>. These methods produced many false positives and missed variants acting through distal mechanisms: branch points, exonic splicing enhancers, and intron length constraints that previous models could not see.</p>
+<p>SpliceAI, introduced by Jaganathan et al.&nbsp;in 2019, demonstrated that deep neural networks could learn splicing rules with near-spliceosomal precision <span class="citation" data-cites="jaganathan_spliceai_2019">(<a href="../bib/references.html#ref-jaganathan_spliceai_2019" role="doc-biblioref">Jaganathan et al. 2019</a>)</span>. The model predicts splice site locations directly from pre-mRNA sequence using 10,000 nucleotides of context, an order of magnitude beyond prior methods. This context expansion enabled recognition of distant splicing determinants invisible to annotation-based approaches.</p>
+</section>
+<section id="architecture-depth-and-dilation" class="level3" data-number="6.5.2">
+<h3 data-number="6.5.2" class="anchored" data-anchor-id="architecture-depth-and-dilation"><span class="header-section-number">6.5.2</span> Architecture: Depth and Dilation</h3>
+<p>Learning splicing rules from 10 kb of sequence context requires an architecture that can integrate information across this entire span while maintaining nucleotide-level resolution. SpliceAI achieves this through two innovations: extreme depth enabled by residual connections, and dilated convolutions that expand receptive fields without proportional parameter growth.</p>
+<p>SpliceAI employs an ultra-deep residual network with 32 convolutional layers. Residual connections address the vanishing gradient problem that otherwise prevents training at this depth:</p>
+<p><span class="math display">\[
+\text{output} = \text{input} + F(\text{input})
+\]</span></p>
+<p>By learning residual functions rather than direct mappings, the network can propagate gradients through dozens of layers. Skip connections from every fourth residual block feed directly to the penultimate layer, further stabilizing training dynamics.</p>
+<p>Dilated convolutions expand the receptive field efficiently. A dilated convolution with rate <span class="math inline">\(d\)</span> samples input positions at intervals of <span class="math inline">\(d\)</span> rather than consecutively. Stacking convolutions with increasing dilation rates (1, 2, 4, 8, 16, and so on) allows the network to integrate information across the full 10 kb window while maintaining sensitivity to local patterns. Standard convolutions with small kernels would require impractical depth to achieve equivalent receptive fields.</p>
+<p>For each position in the pre-mRNA sequence, SpliceAI outputs three probabilities: splice acceptor, splice donor, or neither. This per-position classification enables fine-grained predictions across entire transcripts. Training used GENCODE annotations, with odd and even chromosomes split for training and testing.</p>
+<div id="fig-spliceai-architecture" class="quarto-layout-panel">
+<figure class="quarto-float quarto-float-fig figure">
+<div aria-describedby="fig-spliceai-architecture-caption-0ceaefa1-69ba-4598-a22c-09a6ac19f8ca">
+<div class="quarto-layout-row">
+<div class="quarto-layout-cell" style="flex-basis: 50.0%;justify-content: flex-start;">
+<div class="quarto-figure quarto-figure-center">
+<figure class="figure">
+<p><img src="https://placehold.co/300x200?text=FIGURE%20PLACEHOLDER%20A.png" class="img-fluid figure-img"></p>
+<figcaption><strong>FIGURE PLACEHOLDER A</strong></figcaption>
+</figure>
+</div>
+</div>
+<div class="quarto-layout-cell" style="flex-basis: 50.0%;justify-content: flex-start;">
+<div class="quarto-figure quarto-figure-center">
+<figure class="figure">
+<p><img src="https://placehold.co/300x200?text=FIGURE%20PLACEHOLDER%20B.png" class="img-fluid figure-img"></p>
+<figcaption><strong>FIGURE PLACEHOLDER B</strong></figcaption>
+</figure>
+</div>
+</div>
+</div>
+</div>
+<figcaption class="quarto-float-caption-bottom quarto-float-caption quarto-float-fig" id="fig-spliceai-architecture-caption-0ceaefa1-69ba-4598-a22c-09a6ac19f8ca">
+Figure&nbsp;6.4: [High] Two-panel figure. Panel A: Diagram showing how dilated convolutions expand receptive field without proportional parameter growth. Show dilation rates (1, 2, 4, 8, 16…) with gaps between filter taps, illustrating how 32 layers with dilation reach 10kb context. Panel B: SpliceAI’s residual block structure with skip connections from every 4th block to output, enabling gradient flow through 32 layers.
+</figcaption>
+</figure>
+</div>
+</section>
+<section id="performance-and-validation" class="level3" data-number="6.5.3">
+<h3 data-number="6.5.3" class="anchored" data-anchor-id="performance-and-validation"><span class="header-section-number">6.5.3</span> Performance and Validation</h3>
+<p>SpliceAI achieved 95% top-k accuracy for splice site identification (compared to 57% for MaxEntScan) and 0.98 precision-recall AUC. Complex genes exceeding 100 kb are often reconstructed to nucleotide precision. Performance improved dramatically with context length:</p>
+<table class="caption-top table">
+<thead>
+<tr class="header">
+<th>Model Variant</th>
+<th>Context (each side)</th>
+<th>PR-AUC</th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<td>SpliceAI-80nt</td>
+<td>40 bp</td>
+<td>0.87</td>
+</tr>
+<tr class="even">
+<td>SpliceAI-400nt</td>
+<td>200 bp</td>
+<td>0.93</td>
+</tr>
+<tr class="odd">
+<td>SpliceAI-2k</td>
+<td>1,000 bp</td>
+<td>0.96</td>
+</tr>
+<tr class="even">
+<td>SpliceAI-10k</td>
+<td>5,000 bp</td>
+<td>0.98</td>
+</tr>
+</tbody>
+</table>
+<p>This progression confirms that distal sequence features contribute meaningfully to splicing decisions. The diminishing returns above 2 kb suggest that most splicing determinants lie within this range, though the additional context still provides measurable benefit.</p>
+<p>The <strong>delta score</strong> quantifies variant effects by comparing predictions for reference and alternative sequences:</p>
+<p><span class="math display">\[
+\Delta\text{score} = \max_{|p - v| \leq 50} \left| P_{\text{alt}}(p) - P_{\text{ref}}(p) \right|
+\]</span></p>
+<p>Validation against GTEx RNA-seq showed that mutations with higher delta scores showed higher validation rates at novel splice junctions: approximately 50% at Δ ≥ 0.2, 75% at Δ ≥ 0.5, and 85% at Δ ≥ 0.8. Population genetics provided orthogonal support: predicted cryptic splice variants showed 78% depletion at common allele frequencies, nearly matching the depletion of frameshift and stop-gain variants. Natural selection treats these variants as deleterious, confirming their functional impact.</p>
+</section>
+<section id="clinical-impact" class="level3" data-number="6.5.4">
+<h3 data-number="6.5.4" class="anchored" data-anchor-id="clinical-impact"><span class="header-section-number">6.5.4</span> Clinical Impact</h3>
+<p>SpliceAI’s most significant contribution may be quantifying cryptic splice mutations as a major, previously underappreciated cause of rare genetic disorders. Analysis of de novo mutations in over 4,000 individuals with intellectual disability found significant enrichment of predicted splice-disrupting variants compared to unaffected controls (1.51-fold, p = 4.2×10⁻⁴). Approximately 9% of pathogenic de novo mutations in intellectual disability act through cryptic splicing. Including these variants in gene discovery analyses identified additional candidate genes that would have fallen below discovery thresholds when considering only protein-coding mutations.</p>
+<p>This clinical utility explains SpliceAI’s rapid adoption. Illumina integrated SpliceAI into their annotation pipelines. Clinical genetics laboratories worldwide use delta scores to flag potential splice-affecting variants for RNA-seq follow-up. The model exemplifies how task-specific deep learning can achieve clinical-grade accuracy on well-defined problems. We return to SpliceAI’s role in modern variant interpretation workflows in <a href="../part_3/p3-ch14-vep-fm.html" class="quarto-xref"><span>Chapter 14</span></a>.</p>
+</section>
+</section>
+<section id="sec-receptive-field" class="level2" data-number="6.6">
+<h2 data-number="6.6" class="anchored" data-anchor-id="sec-receptive-field"><span class="header-section-number">6.6</span> The Receptive Field Ceiling</h2>
+<p>Consider a 45-year-old woman with early-onset breast cancer and a family history suggesting hereditary risk. Whole-genome sequencing identifies a novel variant 80 kilobases upstream of <em>BRCA1</em>, within an established enhancer region. The enhancer is known to regulate <em>BRCA1</em> expression in mammary epithelium. Does this variant reduce <em>BRCA1</em> expression enough to increase cancer risk? DeepSEA can predict whether the variant disrupts transcription factor binding at that position. SpliceAI confirms no splice effects. ExPecto’s 40 kb window cannot reach from the variant to the <em>BRCA1</em> promoter. No convolutional model can connect the enhancer variant to its target gene because the distance exceeds their receptive fields. The clinical question remains unanswered.</p>
+<p>This case illustrates a fundamental limitation rooted in architecture: convolutional networks can only integrate information within their receptive fields. DeepSEA’s three-layer architecture effectively considers roughly 1 kb of context. ExPecto’s Beluga component operates on 2 kb windows, aggregated across a 40 kb region by the spatial transformation layer. SpliceAI pushes to 10 kb through dilated convolutions and 32 layers. Each expansion required significant architectural engineering, and each reached a practical ceiling beyond which further expansion yielded diminishing returns or became computationally prohibitive.</p>
+<p>The limitation matters because genomic regulation routinely operates across distances these models cannot reach. Enhancers regulate promoters 50 to 500 kilobases away. The <em>beta-globin</em> locus control region sits 40 to 60 kb from the genes it activates. Polycomb-mediated repression involves chromatin contacts spanning megabases. Topologically associating domains organize regulatory interactions across hundreds of kilobases. When regulatory elements and their targets lie beyond a model’s receptive field, the model cannot learn their relationship regardless of how much training data is available. The constraint is architectural, not statistical.</p>
+<p>This creates a systematic mismatch between biological importance and computational accessibility. A variant within a distal enhancer may have profound effects on gene expression, but a model with a 10 kb receptive field cannot connect the enhancer sequence to its target promoter. The model might correctly predict that the enhancer sequence contains regulatory features, but it cannot predict which gene those features regulate or how strongly. We can predict local regulatory potential, yet we cannot predict long-range regulatory effects.</p>
+<p>The architectural response to this challenge evolved through two stages. Recurrent networks initially seemed promising, carrying context through hidden states rather than expanding receptive fields. When recurrence proved insufficient, attention mechanisms offered the breakthrough that modern genomic models required.</p>
+<div id="fig-receptive-field-ceiling" class="quarto-float quarto-figure quarto-figure-center anchored">
+<figure class="quarto-float quarto-float-fig figure">
+<div aria-describedby="fig-receptive-field-ceiling-caption-0ceaefa1-69ba-4598-a22c-09a6ac19f8ca">
+<div class="quarto-figure quarto-figure-center">
+<figure class="figure">
+<p><img src="https://placehold.co/300x200?text=FIGURE%20PLACEHOLDER.png" class="img-fluid figure-img"></p>
+<figcaption><strong>FIGURE PLACEHOLDER</strong></figcaption>
+</figure>
+</div>
+</div>
+<figcaption class="quarto-float-caption-bottom quarto-float-caption quarto-float-fig" id="fig-receptive-field-ceiling-caption-0ceaefa1-69ba-4598-a22c-09a6ac19f8ca">
+Figure&nbsp;6.5: [Essential] Horizontal genome diagram comparing effective context windows across CNN architectures. Show: DeepSEA (~1 kb), ExPecto/Beluga (2 kb windows, 40 kb aggregated), SpliceAI (10 kb), and for contrast, Enformer (200 kb). Overlay biologically relevant distances: typical TF binding site (~10bp), promoter region (~1kb), enhancer-gene distance (10-100kb), TAD size (~1Mb). Highlight the gap: “Most enhancer-promoter interactions exceed CNN receptive fields.”
+</figcaption>
+</figure>
+</div>
+</section>
+<section id="sec-rnn" class="level2" data-number="6.7">
+<h2 data-number="6.7" class="anchored" data-anchor-id="sec-rnn"><span class="header-section-number">6.7</span> Sequential Processing and Its Costs</h2>
+<p>If convolutional networks cannot reach far enough, why not simply carry information forward through the sequence? Recurrent neural networks offered an intuitive solution to the receptive field problem: maintain a hidden state that accumulates context as the network processes each position in turn. Where a convolutional filter sees only its local window, an RNN’s hidden state can, in principle, carry information from the beginning of a sequence to its end. For biological sequences, this seemed natural. DNA is read by polymerases in one direction; transcripts are processed sequentially by ribosomes; regulatory elements exert effects that propagate through chromatin. A computational architecture that mirrors this sequential logic appeared well-suited to genomic modeling.</p>
+<p>The hidden state mechanism works as follows. At each position <span class="math inline">\(t\)</span>, the network combines the current input <span class="math inline">\(x_t\)</span> with the previous hidden state <span class="math inline">\(h_{t-1}\)</span> to produce a new hidden state <span class="math inline">\(h_t\)</span>. This recurrence allows information from early positions to influence computations at later positions through the chain of hidden states. A regulatory element at position 1,000 can, in theory, affect predictions at position 50,000 because its influence persists in the hidden state across all intervening positions. No receptive field limits this reach; the constraint becomes whether information survives the journey.</p>
+<section id="the-vanishing-gradient-problem" class="level3" data-number="6.7.1">
+<h3 data-number="6.7.1" class="anchored" data-anchor-id="the-vanishing-gradient-problem"><span class="header-section-number">6.7.1</span> The Vanishing Gradient Problem</h3>
+<p>Information rarely survives. Training RNNs requires backpropagating gradients through time, computing how errors at late positions depend on parameters applied at early positions. These gradients pass through the same recurrent weight matrix at each step. When gradients are multiplied through hundreds or thousands of steps, they either explode (growing exponentially) or vanish (shrinking toward zero). The vanishing gradient problem makes it nearly impossible for RNNs to learn dependencies spanning more than a few dozen positions. A regulatory element 10,000 base pairs upstream might as well not exist: by the time gradients propagate backward through 10,000 recurrent steps, they have decayed to numerical insignificance.</p>
+<p><strong>Long Short-Term Memory (LSTM)</strong> networks <span class="citation" data-cites="hochreiter_long_1997">(<a href="../bib/references.html#ref-hochreiter_long_1997" role="doc-biblioref"><span>“Placeholder: Hochreiter Long 1997”</span> 1997</a>)</span> addressed this limitation through gating mechanisms that control information flow. An LSTM cell maintains a separate cell state alongside the hidden state, with learned gates that determine what information to store, what to forget, and what to output. The forget gate can preserve information indefinitely by setting its value near one, allowing gradients to flow through the cell state without repeated multiplication by small values. <strong>Gated Recurrent Units (GRUs)</strong> <span class="citation" data-cites="cho_learning_2014">(<a href="../bib/references.html#ref-cho_learning_2014" role="doc-biblioref"><span>“Placeholder: Cho Learning 2014”</span> 2014</a>)</span> simplified this design by combining gates while retaining the core insight: learned gating prevents gradient decay.</p>
+<p>These gated architectures extended effective memory from tens to hundreds of positions, sometimes thousands. For natural language, where most dependencies span fewer than 50 words, LSTMs proved transformative. For genomic sequences, where relevant context can span tens of kilobases (tens of thousands of nucleotides), even gated recurrence falls short. The mathematics of gradient propagation through recurrent connections imposes limits that no gating mechanism fully overcomes.</p>
+</section>
+<section id="danq-combining-convolutions-and-recurrence" class="level3" data-number="6.7.2">
+<h3 data-number="6.7.2" class="anchored" data-anchor-id="danq-combining-convolutions-and-recurrence"><span class="header-section-number">6.7.2</span> DanQ: Combining Convolutions and Recurrence</h3>
+<p>The DanQ model <span class="citation" data-cites="quang_danq_2016">(<a href="../bib/references.html#ref-quang_danq_2016" role="doc-biblioref"><span>“Placeholder: Quang Danq 2016”</span> 2016</a>)</span> represented the most influential attempt to apply recurrent architectures to regulatory genomics. Rather than replacing convolutions entirely, DanQ combined them: convolutional layers first extracted local sequence motifs, then a bidirectional LSTM integrated these motif detections across the 1,000 base pair input window. The architecture recognized that convolutions excel at detecting local patterns while recurrence might capture their long-range relationships.</p>
+<p>DanQ processed sequences in both directions simultaneously (bidirectional recurrence), allowing each position to incorporate context from both upstream and downstream. Training on the same DeepSEA chromatin prediction task, DanQ achieved modest improvements over the purely convolutional baseline, with the LSTM component learning to weight motif combinations based on their relative positions and co-occurrence patterns.</p>
+<p>The improvement was real but limited. Within a 1,000 base pair window, convolutional receptive fields already capture most relevant dependencies, leaving less room for recurrence to contribute. The fundamental problem remained: neither convolutions nor recurrence could reach the 50 to 100 kilobase distances where enhancers regulate their target genes. DanQ demonstrated that hybrid architectures could outperform pure convolutions, but the gains did not justify the added complexity for most applications. The model saw limited adoption compared to simpler convolutional alternatives.</p>
+</section>
+<section id="the-sequential-bottleneck" class="level3" data-number="6.7.3">
+<h3 data-number="6.7.3" class="anchored" data-anchor-id="the-sequential-bottleneck"><span class="header-section-number">6.7.3</span> The Sequential Bottleneck</h3>
+<p>Even if recurrence could maintain gradients across genomic distances, a more fundamental constraint would remain. RNNs process sequences one position at a time. Each hidden state <span class="math inline">\(h_t\)</span> depends on the previous hidden state <span class="math inline">\(h_{t-1}\)</span>, creating an inherently sequential computation that cannot be parallelized. Training on a 100,000 base pair sequence requires 100,000 sequential steps, each waiting for the previous step to complete. Modern GPUs achieve their speed through massive parallelism; sequential dependencies eliminate this advantage.</p>
+<p>This computational bottleneck made RNNs impractical for the long contexts that genomic applications require. A transformer processes all positions simultaneously, computing attention scores in parallel across the entire sequence. For a 100 kilobase context, a transformer performs one parallel operation where an RNN would require 100,000 sequential steps. The difference in training time is not incremental; it is the difference between feasible and infeasible. When Enformer extended genomic modeling to 200 kilobase contexts, recurrent architectures were not considered. The sequential bottleneck had already disqualified them.</p>
+<p>The attention mechanism resolved both limitations simultaneously. Self-attention computes direct interactions between all positions without sequential dependencies, enabling parallel processing across arbitrary context lengths. Attention weights are computed through matrix operations that GPUs execute efficiently, and gradients flow directly between any two positions without passing through intermediate states. The path from position 1 to position 100,000 involves a single attention computation rather than 100,000 recurrent steps. This architectural shift, examined in <a href="p2-ch07-attention.html" class="quarto-xref"><span>Chapter 7</span></a>, enabled the long-range modeling that genomic applications demand.</p>
+</section>
+</section>
+<section id="specialization-and-its-limits" class="level2" data-number="6.8">
+<h2 data-number="6.8" class="anchored" data-anchor-id="specialization-and-its-limits"><span class="header-section-number">6.8</span> Specialization and Its Limits</h2>
+<p>The convolutional models examined here established paradigms that persist in modern genomic AI. End-to-end learning from one-hot encoded sequence demonstrated that gradient descent on functional labels could discover regulatory patterns without encoding human assumptions about what matters. Multi-task training across hundreds of chromatin features showed that shared representations improve both accuracy and generalization. In silico mutagenesis, comparing predictions for reference and alternative sequences, established the dominant approach for deep learning-based variant effect prediction: scoring variants without training on variant labels, thereby avoiding the ascertainment biases that confound association-based methods.</p>
+<p>These principles carry forward into foundation model architectures. What CNNs could not resolve was the receptive field limitation. Genomic regulation operates across scales that exceed practical convolutional depth: enhancers modulating genes across hundreds of kilobases, topologically associating domains spanning megabases. Dilated convolutions and deeper networks extend reach but cannot fundamentally escape the constraint that convolutions aggregate local information through hierarchical composition.</p>
+<p>Yet specialization retains value even as general-purpose models advance. SpliceAI achieves clinical-grade splice site prediction that broader foundation models have not matched. When the prediction target is well-defined, training data abundant, and the relevant context fits within architectural constraints, task-specific models remain competitive with or superior to general-purpose approaches. This tension between specialized accuracy and general capability recurs throughout subsequent chapters. For clinical deployment requiring high reliability on specific tasks, specialized architectures may remain preferred. For discovery applications requiring broad coverage across diverse molecular mechanisms, the foundation model paradigm offers different trade-offs. The attention mechanisms examined next provide the architectural substrate for long-range modeling while inheriting the end-to-end learning principles that convolutional networks established.</p>
+
+
+<div id="refs" class="references csl-bib-body hanging-indent" data-entry-spacing="0" role="list" style="display: none">
+<div id="ref-jaganathan_spliceai_2019" class="csl-entry" role="listitem">
+Jaganathan, Kishore, Sofia Kyriazopoulou Panagiotopoulou, Jeremy F. McRae, Siavash Fazel Darbandi, David Knowles, Yang I. Li, Jack A. Kosmicki, et al. 2019. <span>“[<span>SpliceAI</span>] <span>Predicting</span> <span>Splicing</span> from <span>Primary</span> <span>Sequence</span> with <span>Deep</span> <span>Learning</span>.”</span> <em>Cell</em> 176 (3): 535–548.e24. <a href="https://doi.org/10.1016/j.cell.2018.12.015">https://doi.org/10.1016/j.cell.2018.12.015</a>.
+</div>
+<div id="ref-kagda_encode_2025" class="csl-entry" role="listitem">
+Kagda, Meenakshi S., Bonita Lam, Casey Litton, Corinn Small, Cricket A. Sloan, Emma Spragins, Forrest Tanaka, et al. 2025. <span>“Data Navigation on the <span>ENCODE</span> Portal.”</span> <em>Nature Communications</em> 16 (1): 9592. <a href="https://doi.org/10.1038/s41467-025-64343-9">https://doi.org/10.1038/s41467-025-64343-9</a>.
+</div>
+<div id="ref-kundaje_roadmap_2015" class="csl-entry" role="listitem">
+Kundaje, Anshul, Wouter Meuleman, Jason Ernst, Misha Bilenky, Angela Yen, Alireza Heravi-Moussavi, Pouya Kheradpour, et al. 2015. <span>“Integrative Analysis of 111 Reference Human Epigenomes.”</span> <em>Nature</em> 518 (7539): 317–30. <a href="https://doi.org/10.1038/nature14248">https://doi.org/10.1038/nature14248</a>.
+</div>
+<div id="ref-cho_learning_2014" class="csl-entry" role="listitem">
+<span>“Placeholder: Cho Learning 2014.”</span> 2014.
+</div>
+<div id="ref-hochreiter_long_1997" class="csl-entry" role="listitem">
+<span>“Placeholder: Hochreiter Long 1997.”</span> 1997.
+</div>
+<div id="ref-kelley_basset_2016" class="csl-entry" role="listitem">
+<span>“Placeholder: Kelley Basset 2016.”</span> 2016.
+</div>
+<div id="ref-quang_danq_2016" class="csl-entry" role="listitem">
+<span>“Placeholder: Quang Danq 2016.”</span> 2016.
+</div>
+<div id="ref-yeo_maxentscan_2004" class="csl-entry" role="listitem">
+Yeo, Gene, and Christopher B. Burge. 2004. <span>“Maximum <span>Entropy</span> <span>Modeling</span> of <span>Short</span> <span>Sequence</span> <span>Motifs</span> with <span>Applications</span> to <span>RNA</span> <span>Splicing</span> <span>Signals</span>.”</span> <em>Journal of Computational Biology</em> 11 (2-3): 377–94. <a href="https://doi.org/10.1089/1066527041410418">https://doi.org/10.1089/1066527041410418</a>.
+</div>
+<div id="ref-zhou_expecto_2018" class="csl-entry" role="listitem">
+Zhou, Jian, Chandra L. Theesfeld, Kevin Yao, Kathleen M. Chen, Aaron K. Wong, and Olga G. Troyanskaya. 2018. <span>“[<span>Expecto</span>] <span>Deep</span> Learning Sequence-Based Ab Initio Prediction of Variant Effects on Expression and Disease Risk.”</span> <em>Nature Genetics</em> 50 (8): 1171–79. <a href="https://doi.org/10.1038/s41588-018-0160-6">https://doi.org/10.1038/s41588-018-0160-6</a>.
+</div>
+<div id="ref-zhou_deepsea_2015" class="csl-entry" role="listitem">
+Zhou, Jian, and Olga G. Troyanskaya. 2015. <span>“[<span>DeepSEA</span>] <span>Predicting</span> Effects of Noncoding Variants with Deep Learning–Based Sequence Model.”</span> <em>Nature Methods</em> 12 (10): 931–34. <a href="https://doi.org/10.1038/nmeth.3547">https://doi.org/10.1038/nmeth.3547</a>.
+</div>
+</div>
+</section>
+
+</main> <!-- /main -->
+<script id="quarto-html-after-body" type="application/javascript">
+  window.document.addEventListener("DOMContentLoaded", function (event) {
+    // Ensure there is a toggle, if there isn't float one in the top right
+    if (window.document.querySelector('.quarto-color-scheme-toggle') === null) {
+      const a = window.document.createElement('a');
+      a.classList.add('top-right');
+      a.classList.add('quarto-color-scheme-toggle');
+      a.href = "";
+      a.onclick = function() { try { window.quartoToggleColorScheme(); } catch {} return false; };
+      const i = window.document.createElement("i");
+      i.classList.add('bi');
+      a.appendChild(i);
+      window.document.body.appendChild(a);
+    }
+    setColorSchemeToggle(hasAlternateSentinel())
+    const icon = "";
+    const anchorJS = new window.AnchorJS();
+    anchorJS.options = {
+      placement: 'right',
+      icon: icon
+    };
+    anchorJS.add('.anchored');
+    const isCodeAnnotation = (el) => {
+      for (const clz of el.classList) {
+        if (clz.startsWith('code-annotation-')) {                     
+          return true;
+        }
+      }
+      return false;
+    }
+    const onCopySuccess = function(e) {
+      // button target
+      const button = e.trigger;
+      // don't keep focus
+      button.blur();
+      // flash "checked"
+      button.classList.add('code-copy-button-checked');
+      var currentTitle = button.getAttribute("title");
+      button.setAttribute("title", "Copied!");
+      let tooltip;
+      if (window.bootstrap) {
+        button.setAttribute("data-bs-toggle", "tooltip");
+        button.setAttribute("data-bs-placement", "left");
+        button.setAttribute("data-bs-title", "Copied!");
+        tooltip = new bootstrap.Tooltip(button, 
+          { trigger: "manual", 
+            customClass: "code-copy-button-tooltip",
+            offset: [0, -8]});
+        tooltip.show();    
+      }
+      setTimeout(function() {
+        if (tooltip) {
+          tooltip.hide();
+          button.removeAttribute("data-bs-title");
+          button.removeAttribute("data-bs-toggle");
+          button.removeAttribute("data-bs-placement");
+        }
+        button.setAttribute("title", currentTitle);
+        button.classList.remove('code-copy-button-checked');
+      }, 1000);
+      // clear code selection
+      e.clearSelection();
+    }
+    const getTextToCopy = function(trigger) {
+      const outerScaffold = trigger.parentElement.cloneNode(true);
+      const codeEl = outerScaffold.querySelector('code');
+      for (const childEl of codeEl.children) {
+        if (isCodeAnnotation(childEl)) {
+          childEl.remove();
+        }
+      }
+      return codeEl.innerText;
+    }
+    const clipboard = new window.ClipboardJS('.code-copy-button:not([data-in-quarto-modal])', {
+      text: getTextToCopy
+    });
+    clipboard.on('success', onCopySuccess);
+    if (window.document.getElementById('quarto-embedded-source-code-modal')) {
+      const clipboardModal = new window.ClipboardJS('.code-copy-button[data-in-quarto-modal]', {
+        text: getTextToCopy,
+        container: window.document.getElementById('quarto-embedded-source-code-modal')
+      });
+      clipboardModal.on('success', onCopySuccess);
+    }
+      var localhostRegex = new RegExp(/^(?:http|https):\/\/localhost\:?[0-9]*\//);
+      var mailtoRegex = new RegExp(/^mailto:/);
+        var filterRegex = new RegExp('/' + window.location.host + '/');
+      var isInternal = (href) => {
+          return filterRegex.test(href) || localhostRegex.test(href) || mailtoRegex.test(href);
+      }
+      // Inspect non-navigation links and adorn them if external
+     var links = window.document.querySelectorAll('a[href]:not(.nav-link):not(.navbar-brand):not(.toc-action):not(.sidebar-link):not(.sidebar-item-toggle):not(.pagination-link):not(.no-external):not([aria-hidden]):not(.dropdown-item):not(.quarto-navigation-tool):not(.about-link)');
+      for (var i=0; i<links.length; i++) {
+        const link = links[i];
+        if (!isInternal(link.href)) {
+          // undo the damage that might have been done by quarto-nav.js in the case of
+          // links that we want to consider external
+          if (link.dataset.originalHref !== undefined) {
+            link.href = link.dataset.originalHref;
+          }
+        }
+      }
+    function tippyHover(el, contentFn, onTriggerFn, onUntriggerFn) {
+      const config = {
+        allowHTML: true,
+        maxWidth: 500,
+        delay: 100,
+        arrow: false,
+        appendTo: function(el) {
+            return el.parentElement;
+        },
+        interactive: true,
+        interactiveBorder: 10,
+        theme: 'quarto',
+        placement: 'bottom-start',
+      };
+      if (contentFn) {
+        config.content = contentFn;
+      }
+      if (onTriggerFn) {
+        config.onTrigger = onTriggerFn;
+      }
+      if (onUntriggerFn) {
+        config.onUntrigger = onUntriggerFn;
+      }
+      window.tippy(el, config); 
+    }
+    const noterefs = window.document.querySelectorAll('a[role="doc-noteref"]');
+    for (var i=0; i<noterefs.length; i++) {
+      const ref = noterefs[i];
+      tippyHover(ref, function() {
+        // use id or data attribute instead here
+        let href = ref.getAttribute('data-footnote-href') || ref.getAttribute('href');
+        try { href = new URL(href).hash; } catch {}
+        const id = href.replace(/^#\/?/, "");
+        const note = window.document.getElementById(id);
+        if (note) {
+          return note.innerHTML;
+        } else {
+          return "";
+        }
+      });
+    }
+    const xrefs = window.document.querySelectorAll('a.quarto-xref');
+    const processXRef = (id, note) => {
+      // Strip column container classes
+      const stripColumnClz = (el) => {
+        el.classList.remove("page-full", "page-columns");
+        if (el.children) {
+          for (const child of el.children) {
+            stripColumnClz(child);
+          }
+        }
+      }
+      stripColumnClz(note)
+      if (id === null || id.startsWith('sec-')) {
+        // Special case sections, only their first couple elements
+        const container = document.createElement("div");
+        if (note.children && note.children.length > 2) {
+          container.appendChild(note.children[0].cloneNode(true));
+          for (let i = 1; i < note.children.length; i++) {
+            const child = note.children[i];
+            if (child.tagName === "P" && child.innerText === "") {
+              continue;
+            } else {
+              container.appendChild(child.cloneNode(true));
+              break;
+            }
+          }
+          if (window.Quarto?.typesetMath) {
+            window.Quarto.typesetMath(container);
+          }
+          return container.innerHTML
+        } else {
+          if (window.Quarto?.typesetMath) {
+            window.Quarto.typesetMath(note);
+          }
+          return note.innerHTML;
+        }
+      } else {
+        // Remove any anchor links if they are present
+        const anchorLink = note.querySelector('a.anchorjs-link');
+        if (anchorLink) {
+          anchorLink.remove();
+        }
+        if (window.Quarto?.typesetMath) {
+          window.Quarto.typesetMath(note);
+        }
+        if (note.classList.contains("callout")) {
+          return note.outerHTML;
+        } else {
+          return note.innerHTML;
+        }
+      }
+    }
+    for (var i=0; i<xrefs.length; i++) {
+      const xref = xrefs[i];
+      tippyHover(xref, undefined, function(instance) {
+        instance.disable();
+        let url = xref.getAttribute('href');
+        let hash = undefined; 
+        if (url.startsWith('#')) {
+          hash = url;
+        } else {
+          try { hash = new URL(url).hash; } catch {}
+        }
+        if (hash) {
+          const id = hash.replace(/^#\/?/, "");
+          const note = window.document.getElementById(id);
+          if (note !== null) {
+            try {
+              const html = processXRef(id, note.cloneNode(true));
+              instance.setContent(html);
+            } finally {
+              instance.enable();
+              instance.show();
+            }
+          } else {
+            // See if we can fetch this
+            fetch(url.split('#')[0])
+            .then(res => res.text())
+            .then(html => {
+              const parser = new DOMParser();
+              const htmlDoc = parser.parseFromString(html, "text/html");
+              const note = htmlDoc.getElementById(id);
+              if (note !== null) {
+                const html = processXRef(id, note);
+                instance.setContent(html);
+              } 
+            }).finally(() => {
+              instance.enable();
+              instance.show();
+            });
+          }
+        } else {
+          // See if we can fetch a full url (with no hash to target)
+          // This is a special case and we should probably do some content thinning / targeting
+          fetch(url)
+          .then(res => res.text())
+          .then(html => {
+            const parser = new DOMParser();
+            const htmlDoc = parser.parseFromString(html, "text/html");
+            const note = htmlDoc.querySelector('main.content');
+            if (note !== null) {
+              // This should only happen for chapter cross references
+              // (since there is no id in the URL)
+              // remove the first header
+              if (note.children.length > 0 && note.children[0].tagName === "HEADER") {
+                note.children[0].remove();
+              }
+              const html = processXRef(null, note);
+              instance.setContent(html);
+            } 
+          }).finally(() => {
+            instance.enable();
+            instance.show();
+          });
+        }
+      }, function(instance) {
+      });
+    }
+        let selectedAnnoteEl;
+        const selectorForAnnotation = ( cell, annotation) => {
+          let cellAttr = 'data-code-cell="' + cell + '"';
+          let lineAttr = 'data-code-annotation="' +  annotation + '"';
+          const selector = 'span[' + cellAttr + '][' + lineAttr + ']';
+          return selector;
+        }
+        const selectCodeLines = (annoteEl) => {
+          const doc = window.document;
+          const targetCell = annoteEl.getAttribute("data-target-cell");
+          const targetAnnotation = annoteEl.getAttribute("data-target-annotation");
+          const annoteSpan = window.document.querySelector(selectorForAnnotation(targetCell, targetAnnotation));
+          const lines = annoteSpan.getAttribute("data-code-lines").split(",");
+          const lineIds = lines.map((line) => {
+            return targetCell + "-" + line;
+          })
+          let top = null;
+          let height = null;
+          let parent = null;
+          if (lineIds.length > 0) {
+              //compute the position of the single el (top and bottom and make a div)
+              const el = window.document.getElementById(lineIds[0]);
+              top = el.offsetTop;
+              height = el.offsetHeight;
+              parent = el.parentElement.parentElement;
+            if (lineIds.length > 1) {
+              const lastEl = window.document.getElementById(lineIds[lineIds.length - 1]);
+              const bottom = lastEl.offsetTop + lastEl.offsetHeight;
+              height = bottom - top;
+            }
+            if (top !== null && height !== null && parent !== null) {
+              // cook up a div (if necessary) and position it 
+              let div = window.document.getElementById("code-annotation-line-highlight");
+              if (div === null) {
+                div = window.document.createElement("div");
+                div.setAttribute("id", "code-annotation-line-highlight");
+                div.style.position = 'absolute';
+                parent.appendChild(div);
+              }
+              div.style.top = top - 2 + "px";
+              div.style.height = height + 4 + "px";
+              div.style.left = 0;
+              let gutterDiv = window.document.getElementById("code-annotation-line-highlight-gutter");
+              if (gutterDiv === null) {
+                gutterDiv = window.document.createElement("div");
+                gutterDiv.setAttribute("id", "code-annotation-line-highlight-gutter");
+                gutterDiv.style.position = 'absolute';
+                const codeCell = window.document.getElementById(targetCell);
+                const gutter = codeCell.querySelector('.code-annotation-gutter');
+                gutter.appendChild(gutterDiv);
+              }
+              gutterDiv.style.top = top - 2 + "px";
+              gutterDiv.style.height = height + 4 + "px";
+            }
+            selectedAnnoteEl = annoteEl;
+          }
+        };
+        const unselectCodeLines = () => {
+          const elementsIds = ["code-annotation-line-highlight", "code-annotation-line-highlight-gutter"];
+          elementsIds.forEach((elId) => {
+            const div = window.document.getElementById(elId);
+            if (div) {
+              div.remove();
+            }
+          });
+          selectedAnnoteEl = undefined;
+        };
+          // Handle positioning of the toggle
+      window.addEventListener(
+        "resize",
+        throttle(() => {
+          elRect = undefined;
+          if (selectedAnnoteEl) {
+            selectCodeLines(selectedAnnoteEl);
+          }
+        }, 10)
+      );
+      function throttle(fn, ms) {
+      let throttle = false;
+      let timer;
+        return (...args) => {
+          if(!throttle) { // first call gets through
+              fn.apply(this, args);
+              throttle = true;
+          } else { // all the others get throttled
+              if(timer) clearTimeout(timer); // cancel #2
+              timer = setTimeout(() => {
+                fn.apply(this, args);
+                timer = throttle = false;
+              }, ms);
+          }
+        };
+      }
+        // Attach click handler to the DT
+        const annoteDls = window.document.querySelectorAll('dt[data-target-cell]');
+        for (const annoteDlNode of annoteDls) {
+          annoteDlNode.addEventListener('click', (event) => {
+            const clickedEl = event.target;
+            if (clickedEl !== selectedAnnoteEl) {
+              unselectCodeLines();
+              const activeEl = window.document.querySelector('dt[data-target-cell].code-annotation-active');
+              if (activeEl) {
+                activeEl.classList.remove('code-annotation-active');
+              }
+              selectCodeLines(clickedEl);
+              clickedEl.classList.add('code-annotation-active');
+            } else {
+              // Unselect the line
+              unselectCodeLines();
+              clickedEl.classList.remove('code-annotation-active');
+            }
+          });
+        }
+    const findCites = (el) => {
+      const parentEl = el.parentElement;
+      if (parentEl) {
+        const cites = parentEl.dataset.cites;
+        if (cites) {
+          return {
+            el,
+            cites: cites.split(' ')
+          };
+        } else {
+          return findCites(el.parentElement)
+        }
+      } else {
+        return undefined;
+      }
+    };
+    var bibliorefs = window.document.querySelectorAll('a[role="doc-biblioref"]');
+    for (var i=0; i<bibliorefs.length; i++) {
+      const ref = bibliorefs[i];
+      const citeInfo = findCites(ref);
+      if (citeInfo) {
+        tippyHover(citeInfo.el, function() {
+          var popup = window.document.createElement('div');
+          citeInfo.cites.forEach(function(cite) {
+            var citeDiv = window.document.createElement('div');
+            citeDiv.classList.add('hanging-indent');
+            citeDiv.classList.add('csl-entry');
+            var biblioDiv = window.document.getElementById('ref-' + cite);
+            if (biblioDiv) {
+              citeDiv.innerHTML = biblioDiv.innerHTML;
+            }
+            popup.appendChild(citeDiv);
+          });
+          return popup.innerHTML;
+        });
+      }
+    }
+  });
+  </script>
+<nav class="page-navigation">
+  <div class="nav-page nav-page-previous">
+      <a href="../part_2/p2-ch05-representations.html" class="pagination-link" aria-label="Tokens and Embeddings">
+        <i class="bi bi-arrow-left-short"></i> <span class="nav-page-text"><span class="chapter-number">5</span>&nbsp; <span class="chapter-title">Tokens and Embeddings</span></span>
+      </a>          
+  </div>
+  <div class="nav-page nav-page-next">
+      <a href="../part_2/p2-ch07-attention.html" class="pagination-link" aria-label="Transformers and Attention">
+        <span class="nav-page-text"><span class="chapter-number">7</span>&nbsp; <span class="chapter-title">Transformers and Attention</span></span> <i class="bi bi-arrow-right-short"></i>
+      </a>
+  </div>
+</nav>
+</div> <!-- /content -->
+<footer class="footer">
+  <div class="nav-footer">
+    <div class="nav-footer-left">
+      &nbsp;
+    </div>   
+    <div class="nav-footer-center">
+<p>Copyright 2025, Josh Meehl</p>
+</div>
+    <div class="nav-footer-right">
+      &nbsp;
+    </div>
+  </div>
+</footer>
+
+
+
+
+</body></html>

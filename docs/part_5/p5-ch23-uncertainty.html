@@ -1,0 +1,1641 @@
+<!DOCTYPE html>
+<html xmlns="http://www.w3.org/1999/xhtml" lang="en" xml:lang="en"><head>
+
+<meta charset="utf-8">
+<meta name="generator" content="quarto-1.8.26">
+
+<meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=yes">
+
+
+<title>23&nbsp; Uncertainty Quantification – Genomic Foundation Models</title>
+<style>
+code{white-space: pre-wrap;}
+span.smallcaps{font-variant: small-caps;}
+div.columns{display: flex; gap: min(4vw, 1.5em);}
+div.column{flex: auto; overflow-x: auto;}
+div.hanging-indent{margin-left: 1.5em; text-indent: -1.5em;}
+ul.task-list{list-style: none;}
+ul.task-list li input[type="checkbox"] {
+  width: 0.8em;
+  margin: 0 0.8em 0.2em -1em; /* quarto-specific, see https://github.com/quarto-dev/quarto-cli/issues/4556 */ 
+  vertical-align: middle;
+}
+/* CSS for citations */
+div.csl-bib-body { }
+div.csl-entry {
+  clear: both;
+  margin-bottom: 0em;
+}
+.hanging-indent div.csl-entry {
+  margin-left:2em;
+  text-indent:-2em;
+}
+div.csl-left-margin {
+  min-width:2em;
+  float:left;
+}
+div.csl-right-inline {
+  margin-left:2em;
+  padding-left:1em;
+}
+div.csl-indent {
+  margin-left: 2em;
+}</style>
+
+
+<script src="../site_libs/quarto-nav/quarto-nav.js"></script>
+<script src="../site_libs/quarto-nav/headroom.min.js"></script>
+<script src="../site_libs/clipboard/clipboard.min.js"></script>
+<script src="../site_libs/quarto-search/autocomplete.umd.js"></script>
+<script src="../site_libs/quarto-search/fuse.min.js"></script>
+<script src="../site_libs/quarto-search/quarto-search.js"></script>
+<meta name="quarto:offset" content="../">
+<link href="../part_5/p5-ch24-interpretability.html" rel="next">
+<link href="../part_5/p5-ch22-confounding.html" rel="prev">
+<script src="../site_libs/quarto-html/quarto.js" type="module"></script>
+<script src="../site_libs/quarto-html/tabsets/tabsets.js" type="module"></script>
+<script src="../site_libs/quarto-html/axe/axe-check.js" type="module"></script>
+<script src="../site_libs/quarto-html/popper.min.js"></script>
+<script src="../site_libs/quarto-html/tippy.umd.min.js"></script>
+<script src="../site_libs/quarto-html/anchor.min.js"></script>
+<link href="../site_libs/quarto-html/tippy.css" rel="stylesheet">
+<link href="../site_libs/quarto-html/quarto-syntax-highlighting-587c61ba64f3a5504c4d52d930310e48.css" rel="stylesheet" class="quarto-color-scheme" id="quarto-text-highlighting-styles">
+<link href="../site_libs/quarto-html/quarto-syntax-highlighting-dark-b758ccaa5987ceb1b75504551e579abf.css" rel="stylesheet" class="quarto-color-scheme quarto-color-alternate" id="quarto-text-highlighting-styles">
+<link href="../site_libs/quarto-html/quarto-syntax-highlighting-587c61ba64f3a5504c4d52d930310e48.css" rel="stylesheet" class="quarto-color-scheme-extra" id="quarto-text-highlighting-styles">
+<script src="../site_libs/bootstrap/bootstrap.min.js"></script>
+<link href="../site_libs/bootstrap/bootstrap-icons.css" rel="stylesheet">
+<link href="../site_libs/bootstrap/bootstrap-a1553387a0f784068632030e9fbb8a3c.min.css" rel="stylesheet" append-hash="true" class="quarto-color-scheme" id="quarto-bootstrap" data-mode="light">
+<link href="../site_libs/bootstrap/bootstrap-dark-d1e9b63c6b6094879b9f94a7628e3370.min.css" rel="stylesheet" append-hash="true" class="quarto-color-scheme quarto-color-alternate" id="quarto-bootstrap" data-mode="dark">
+<link href="../site_libs/bootstrap/bootstrap-a1553387a0f784068632030e9fbb8a3c.min.css" rel="stylesheet" append-hash="true" class="quarto-color-scheme-extra" id="quarto-bootstrap" data-mode="light">
+<script id="quarto-search-options" type="application/json">{
+  "location": "sidebar",
+  "copy-button": false,
+  "collapse-after": 3,
+  "panel-placement": "start",
+  "type": "textbox",
+  "limit": 50,
+  "keyboard-shortcut": [
+    "f",
+    "/",
+    "s"
+  ],
+  "show-item-context": false,
+  "language": {
+    "search-no-results-text": "No results",
+    "search-matching-documents-text": "matching documents",
+    "search-copy-link-title": "Copy link to search",
+    "search-hide-matches-text": "Hide additional matches",
+    "search-more-match-text": "more match in this document",
+    "search-more-matches-text": "more matches in this document",
+    "search-clear-button-title": "Clear",
+    "search-text-placeholder": "",
+    "search-detached-cancel-button-title": "Cancel",
+    "search-submit-button-title": "Submit",
+    "search-label": "Search"
+  }
+}</script>
+
+  <script src="https://cdnjs.cloudflare.com/polyfill/v3/polyfill.min.js?features=es6"></script>
+  <script src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-chtml-full.js" type="text/javascript"></script>
+
+<script type="text/javascript">
+const typesetMath = (el) => {
+  if (window.MathJax) {
+    // MathJax Typeset
+    window.MathJax.typeset([el]);
+  } else if (window.katex) {
+    // KaTeX Render
+    var mathElements = el.getElementsByClassName("math");
+    var macros = [];
+    for (var i = 0; i < mathElements.length; i++) {
+      var texText = mathElements[i].firstChild;
+      if (mathElements[i].tagName == "SPAN" && texText && texText.data) {
+        window.katex.render(texText.data, mathElements[i], {
+          displayMode: mathElements[i].classList.contains('display'),
+          throwOnError: false,
+          macros: macros,
+          fleqn: false
+        });
+      }
+    }
+  }
+}
+window.Quarto = {
+  typesetMath
+};
+</script>
+
+<link rel="stylesheet" href="../styles.css">
+</head>
+
+<body class="nav-sidebar floating quarto-light"><script id="quarto-html-before-body" type="application/javascript">
+    const toggleBodyColorMode = (bsSheetEl) => {
+      const mode = bsSheetEl.getAttribute("data-mode");
+      const bodyEl = window.document.querySelector("body");
+      if (mode === "dark") {
+        bodyEl.classList.add("quarto-dark");
+        bodyEl.classList.remove("quarto-light");
+      } else {
+        bodyEl.classList.add("quarto-light");
+        bodyEl.classList.remove("quarto-dark");
+      }
+    }
+    const toggleBodyColorPrimary = () => {
+      const bsSheetEl = window.document.querySelector("link#quarto-bootstrap:not([rel=disabled-stylesheet])");
+      if (bsSheetEl) {
+        toggleBodyColorMode(bsSheetEl);
+      }
+    }
+    const setColorSchemeToggle = (alternate) => {
+      const toggles = window.document.querySelectorAll('.quarto-color-scheme-toggle');
+      for (let i=0; i < toggles.length; i++) {
+        const toggle = toggles[i];
+        if (toggle) {
+          if (alternate) {
+            toggle.classList.add("alternate");
+          } else {
+            toggle.classList.remove("alternate");
+          }
+        }
+      }
+    };
+    const toggleColorMode = (alternate) => {
+      // Switch the stylesheets
+      const primaryStylesheets = window.document.querySelectorAll('link.quarto-color-scheme:not(.quarto-color-alternate)');
+      const alternateStylesheets = window.document.querySelectorAll('link.quarto-color-scheme.quarto-color-alternate');
+      manageTransitions('#quarto-margin-sidebar .nav-link', false);
+      if (alternate) {
+        // note: dark is layered on light, we don't disable primary!
+        enableStylesheet(alternateStylesheets);
+        for (const sheetNode of alternateStylesheets) {
+          if (sheetNode.id === "quarto-bootstrap") {
+            toggleBodyColorMode(sheetNode);
+          }
+        }
+      } else {
+        disableStylesheet(alternateStylesheets);
+        enableStylesheet(primaryStylesheets)
+        toggleBodyColorPrimary();
+      }
+      manageTransitions('#quarto-margin-sidebar .nav-link', true);
+      // Switch the toggles
+      setColorSchemeToggle(alternate)
+      // Hack to workaround the fact that safari doesn't
+      // properly recolor the scrollbar when toggling (#1455)
+      if (navigator.userAgent.indexOf('Safari') > 0 && navigator.userAgent.indexOf('Chrome') == -1) {
+        manageTransitions("body", false);
+        window.scrollTo(0, 1);
+        setTimeout(() => {
+          window.scrollTo(0, 0);
+          manageTransitions("body", true);
+        }, 40);
+      }
+    }
+    const disableStylesheet = (stylesheets) => {
+      for (let i=0; i < stylesheets.length; i++) {
+        const stylesheet = stylesheets[i];
+        stylesheet.rel = 'disabled-stylesheet';
+      }
+    }
+    const enableStylesheet = (stylesheets) => {
+      for (let i=0; i < stylesheets.length; i++) {
+        const stylesheet = stylesheets[i];
+        if(stylesheet.rel !== 'stylesheet') { // for Chrome, which will still FOUC without this check
+          stylesheet.rel = 'stylesheet';
+        }
+      }
+    }
+    const manageTransitions = (selector, allowTransitions) => {
+      const els = window.document.querySelectorAll(selector);
+      for (let i=0; i < els.length; i++) {
+        const el = els[i];
+        if (allowTransitions) {
+          el.classList.remove('notransition');
+        } else {
+          el.classList.add('notransition');
+        }
+      }
+    }
+    const isFileUrl = () => {
+      return window.location.protocol === 'file:';
+    }
+    const hasAlternateSentinel = () => {
+      let styleSentinel = getColorSchemeSentinel();
+      if (styleSentinel !== null) {
+        return styleSentinel === "alternate";
+      } else {
+        return false;
+      }
+    }
+    const setStyleSentinel = (alternate) => {
+      const value = alternate ? "alternate" : "default";
+      if (!isFileUrl()) {
+        window.localStorage.setItem("quarto-color-scheme", value);
+      } else {
+        localAlternateSentinel = value;
+      }
+    }
+    const getColorSchemeSentinel = () => {
+      if (!isFileUrl()) {
+        const storageValue = window.localStorage.getItem("quarto-color-scheme");
+        return storageValue != null ? storageValue : localAlternateSentinel;
+      } else {
+        return localAlternateSentinel;
+      }
+    }
+    const toggleGiscusIfUsed = (isAlternate, darkModeDefault) => {
+      const baseTheme = document.querySelector('#giscus-base-theme')?.value ?? 'light';
+      const alternateTheme = document.querySelector('#giscus-alt-theme')?.value ?? 'dark';
+      let newTheme = '';
+      if(authorPrefersDark) {
+        newTheme = isAlternate ? baseTheme : alternateTheme;
+      } else {
+        newTheme = isAlternate ? alternateTheme : baseTheme;
+      }
+      const changeGiscusTheme = () => {
+        // From: https://github.com/giscus/giscus/issues/336
+        const sendMessage = (message) => {
+          const iframe = document.querySelector('iframe.giscus-frame');
+          if (!iframe) return;
+          iframe.contentWindow.postMessage({ giscus: message }, 'https://giscus.app');
+        }
+        sendMessage({
+          setConfig: {
+            theme: newTheme
+          }
+        });
+      }
+      const isGiscussLoaded = window.document.querySelector('iframe.giscus-frame') !== null;
+      if (isGiscussLoaded) {
+        changeGiscusTheme();
+      }
+    };
+    const authorPrefersDark = false;
+    const darkModeDefault = authorPrefersDark;
+      document.querySelector('link#quarto-text-highlighting-styles.quarto-color-scheme-extra').rel = 'disabled-stylesheet';
+      document.querySelector('link#quarto-bootstrap.quarto-color-scheme-extra').rel = 'disabled-stylesheet';
+    let localAlternateSentinel = darkModeDefault ? 'alternate' : 'default';
+    // Dark / light mode switch
+    window.quartoToggleColorScheme = () => {
+      // Read the current dark / light value
+      let toAlternate = !hasAlternateSentinel();
+      toggleColorMode(toAlternate);
+      setStyleSentinel(toAlternate);
+      toggleGiscusIfUsed(toAlternate, darkModeDefault);
+      window.dispatchEvent(new Event('resize'));
+    };
+    // Switch to dark mode if need be
+    if (hasAlternateSentinel()) {
+      toggleColorMode(true);
+    } else {
+      toggleColorMode(false);
+    }
+  </script>
+
+<div id="quarto-search-results"></div>
+  <header id="quarto-header" class="headroom fixed-top">
+  <nav class="quarto-secondary-nav">
+    <div class="container-fluid d-flex">
+      <button type="button" class="quarto-btn-toggle btn" data-bs-toggle="collapse" role="button" data-bs-target=".quarto-sidebar-collapse-item" aria-controls="quarto-sidebar" aria-expanded="false" aria-label="Toggle sidebar navigation" onclick="if (window.quartoToggleHeadroom) { window.quartoToggleHeadroom(); }">
+        <i class="bi bi-layout-text-sidebar-reverse"></i>
+      </button>
+        <nav class="quarto-page-breadcrumbs" aria-label="breadcrumb"><ol class="breadcrumb"><li class="breadcrumb-item"><a href="../part_5/p5--eval-interp.html">Part V: Evaluation and Trust</a></li><li class="breadcrumb-item"><a href="../part_5/p5-ch23-uncertainty.html"><span class="chapter-number">23</span>&nbsp; <span class="chapter-title">Uncertainty Quantification</span></a></li></ol></nav>
+        <a class="flex-grow-1" role="navigation" data-bs-toggle="collapse" data-bs-target=".quarto-sidebar-collapse-item" aria-controls="quarto-sidebar" aria-expanded="false" aria-label="Toggle sidebar navigation" onclick="if (window.quartoToggleHeadroom) { window.quartoToggleHeadroom(); }">      
+        </a>
+      <button type="button" class="btn quarto-search-button" aria-label="Search" onclick="window.quartoOpenSearch();">
+        <i class="bi bi-search"></i>
+      </button>
+    </div>
+  </nav>
+</header>
+<!-- content -->
+<div id="quarto-content" class="quarto-container page-columns page-rows-contents page-layout-article">
+<!-- sidebar -->
+  <nav id="quarto-sidebar" class="sidebar collapse collapse-horizontal quarto-sidebar-collapse-item sidebar-navigation floating overflow-auto">
+    <div class="pt-lg-2 mt-2 text-left sidebar-header">
+    <div class="sidebar-title mb-0 py-0">
+      <a href="../">Genomic Foundation Models</a> 
+        <div class="sidebar-tools-main">
+  <a href="" class="quarto-color-scheme-toggle quarto-navigation-tool  px-1" onclick="window.quartoToggleColorScheme(); return false;" title="Toggle dark mode"><i class="bi"></i></a>
+</div>
+    </div>
+      </div>
+        <div class="mt-2 flex-shrink-0 align-items-center">
+        <div class="sidebar-search">
+        <div id="quarto-search" class="" title="Search"></div>
+        </div>
+        </div>
+    <div class="sidebar-menu-container"> 
+    <ul class="list-unstyled mt-1">
+        <li class="sidebar-item">
+  <div class="sidebar-item-container"> 
+  <a href="../index.html" class="sidebar-item-text sidebar-link">
+ <span class="menu-text">Introduction</span></a>
+  </div>
+</li>
+        <li class="sidebar-item">
+  <div class="sidebar-item-container"> 
+  <a href="../preface.html" class="sidebar-item-text sidebar-link">
+ <span class="menu-text">Preface</span></a>
+  </div>
+</li>
+        <li class="sidebar-item sidebar-item-section">
+      <div class="sidebar-item-container"> 
+            <a href="../part_1/p1--foundations.html" class="sidebar-item-text sidebar-link">
+ <span class="menu-text">Part I: Data Foundations</span></a>
+          <a class="sidebar-item-toggle text-start" data-bs-toggle="collapse" data-bs-target="#quarto-sidebar-section-1" role="navigation" aria-expanded="true" aria-label="Toggle section">
+            <i class="bi bi-chevron-right ms-2"></i>
+          </a> 
+      </div>
+      <ul id="quarto-sidebar-section-1" class="collapse list-unstyled sidebar-section depth1 show">  
+          <li class="sidebar-item">
+  <div class="sidebar-item-container"> 
+  <a href="../part_1/p1-ch01-ngs.html" class="sidebar-item-text sidebar-link">
+ <span class="menu-text"><span class="chapter-number">1</span>&nbsp; <span class="chapter-title">From Reads to Variants</span></span></a>
+  </div>
+</li>
+          <li class="sidebar-item">
+  <div class="sidebar-item-container"> 
+  <a href="../part_1/p1-ch02-data.html" class="sidebar-item-text sidebar-link">
+ <span class="menu-text"><span class="chapter-number">2</span>&nbsp; <span class="chapter-title">The Data Landscape</span></span></a>
+  </div>
+</li>
+          <li class="sidebar-item">
+  <div class="sidebar-item-container"> 
+  <a href="../part_1/p1-ch03-gwas.html" class="sidebar-item-text sidebar-link">
+ <span class="menu-text"><span class="chapter-number">3</span>&nbsp; <span class="chapter-title">GWAS and Polygenic Scores</span></span></a>
+  </div>
+</li>
+          <li class="sidebar-item">
+  <div class="sidebar-item-container"> 
+  <a href="../part_1/p1-ch04-vep-classical.html" class="sidebar-item-text sidebar-link">
+ <span class="menu-text"><span class="chapter-number">4</span>&nbsp; <span class="chapter-title">Classical Variant Prediction</span></span></a>
+  </div>
+</li>
+      </ul>
+  </li>
+        <li class="sidebar-item sidebar-item-section">
+      <div class="sidebar-item-container"> 
+            <a href="../part_2/p2--principles.html" class="sidebar-item-text sidebar-link">
+ <span class="menu-text">Part II: Sequence Architectures</span></a>
+          <a class="sidebar-item-toggle text-start" data-bs-toggle="collapse" data-bs-target="#quarto-sidebar-section-2" role="navigation" aria-expanded="true" aria-label="Toggle section">
+            <i class="bi bi-chevron-right ms-2"></i>
+          </a> 
+      </div>
+      <ul id="quarto-sidebar-section-2" class="collapse list-unstyled sidebar-section depth1 show">  
+          <li class="sidebar-item">
+  <div class="sidebar-item-container"> 
+  <a href="../part_2/p2-ch05-representations.html" class="sidebar-item-text sidebar-link">
+ <span class="menu-text"><span class="chapter-number">5</span>&nbsp; <span class="chapter-title">Tokens and Embeddings</span></span></a>
+  </div>
+</li>
+          <li class="sidebar-item">
+  <div class="sidebar-item-container"> 
+  <a href="../part_2/p2-ch06-cnn.html" class="sidebar-item-text sidebar-link">
+ <span class="menu-text"><span class="chapter-number">6</span>&nbsp; <span class="chapter-title">Convolutional Networks</span></span></a>
+  </div>
+</li>
+          <li class="sidebar-item">
+  <div class="sidebar-item-container"> 
+  <a href="../part_2/p2-ch07-attention.html" class="sidebar-item-text sidebar-link">
+ <span class="menu-text"><span class="chapter-number">7</span>&nbsp; <span class="chapter-title">Transformers and Attention</span></span></a>
+  </div>
+</li>
+          <li class="sidebar-item">
+  <div class="sidebar-item-container"> 
+  <a href="../part_2/p2-ch08-pretraining.html" class="sidebar-item-text sidebar-link">
+ <span class="menu-text"><span class="chapter-number">8</span>&nbsp; <span class="chapter-title">Pretraining Strategies</span></span></a>
+  </div>
+</li>
+          <li class="sidebar-item">
+  <div class="sidebar-item-container"> 
+  <a href="../part_2/p2-ch09-transfer.html" class="sidebar-item-text sidebar-link">
+ <span class="menu-text"><span class="chapter-number">9</span>&nbsp; <span class="chapter-title">Transfer and Adaptation</span></span></a>
+  </div>
+</li>
+      </ul>
+  </li>
+        <li class="sidebar-item sidebar-item-section">
+      <div class="sidebar-item-container"> 
+            <a href="../part_3/p3--architectures.html" class="sidebar-item-text sidebar-link">
+ <span class="menu-text">Part III: Foundation Model Families</span></a>
+          <a class="sidebar-item-toggle text-start" data-bs-toggle="collapse" data-bs-target="#quarto-sidebar-section-3" role="navigation" aria-expanded="true" aria-label="Toggle section">
+            <i class="bi bi-chevron-right ms-2"></i>
+          </a> 
+      </div>
+      <ul id="quarto-sidebar-section-3" class="collapse list-unstyled sidebar-section depth1 show">  
+          <li class="sidebar-item">
+  <div class="sidebar-item-container"> 
+  <a href="../part_3/p3-ch10-fm-principles.html" class="sidebar-item-text sidebar-link">
+ <span class="menu-text"><span class="chapter-number">10</span>&nbsp; <span class="chapter-title">Foundation Model Paradigm</span></span></a>
+  </div>
+</li>
+          <li class="sidebar-item">
+  <div class="sidebar-item-container"> 
+  <a href="../part_3/p3-ch11-dna-lm.html" class="sidebar-item-text sidebar-link">
+ <span class="menu-text"><span class="chapter-number">11</span>&nbsp; <span class="chapter-title">DNA Language Models</span></span></a>
+  </div>
+</li>
+          <li class="sidebar-item">
+  <div class="sidebar-item-container"> 
+  <a href="../part_3/p3-ch12-protein-lm.html" class="sidebar-item-text sidebar-link">
+ <span class="menu-text"><span class="chapter-number">12</span>&nbsp; <span class="chapter-title">Protein Language Models</span></span></a>
+  </div>
+</li>
+          <li class="sidebar-item">
+  <div class="sidebar-item-container"> 
+  <a href="../part_3/p3-ch13-regulatory.html" class="sidebar-item-text sidebar-link">
+ <span class="menu-text"><span class="chapter-number">13</span>&nbsp; <span class="chapter-title">Regulatory Models</span></span></a>
+  </div>
+</li>
+          <li class="sidebar-item">
+  <div class="sidebar-item-container"> 
+  <a href="../part_3/p3-ch14-vep-fm.html" class="sidebar-item-text sidebar-link">
+ <span class="menu-text"><span class="chapter-number">14</span>&nbsp; <span class="chapter-title">Variant Effect Prediction</span></span></a>
+  </div>
+</li>
+      </ul>
+  </li>
+        <li class="sidebar-item sidebar-item-section">
+      <div class="sidebar-item-container"> 
+            <a href="../part_4/p4--multi-scale.html" class="sidebar-item-text sidebar-link">
+ <span class="menu-text">Part IV: Systems and Scale</span></a>
+          <a class="sidebar-item-toggle text-start" data-bs-toggle="collapse" data-bs-target="#quarto-sidebar-section-4" role="navigation" aria-expanded="true" aria-label="Toggle section">
+            <i class="bi bi-chevron-right ms-2"></i>
+          </a> 
+      </div>
+      <ul id="quarto-sidebar-section-4" class="collapse list-unstyled sidebar-section depth1 show">  
+          <li class="sidebar-item">
+  <div class="sidebar-item-container"> 
+  <a href="../part_4/p4-ch15-rna.html" class="sidebar-item-text sidebar-link">
+ <span class="menu-text"><span class="chapter-number">15</span>&nbsp; <span class="chapter-title">RNA Structure and Function</span></span></a>
+  </div>
+</li>
+          <li class="sidebar-item">
+  <div class="sidebar-item-container"> 
+  <a href="../part_4/p4-ch16-single-cell.html" class="sidebar-item-text sidebar-link">
+ <span class="menu-text"><span class="chapter-number">16</span>&nbsp; <span class="chapter-title">Single-Cell Models</span></span></a>
+  </div>
+</li>
+          <li class="sidebar-item">
+  <div class="sidebar-item-container"> 
+  <a href="../part_4/p4-ch17-3d-genome.html" class="sidebar-item-text sidebar-link">
+ <span class="menu-text"><span class="chapter-number">17</span>&nbsp; <span class="chapter-title">3D Genome Organization</span></span></a>
+  </div>
+</li>
+          <li class="sidebar-item">
+  <div class="sidebar-item-container"> 
+  <a href="../part_4/p4-ch18-networks.html" class="sidebar-item-text sidebar-link">
+ <span class="menu-text"><span class="chapter-number">18</span>&nbsp; <span class="chapter-title">Graph and Network Models</span></span></a>
+  </div>
+</li>
+          <li class="sidebar-item">
+  <div class="sidebar-item-container"> 
+  <a href="../part_4/p4-ch19-multi-omics.html" class="sidebar-item-text sidebar-link">
+ <span class="menu-text"><span class="chapter-number">19</span>&nbsp; <span class="chapter-title">Multi-Omics Integration</span></span></a>
+  </div>
+</li>
+      </ul>
+  </li>
+        <li class="sidebar-item sidebar-item-section">
+      <div class="sidebar-item-container"> 
+            <a href="../part_5/p5--eval-interp.html" class="sidebar-item-text sidebar-link">
+ <span class="menu-text">Part V: Evaluation and Trust</span></a>
+          <a class="sidebar-item-toggle text-start" data-bs-toggle="collapse" data-bs-target="#quarto-sidebar-section-5" role="navigation" aria-expanded="true" aria-label="Toggle section">
+            <i class="bi bi-chevron-right ms-2"></i>
+          </a> 
+      </div>
+      <ul id="quarto-sidebar-section-5" class="collapse list-unstyled sidebar-section depth1 show">  
+          <li class="sidebar-item">
+  <div class="sidebar-item-container"> 
+  <a href="../part_5/p5-ch20-benchmarks.html" class="sidebar-item-text sidebar-link">
+ <span class="menu-text"><span class="chapter-number">20</span>&nbsp; <span class="chapter-title">Benchmarks</span></span></a>
+  </div>
+</li>
+          <li class="sidebar-item">
+  <div class="sidebar-item-container"> 
+  <a href="../part_5/p5-ch21-eval.html" class="sidebar-item-text sidebar-link">
+ <span class="menu-text"><span class="chapter-number">21</span>&nbsp; <span class="chapter-title">Evaluation Principles</span></span></a>
+  </div>
+</li>
+          <li class="sidebar-item">
+  <div class="sidebar-item-container"> 
+  <a href="../part_5/p5-ch22-confounding.html" class="sidebar-item-text sidebar-link">
+ <span class="menu-text"><span class="chapter-number">22</span>&nbsp; <span class="chapter-title">Confounders and Leakage</span></span></a>
+  </div>
+</li>
+          <li class="sidebar-item">
+  <div class="sidebar-item-container"> 
+  <a href="../part_5/p5-ch23-uncertainty.html" class="sidebar-item-text sidebar-link active">
+ <span class="menu-text"><span class="chapter-number">23</span>&nbsp; <span class="chapter-title">Uncertainty Quantification</span></span></a>
+  </div>
+</li>
+          <li class="sidebar-item">
+  <div class="sidebar-item-container"> 
+  <a href="../part_5/p5-ch24-interpretability.html" class="sidebar-item-text sidebar-link">
+ <span class="menu-text"><span class="chapter-number">24</span>&nbsp; <span class="chapter-title">Interpretability</span></span></a>
+  </div>
+</li>
+      </ul>
+  </li>
+        <li class="sidebar-item sidebar-item-section">
+      <div class="sidebar-item-container"> 
+            <a href="../part_6/p6--translation.html" class="sidebar-item-text sidebar-link">
+ <span class="menu-text">Part VI: Clinical Translation</span></a>
+          <a class="sidebar-item-toggle text-start" data-bs-toggle="collapse" data-bs-target="#quarto-sidebar-section-6" role="navigation" aria-expanded="true" aria-label="Toggle section">
+            <i class="bi bi-chevron-right ms-2"></i>
+          </a> 
+      </div>
+      <ul id="quarto-sidebar-section-6" class="collapse list-unstyled sidebar-section depth1 show">  
+          <li class="sidebar-item">
+  <div class="sidebar-item-container"> 
+  <a href="../part_6/p6-ch25-clinical-risk.html" class="sidebar-item-text sidebar-link">
+ <span class="menu-text"><span class="chapter-number">25</span>&nbsp; <span class="chapter-title">Clinical Risk Prediction</span></span></a>
+  </div>
+</li>
+          <li class="sidebar-item">
+  <div class="sidebar-item-container"> 
+  <a href="../part_6/p6-ch26-rare-disease.html" class="sidebar-item-text sidebar-link">
+ <span class="menu-text"><span class="chapter-number">26</span>&nbsp; <span class="chapter-title">Rare Disease Diagnosis</span></span></a>
+  </div>
+</li>
+          <li class="sidebar-item">
+  <div class="sidebar-item-container"> 
+  <a href="../part_6/p6-ch27-drug-discovery.html" class="sidebar-item-text sidebar-link">
+ <span class="menu-text"><span class="chapter-number">27</span>&nbsp; <span class="chapter-title">Drug Discovery</span></span></a>
+  </div>
+</li>
+          <li class="sidebar-item">
+  <div class="sidebar-item-container"> 
+  <a href="../part_6/p6-ch28-design.html" class="sidebar-item-text sidebar-link">
+ <span class="menu-text"><span class="chapter-number">28</span>&nbsp; <span class="chapter-title">Sequence Design</span></span></a>
+  </div>
+</li>
+          <li class="sidebar-item">
+  <div class="sidebar-item-container"> 
+  <a href="../part_6/p6-ch29-future.html" class="sidebar-item-text sidebar-link">
+ <span class="menu-text"><span class="chapter-number">29</span>&nbsp; <span class="chapter-title">Ethical and Frontiers</span></span></a>
+  </div>
+</li>
+      </ul>
+  </li>
+        <li class="sidebar-item">
+  <div class="sidebar-item-container"> 
+  <a href="../bib/references.html" class="sidebar-item-text sidebar-link">
+ <span class="menu-text">References</span></a>
+  </div>
+</li>
+        <li class="sidebar-item sidebar-item-section">
+      <div class="sidebar-item-container"> 
+            <a class="sidebar-item-text sidebar-link text-start" data-bs-toggle="collapse" data-bs-target="#quarto-sidebar-section-7" role="navigation" aria-expanded="true">
+ <span class="menu-text">Appendices</span></a>
+          <a class="sidebar-item-toggle text-start" data-bs-toggle="collapse" data-bs-target="#quarto-sidebar-section-7" role="navigation" aria-expanded="true" aria-label="Toggle section">
+            <i class="bi bi-chevron-right ms-2"></i>
+          </a> 
+      </div>
+      <ul id="quarto-sidebar-section-7" class="collapse list-unstyled sidebar-section depth1 show">  
+          <li class="sidebar-item">
+  <div class="sidebar-item-container"> 
+  <a href="../appendix/app-a-dl.html" class="sidebar-item-text sidebar-link">
+ <span class="menu-text"><span class="chapter-number">A</span>&nbsp; <span class="chapter-title">Deep Learning Primer</span></span></a>
+  </div>
+</li>
+          <li class="sidebar-item">
+  <div class="sidebar-item-container"> 
+  <a href="../appendix/app-b-compute.html" class="sidebar-item-text sidebar-link">
+ <span class="menu-text"><span class="chapter-number">B</span>&nbsp; <span class="chapter-title">Deployment and Compute</span></span></a>
+  </div>
+</li>
+          <li class="sidebar-item">
+  <div class="sidebar-item-container"> 
+  <a href="../appendix/app-c-data-curation.html" class="sidebar-item-text sidebar-link">
+ <span class="menu-text"><span class="chapter-number">C</span>&nbsp; <span class="chapter-title">Data Curation</span></span></a>
+  </div>
+</li>
+          <li class="sidebar-item">
+  <div class="sidebar-item-container"> 
+  <a href="../appendix/app-d-models.html" class="sidebar-item-text sidebar-link">
+ <span class="menu-text"><span class="chapter-number">D</span>&nbsp; <span class="chapter-title">Model Reference</span></span></a>
+  </div>
+</li>
+          <li class="sidebar-item">
+  <div class="sidebar-item-container"> 
+  <a href="../appendix/app-e-resources.html" class="sidebar-item-text sidebar-link">
+ <span class="menu-text"><span class="chapter-number">E</span>&nbsp; <span class="chapter-title">Resources</span></span></a>
+  </div>
+</li>
+          <li class="sidebar-item">
+  <div class="sidebar-item-container"> 
+  <a href="../appendix/app-f-glossary.html" class="sidebar-item-text sidebar-link">
+ <span class="menu-text"><span class="chapter-number">F</span>&nbsp; <span class="chapter-title">Glossary</span></span></a>
+  </div>
+</li>
+      </ul>
+  </li>
+    </ul>
+    </div>
+</nav>
+<div id="quarto-sidebar-glass" class="quarto-sidebar-collapse-item" data-bs-toggle="collapse" data-bs-target=".quarto-sidebar-collapse-item"></div>
+<!-- margin-sidebar -->
+    <div id="quarto-margin-sidebar" class="sidebar margin-sidebar">
+        <nav id="TOC" role="doc-toc" class="toc-active">
+    <h2 id="toc-title">Table of contents</h2>
+   
+  <ul>
+  <li><a href="#sec-uncertainty-types" id="toc-sec-uncertainty-types" class="nav-link active" data-scroll-target="#sec-uncertainty-types"><span class="header-section-number">23.1</span> Types of Uncertainty in Genomic Prediction</a>
+  <ul class="collapse">
+  <li><a href="#why-uncertainty-matters" id="toc-why-uncertainty-matters" class="nav-link" data-scroll-target="#why-uncertainty-matters"><span class="header-section-number">23.1.1</span> Why Uncertainty Matters</a></li>
+  <li><a href="#epistemic-uncertainty" id="toc-epistemic-uncertainty" class="nav-link" data-scroll-target="#epistemic-uncertainty"><span class="header-section-number">23.1.2</span> Epistemic Uncertainty</a></li>
+  <li><a href="#aleatoric-uncertainty" id="toc-aleatoric-uncertainty" class="nav-link" data-scroll-target="#aleatoric-uncertainty"><span class="header-section-number">23.1.3</span> Aleatoric Uncertainty</a></li>
+  <li><a href="#decomposing-total-uncertainty" id="toc-decomposing-total-uncertainty" class="nav-link" data-scroll-target="#decomposing-total-uncertainty"><span class="header-section-number">23.1.4</span> Decomposing Total Uncertainty</a></li>
+  </ul></li>
+  <li><a href="#sec-calibration" id="toc-sec-calibration" class="nav-link" data-scroll-target="#sec-calibration"><span class="header-section-number">23.2</span> Calibration: Do Confidence Scores Mean What They Say?</a>
+  <ul class="collapse">
+  <li><a href="#the-calibration-problem" id="toc-the-calibration-problem" class="nav-link" data-scroll-target="#the-calibration-problem"><span class="header-section-number">23.2.1</span> The Calibration Problem</a></li>
+  <li><a href="#measuring-calibration" id="toc-measuring-calibration" class="nav-link" data-scroll-target="#measuring-calibration"><span class="header-section-number">23.2.2</span> Measuring Calibration</a></li>
+  <li><a href="#why-foundation-models-are-often-miscalibrated" id="toc-why-foundation-models-are-often-miscalibrated" class="nav-link" data-scroll-target="#why-foundation-models-are-often-miscalibrated"><span class="header-section-number">23.2.3</span> Why Foundation Models Are Often Miscalibrated</a></li>
+  <li><a href="#calibration-across-subgroups" id="toc-calibration-across-subgroups" class="nav-link" data-scroll-target="#calibration-across-subgroups"><span class="header-section-number">23.2.4</span> Calibration Across Subgroups</a></li>
+  </ul></li>
+  <li><a href="#sec-post-hoc-calibration" id="toc-sec-post-hoc-calibration" class="nav-link" data-scroll-target="#sec-post-hoc-calibration"><span class="header-section-number">23.3</span> Post-Hoc Calibration Methods</a>
+  <ul class="collapse">
+  <li><a href="#temperature-scaling" id="toc-temperature-scaling" class="nav-link" data-scroll-target="#temperature-scaling"><span class="header-section-number">23.3.1</span> Temperature Scaling</a></li>
+  <li><a href="#platt-scaling" id="toc-platt-scaling" class="nav-link" data-scroll-target="#platt-scaling"><span class="header-section-number">23.3.2</span> Platt Scaling</a></li>
+  <li><a href="#isotonic-regression" id="toc-isotonic-regression" class="nav-link" data-scroll-target="#isotonic-regression"><span class="header-section-number">23.3.3</span> Isotonic Regression</a></li>
+  <li><a href="#calibrating-foundation-model-outputs" id="toc-calibrating-foundation-model-outputs" class="nav-link" data-scroll-target="#calibrating-foundation-model-outputs"><span class="header-section-number">23.3.4</span> Calibrating Foundation Model Outputs</a></li>
+  </ul></li>
+  <li><a href="#sec-uq-methods" id="toc-sec-uq-methods" class="nav-link" data-scroll-target="#sec-uq-methods"><span class="header-section-number">23.4</span> Uncertainty Quantification Methods for Foundation Models</a>
+  <ul class="collapse">
+  <li><a href="#deep-ensembles" id="toc-deep-ensembles" class="nav-link" data-scroll-target="#deep-ensembles"><span class="header-section-number">23.4.1</span> Deep Ensembles</a></li>
+  <li><a href="#monte-carlo-dropout" id="toc-monte-carlo-dropout" class="nav-link" data-scroll-target="#monte-carlo-dropout"><span class="header-section-number">23.4.2</span> Monte Carlo Dropout</a></li>
+  <li><a href="#heteroscedastic-models" id="toc-heteroscedastic-models" class="nav-link" data-scroll-target="#heteroscedastic-models"><span class="header-section-number">23.4.3</span> Heteroscedastic Models</a></li>
+  <li><a href="#evidential-deep-learning" id="toc-evidential-deep-learning" class="nav-link" data-scroll-target="#evidential-deep-learning"><span class="header-section-number">23.4.4</span> Evidential Deep Learning</a></li>
+  </ul></li>
+  <li><a href="#sec-conformal" id="toc-sec-conformal" class="nav-link" data-scroll-target="#sec-conformal"><span class="header-section-number">23.5</span> Conformal Prediction: Distribution-Free Guarantees</a>
+  <ul class="collapse">
+  <li><a href="#the-conformal-prediction-framework" id="toc-the-conformal-prediction-framework" class="nav-link" data-scroll-target="#the-conformal-prediction-framework"><span class="header-section-number">23.5.1</span> The Conformal Prediction Framework</a></li>
+  <li><a href="#split-conformal-prediction" id="toc-split-conformal-prediction" class="nav-link" data-scroll-target="#split-conformal-prediction"><span class="header-section-number">23.5.2</span> Split Conformal Prediction</a></li>
+  <li><a href="#conformal-prediction-for-variant-effect-prediction" id="toc-conformal-prediction-for-variant-effect-prediction" class="nav-link" data-scroll-target="#conformal-prediction-for-variant-effect-prediction"><span class="header-section-number">23.5.3</span> Conformal Prediction for Variant Effect Prediction</a></li>
+  <li><a href="#limitations-and-practical-considerations" id="toc-limitations-and-practical-considerations" class="nav-link" data-scroll-target="#limitations-and-practical-considerations"><span class="header-section-number">23.5.4</span> Limitations and Practical Considerations</a></li>
+  </ul></li>
+  <li><a href="#sec-ood-detection" id="toc-sec-ood-detection" class="nav-link" data-scroll-target="#sec-ood-detection"><span class="header-section-number">23.6</span> Out-of-Distribution Detection</a>
+  <ul class="collapse">
+  <li><a href="#the-out-of-distribution-problem" id="toc-the-out-of-distribution-problem" class="nav-link" data-scroll-target="#the-out-of-distribution-problem"><span class="header-section-number">23.6.1</span> The Out-of-Distribution Problem</a></li>
+  <li><a href="#likelihood-based-detection-and-its-failures" id="toc-likelihood-based-detection-and-its-failures" class="nav-link" data-scroll-target="#likelihood-based-detection-and-its-failures"><span class="header-section-number">23.6.2</span> Likelihood-Based Detection and Its Failures</a></li>
+  <li><a href="#embedding-based-detection" id="toc-embedding-based-detection" class="nav-link" data-scroll-target="#embedding-based-detection"><span class="header-section-number">23.6.3</span> Embedding-Based Detection</a></li>
+  <li><a href="#practical-ood-detection-for-genomic-applications" id="toc-practical-ood-detection-for-genomic-applications" class="nav-link" data-scroll-target="#practical-ood-detection-for-genomic-applications"><span class="header-section-number">23.6.4</span> Practical OOD Detection for Genomic Applications</a></li>
+  </ul></li>
+  <li><a href="#sec-selective-prediction" id="toc-sec-selective-prediction" class="nav-link" data-scroll-target="#sec-selective-prediction"><span class="header-section-number">23.7</span> Selective Prediction and Abstention</a>
+  <ul class="collapse">
+  <li><a href="#when-to-abstain" id="toc-when-to-abstain" class="nav-link" data-scroll-target="#when-to-abstain"><span class="header-section-number">23.7.1</span> When to Abstain</a></li>
+  <li><a href="#selective-prediction-methods" id="toc-selective-prediction-methods" class="nav-link" data-scroll-target="#selective-prediction-methods"><span class="header-section-number">23.7.2</span> Selective Prediction Methods</a></li>
+  <li><a href="#evaluating-selective-prediction" id="toc-evaluating-selective-prediction" class="nav-link" data-scroll-target="#evaluating-selective-prediction"><span class="header-section-number">23.7.3</span> Evaluating Selective Prediction</a></li>
+  </ul></li>
+  <li><a href="#sec-genomic-uq" id="toc-sec-genomic-uq" class="nav-link" data-scroll-target="#sec-genomic-uq"><span class="header-section-number">23.8</span> Uncertainty for Specific Genomic Tasks</a>
+  <ul class="collapse">
+  <li><a href="#variant-effect-prediction-uncertainty" id="toc-variant-effect-prediction-uncertainty" class="nav-link" data-scroll-target="#variant-effect-prediction-uncertainty"><span class="header-section-number">23.8.1</span> Variant Effect Prediction Uncertainty</a></li>
+  <li><a href="#regulatory-variant-uncertainty" id="toc-regulatory-variant-uncertainty" class="nav-link" data-scroll-target="#regulatory-variant-uncertainty"><span class="header-section-number">23.8.2</span> Regulatory Variant Uncertainty</a></li>
+  <li><a href="#uncertainty-across-populations" id="toc-uncertainty-across-populations" class="nav-link" data-scroll-target="#uncertainty-across-populations"><span class="header-section-number">23.8.3</span> Uncertainty Across Populations</a></li>
+  </ul></li>
+  <li><a href="#sec-uncertainty-communication" id="toc-sec-uncertainty-communication" class="nav-link" data-scroll-target="#sec-uncertainty-communication"><span class="header-section-number">23.9</span> Communicating Uncertainty to End Users</a>
+  <ul class="collapse">
+  <li><a href="#the-communication-challenge" id="toc-the-communication-challenge" class="nav-link" data-scroll-target="#the-communication-challenge"><span class="header-section-number">23.9.1</span> The Communication Challenge</a></li>
+  <li><a href="#categorical-reporting" id="toc-categorical-reporting" class="nav-link" data-scroll-target="#categorical-reporting"><span class="header-section-number">23.9.2</span> Categorical Reporting</a></li>
+  <li><a href="#visual-communication" id="toc-visual-communication" class="nav-link" data-scroll-target="#visual-communication"><span class="header-section-number">23.9.3</span> Visual Communication</a></li>
+  <li><a href="#decision-theoretic-framing" id="toc-decision-theoretic-framing" class="nav-link" data-scroll-target="#decision-theoretic-framing"><span class="header-section-number">23.9.4</span> Decision-Theoretic Framing</a></li>
+  </ul></li>
+  <li><a href="#necessary-but-insufficient" id="toc-necessary-but-insufficient" class="nav-link" data-scroll-target="#necessary-but-insufficient"><span class="header-section-number">23.10</span> Necessary but Insufficient</a></li>
+  </ul>
+</nav>
+    </div>
+<!-- main -->
+<main class="content" id="quarto-document-content">
+
+
+<header id="title-block-header" class="quarto-title-block default"><nav class="quarto-page-breadcrumbs quarto-title-breadcrumbs d-none d-lg-block" aria-label="breadcrumb"><ol class="breadcrumb"><li class="breadcrumb-item"><a href="../part_5/p5--eval-interp.html">Part V: Evaluation and Trust</a></li><li class="breadcrumb-item"><a href="../part_5/p5-ch23-uncertainty.html"><span class="chapter-number">23</span>&nbsp; <span class="chapter-title">Uncertainty Quantification</span></a></li></ol></nav>
+<div class="quarto-title">
+<h1 class="title"><span id="sec-uncertainty" class="quarto-section-identifier"><span class="chapter-number">23</span>&nbsp; <span class="chapter-title">Uncertainty Quantification</span></span></h1>
+</div>
+
+
+
+<div class="quarto-title-meta">
+
+    
+  
+    
+  </div>
+  
+
+
+</header>
+
+
+<p>A pathogenicity score of 0.73 means nothing unless we know what 0.73 means. If the model is well-calibrated, approximately 73% of variants receiving this score are truly pathogenic, and a clinician can weigh this probability against the costs of further testing. If the model is miscalibrated, the true pathogenicity rate among variants scored at 0.73 could be 40% or 95%, and the nominal probability provides no reliable basis for decision-making. The distinction is not between accurate and inaccurate models but between models that know what they know and models that do not. A miscalibrated model with high average accuracy can be more dangerous than a calibrated model with lower accuracy, because the miscalibrated model provides false confidence that leads to systematically wrong decisions.</p>
+<p>Foundation models produce continuous scores, but clinical decisions require categorical actions: test or do not test, treat or do not treat, report to the family or continue monitoring. This translation from probability to action only works when probabilities are trustworthy. A model that systematically overstates confidence will trigger unnecessary interventions. A model that understates confidence will miss actionable findings. A model that reports high confidence on inputs it has never seen before fails at a fundamental level regardless of its average performance on familiar data. Uncertainty quantification provides the tools to assess when model predictions deserve trust.</p>
+<p>This chapter develops the concepts and methods for quantifying, calibrating, and communicating prediction uncertainty. We distinguish aleatoric uncertainty (irreducible randomness in the data) from epistemic uncertainty (reducible uncertainty from limited training data or model capacity). We examine calibration methods that align predicted probabilities with empirical frequencies, including temperature scaling, isotonic regression, and Bayesian approaches. We address out-of-distribution detection, identifying when inputs differ sufficiently from training data that predictions should not be trusted. Throughout, we connect to the clinical workflows examined in <a href="../part_6/p6-ch25-clinical-risk.html" class="quarto-xref"><span>Chapter 25</span></a> and <a href="../part_6/p6-ch26-rare-disease.html" class="quarto-xref"><span>Chapter 26</span></a>, where uncertainty estimates determine which predictions are actionable and which require human review.</p>
+<section id="sec-uncertainty-types" class="level2" data-number="23.1">
+<h2 data-number="23.1" class="anchored" data-anchor-id="sec-uncertainty-types"><span class="header-section-number">23.1</span> Types of Uncertainty in Genomic Prediction</h2>
+<section id="why-uncertainty-matters" class="level3" data-number="23.1.1">
+<h3 data-number="23.1.1" class="anchored" data-anchor-id="why-uncertainty-matters"><span class="header-section-number">23.1.1</span> Why Uncertainty Matters</h3>
+<p>Clinical genetics operates under fundamental uncertainty. When a laboratory reports a variant of uncertain significance (VUS), they acknowledge that current evidence cannot confidently classify the variant as pathogenic or benign. ClinVar contains approximately two million VUS compared to roughly 250,000 variants classified as pathogenic <span class="citation" data-cites="landrum_clinvar_2024">(<a href="../bib/references.html#ref-landrum_clinvar_2024" role="doc-biblioref">Landrum et al. 2018</a>)</span>, reflecting the reality that most genetic variation remains incompletely understood. Foundation models inherit and sometimes amplify this uncertainty: they may produce confident-seeming scores for variants where the underlying biology remains genuinely unknown.</p>
+<p>The consequences of ignoring uncertainty extend beyond statistical abstraction. An overconfident pathogenic prediction may trigger unnecessary interventions, from prophylactic surgeries to reproductive decisions that alter family planning. An overconfident benign prediction may provide false reassurance, delaying diagnosis while a treatable condition progresses. In both cases, the harm stems not from prediction error per se but from the mismatch between stated confidence and actual reliability. A model that accurately conveys its uncertainty enables appropriate clinical reasoning even when the prediction itself is imperfect.</p>
+<p>Decision theory formalizes this intuition. The expected value of a clinical action depends on the probability of each outcome weighted by its utility. When a model reports 0.73 probability of pathogenicity, downstream decision-making implicitly assumes this probability is accurate. If the true probability is 0.50, actions optimized for 0.73 will systematically err. Uncertainty quantification ensures that the probabilities entering clinical decisions reflect genuine knowledge rather than artifacts of model architecture or training procedure.</p>
+</section>
+<section id="epistemic-uncertainty" class="level3" data-number="23.1.2">
+<h3 data-number="23.1.2" class="anchored" data-anchor-id="epistemic-uncertainty"><span class="header-section-number">23.1.2</span> Epistemic Uncertainty</h3>
+<p>A model trained exclusively on European-ancestry data encounters its first genome from an individual of African ancestry. The model’s predictions may be statistically valid within the distribution it has seen, yet unreliable for this new input due to limited exposure to ancestry-specific patterns of variation, linkage disequilibrium, and regulatory architecture. This uncertainty about what the model has learned, as distinct from noise inherent in the prediction task itself, constitutes epistemic uncertainty.</p>
+<div id="fig-uncertainty-types" class="quarto-layout-panel">
+<figure class="quarto-float quarto-float-fig figure">
+<div aria-describedby="fig-uncertainty-types-caption-0ceaefa1-69ba-4598-a22c-09a6ac19f8ca">
+<div class="quarto-layout-row">
+<div class="quarto-layout-cell" style="flex-basis: 50.0%;justify-content: flex-start;">
+<div class="quarto-figure quarto-figure-center">
+<figure class="figure">
+<p><img src="https://placehold.co/300x200?text=FIGURE%20PLACEHOLDER%20A.png" class="img-fluid figure-img"></p>
+<figcaption><strong>FIGURE PLACEHOLDER A</strong></figcaption>
+</figure>
+</div>
+</div>
+<div class="quarto-layout-cell" style="flex-basis: 50.0%;justify-content: flex-start;">
+<div class="quarto-figure quarto-figure-center">
+<figure class="figure">
+<p><img src="https://placehold.co/300x200?text=FIGURE%20PLACEHOLDER%20B.png" class="img-fluid figure-img"></p>
+<figcaption><strong>FIGURE PLACEHOLDER B</strong></figcaption>
+</figure>
+</div>
+</div>
+</div>
+</div>
+<figcaption class="quarto-float-caption-bottom quarto-float-caption quarto-float-fig" id="fig-uncertainty-types-caption-0ceaefa1-69ba-4598-a22c-09a6ac19f8ca">
+Figure&nbsp;23.1: [Essential] Two-panel conceptual diagram. Panel A (Epistemic, reducible): Novel protein fold not in training; embedding space with dense clusters and isolated test point; could reduce with more data; ensemble members disagree; examples (under-represented ancestry, rare gene, novel pathogen). Panel B (Aleatoric, irreducible): Incomplete penetrance in BRCA1; same variant, different outcomes; inherent randomness; examples (penetrance variation, DMS noise, context-dependent regulation). Bottom: Decomposition formula; practical implication (high epistemic → more data; high aleatoric → accept limits).
+</figcaption>
+</figure>
+</div>
+<p>Epistemic uncertainty arises from limitations in training data that could, in principle, be reduced by gathering more examples. In genomic foundation models, epistemic uncertainty concentrates in predictable regions of biological space. Proteins from poorly characterized families, where training data contained few homologs, exhibit high epistemic uncertainty because the model has limited basis for inference. Genes with few characterized variants in ClinVar or gnomAD provide sparse supervision, leaving the model uncertain about which sequence features distinguish pathogenic from benign variation. Rare variant classes, such as in-frame deletions in specific protein domains, appear infrequently in training data and consequently generate uncertain predictions. Populations under-represented in biobanks contribute fewer training examples, creating systematic epistemic uncertainty for individuals from these backgrounds.</p>
+<p>Mathematically, epistemic uncertainty reflects uncertainty over model parameters or learned representations. A Bayesian perspective treats the trained model as one sample from a posterior distribution over possible models consistent with the training data. Different plausible models may disagree on predictions for inputs far from training examples while agreeing on well-represented inputs. This disagreement manifests as high variance in predictions across model variants, sensitivity to random initialization, or instability under small perturbations to training data.</p>
+<p>Foundation models exhibit epistemic uncertainty through several observable signatures. Embeddings for unfamiliar sequences cluster in sparse regions of representation space, distant from the dense clusters formed by well-represented sequence families. Ensemble members trained with different random seeds produce divergent predictions for novel inputs while converging for familiar ones. Fine-tuning on the same downstream task with different random seeds yields inconsistent results for edge cases. These signatures provide practical diagnostics for identifying when epistemic uncertainty is high.</p>
+</section>
+<section id="aleatoric-uncertainty" class="level3" data-number="23.1.3">
+<h3 data-number="23.1.3" class="anchored" data-anchor-id="aleatoric-uncertainty"><span class="header-section-number">23.1.3</span> Aleatoric Uncertainty</h3>
+<p>Some variants are genuinely ambiguous regardless of how much data we collect. The same pathogenic variant in <em>BRCA1</em> causes breast cancer in one carrier but not another due to modifier genes, hormonal exposures, or stochastic developmental processes. Incomplete penetrance, the phenomenon where disease-associated variants do not always produce disease, creates irreducible uncertainty that no amount of training data can eliminate. This inherent randomness in the mapping from genotype to phenotype constitutes aleatoric uncertainty.</p>
+<p>Aleatoric uncertainty reflects noise or stochasticity intrinsic to the prediction problem rather than limitations of the model. Variable expressivity means that even when a variant causes disease, the severity and specific manifestations vary across individuals. Measurement noise in functional assays introduces uncertainty into the labels used for training: deep mutational scanning experiments typically exhibit 10 to 20 percent technical variation between replicates <span class="citation" data-cites="fowler_deep_2014 rubin_statistical_2017">(<a href="../bib/references.html#ref-fowler_deep_2014" role="doc-biblioref">TODO TODO</a>, <a href="../bib/references.html#ref-rubin_statistical_2017" role="doc-biblioref">TODO</a>)</span>, creating a floor below which prediction error cannot decrease regardless of model sophistication. Stochastic gene expression means that two genetically identical cells may express a gene at different levels due to random fluctuations in transcription and translation. These sources of randomness set fundamental limits on predictive accuracy.</p>
+<p>Aleatoric uncertainty often varies with the input, a property termed heteroscedasticity. Coding variants in essential genes may have relatively low aleatoric uncertainty because strong selection pressure produces consistent phenotypic effects. Regulatory variants exhibit higher aleatoric uncertainty because their effects depend on cellular context, developmental timing, and interactions with other genetic and environmental factors. A model that captures this heteroscedasticity can provide more informative uncertainty estimates by conveying that some predictions are inherently more reliable than others.</p>
+</section>
+<section id="decomposing-total-uncertainty" class="level3" data-number="23.1.4">
+<h3 data-number="23.1.4" class="anchored" data-anchor-id="decomposing-total-uncertainty"><span class="header-section-number">23.1.4</span> Decomposing Total Uncertainty</h3>
+<p>Total predictive uncertainty combines epistemic and aleatoric components, and distinguishing between them has practical implications for decision-making. High epistemic uncertainty suggests that gathering more data, either through additional training examples or further investigation of the specific case, could reduce uncertainty and improve the prediction. High aleatoric uncertainty indicates that the prediction is as good as it can get given inherent noise in the problem; additional data will not help because the underlying biology is stochastic.</p>
+<p>The law of total variance provides a mathematical framework for decomposition. Total variance in predictions equals the sum of variance due to model uncertainty (epistemic) and variance inherent in the data-generating process (aleatoric). In practice, ensemble methods approximate epistemic uncertainty through disagreement between members: if five independently trained models produce predictions of 0.65, 0.68, 0.70, 0.72, and 0.75, the spread reflects epistemic uncertainty, while the residual variance within each model’s predictions reflects aleatoric uncertainty. Heteroscedastic neural networks, which output both a predicted mean and a predicted variance, can estimate aleatoric uncertainty by learning input-dependent noise levels.</p>
+<p>These decompositions depend on modeling assumptions and provide approximations rather than exact separations. Ensemble disagreement may underestimate epistemic uncertainty if all members share similar biases from common training data. Heteroscedastic models may confound aleatoric and epistemic uncertainty if the training data is too sparse to reliably estimate noise levels. Despite these limitations, approximate decomposition provides actionable information: variants flagged for high epistemic uncertainty warrant additional data collection or expert review, while variants with high aleatoric uncertainty may require acceptance of irreducible limits on predictive confidence.</p>
+</section>
+</section>
+<section id="sec-calibration" class="level2" data-number="23.2">
+<h2 data-number="23.2" class="anchored" data-anchor-id="sec-calibration"><span class="header-section-number">23.2</span> Calibration: Do Confidence Scores Mean What They Say?</h2>
+<div id="fig-calibration-diagrams" class="quarto-layout-panel">
+<figure class="quarto-float quarto-float-fig figure">
+<div aria-describedby="fig-calibration-diagrams-caption-0ceaefa1-69ba-4598-a22c-09a6ac19f8ca">
+<div class="quarto-layout-row">
+<div class="quarto-layout-cell" style="flex-basis: 50.0%;justify-content: flex-start;">
+<div class="quarto-figure quarto-figure-center">
+<figure class="figure">
+<p><img src="https://placehold.co/300x200?text=FIGURE%20PLACEHOLDER%20A.png" class="img-fluid figure-img"></p>
+<figcaption><strong>FIGURE PLACEHOLDER A</strong></figcaption>
+</figure>
+</div>
+</div>
+<div class="quarto-layout-cell" style="flex-basis: 50.0%;justify-content: flex-start;">
+<div class="quarto-figure quarto-figure-center">
+<figure class="figure">
+<p><img src="https://placehold.co/300x200?text=FIGURE%20PLACEHOLDER%20B.png" class="img-fluid figure-img"></p>
+<figcaption><strong>FIGURE PLACEHOLDER B</strong></figcaption>
+</figure>
+</div>
+</div>
+</div>
+<div class="quarto-layout-row">
+<div class="quarto-layout-cell" style="flex-basis: 50.0%;justify-content: flex-start;">
+<div class="quarto-figure quarto-figure-center">
+<figure class="figure">
+<p><img src="https://placehold.co/300x200?text=FIGURE%20PLACEHOLDER%20C.png" class="img-fluid figure-img"></p>
+<figcaption><strong>FIGURE PLACEHOLDER C</strong></figcaption>
+</figure>
+</div>
+</div>
+<div class="quarto-layout-cell" style="flex-basis: 50.0%;justify-content: flex-start;">
+<div class="quarto-figure quarto-figure-center">
+<figure class="figure">
+<p><img src="https://placehold.co/300x200?text=FIGURE%20PLACEHOLDER%20D.png" class="img-fluid figure-img"></p>
+<figcaption><strong>FIGURE PLACEHOLDER D</strong></figcaption>
+</figure>
+</div>
+</div>
+</div>
+</div>
+<figcaption class="quarto-float-caption-bottom quarto-float-caption quarto-float-fig" id="fig-calibration-diagrams-caption-0ceaefa1-69ba-4598-a22c-09a6ac19f8ca">
+Figure&nbsp;23.2: [Essential] Four-panel figure. Panel A (Perfect calibration): Reliability diagram on diagonal; “Predictions match reality.” Panel B (Overconfident): Points below diagonal; model predicts 0.9, true frequency 0.6; common for DNNs; “Dangerous for clinical use.” Panel C (Underconfident): Points above diagonal; “May miss actionable variants.” Panel D (Miscalibration by subgroup): Two curves (European, African); one calibrated, one poor; “Aggregate can mask disparities.” Annotations: ECE, prediction histograms, “Calibration ≠ discrimination.”
+</figcaption>
+</figure>
+</div>
+<section id="the-calibration-problem" class="level3" data-number="23.2.1">
+<h3 data-number="23.2.1" class="anchored" data-anchor-id="the-calibration-problem"><span class="header-section-number">23.2.1</span> The Calibration Problem</h3>
+<p>AlphaMissense outputs a continuous score between 0 and 1 for each possible missense variant in the human proteome. When it reports 0.85 for a particular variant, what does this number mean? If the model is calibrated, collecting all variants scored near 0.85 and checking their true clinical status should reveal that approximately 85% are pathogenic. Perfect calibration means that predicted probabilities match observed frequencies across the entire range of model outputs: among variants scored at 0.30, roughly 30% should be pathogenic; among variants scored at 0.95, roughly 95% should be pathogenic. This alignment between stated confidence and empirical accuracy is calibration, and most foundation models fail to achieve it.</p>
+<p>Formally, a model <span class="math inline">\(f\)</span> mapping inputs <span class="math inline">\(X\)</span> to probability estimates <span class="math inline">\(p = f(X)\)</span> is calibrated if <span class="math inline">\(P(Y=1 \mid f(X)=p) = p\)</span> for all <span class="math inline">\(p\)</span> in the interval from 0 to 1. The calibration condition requires that the model’s stated confidence equals the true probability of the positive class conditional on that stated confidence. Miscalibration occurs when this equality fails: overconfident models produce predicted probabilities that exceed true frequencies (a variant scored at 0.85 is pathogenic only 60% of the time), while underconfident models produce predicted probabilities below true frequencies.</p>
+<p>Modern deep neural networks are systematically miscalibrated despite achieving high accuracy. Guo and colleagues demonstrated that contemporary architectures exhibit worse calibration than older, less accurate models <span class="citation" data-cites="guo_calibration_2017">(<a href="../bib/references.html#ref-guo_calibration_2017" role="doc-biblioref">TODO TODO</a>)</span>. The phenomenon arises because standard training objectives like cross-entropy loss optimize for discrimination (separating positive from negative examples) rather than calibration (matching predicted probabilities to frequencies). Over-parameterized models with capacity exceeding what the data requires can achieve near-perfect training loss while producing overconfident predictions on held-out data. The softmax temperature in transformer architectures affects the sharpness of probability distributions, and default settings often produce excessively peaked outputs.</p>
+<p>Calibration and discrimination are distinct properties. A model can achieve perfect AUROC, correctly ranking all positive examples above all negative examples, while being arbitrarily miscalibrated. If a classifier assigns probability 0.99 to all positive examples and 0.98 to all negative examples, it ranks perfectly but provides useless probability estimates. Conversely, a calibrated model that assigns 0.51 to positives and 0.49 to negatives would be calibrated but nearly useless for discrimination. Clinical applications typically require both: accurate ranking to identify high-risk variants and accurate probabilities to inform decision-making.</p>
+</section>
+<section id="measuring-calibration" class="level3" data-number="23.2.2">
+<h3 data-number="23.2.2" class="anchored" data-anchor-id="measuring-calibration"><span class="header-section-number">23.2.2</span> Measuring Calibration</h3>
+<p>The evaluation metrics introduced in <a href="p5-ch21-eval.html" class="quarto-xref"><span>Chapter 21</span></a> assess discrimination; here we focus on metrics that assess calibration. <strong>Reliability diagrams</strong> provide visual assessment of calibration by plotting predicted probabilities against observed frequencies. Construction involves binning predictions into intervals (commonly ten bins spanning 0 to 0.1, 0.1 to 0.2, and so forth), computing the mean predicted probability within each bin, computing the fraction of positive examples within each bin, and plotting these two quantities against each other. A perfectly calibrated model produces points along the diagonal where predicted probability equals observed frequency. Systematic deviations reveal calibration patterns: points below the diagonal indicate overconfidence (predictions exceed reality), points above indicate underconfidence, and S-shaped curves suggest nonlinear miscalibration requiring more flexible correction.</p>
+<p><strong>Expected Calibration Error (ECE)</strong> provides a scalar summary of calibration quality. ECE computes the weighted average absolute difference between predicted probabilities and observed frequencies across bins:</p>
+<p><span class="math display">\[\text{ECE} = \sum_{m=1}^{M} \frac{|B_m|}{n} \left| \text{acc}(B_m) - \text{conf}(B_m) \right|\]</span></p>
+<p>where <span class="math inline">\(B_m\)</span> denotes the set of examples in bin <span class="math inline">\(m\)</span>, <span class="math inline">\(|B_m|\)</span> is the number of examples in that bin, <span class="math inline">\(n\)</span> is the total number of examples, <span class="math inline">\(\text{acc}(B_m)\)</span> is the accuracy (fraction of positives) in bin <span class="math inline">\(m\)</span>, and <span class="math inline">\(\text{conf}(B_m)\)</span> is the mean predicted probability in bin <span class="math inline">\(m\)</span>. Lower ECE indicates better calibration, with zero representing perfect calibration. ECE depends on binning strategy; equal-width bins may place most examples in a few bins for models with concentrated predictions, while equal-mass bins ensure each bin contains the same number of examples but may span wide probability ranges.</p>
+<p><strong>Maximum Calibration Error (MCE)</strong> captures worst-case miscalibration by reporting the largest absolute gap between predicted and observed frequencies across all bins. MCE is appropriate when any severe miscalibration is unacceptable, as in high-stakes clinical applications where even rare catastrophic errors carry significant consequences.</p>
+<p><strong>Brier score</strong> decomposes into components measuring calibration and discrimination (refinement), providing a single proper scoring rule that rewards both properties. The Brier score equals the mean squared difference between predicted probabilities and binary outcomes, and its decomposition reveals whether poor scores stem from miscalibration, poor discrimination, or both.</p>
+</section>
+<section id="why-foundation-models-are-often-miscalibrated" class="level3" data-number="23.2.3">
+<h3 data-number="23.2.3" class="anchored" data-anchor-id="why-foundation-models-are-often-miscalibrated"><span class="header-section-number">23.2.3</span> Why Foundation Models Are Often Miscalibrated</h3>
+<p>Foundation models face calibration challenges beyond those affecting standard neural networks. Pretraining objectives like masked language modeling optimize for predicting held-out tokens, not for producing calibrated probability distributions over downstream tasks. The representations learned during pretraining may encode useful information about sequence biology while providing no guarantee that fine-tuned classifiers will be well-calibrated.</p>
+<p>Distribution shift between pretraining and evaluation compounds miscalibration. A protein language model pretrained on UniRef sequences encounters a fine-tuning task using ClinVar variants. The pretraining distribution emphasizes common proteins with many homologs, while clinical variants concentrate in disease-associated genes with different sequence characteristics. Models may be well-calibrated on held-out pretraining data while miscalibrated on clinically relevant evaluation sets.</p>
+<p>Label noise in training data propagates to calibration errors. ClinVar annotations reflect the state of knowledge at submission time and may contain errors, particularly for older entries or variants from less-studied genes. Deep mutational scanning experiments provide functional labels but with measurement noise that varies across assays. Models trained on noisy labels may learn the noise distribution, producing predictions that match training labels but not underlying truth.</p>
+<p>Zero-shot approaches present particular calibration challenges. ESM-1v log-likelihood ratios measure how surprising a mutation is to the language model, but these ratios are not probabilities and have no inherent calibration. Converting log-likelihood ratios to pathogenicity probabilities requires explicit calibration against external labels, and the resulting calibration depends on the reference dataset used for this conversion.</p>
+</section>
+<section id="calibration-across-subgroups" class="level3" data-number="23.2.4">
+<h3 data-number="23.2.4" class="anchored" data-anchor-id="calibration-across-subgroups"><span class="header-section-number">23.2.4</span> Calibration Across Subgroups</h3>
+<p>Aggregate calibration metrics can mask severe miscalibration in clinically important subgroups. A model might achieve low ECE overall while being dramatically overconfident for variants in African-ancestry individuals and underconfident for European-ancestry individuals, with opposite errors canceling in aggregate statistics. Subgroup-stratified calibration assessment is essential for any model intended for diverse populations.</p>
+<p>Ancestry-stratified calibration reveals systematic patterns in current foundation models. Training data for protein language models and variant effect predictors derive predominantly from European-ancestry cohorts, creating differential epistemic uncertainty across populations. Calibration curves stratified by ancestry often show that models are better calibrated for populations well-represented in training data and overconfident or underconfident for under-represented populations. This differential calibration has direct fairness implications: clinical decisions based on miscalibrated predictions will be systematically worse for patients from under-represented backgrounds.</p>
+<p>Calibration may also vary by variant class, gene constraint level, protein family, or disease category. Missense variants in highly constrained genes may show different calibration patterns than those in tolerant genes. Variants in well-studied protein families with abundant training examples may be better calibrated than variants in orphan proteins. Stratified reliability diagrams across these categories reveal whether a single calibration correction suffices or whether subgroup-specific approaches are necessary.</p>
+</section>
+</section>
+<section id="sec-post-hoc-calibration" class="level2" data-number="23.3">
+<h2 data-number="23.3" class="anchored" data-anchor-id="sec-post-hoc-calibration"><span class="header-section-number">23.3</span> Post-Hoc Calibration Methods</h2>
+<div id="fig-calibration-methods" class="quarto-layout-panel">
+<figure class="quarto-float quarto-float-fig figure">
+<div aria-describedby="fig-calibration-methods-caption-0ceaefa1-69ba-4598-a22c-09a6ac19f8ca">
+<div class="quarto-layout-row">
+<div class="quarto-layout-cell" style="flex-basis: 33.3%;justify-content: flex-start;">
+<div class="quarto-figure quarto-figure-center">
+<figure class="figure">
+<p><img src="https://placehold.co/300x200?text=FIGURE%20PLACEHOLDER%20A.png" class="img-fluid figure-img"></p>
+<figcaption><strong>FIGURE PLACEHOLDER A</strong></figcaption>
+</figure>
+</div>
+</div>
+<div class="quarto-layout-cell" style="flex-basis: 33.3%;justify-content: flex-start;">
+<div class="quarto-figure quarto-figure-center">
+<figure class="figure">
+<p><img src="https://placehold.co/300x200?text=FIGURE%20PLACEHOLDER%20B.png" class="img-fluid figure-img"></p>
+<figcaption><strong>FIGURE PLACEHOLDER B</strong></figcaption>
+</figure>
+</div>
+</div>
+<div class="quarto-layout-cell" style="flex-basis: 33.3%;justify-content: flex-start;">
+<div class="quarto-figure quarto-figure-center">
+<figure class="figure">
+<p><img src="https://placehold.co/300x200?text=FIGURE%20PLACEHOLDER%20C.png" class="img-fluid figure-img"></p>
+<figcaption><strong>FIGURE PLACEHOLDER C</strong></figcaption>
+</figure>
+</div>
+</div>
+</div>
+</div>
+<figcaption class="quarto-float-caption-bottom quarto-float-caption quarto-float-fig" id="fig-calibration-methods-caption-0ceaefa1-69ba-4598-a22c-09a6ac19f8ca">
+Figure&nbsp;23.3: [High] Three-column comparison with before/after. Column 1 (Temperature scaling): Formula p = softmax(z/T); single parameter T; before/after reliability; preserves ranking; can’t fix complex patterns. Column 2 (Platt scaling): Formula p = σ(az + b); two parameters; handles bias and confidence; assumes logistic. Column 3 (Isotonic regression): Non-parametric monotonic fit; flexible, no assumptions; overfits with limited data. Bottom: Decision guide for method selection.
+</figcaption>
+</figure>
+</div>
+<section id="temperature-scaling" class="level3" data-number="23.3.1">
+<h3 data-number="23.3.1" class="anchored" data-anchor-id="temperature-scaling"><span class="header-section-number">23.3.1</span> Temperature Scaling</h3>
+<p>The simplest calibration fix is often the most effective. Temperature scaling applies a single learned parameter to adjust model confidence, dramatically improving calibration with minimal computational overhead and no change to model predictions’ ranking.</p>
+<p>The method modifies the softmax function by dividing logits by a temperature parameter <span class="math inline">\(T\)</span> before applying softmax:</p>
+<p><span class="math display">\[\hat{p}_i = \frac{\exp(z_i / T)}{\sum_j \exp(z_j / T)}\]</span></p>
+<p>where <span class="math inline">\(z_i\)</span> are the logits (pre-softmax outputs) and <span class="math inline">\(\hat{p}_i\)</span> are the calibrated probabilities. When <span class="math inline">\(T &gt; 1\)</span>, the distribution becomes softer (more uniform), reducing overconfidence. When <span class="math inline">\(T &lt; 1\)</span>, the distribution becomes sharper, increasing confidence. The optimal temperature is learned by minimizing negative log-likelihood on a held-out calibration set, typically yielding <span class="math inline">\(T\)</span> between 1.5 and 3 for overconfident deep networks.</p>
+<p>Temperature scaling preserves the model’s ranking because dividing all logits by the same constant does not change their relative ordering. A variant ranked as more likely pathogenic than another remains more likely after temperature scaling; only the magnitudes of probability estimates change. This preservation of discrimination while improving calibration makes temperature scaling particularly attractive: calibration improves without sacrificing the model’s hard-won ability to distinguish pathogenic from benign variants.</p>
+<p>The method’s simplicity (one parameter) is both strength and limitation. A single global temperature cannot fix heterogeneous miscalibration where the model is overconfident in some regions of input space and underconfident in others. When reliability diagrams show complex nonlinear patterns, more flexible calibration methods are necessary.</p>
+</section>
+<section id="platt-scaling" class="level3" data-number="23.3.2">
+<h3 data-number="23.3.2" class="anchored" data-anchor-id="platt-scaling"><span class="header-section-number">23.3.2</span> Platt Scaling</h3>
+<p>Platt scaling fits a logistic regression model on the original model’s outputs, learning both a slope and intercept to transform scores into calibrated probabilities. For binary classification:</p>
+<p><span class="math display">\[\hat{p} = \sigma(a \cdot f(x) + b)\]</span></p>
+<p>where <span class="math inline">\(f(x)\)</span> is the original model’s output, <span class="math inline">\(\sigma\)</span> is the sigmoid function, and parameters <span class="math inline">\(a\)</span> and <span class="math inline">\(b\)</span> are learned on calibration data. The two parameters provide more flexibility than temperature scaling’s single parameter, allowing correction of both the sharpness and the location of the probability distribution.</p>
+<p>Platt scaling is appropriate when miscalibration involves systematic bias (predictions consistently too high or too low) in addition to over- or underconfidence. The method assumes that a monotonic logistic transformation suffices to correct miscalibration, which may not hold for models with complex, non-monotonic calibration curves.</p>
+</section>
+<section id="isotonic-regression" class="level3" data-number="23.3.3">
+<h3 data-number="23.3.3" class="anchored" data-anchor-id="isotonic-regression"><span class="header-section-number">23.3.3</span> Isotonic Regression</h3>
+<p>Isotonic regression provides a non-parametric approach that fits a monotonically increasing function mapping raw scores to calibrated probabilities. Unlike temperature or Platt scaling, isotonic regression makes no assumptions about the functional form of miscalibration, allowing it to correct arbitrary monotonic patterns.</p>
+<p>The method works by pooling adjacent bins whose empirical frequencies violate monotonicity, then assigning each bin its pooled frequency. The resulting calibration function is a step function that increases with the original score. This flexibility comes at a cost: with limited calibration data, isotonic regression may overfit to noise in the calibration set, and the step-function output can appear discontinuous. Additionally, isotonic regression provides no uncertainty estimate on the calibration itself; we learn a point estimate of the calibration function without knowing how reliable that estimate is.</p>
+</section>
+<section id="calibrating-foundation-model-outputs" class="level3" data-number="23.3.4">
+<h3 data-number="23.3.4" class="anchored" data-anchor-id="calibrating-foundation-model-outputs"><span class="header-section-number">23.3.4</span> Calibrating Foundation Model Outputs</h3>
+<p>Genomic foundation models present specific calibration considerations beyond standard classification settings. The choice of calibration approach depends on whether the model produces logits, log-likelihood ratios, or continuous regression outputs, and on whether calibration targets are available for the deployment distribution.</p>
+<p>For zero-shot variant effect scores like ESM-1v log-likelihood ratios, raw outputs have no inherent probabilistic interpretation. Calibration requires mapping these continuous scores to pathogenicity probabilities using external labels, typically from ClinVar or population frequency data. This mapping should occur on held-out genes or variants not used for any model development, and the resulting calibration reflects the specific label set used; calibration against ClinVar pathogenic/benign labels may not transfer to other clinical contexts.</p>
+<p>Multi-output models that predict across many tasks (multiple cell types, tissues, or assays) may require separate calibration for each output. A regulatory model predicting expression across 200 cell types is unlikely to be uniformly calibrated across all outputs; cell types with more training data may show better calibration than rare cell types.</p>
+<p>Temporal stability of calibration deserves consideration. As ClinVar annotations evolve with new evidence, the ground truth against which models were calibrated changes. A model calibrated against 2020 ClinVar labels may become miscalibrated relative to 2025 labels as variant classifications are updated. Periodic recalibration against current labels helps maintain clinical relevance.</p>
+</section>
+</section>
+<section id="sec-uq-methods" class="level2" data-number="23.4">
+<h2 data-number="23.4" class="anchored" data-anchor-id="sec-uq-methods"><span class="header-section-number">23.4</span> Uncertainty Quantification Methods for Foundation Models</h2>
+<div id="fig-uq-methods" class="quarto-float quarto-figure quarto-figure-center anchored">
+<figure class="quarto-float quarto-float-fig figure">
+<div aria-describedby="fig-uq-methods-caption-0ceaefa1-69ba-4598-a22c-09a6ac19f8ca">
+<div class="quarto-figure quarto-figure-center">
+<figure class="figure">
+<p><img src="https://placehold.co/300x200?text=FIGURE%20PLACEHOLDER.png" class="img-fluid figure-img"></p>
+<figcaption><strong>FIGURE PLACEHOLDER</strong></figcaption>
+</figure>
+</div>
+</div>
+<figcaption class="quarto-float-caption-bottom quarto-float-caption quarto-float-fig" id="fig-uq-methods-caption-0ceaefa1-69ba-4598-a22c-09a6ac19f8ca">
+Figure&nbsp;23.4: [High] Method comparison. Deep ensembles: 5 models independently trained; variance/entropy across predictions; 5× training/inference; gold standard for epistemic. MC Dropout: Single model, multiple stochastic passes; variance across dropout samples; 1× training, N× inference; approximates ensemble. Last-layer ensembles: Frozen backbone, ensemble of heads; head disagreement; 1× pretraining, 5× heads (cheap); fine-tuning uncertainty only. Heteroscedastic networks: Single model outputs mean + variance; learned per input; 1× training/inference; aleatoric not epistemic. Comparison table: Epistemic, Aleatoric, Cost, FM-friendly.
+</figcaption>
+</figure>
+</div>
+<section id="deep-ensembles" class="level3" data-number="23.4.1">
+<h3 data-number="23.4.1" class="anchored" data-anchor-id="deep-ensembles"><span class="header-section-number">23.4.1</span> Deep Ensembles</h3>
+<p>If one model expresses uncertainty about a prediction, querying multiple models reveals whether that uncertainty reflects genuine ambiguity in the data or an artifact of a particular training run. When five independently trained models agree on a prediction, confidence is warranted; when they disagree, the disagreement itself signals uncertainty. Ensemble disagreement provides one of the most reliable uncertainty estimates available in deep learning, at the cost of training and maintaining multiple models.</p>
+<p>Deep ensembles train <span class="math inline">\(M\)</span> models (typically 5 to 10) with different random initializations, data orderings, or minor architectural variations. At inference time, all members produce predictions, and uncertainty is estimated from the variance or entropy of the ensemble distribution. For classification, epistemic uncertainty appears as disagreement in predicted class probabilities across members. For regression, epistemic uncertainty appears as variance in predicted values.</p>
+<p>The theoretical basis for ensemble uncertainty estimation rests on the observation that disagreement between models reflects regions of input space where the training data provides insufficient constraint. Where training examples are dense, gradient descent from different initializations converges to similar solutions, producing agreement. Where training examples are sparse or conflicting, different initializations find different local optima, producing disagreement. This interpretation connects ensembles to Bayesian model averaging, where predictions are averaged over the posterior distribution of model parameters.</p>
+<p>For foundation models with billions of parameters, training full ensembles becomes prohibitively expensive. Training five copies of ESM-2 requires approximately five times the compute of a single model, potentially millions of dollars in cloud computing costs. Several practical alternatives reduce this burden. Last-layer ensembles freeze the pretrained backbone and train only an ensemble of prediction heads, reducing cost by orders of magnitude while still capturing uncertainty from the fine-tuning process. Snapshot ensembles save model checkpoints at various points during optimization and use these snapshots as ensemble members, requiring only single-model training time. Multi-seed fine-tuning trains the same architecture from multiple random seeds on the fine-tuning task, which is far cheaper than multi-seed pretraining.</p>
+</section>
+<section id="monte-carlo-dropout" class="level3" data-number="23.4.2">
+<h3 data-number="23.4.2" class="anchored" data-anchor-id="monte-carlo-dropout"><span class="header-section-number">23.4.2</span> Monte Carlo Dropout</h3>
+<p>Monte Carlo (MC) dropout provides uncertainty estimates from a single trained model by treating dropout regularization as approximate Bayesian inference. During standard training with dropout, random subsets of neurons are zeroed at each forward pass. MC dropout keeps dropout active at test time and performs multiple stochastic forward passes, treating the variation across passes as a measure of model uncertainty.</p>
+<p>Gal and Ghahramani showed that this procedure approximates variational inference over the model’s weights <span class="citation" data-cites="gal_dropout_2016">(<a href="../bib/references.html#ref-gal_dropout_2016" role="doc-biblioref">TODO TODO</a>)</span>. Each forward pass with dropout samples a different subnetwork, and the distribution of predictions across samples approximates the predictive distribution under a particular prior over weights. High variance across MC samples indicates epistemic uncertainty about the model’s parameters for that input.</p>
+<p>MC dropout offers the significant advantage of requiring only a single trained model, avoiding the computational overhead of ensembles. Implementation is straightforward: enable dropout during inference and average predictions over 10 to 50 stochastic forward passes. The variance or entropy of these predictions serves as the uncertainty estimate.</p>
+<p>Limitations temper the method’s appeal. Modern transformer architectures often do not use dropout in their standard configurations, or use dropout only in specific locations (attention dropout, residual dropout) where the approximation may be less accurate. The quality of uncertainty estimates depends on the dropout rate and architecture, with higher dropout rates providing better uncertainty estimates but potentially degrading mean predictions. Empirical comparisons often find that MC dropout underestimates uncertainty relative to deep ensembles, particularly in low-data regimes where epistemic uncertainty should be high.</p>
+</section>
+<section id="heteroscedastic-models" class="level3" data-number="23.4.3">
+<h3 data-number="23.4.3" class="anchored" data-anchor-id="heteroscedastic-models"><span class="header-section-number">23.4.3</span> Heteroscedastic Models</h3>
+<p>Standard regression models predict a single output value, implicitly assuming constant noise variance across all inputs. Heteroscedastic models instead predict both a mean and a variance for each input, capturing the intuition that prediction uncertainty varies depending on the input. For genomic applications, this approach naturally handles the observation that some prediction tasks are inherently noisier than others: coding variant effects may be more predictable than regulatory variant effects, constrained genes more predictable than tolerant genes.</p>
+<p>Architecture modifications are minimal. Instead of outputting a single value, the model outputs two values interpreted as the mean <span class="math inline">\(\mu(x)\)</span> and variance <span class="math inline">\(\sigma^2(x)\)</span> of a Gaussian distribution over outputs. Training uses negative log-likelihood loss under this Gaussian, which penalizes both prediction errors and miscalibrated variance estimates:</p>
+<p><span class="math display">\[\mathcal{L} = \frac{1}{2\sigma^2(x)}(y - \mu(x))^2 + \frac{1}{2}\log \sigma^2(x)\]</span></p>
+<p>The first term penalizes prediction errors, weighted by inverse variance so that high-variance predictions are penalized less for the same absolute error. The second term prevents the model from simply predicting infinite variance to avoid all penalties. The result is a model that learns to predict larger variance for inputs where training labels are noisy or inconsistent, capturing aleatoric uncertainty in an input-dependent manner.</p>
+</section>
+<section id="evidential-deep-learning" class="level3" data-number="23.4.4">
+<h3 data-number="23.4.4" class="anchored" data-anchor-id="evidential-deep-learning"><span class="header-section-number">23.4.4</span> Evidential Deep Learning</h3>
+<p>Evidential deep learning places a prior distribution over the class probabilities themselves rather than directly predicting probabilities. For classification, the model outputs parameters of a Dirichlet distribution, which serves as a prior over the simplex of class probabilities. The concentration parameters of this Dirichlet encode both the predicted class probabilities (via their relative magnitudes) and the model’s uncertainty (via their absolute magnitudes).</p>
+<p>Low total concentration indicates high uncertainty: the model is unsure which class is correct. High total concentration with one dominant class indicates confident prediction. This framework provides a principled way to separate epistemic uncertainty (low concentration) from confident predictions (high concentration), all from a single forward pass without ensembling or MC sampling.</p>
+<p>Critics have noted that evidential deep learning can produce unreliable uncertainty estimates when the distributional assumptions are violated or when training data is limited. Practical experience suggests that ensembles and MC dropout often provide more robust uncertainty estimates, though evidential methods continue to be refined.</p>
+</section>
+</section>
+<section id="sec-conformal" class="level2" data-number="23.5">
+<h2 data-number="23.5" class="anchored" data-anchor-id="sec-conformal"><span class="header-section-number">23.5</span> Conformal Prediction: Distribution-Free Guarantees</h2>
+<div id="fig-conformal-prediction" class="quarto-float quarto-figure quarto-figure-center anchored">
+<figure class="quarto-float quarto-float-fig figure">
+<div aria-describedby="fig-conformal-prediction-caption-0ceaefa1-69ba-4598-a22c-09a6ac19f8ca">
+<div class="quarto-figure quarto-figure-center">
+<figure class="figure">
+<p><img src="https://placehold.co/300x200?text=FIGURE%20PLACEHOLDER.png" class="img-fluid figure-img"></p>
+<figcaption><strong>FIGURE PLACEHOLDER</strong></figcaption>
+</figure>
+</div>
+</div>
+<figcaption class="quarto-float-caption-bottom quarto-float-caption quarto-float-fig" id="fig-conformal-prediction-caption-0ceaefa1-69ba-4598-a22c-09a6ac19f8ca">
+Figure&nbsp;23.5: [High] Workflow with examples. Steps: (1) Calibration: Score variants on held-out set; (2) Threshold: Find threshold for 90% coverage; (3) Prediction sets: Include classes above threshold. Example outputs: High confidence {Pathogenic}, moderate {Pathogenic, VUS}, low {P, VUS, B}, abstention {}. Key properties: Coverage guarantee (≥90% marginal); set size conveys uncertainty; no probability interpretation needed. Visualization: Score distributions; threshold line; set sizes. Limitation: Marginal not conditional coverage.
+</figcaption>
+</figure>
+</div>
+<section id="the-conformal-prediction-framework" class="level3" data-number="23.5.1">
+<h3 data-number="23.5.1" class="anchored" data-anchor-id="the-conformal-prediction-framework"><span class="header-section-number">23.5.1</span> The Conformal Prediction Framework</h3>
+<p>Most uncertainty quantification methods make assumptions about model behavior or data distributions that may not hold in practice. Temperature scaling assumes miscalibration follows a particular functional form. Ensembles assume that disagreement reflects epistemic uncertainty rather than artifacts of training. Bayesian methods assume specific priors over model parameters. When these assumptions fail, uncertainty estimates may be unreliable precisely when reliability matters most.</p>
+<p>Conformal prediction offers something stronger: finite-sample coverage guarantees that hold under minimal assumptions. Instead of outputting a point prediction, conformal methods produce a prediction set guaranteed to contain the true label with probability at least <span class="math inline">\(1 - \alpha\)</span>, where <span class="math inline">\(\alpha\)</span> is a user-specified error rate. If we request 90% coverage (<span class="math inline">\(\alpha = 0.10\)</span>), the prediction set will contain the true label at least 90% of the time, regardless of the model’s accuracy or calibration. This guarantee requires only that calibration and test examples are exchangeable (a condition weaker than independent and identically distributed), making conformal prediction robust to model misspecification.</p>
+<p>The coverage guarantee is finite-sample: it holds exactly for any sample size, not just asymptotically. For clinical genomics applications where individual predictions carry significant consequences, this finite-sample property provides assurance that cannot be obtained from asymptotic calibration arguments.</p>
+</section>
+<section id="split-conformal-prediction" class="level3" data-number="23.5.2">
+<h3 data-number="23.5.2" class="anchored" data-anchor-id="split-conformal-prediction"><span class="header-section-number">23.5.2</span> Split Conformal Prediction</h3>
+<p>The most practical conformal method, split conformal prediction, proceeds in five steps. First, split available labeled data into a proper training set and a calibration set. Second, train the model on the training set only. Third, compute non-conformity scores on the calibration set, where higher scores indicate poorer fit between the model’s prediction and the true label. Fourth, find the threshold <span class="math inline">\(q\)</span> at the <span class="math inline">\((1-\alpha)(1+1/n)\)</span> quantile of calibration scores, where <span class="math inline">\(n\)</span> is the calibration set size. Fifth, at test time, include in the prediction set all labels whose non-conformity score falls below <span class="math inline">\(q\)</span>.</p>
+<p>Non-conformity scores measure how “strange” a candidate label is given the model’s output. For classification, a common choice is <span class="math inline">\(1 - \hat{p}_y\)</span>, where <span class="math inline">\(\hat{p}_y\)</span> is the predicted probability of the true class. High predicted probability means low non-conformity (the label conforms to the model’s expectations); low predicted probability means high non-conformity. For regression, absolute residuals <span class="math inline">\(|y - \hat{y}|\)</span> serve as non-conformity scores.</p>
+<p>The construction ensures coverage because calibration scores are exchangeable with test scores under the exchangeability assumption. The quantile threshold is set so that a random calibration score exceeds the threshold with probability at most <span class="math inline">\(\alpha\)</span>; by exchangeability, the same holds for test scores. This elegant argument yields exact coverage guarantees without requiring the model to be accurate or well-calibrated.</p>
+</section>
+<section id="conformal-prediction-for-variant-effect-prediction" class="level3" data-number="23.5.3">
+<h3 data-number="23.5.3" class="anchored" data-anchor-id="conformal-prediction-for-variant-effect-prediction"><span class="header-section-number">23.5.3</span> Conformal Prediction for Variant Effect Prediction</h3>
+<p>Variant effect prediction, examined in detail in <a href="../part_3/p3-ch14-vep-fm.html" class="quarto-xref"><span>Chapter 14</span></a>, concentrates the challenges of uncertainty quantification. Instead of reporting a single pathogenicity score, a conformalized variant classifier outputs a prediction set from the possibilities: {pathogenic}, {benign}, {pathogenic, benign}, or the empty set. The set is guaranteed to contain the true label at the specified coverage rate.</p>
+<p>Adaptive set sizes convey uncertainty naturally. Confident predictions yield small sets ({pathogenic} alone), while uncertain predictions yield larger sets ({pathogenic, benign}). The set size itself communicates the model’s confidence without requiring users to interpret numerical probabilities. A clinician seeing {pathogenic, benign} knows immediately that the model cannot distinguish between these possibilities, whereas a score of 0.55 might be misinterpreted as mild confidence in pathogenicity.</p>
+<p>Calibration set construction requires careful thought. Holding out variants at random may not prevent information leakage if related variants (same gene, same protein domain) appear in both calibration and test sets. Holding out entire genes or protein families provides more stringent evaluation but may reduce calibration set size for rare gene families. For applications intended to work across populations, calibration sets should include diverse ancestries to ensure coverage guarantees hold across patient populations.</p>
+<p>Conformal prediction intervals for regression tasks (expression prediction, quantitative trait prediction) provide bounds rather than sets. Conformalized quantile regression produces intervals guaranteed to contain the true value with specified probability, directly applicable to predicting gene expression changes or polygenic score uncertainty.</p>
+</section>
+<section id="limitations-and-practical-considerations" class="level3" data-number="23.5.4">
+<h3 data-number="23.5.4" class="anchored" data-anchor-id="limitations-and-practical-considerations"><span class="header-section-number">23.5.4</span> Limitations and Practical Considerations</h3>
+<p>Conformal guarantees are marginal rather than conditional. The coverage guarantee holds on average across all test examples, not for each individual example. A model might achieve exact 90% coverage overall while dramatically undercovering some subgroups and overcovering others. Subgroup-conditional coverage requires additional assumptions or methods like stratified conformal prediction.</p>
+<p>The exchangeability assumption can fail in practice. If the calibration set derives from one population and the test set from another, coverage guarantees may not hold. Temporal shifts (calibration on historical data, testing on future data) similarly violate exchangeability. Methods for conformal prediction under distribution shift exist but require additional assumptions about the nature of the shift.</p>
+<p>Prediction set size trades off against informativeness. Larger sets provide more reliable coverage but less useful predictions. A model that produces {pathogenic, benign} for every variant achieves perfect coverage but provides no discrimination. Careful model development to improve underlying accuracy reduces average set size while maintaining coverage guarantees.</p>
+</section>
+</section>
+<section id="sec-ood-detection" class="level2" data-number="23.6">
+<h2 data-number="23.6" class="anchored" data-anchor-id="sec-ood-detection"><span class="header-section-number">23.6</span> Out-of-Distribution Detection</h2>
+<div id="fig-ood-detection" class="quarto-layout-panel">
+<figure class="quarto-float quarto-float-fig figure">
+<div aria-describedby="fig-ood-detection-caption-0ceaefa1-69ba-4598-a22c-09a6ac19f8ca">
+<div class="quarto-layout-row">
+<div class="quarto-layout-cell" style="flex-basis: 50.0%;justify-content: flex-start;">
+<div class="quarto-figure quarto-figure-center">
+<figure class="figure">
+<p><img src="https://placehold.co/300x200?text=FIGURE%20PLACEHOLDER%20A.png" class="img-fluid figure-img"></p>
+<figcaption><strong>FIGURE PLACEHOLDER A</strong></figcaption>
+</figure>
+</div>
+</div>
+<div class="quarto-layout-cell" style="flex-basis: 50.0%;justify-content: flex-start;">
+<div class="quarto-figure quarto-figure-center">
+<figure class="figure">
+<p><img src="https://placehold.co/300x200?text=FIGURE%20PLACEHOLDER%20B.png" class="img-fluid figure-img"></p>
+<figcaption><strong>FIGURE PLACEHOLDER B</strong></figcaption>
+</figure>
+</div>
+</div>
+</div>
+<div class="quarto-layout-row">
+<div class="quarto-layout-cell" style="flex-basis: 50.0%;justify-content: flex-start;">
+<div class="quarto-figure quarto-figure-center">
+<figure class="figure">
+<p><img src="https://placehold.co/300x200?text=FIGURE%20PLACEHOLDER%20C.png" class="img-fluid figure-img"></p>
+<figcaption><strong>FIGURE PLACEHOLDER C</strong></figcaption>
+</figure>
+</div>
+</div>
+</div>
+</div>
+<figcaption class="quarto-float-caption-bottom quarto-float-caption quarto-float-fig" id="fig-ood-detection-caption-0ceaefa1-69ba-4598-a22c-09a6ac19f8ca">
+Figure&nbsp;23.6: [High] Embedding space visualization. Main panel: UMAP/t-SNE; dense training clusters (blue); isolated OOD points (red); examples (novel archaeal sequence, synthetic protein, variant in poorly characterized gene). Detection methods (side panels): Mahalanobis distance (histogram ID vs OOD, threshold), nearest neighbor distance, ensemble disagreement. Key insight: Flag for manual review rather than automate.
+</figcaption>
+</figure>
+</div>
+<section id="the-out-of-distribution-problem" class="level3" data-number="23.6.1">
+<h3 data-number="23.6.1" class="anchored" data-anchor-id="the-out-of-distribution-problem"><span class="header-section-number">23.6.1</span> The Out-of-Distribution Problem</h3>
+<p>A DNA language model trained on mammalian genomes encounters a novel archaeal sequence. The model’s embedding places this sequence in an unfamiliar region of representation space, far from the clusters formed by training examples. Yet the model still produces a prediction, potentially with high confidence, because standard neural networks are not designed to recognize when inputs lie outside their training distribution. Detecting out-of-distribution (OOD) inputs is essential for safe deployment of foundation models in settings where novel sequences are inevitable.</p>
+<p>OOD detection identifies inputs that differ meaningfully from training data, allowing systems to flag uncertain predictions before they cause harm. Novel pathogens may share little sequence similarity with characterized viruses in training data. Synthetic proteins designed for therapeutic purposes may occupy regions of sequence space unsampled by evolution. Variants in poorly characterized genes may lack the contextual information that models rely on for accurate prediction. In each case, recognizing that the input is unusual enables appropriate caution.</p>
+<p>The confidence problem compounds OOD challenges. Neural networks often produce high-confidence predictions on OOD inputs because nothing in standard training penalizes confidence on unfamiliar examples. A classifier trained to distinguish pathogenic from benign variants may confidently predict “pathogenic” for a completely random sequence, not because it has evidence for pathogenicity but because it lacks the capacity to say “I don’t know.” This failure mode makes OOD detection essential rather than optional.</p>
+</section>
+<section id="likelihood-based-detection-and-its-failures" class="level3" data-number="23.6.2">
+<h3 data-number="23.6.2" class="anchored" data-anchor-id="likelihood-based-detection-and-its-failures"><span class="header-section-number">23.6.2</span> Likelihood-Based Detection and Its Failures</h3>
+<p>The intuitive approach to OOD detection uses model likelihood: inputs the model finds improbable should be flagged as OOD. Language models assign likelihoods to sequences; surely OOD sequences should receive low likelihood?</p>
+<p>This intuition fails for deep generative models. Complex models can assign high likelihood to OOD data for reasons unrelated to semantic similarity to training examples. In high-dimensional spaces, typical sets (regions where most probability mass concentrates) do not coincide with high-density regions. A sequence might land in a high-density region of the model’s distribution while being semantically distant from any training example.</p>
+<p>Empirically, language models assign high likelihood to repetitive sequences, sequences with unusual but consistent patterns, and sequences from different domains that happen to share statistical properties with training data. For genomic models, this means likelihood alone cannot reliably distinguish novel biological sequences from sequences within the training distribution.</p>
+</section>
+<section id="embedding-based-detection" class="level3" data-number="23.6.3">
+<h3 data-number="23.6.3" class="anchored" data-anchor-id="embedding-based-detection"><span class="header-section-number">23.6.3</span> Embedding-Based Detection</h3>
+<p>Learned representations provide more reliable OOD detection than raw likelihood. The key insight is that embeddings encode semantic structure: similar sequences cluster together in embedding space, and OOD sequences land in sparse regions distant from training clusters.</p>
+<p>Mahalanobis distance measures how far a test embedding lies from training data, accounting for the covariance structure of the embedding space. For each class, compute the mean embedding and covariance matrix from training examples. For a test input, compute its distance to each class centroid in units of standard deviations, accounting for correlations between embedding dimensions. Large Mahalanobis distance indicates OOD inputs.</p>
+<p>Nearest-neighbor methods provide a non-parametric alternative. For a test embedding, find the <span class="math inline">\(k\)</span> nearest neighbors among training embeddings and compute the average distance. Large average distance to neighbors indicates the test input lies in a sparse region of embedding space, suggesting it is OOD. This approach makes no distributional assumptions and scales well with modern approximate nearest-neighbor algorithms.</p>
+<p>For genomic foundation models, embedding-based OOD detection enables practical deployment safeguards. ESM embeddings place novel protein folds in regions distant from characterized folds, allowing detection of sequences outside the model’s training experience. DNABERT embeddings reveal unusual sequence composition or repeat structures that may confound predictions. Flagging these cases for expert review prevents confident but unreliable predictions from reaching clinical decisions.</p>
+</section>
+<section id="practical-ood-detection-for-genomic-applications" class="level3" data-number="23.6.4">
+<h3 data-number="23.6.4" class="anchored" data-anchor-id="practical-ood-detection-for-genomic-applications"><span class="header-section-number">23.6.4</span> Practical OOD Detection for Genomic Applications</h3>
+<p>Defining what counts as OOD requires domain knowledge. Novel species or clades may share evolutionary history with training examples yet differ enough to warrant caution. Extreme GC content can indicate contamination, unusual biology, or simply under-represented genomic regions. Engineered sequences (designed proteins, synthetic regulatory elements) intentionally explore regions of sequence space not represented in natural sequences.</p>
+<p>Combining multiple OOD signals improves reliability. Embedding distance, likelihood, and prediction confidence each capture different aspects of distributional difference. An input flagged by multiple methods is more reliably OOD than one flagged by a single method. Threshold selection involves trade-offs between false positives (flagging in-distribution examples unnecessarily) and false negatives (missing true OOD examples).</p>
+<p>The operational response to OOD detection depends on the application. For variant interpretation, OOD inputs might trigger automatic flagging for expert review rather than automated classification. For high-throughput screening, OOD inputs might receive tentative predictions with explicit uncertainty warnings. For safety-critical applications, OOD inputs might trigger rejection with a request for additional information.</p>
+</section>
+</section>
+<section id="sec-selective-prediction" class="level2" data-number="23.7">
+<h2 data-number="23.7" class="anchored" data-anchor-id="sec-selective-prediction"><span class="header-section-number">23.7</span> Selective Prediction and Abstention</h2>
+<div id="fig-selective-prediction" class="quarto-float quarto-figure quarto-figure-center anchored">
+<figure class="quarto-float quarto-float-fig figure">
+<div aria-describedby="fig-selective-prediction-caption-0ceaefa1-69ba-4598-a22c-09a6ac19f8ca">
+<div class="quarto-figure quarto-figure-center">
+<figure class="figure">
+<p><img src="https://placehold.co/300x200?text=FIGURE%20PLACEHOLDER.png" class="img-fluid figure-img"></p>
+<figcaption><strong>FIGURE PLACEHOLDER</strong></figcaption>
+</figure>
+</div>
+</div>
+<figcaption class="quarto-float-caption-bottom quarto-float-caption quarto-float-fig" id="fig-selective-prediction-caption-0ceaefa1-69ba-4598-a22c-09a6ac19f8ca">
+Figure&nbsp;23.7: [Enhancing] Accuracy-coverage tradeoff. Main plot: Coverage (x) vs Accuracy (y); curve rising as coverage decreases (more selective = more accurate). Operating point selection: Clinical applications need different tradeoffs. Reject option: High uncertainty → abstain. Example: 90% coverage with 85% accuracy vs 70% coverage with 95% accuracy. Connection to clinical workflow: Rejected variants → expert review.
+</figcaption>
+</figure>
+</div>
+<section id="when-to-abstain" class="level3" data-number="23.7.1">
+<h3 data-number="23.7.1" class="anchored" data-anchor-id="when-to-abstain"><span class="header-section-number">23.7.1</span> When to Abstain</h3>
+<p>A variant effect predictor achieving 95% accuracy overall provides more clinical value if it can identify which predictions are reliable. Selective prediction allows models to abstain on difficult cases, concentrating predictions on inputs where confidence is warranted. The trade-off between coverage (fraction of inputs receiving predictions) and accuracy (correctness among predictions made) defines the selective prediction problem.</p>
+<p>The coverage-accuracy trade-off reflects a fundamental tension. At 100% coverage, the model predicts on all inputs and achieves its baseline accuracy. As coverage decreases (more abstention), accuracy among predictions made typically increases because the model abstains on its most uncertain cases. The shape of this trade-off curve characterizes the model’s ability to identify reliable predictions.</p>
+<p>Abstention is appropriate when the cost of errors exceeds the cost of deferral. In clinical variant interpretation, a confident but incorrect pathogenic prediction may trigger unnecessary medical intervention, while abstention merely defers the decision to expert review. If expert review is available and affordable relative to error costs, abstaining on uncertain cases improves overall decision quality. Conversely, in high-throughput screening where expert review is infeasible, abstention may provide little benefit because all predictions eventually require automated handling.</p>
+</section>
+<section id="selective-prediction-methods" class="level3" data-number="23.7.2">
+<h3 data-number="23.7.2" class="anchored" data-anchor-id="selective-prediction-methods"><span class="header-section-number">23.7.2</span> Selective Prediction Methods</h3>
+<p>Confidence-based selection abstains when the model’s maximum predicted probability falls below a threshold. For a classifier producing probabilities over classes, if <span class="math inline">\(\max_c \hat{p}_c &lt; \tau\)</span>, the model abstains. This simple approach works well when model confidence correlates with correctness, but fails when models are confidently wrong.</p>
+<p>Ensemble-based selection abstains when ensemble members disagree beyond a threshold. High disagreement indicates epistemic uncertainty about the correct prediction, warranting abstention even if individual members express confidence. This approach captures uncertainty that confidence-based selection misses when models are overconfident.</p>
+<p>Conformal selection abstains when prediction sets exceed a size threshold. If the conformal prediction set contains more than one class, the model lacks confidence to make a unique prediction. This approach connects selective prediction to the coverage guarantees of conformal methods: the model makes predictions with guaranteed coverage on the non-abstained cases.</p>
+<p>Learned selection trains a separate model to predict whether the primary model will be correct on each input. This “rejection model” learns to identify failure modes that simple confidence thresholds miss, potentially achieving better coverage-accuracy trade-offs than heuristic methods.</p>
+</section>
+<section id="evaluating-selective-prediction" class="level3" data-number="23.7.3">
+<h3 data-number="23.7.3" class="anchored" data-anchor-id="evaluating-selective-prediction"><span class="header-section-number">23.7.3</span> Evaluating Selective Prediction</h3>
+<p>Risk-coverage curves plot accuracy (or its complement, risk) as a function of coverage, revealing how performance improves as the model becomes more selective. The area under the risk-coverage curve summarizes overall selective prediction quality. Models with better uncertainty estimates produce steeper curves, achieving high accuracy at lower coverage.</p>
+<p>Selective accuracy at fixed coverage specifies a coverage level (e.g., 80%) and reports accuracy among predictions made at that coverage. This metric directly answers practical questions: “If we let the model predict on its 80% most confident cases, how accurate will it be?”</p>
+<p>Comparison across methods requires matched coverage levels. A method that achieves 99% accuracy at 50% coverage and 95% accuracy at 90% coverage may be preferable to a method achieving 97% accuracy at both levels, depending on operational requirements. Reporting full risk-coverage curves enables stakeholders to select operating points appropriate to their cost structures.</p>
+</section>
+</section>
+<section id="sec-genomic-uq" class="level2" data-number="23.8">
+<h2 data-number="23.8" class="anchored" data-anchor-id="sec-genomic-uq"><span class="header-section-number">23.8</span> Uncertainty for Specific Genomic Tasks</h2>
+<section id="variant-effect-prediction-uncertainty" class="level3" data-number="23.8.1">
+<h3 data-number="23.8.1" class="anchored" data-anchor-id="variant-effect-prediction-uncertainty"><span class="header-section-number">23.8.1</span> Variant Effect Prediction Uncertainty</h3>
+<p>Variant effect prediction concentrates the challenges of uncertainty quantification. Epistemic uncertainty arises from poorly characterized genes, novel protein folds, and under-represented populations in training data. Aleatoric uncertainty stems from incomplete penetrance, variable expressivity, and noise in functional assay labels. Both types of uncertainty must be estimated and communicated for variant predictions to inform clinical decisions appropriately.</p>
+<p>Calibration challenges for VEP include the evolving nature of ground truth labels. ClinVar annotations change as new evidence emerges; variants classified as VUS may be reclassified as pathogenic or benign, and even confident classifications occasionally reverse. A model calibrated against a historical version of ClinVar may appear miscalibrated against current annotations, not because the model changed but because the labels did. Periodic recalibration against current databases maintains alignment between model outputs and contemporary clinical understanding.</p>
+<p>Population-specific calibration addresses the reality that training data predominantly derive from European-ancestry cohorts. For patients from other ancestral backgrounds, both epistemic uncertainty (fewer training examples) and calibration (different baseline pathogenicity rates, different patterns of variation) may differ from the aggregate. Stratified reliability diagrams by ancestry reveal these differences; ancestry-conditional calibration may be necessary for equitable performance across populations.</p>
+</section>
+<section id="regulatory-variant-uncertainty" class="level3" data-number="23.8.2">
+<h3 data-number="23.8.2" class="anchored" data-anchor-id="regulatory-variant-uncertainty"><span class="header-section-number">23.8.2</span> Regulatory Variant Uncertainty</h3>
+<p>Regulatory variants present distinct uncertainty challenges. Unlike coding variants where effects can be localized to specific amino acid changes, regulatory variants act through complex mechanisms involving transcription factor binding, chromatin accessibility, and three-dimensional genome organization. This mechanistic complexity translates to higher aleatoric uncertainty: even perfectly characterized regulatory variants may have context-dependent effects that vary across cell types, developmental stages, and genetic backgrounds. A variant that disrupts a transcription factor binding site may have dramatic effects in tissues where that factor is active and negligible effects elsewhere, yet the model must predict across all contexts simultaneously.</p>
+<p>The context-dependence of regulatory effects creates a calibration challenge distinct from coding variants. A model may be well-calibrated for predicting expression changes in cell types abundant in training data (lymphoblastoid cell lines, common cancer lines) while poorly calibrated for clinically relevant primary tissues rarely profiled at scale. Stratified calibration assessment across tissue types reveals these disparities, but the sparsity of ground truth labels for many tissues limits the precision of tissue-specific calibration estimates.</p>
+<p>Expression prediction models like Enformer and Borzoi provide uncertainty estimates for predicted expression changes through several approaches. Ensemble methods quantify disagreement across model variants trained with different random seeds. Heteroscedastic architectures predict tissue-specific confidence alongside tissue-specific expression, learning that predictions for well-characterized tissues deserve higher confidence than those for rarely profiled contexts. These uncertainties propagate to downstream interpretations: a variant predicted to alter expression with high uncertainty warrants different treatment than one with narrow confidence bounds, and the tissue-specificity of uncertainty may itself be informative about which experimental follow-up would most reduce ambiguity.</p>
+</section>
+<section id="uncertainty-across-populations" class="level3" data-number="23.8.3">
+<h3 data-number="23.8.3" class="anchored" data-anchor-id="uncertainty-across-populations"><span class="header-section-number">23.8.3</span> Uncertainty Across Populations</h3>
+<p>Differential uncertainty across populations has direct implications for health equity. Models trained predominantly on European-ancestry data exhibit higher epistemic uncertainty for other populations, manifesting in several observable ways: larger prediction sets from conformal methods, higher abstention rates from selective prediction, greater ensemble disagreement, and less reliable confidence estimates from calibration. These differences arise from multiple sources. Linkage disequilibrium patterns differ across populations, meaning that variant correlations learned from European data may not transfer. Population-specific variants absent from training data generate pure epistemic uncertainty. Even shared variants may have different effect sizes across populations due to gene-environment interactions or epistatic backgrounds that vary by ancestry.</p>
+<p>Quantifying population-specific uncertainty requires appropriate calibration and evaluation datasets. A model calibrated exclusively on European-ancestry ClinVar submissions may appear well-calibrated on aggregate metrics while being systematically miscalibrated for other populations. The scarcity of diverse calibration data creates a challenging circularity: we cannot assess population-specific calibration without diverse labeled datasets, yet diverse labeled datasets are precisely what current genomic databases lack. Initiatives like the All of Us Research Program and population-specific biobanks (Uganda Genome Resource, Taiwan Biobank, BioBank Japan) are beginning to address this gap, enabling population-stratified uncertainty assessment that was previously impossible.</p>
+<p>Transparent reporting of population-stratified uncertainty metrics enables informed decisions about model deployment. If a model abstains on 30% of variants in one population but only 10% in another, users can make informed choices about supplementary analyses for the higher-abstention population. Clinical laboratories might establish ancestry-specific thresholds for automated reporting versus expert review. Research applications might weight predictions by ancestry-specific confidence when aggregating across diverse cohorts. Ignoring these differences risks providing lower-quality predictions to already under-served populations while presenting a false appearance of uniform reliability, compounding existing disparities in genomic medicine.</p>
+</section>
+</section>
+<section id="sec-uncertainty-communication" class="level2" data-number="23.9">
+<h2 data-number="23.9" class="anchored" data-anchor-id="sec-uncertainty-communication"><span class="header-section-number">23.9</span> Communicating Uncertainty to End Users</h2>
+<section id="the-communication-challenge" class="level3" data-number="23.9.1">
+<h3 data-number="23.9.1" class="anchored" data-anchor-id="the-communication-challenge"><span class="header-section-number">23.9.1</span> The Communication Challenge</h3>
+<p>A pathogenicity score of <span class="math inline">\(0.73 \pm 0.15\)</span> may be statistically accurate but nearly useless to a clinician deciding whether to order confirmatory testing. The gap between statistical uncertainty and decision-relevant communication presents a persistent challenge for genomic AI deployment. Different users reason differently about probability and risk; effective communication requires understanding these differences.</p>
+<p>Cognitive biases complicate probability interpretation. Humans tend toward overconfidence in point estimates, treating 0.73 as more certain than warranted. Prediction intervals are frequently misunderstood: a 90% confidence interval does not mean the true value has a 90% chance of being in that specific interval (a Bayesian interpretation) but rather that 90% of such intervals would contain the true value (a frequentist interpretation). Base rate neglect leads users to interpret variant-level pathogenicity predictions without accounting for prior probability based on clinical presentation, family history, and phenotypic specificity.</p>
+<p>Different stakeholders have different needs. Clinicians require actionable categories that map to clinical decision points, not continuous scores requiring interpretation. Researchers may prefer full probability distributions enabling flexible downstream analysis. Patients and families need understandable risk communication that supports informed decision-making without inducing inappropriate anxiety or false reassurance.</p>
+</section>
+<section id="categorical-reporting" class="level3" data-number="23.9.2">
+<h3 data-number="23.9.2" class="anchored" data-anchor-id="categorical-reporting"><span class="header-section-number">23.9.2</span> Categorical Reporting</h3>
+<p>Clinical genetics has established categorical frameworks for variant interpretation. The ACMG-AMP guidelines define five categories: pathogenic, likely pathogenic, variant of uncertain significance, likely benign, and benign. Mapping continuous model outputs to these categories requires threshold selection that balances sensitivity and specificity at clinically meaningful operating points.</p>
+<p>Uncertainty within categories can be conveyed through confidence qualifiers or numerical confidence scores attached to categorical calls. A “likely pathogenic” call with 95% confidence differs meaningfully from one with 60% confidence, even though both receive the same categorical label. Two-dimensional reporting combining category and confidence enables more nuanced interpretation without abandoning the categorical framework that clinicians expect.</p>
+<p>Threshold selection involves value judgments beyond pure statistics. The consequences of false positive and false negative pathogenic calls differ by clinical context. For a severe, treatable condition, false negatives carry higher cost, warranting lower thresholds for pathogenic classification. For untreatable conditions where pathogenic classification affects reproductive decisions, the calculus differs. Uncertainty quantification enables informed threshold selection by revealing the trade-offs at different operating points.</p>
+</section>
+<section id="visual-communication" class="level3" data-number="23.9.3">
+<h3 data-number="23.9.3" class="anchored" data-anchor-id="visual-communication"><span class="header-section-number">23.9.3</span> Visual Communication</h3>
+<p>Probability bars and confidence intervals provide visual representation of uncertainty, though their interpretation depends on user familiarity with statistical graphics. Icon arrays, which represent probabilities as proportions of colored icons in a grid (e.g., 73 red icons and 27 blue icons out of 100), improve comprehension for users without statistical training. The visual representation of proportion is more intuitive than numerical probability for many audiences.</p>
+<p>Risk ladders place the prediction in context by showing where it falls relative to other risks of varying magnitude. A variant with 0.73 probability of pathogenicity can be placed alongside risks from other genetic conditions, environmental exposures, or common medical procedures, enabling intuitive comparison.</p>
+<p>Interactive visualizations allow users to explore uncertainty in detail, examining how predictions change under different assumptions or how uncertainty varies across related variants. These approaches suit sophisticated users engaged in research or detailed clinical analysis but may overwhelm users seeking simple answers.</p>
+</section>
+<section id="decision-theoretic-framing" class="level3" data-number="23.9.4">
+<h3 data-number="23.9.4" class="anchored" data-anchor-id="decision-theoretic-framing"><span class="header-section-number">23.9.4</span> Decision-Theoretic Framing</h3>
+<p>Rather than communicating probability alone, decision-theoretic framing presents expected outcomes under different actions. Instead of “this variant has 73% probability of being pathogenic,” the report might state “if we assume this variant is pathogenic and proceed with surveillance, the expected outcomes are X; if we assume it is benign and decline surveillance, the expected outcomes are Y.”</p>
+<p>This framing integrates uncertainty with action, helping users understand how uncertainty affects what they should do rather than treating probability as an end in itself. The approach requires modeling clinical outcomes, which introduces additional assumptions, but makes explicit the decision-relevant implications of uncertainty rather than leaving users to integrate probability with consequences on their own.</p>
+</section>
+</section>
+<section id="necessary-but-insufficient" class="level2" data-number="23.10">
+<h2 data-number="23.10" class="anchored" data-anchor-id="necessary-but-insufficient"><span class="header-section-number">23.10</span> Necessary but Insufficient</h2>
+<p>Uncertainty quantification transforms foundation model outputs from opaque scores into components of rational decision processes. A well-calibrated pathogenicity prediction that honestly communicates its limitations enables appropriate clinical reasoning: high confidence warrants action, low confidence warrants additional testing or expert review. An overconfident score that claims false precision causes harm through both false positives (unnecessary interventions) and false negatives (missed diagnoses). The methods developed in this chapter, from temperature scaling through conformal prediction to out-of-distribution detection, provide the technical foundation for trustworthy genomic AI.</p>
+<p>The path from uncertainty quantification to clinical impact requires integrating these methods into operational workflows. Selective prediction enables triage between automated handling and expert review based on model confidence. Conformal prediction sets provide coverage guarantees that support risk-aware decision-making. Out-of-distribution detection prevents confident predictions on inputs that fall outside the training distribution. Calibration ensures that numerical probabilities mean what they claim to mean. Together, these tools enable foundation models to participate in clinical decisions without overstating their reliability.</p>
+<p>Yet uncertainty quantification alone is insufficient. A perfectly calibrated black box remains a black box. The clinician who receives an uncertain prediction wants to understand why the model is uncertain: Is it because the variant falls in a poorly characterized gene? Because the model has never encountered this protein fold? Because the underlying biology is genuinely ambiguous? Interpretability, examined in <a href="p5-ch24-interpretability.html" class="quarto-xref"><span>Chapter 24</span></a>, complements uncertainty by revealing the basis for predictions and their associated confidence. The conjunction of calibrated uncertainty and mechanistic understanding approaches what trustworthy clinical AI requires. Neither alone suffices; together they provide the foundation for models that clinicians can reason with rather than merely defer to.</p>
+
+
+<div id="refs" class="references csl-bib-body hanging-indent" data-entry-spacing="0" role="list" style="display: none">
+<div id="ref-landrum_clinvar_2024" class="csl-entry" role="listitem">
+Landrum, Melissa J, Jennifer M Lee, Mark Benson, Garth R Brown, Chen Chao, Shanmuga Chitipiralla, Baoshan Gu, et al. 2018. <span>“<span>ClinVar</span>: Improving Access to Variant Interpretations and Supporting Evidence.”</span> <em>Nucleic Acids Research</em> 46 (D1): D1062–67. <a href="https://doi.org/10.1093/nar/gkx1153">https://doi.org/10.1093/nar/gkx1153</a>.
+</div>
+<div id="ref-fowler_deep_2014" class="csl-entry" role="listitem">
+TODO. TODO. <span>“TODO.”</span>
+</div>
+<div id="ref-rubin_statistical_2017" class="csl-entry" role="listitem">
+———. TODO. <span>“TODO.”</span>
+</div>
+<div id="ref-guo_calibration_2017" class="csl-entry" role="listitem">
+———. TODO. <span>“TODO.”</span>
+</div>
+<div id="ref-gal_dropout_2016" class="csl-entry" role="listitem">
+———. TODO. <span>“TODO.”</span>
+</div>
+</div>
+</section>
+
+</main> <!-- /main -->
+<script id="quarto-html-after-body" type="application/javascript">
+  window.document.addEventListener("DOMContentLoaded", function (event) {
+    // Ensure there is a toggle, if there isn't float one in the top right
+    if (window.document.querySelector('.quarto-color-scheme-toggle') === null) {
+      const a = window.document.createElement('a');
+      a.classList.add('top-right');
+      a.classList.add('quarto-color-scheme-toggle');
+      a.href = "";
+      a.onclick = function() { try { window.quartoToggleColorScheme(); } catch {} return false; };
+      const i = window.document.createElement("i");
+      i.classList.add('bi');
+      a.appendChild(i);
+      window.document.body.appendChild(a);
+    }
+    setColorSchemeToggle(hasAlternateSentinel())
+    const icon = "";
+    const anchorJS = new window.AnchorJS();
+    anchorJS.options = {
+      placement: 'right',
+      icon: icon
+    };
+    anchorJS.add('.anchored');
+    const isCodeAnnotation = (el) => {
+      for (const clz of el.classList) {
+        if (clz.startsWith('code-annotation-')) {                     
+          return true;
+        }
+      }
+      return false;
+    }
+    const onCopySuccess = function(e) {
+      // button target
+      const button = e.trigger;
+      // don't keep focus
+      button.blur();
+      // flash "checked"
+      button.classList.add('code-copy-button-checked');
+      var currentTitle = button.getAttribute("title");
+      button.setAttribute("title", "Copied!");
+      let tooltip;
+      if (window.bootstrap) {
+        button.setAttribute("data-bs-toggle", "tooltip");
+        button.setAttribute("data-bs-placement", "left");
+        button.setAttribute("data-bs-title", "Copied!");
+        tooltip = new bootstrap.Tooltip(button, 
+          { trigger: "manual", 
+            customClass: "code-copy-button-tooltip",
+            offset: [0, -8]});
+        tooltip.show();    
+      }
+      setTimeout(function() {
+        if (tooltip) {
+          tooltip.hide();
+          button.removeAttribute("data-bs-title");
+          button.removeAttribute("data-bs-toggle");
+          button.removeAttribute("data-bs-placement");
+        }
+        button.setAttribute("title", currentTitle);
+        button.classList.remove('code-copy-button-checked');
+      }, 1000);
+      // clear code selection
+      e.clearSelection();
+    }
+    const getTextToCopy = function(trigger) {
+      const outerScaffold = trigger.parentElement.cloneNode(true);
+      const codeEl = outerScaffold.querySelector('code');
+      for (const childEl of codeEl.children) {
+        if (isCodeAnnotation(childEl)) {
+          childEl.remove();
+        }
+      }
+      return codeEl.innerText;
+    }
+    const clipboard = new window.ClipboardJS('.code-copy-button:not([data-in-quarto-modal])', {
+      text: getTextToCopy
+    });
+    clipboard.on('success', onCopySuccess);
+    if (window.document.getElementById('quarto-embedded-source-code-modal')) {
+      const clipboardModal = new window.ClipboardJS('.code-copy-button[data-in-quarto-modal]', {
+        text: getTextToCopy,
+        container: window.document.getElementById('quarto-embedded-source-code-modal')
+      });
+      clipboardModal.on('success', onCopySuccess);
+    }
+      var localhostRegex = new RegExp(/^(?:http|https):\/\/localhost\:?[0-9]*\//);
+      var mailtoRegex = new RegExp(/^mailto:/);
+        var filterRegex = new RegExp('/' + window.location.host + '/');
+      var isInternal = (href) => {
+          return filterRegex.test(href) || localhostRegex.test(href) || mailtoRegex.test(href);
+      }
+      // Inspect non-navigation links and adorn them if external
+     var links = window.document.querySelectorAll('a[href]:not(.nav-link):not(.navbar-brand):not(.toc-action):not(.sidebar-link):not(.sidebar-item-toggle):not(.pagination-link):not(.no-external):not([aria-hidden]):not(.dropdown-item):not(.quarto-navigation-tool):not(.about-link)');
+      for (var i=0; i<links.length; i++) {
+        const link = links[i];
+        if (!isInternal(link.href)) {
+          // undo the damage that might have been done by quarto-nav.js in the case of
+          // links that we want to consider external
+          if (link.dataset.originalHref !== undefined) {
+            link.href = link.dataset.originalHref;
+          }
+        }
+      }
+    function tippyHover(el, contentFn, onTriggerFn, onUntriggerFn) {
+      const config = {
+        allowHTML: true,
+        maxWidth: 500,
+        delay: 100,
+        arrow: false,
+        appendTo: function(el) {
+            return el.parentElement;
+        },
+        interactive: true,
+        interactiveBorder: 10,
+        theme: 'quarto',
+        placement: 'bottom-start',
+      };
+      if (contentFn) {
+        config.content = contentFn;
+      }
+      if (onTriggerFn) {
+        config.onTrigger = onTriggerFn;
+      }
+      if (onUntriggerFn) {
+        config.onUntrigger = onUntriggerFn;
+      }
+      window.tippy(el, config); 
+    }
+    const noterefs = window.document.querySelectorAll('a[role="doc-noteref"]');
+    for (var i=0; i<noterefs.length; i++) {
+      const ref = noterefs[i];
+      tippyHover(ref, function() {
+        // use id or data attribute instead here
+        let href = ref.getAttribute('data-footnote-href') || ref.getAttribute('href');
+        try { href = new URL(href).hash; } catch {}
+        const id = href.replace(/^#\/?/, "");
+        const note = window.document.getElementById(id);
+        if (note) {
+          return note.innerHTML;
+        } else {
+          return "";
+        }
+      });
+    }
+    const xrefs = window.document.querySelectorAll('a.quarto-xref');
+    const processXRef = (id, note) => {
+      // Strip column container classes
+      const stripColumnClz = (el) => {
+        el.classList.remove("page-full", "page-columns");
+        if (el.children) {
+          for (const child of el.children) {
+            stripColumnClz(child);
+          }
+        }
+      }
+      stripColumnClz(note)
+      if (id === null || id.startsWith('sec-')) {
+        // Special case sections, only their first couple elements
+        const container = document.createElement("div");
+        if (note.children && note.children.length > 2) {
+          container.appendChild(note.children[0].cloneNode(true));
+          for (let i = 1; i < note.children.length; i++) {
+            const child = note.children[i];
+            if (child.tagName === "P" && child.innerText === "") {
+              continue;
+            } else {
+              container.appendChild(child.cloneNode(true));
+              break;
+            }
+          }
+          if (window.Quarto?.typesetMath) {
+            window.Quarto.typesetMath(container);
+          }
+          return container.innerHTML
+        } else {
+          if (window.Quarto?.typesetMath) {
+            window.Quarto.typesetMath(note);
+          }
+          return note.innerHTML;
+        }
+      } else {
+        // Remove any anchor links if they are present
+        const anchorLink = note.querySelector('a.anchorjs-link');
+        if (anchorLink) {
+          anchorLink.remove();
+        }
+        if (window.Quarto?.typesetMath) {
+          window.Quarto.typesetMath(note);
+        }
+        if (note.classList.contains("callout")) {
+          return note.outerHTML;
+        } else {
+          return note.innerHTML;
+        }
+      }
+    }
+    for (var i=0; i<xrefs.length; i++) {
+      const xref = xrefs[i];
+      tippyHover(xref, undefined, function(instance) {
+        instance.disable();
+        let url = xref.getAttribute('href');
+        let hash = undefined; 
+        if (url.startsWith('#')) {
+          hash = url;
+        } else {
+          try { hash = new URL(url).hash; } catch {}
+        }
+        if (hash) {
+          const id = hash.replace(/^#\/?/, "");
+          const note = window.document.getElementById(id);
+          if (note !== null) {
+            try {
+              const html = processXRef(id, note.cloneNode(true));
+              instance.setContent(html);
+            } finally {
+              instance.enable();
+              instance.show();
+            }
+          } else {
+            // See if we can fetch this
+            fetch(url.split('#')[0])
+            .then(res => res.text())
+            .then(html => {
+              const parser = new DOMParser();
+              const htmlDoc = parser.parseFromString(html, "text/html");
+              const note = htmlDoc.getElementById(id);
+              if (note !== null) {
+                const html = processXRef(id, note);
+                instance.setContent(html);
+              } 
+            }).finally(() => {
+              instance.enable();
+              instance.show();
+            });
+          }
+        } else {
+          // See if we can fetch a full url (with no hash to target)
+          // This is a special case and we should probably do some content thinning / targeting
+          fetch(url)
+          .then(res => res.text())
+          .then(html => {
+            const parser = new DOMParser();
+            const htmlDoc = parser.parseFromString(html, "text/html");
+            const note = htmlDoc.querySelector('main.content');
+            if (note !== null) {
+              // This should only happen for chapter cross references
+              // (since there is no id in the URL)
+              // remove the first header
+              if (note.children.length > 0 && note.children[0].tagName === "HEADER") {
+                note.children[0].remove();
+              }
+              const html = processXRef(null, note);
+              instance.setContent(html);
+            } 
+          }).finally(() => {
+            instance.enable();
+            instance.show();
+          });
+        }
+      }, function(instance) {
+      });
+    }
+        let selectedAnnoteEl;
+        const selectorForAnnotation = ( cell, annotation) => {
+          let cellAttr = 'data-code-cell="' + cell + '"';
+          let lineAttr = 'data-code-annotation="' +  annotation + '"';
+          const selector = 'span[' + cellAttr + '][' + lineAttr + ']';
+          return selector;
+        }
+        const selectCodeLines = (annoteEl) => {
+          const doc = window.document;
+          const targetCell = annoteEl.getAttribute("data-target-cell");
+          const targetAnnotation = annoteEl.getAttribute("data-target-annotation");
+          const annoteSpan = window.document.querySelector(selectorForAnnotation(targetCell, targetAnnotation));
+          const lines = annoteSpan.getAttribute("data-code-lines").split(",");
+          const lineIds = lines.map((line) => {
+            return targetCell + "-" + line;
+          })
+          let top = null;
+          let height = null;
+          let parent = null;
+          if (lineIds.length > 0) {
+              //compute the position of the single el (top and bottom and make a div)
+              const el = window.document.getElementById(lineIds[0]);
+              top = el.offsetTop;
+              height = el.offsetHeight;
+              parent = el.parentElement.parentElement;
+            if (lineIds.length > 1) {
+              const lastEl = window.document.getElementById(lineIds[lineIds.length - 1]);
+              const bottom = lastEl.offsetTop + lastEl.offsetHeight;
+              height = bottom - top;
+            }
+            if (top !== null && height !== null && parent !== null) {
+              // cook up a div (if necessary) and position it 
+              let div = window.document.getElementById("code-annotation-line-highlight");
+              if (div === null) {
+                div = window.document.createElement("div");
+                div.setAttribute("id", "code-annotation-line-highlight");
+                div.style.position = 'absolute';
+                parent.appendChild(div);
+              }
+              div.style.top = top - 2 + "px";
+              div.style.height = height + 4 + "px";
+              div.style.left = 0;
+              let gutterDiv = window.document.getElementById("code-annotation-line-highlight-gutter");
+              if (gutterDiv === null) {
+                gutterDiv = window.document.createElement("div");
+                gutterDiv.setAttribute("id", "code-annotation-line-highlight-gutter");
+                gutterDiv.style.position = 'absolute';
+                const codeCell = window.document.getElementById(targetCell);
+                const gutter = codeCell.querySelector('.code-annotation-gutter');
+                gutter.appendChild(gutterDiv);
+              }
+              gutterDiv.style.top = top - 2 + "px";
+              gutterDiv.style.height = height + 4 + "px";
+            }
+            selectedAnnoteEl = annoteEl;
+          }
+        };
+        const unselectCodeLines = () => {
+          const elementsIds = ["code-annotation-line-highlight", "code-annotation-line-highlight-gutter"];
+          elementsIds.forEach((elId) => {
+            const div = window.document.getElementById(elId);
+            if (div) {
+              div.remove();
+            }
+          });
+          selectedAnnoteEl = undefined;
+        };
+          // Handle positioning of the toggle
+      window.addEventListener(
+        "resize",
+        throttle(() => {
+          elRect = undefined;
+          if (selectedAnnoteEl) {
+            selectCodeLines(selectedAnnoteEl);
+          }
+        }, 10)
+      );
+      function throttle(fn, ms) {
+      let throttle = false;
+      let timer;
+        return (...args) => {
+          if(!throttle) { // first call gets through
+              fn.apply(this, args);
+              throttle = true;
+          } else { // all the others get throttled
+              if(timer) clearTimeout(timer); // cancel #2
+              timer = setTimeout(() => {
+                fn.apply(this, args);
+                timer = throttle = false;
+              }, ms);
+          }
+        };
+      }
+        // Attach click handler to the DT
+        const annoteDls = window.document.querySelectorAll('dt[data-target-cell]');
+        for (const annoteDlNode of annoteDls) {
+          annoteDlNode.addEventListener('click', (event) => {
+            const clickedEl = event.target;
+            if (clickedEl !== selectedAnnoteEl) {
+              unselectCodeLines();
+              const activeEl = window.document.querySelector('dt[data-target-cell].code-annotation-active');
+              if (activeEl) {
+                activeEl.classList.remove('code-annotation-active');
+              }
+              selectCodeLines(clickedEl);
+              clickedEl.classList.add('code-annotation-active');
+            } else {
+              // Unselect the line
+              unselectCodeLines();
+              clickedEl.classList.remove('code-annotation-active');
+            }
+          });
+        }
+    const findCites = (el) => {
+      const parentEl = el.parentElement;
+      if (parentEl) {
+        const cites = parentEl.dataset.cites;
+        if (cites) {
+          return {
+            el,
+            cites: cites.split(' ')
+          };
+        } else {
+          return findCites(el.parentElement)
+        }
+      } else {
+        return undefined;
+      }
+    };
+    var bibliorefs = window.document.querySelectorAll('a[role="doc-biblioref"]');
+    for (var i=0; i<bibliorefs.length; i++) {
+      const ref = bibliorefs[i];
+      const citeInfo = findCites(ref);
+      if (citeInfo) {
+        tippyHover(citeInfo.el, function() {
+          var popup = window.document.createElement('div');
+          citeInfo.cites.forEach(function(cite) {
+            var citeDiv = window.document.createElement('div');
+            citeDiv.classList.add('hanging-indent');
+            citeDiv.classList.add('csl-entry');
+            var biblioDiv = window.document.getElementById('ref-' + cite);
+            if (biblioDiv) {
+              citeDiv.innerHTML = biblioDiv.innerHTML;
+            }
+            popup.appendChild(citeDiv);
+          });
+          return popup.innerHTML;
+        });
+      }
+    }
+  });
+  </script>
+<nav class="page-navigation">
+  <div class="nav-page nav-page-previous">
+      <a href="../part_5/p5-ch22-confounding.html" class="pagination-link" aria-label="Confounders and Leakage">
+        <i class="bi bi-arrow-left-short"></i> <span class="nav-page-text"><span class="chapter-number">22</span>&nbsp; <span class="chapter-title">Confounders and Leakage</span></span>
+      </a>          
+  </div>
+  <div class="nav-page nav-page-next">
+      <a href="../part_5/p5-ch24-interpretability.html" class="pagination-link" aria-label="Interpretability">
+        <span class="nav-page-text"><span class="chapter-number">24</span>&nbsp; <span class="chapter-title">Interpretability</span></span> <i class="bi bi-arrow-right-short"></i>
+      </a>
+  </div>
+</nav>
+</div> <!-- /content -->
+<footer class="footer">
+  <div class="nav-footer">
+    <div class="nav-footer-left">
+      &nbsp;
+    </div>   
+    <div class="nav-footer-center">
+<p>Copyright 2025, Josh Meehl</p>
+</div>
+    <div class="nav-footer-right">
+      &nbsp;
+    </div>
+  </div>
+</footer>
+
+
+
+
+</body></html>
