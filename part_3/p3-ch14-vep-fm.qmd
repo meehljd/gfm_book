@@ -1,6 +1,6 @@
 # Variant Effect Prediction {#sec-vep-fm}
 
-Classical variant effect prediction required labels: pathogenic variants to define one class, benign variants to define another, and enough examples of each to train a classifier. This requirement created a fundamental bottleneck. The variants most important to classify, those that are rare, never before observed, and located in poorly characterized genes, were precisely those for which labels did not exist. Foundation models offer a different paradigm: score variants using patterns **learned** from unlabeled sequences, without ever seeing a pathogenic/benign label during **pretraining**. A protein *language* model trained only to predict masked amino acids can distinguish damaging substitutions from benign polymorphisms because evolution has already encoded this distinction in the sequences that survived. A DNA language model can identify regulatory disruptions because it learned the grammar of functional elements from billions of nucleotides. The variants that violate learned patterns are the variants that disrupt function.
+Classical variant effect prediction required labels: pathogenic variants to define one class, benign variants to define another, and enough examples of each to train a classifier. This requirement created a fundamental bottleneck. The variants most important to classify, those that are rare, never before observed, and located in poorly characterized genes, were precisely those for which labels did not exist. Foundation models offer a different paradigm: score variants using patterns **learned** from unlabeled sequences, without ever seeing a pathogenic/benign label during **pretraining**. A protein language model trained only to predict masked amino acids can distinguish damaging substitutions from benign polymorphisms because evolution has already encoded this distinction in the sequences that survived. A DNA language model can identify regulatory disruptions because it learned the grammar of functional elements from billions of nucleotides. The variants that violate learned patterns are the variants that disrupt function.
 
 This zero-shot capability does not eliminate the need for labeled data but changes its role. Rather than training classifiers from scratch, practitioners fine-tune foundation models on modest variant datasets, leveraging pretrained knowledge to achieve performance impossible for models that start from random initialization. The combination of self-supervised pretraining and supervised **fine-tuning** produces variant effect predictors that outperform classical methods across most benchmarks while requiring far less task-specific data. AlphaMissense, ESM-1v, and similar systems demonstrate that foundation model representations capture variant effects across protein *families*, including families with no labeled variants in training data.
 
@@ -9,13 +9,13 @@ Yet significant challenges remain. Foundation models predict that variants are d
 
 ## The Foundation Model Paradigm for Variant Interpretation
 
-Classical variant effect predictors operate by aggregating hand-crafted features: conservation scores computed from multiple sequence alignments, amino acid property changes, protein *domain* annotations, and regulatory marks at genomic loci (@sec-vep-classical). Methods like **Combined Annotation-Dependent Depletion (CADD)** train machine learning models to distinguish pathogenic from benign variants using these features, achieving useful discrimination but ultimately limited by what features the developers chose to include. When a variant falls in a region poorly covered by existing annotations, classical methods have little to offer.
+Classical variant effect predictors operate by aggregating hand-crafted features: conservation scores computed from multiple sequence alignments, amino acid property changes, protein domain annotations, and regulatory marks at genomic loci (@sec-vep-classical). Methods like **Combined Annotation-Dependent Depletion (CADD)** train machine learning models to distinguish pathogenic from benign variants using these features, achieving useful discrimination but ultimately limited by what features the developers chose to include. When a variant falls in a region poorly covered by existing annotations, classical methods have little to offer.
 
-Foundation models invert this relationship. Rather than engineering features, they learn representations from raw sequence data during pretraining, then apply those representations to variant interpretation. A protein *language* model trained to predict masked amino acids implicitly learns which substitutions violate evolutionary constraints. A DNA language model trained to predict nucleotides in genomic context learns which changes disrupt sequence grammar. The representations encode information about structure, function, and constraint that was never explicitly labeled during training.
+Foundation models invert this relationship. Rather than engineering features, they learn representations from raw sequence data during pretraining, then apply those representations to variant interpretation. A protein language model trained to predict masked amino acids implicitly learns which substitutions violate evolutionary constraints. A DNA language model trained to predict nucleotides in genomic context learns which changes disrupt sequence grammar. The representations encode information about structure, function, and constraint that was never explicitly labeled during training.
 
 This paradigm shift has practical consequences. Coverage extends to any variant in any gene, not just those with extensive prior annotation. Representations capture subtle patterns (co-evolution between distant residues, context-dependent motif strength) that resist manual feature engineering. **Transfer learning** enables rapid adaptation to new tasks and variant classes. The cost is interpretability: understanding why a foundation model assigns a particular score requires specialized analysis techniques rather than simple inspection of feature weights.
 
-Three architectural families dominate current VEP applications. Protein *language* models (@sec-protein-lm) encode amino acid sequences and score missense variants by measuring likelihood changes. DNA language models (@sec-dna-lm) operate on nucleotide sequences and can score variants of any type. Regulatory models (@sec-regulatory) predict molecular phenotypes (**chromatin accessibility**, gene *expression*, splicing) and score variants by their predicted impact on these phenotypes. The strongest-performing systems combine elements from multiple families.
+Three architectural families dominate current VEP applications. Protein language models (@sec-protein-lm) encode amino acid sequences and score missense variants by measuring likelihood changes. DNA language models (@sec-dna-lm) operate on nucleotide sequences and can score variants of any type. Regulatory models (@sec-regulatory) predict molecular phenotypes (**chromatin accessibility**, gene *expression*, splicing) and score variants by their predicted impact on these phenotypes. The strongest-performing systems combine elements from multiple families.
 
 ::: {#fig-fm-vep-paradigm layout-ncol=2}
 ![**FIGURE PLACEHOLDER A**](https://placehold.co/300x200?text=FIGURE%20PLACEHOLDER%20A)
@@ -26,7 +26,7 @@ Three architectural families dominate current VEP applications. Protein *languag
 
 ![**FIGURE PLACEHOLDER D**](https://placehold.co/300x200?text=FIGURE%20PLACEHOLDER%20D)
 
-[Essential] Paradigm comparison. Panel A (Classical Approach): Variant → hand-crafted features (conservation, Grantham, domains, regulatory marks) → feature vector → classifier → score; limitation: coverage limited by annotations. Panel B (Foundation Model Approach): Same variant → pretrained model → learned representations → adaptation → score; strength: extends to any position. Panel C (What Changes): Classical features explicit/interpretable/manual; foundation features learned/opaque/automatic; trade-off arrow. Panel D (Three Families): Protein *LMs* → missense; DNA LMs → all variants; Regulatory models → noncoding mechanism; arrow: "Combined approaches."
+[Essential] Paradigm comparison. Panel A (Classical Approach): Variant → hand-crafted features (conservation, Grantham, domains, regulatory marks) → feature vector → classifier → score; limitation: coverage limited by annotations. Panel B (Foundation Model Approach): Same variant → pretrained model → learned representations → adaptation → score; strength: extends to any position. Panel C (What Changes): Classical features explicit/interpretable/manual; foundation features learned/opaque/automatic; trade-off arrow. Panel D (Three Families): Protein LMs → missense; DNA LMs → all variants; Regulatory models → noncoding mechanism; arrow: "Combined approaches."
 :::
 
 ### Zero-Shot and Supervised Approaches
@@ -41,7 +41,7 @@ Missense variants (single amino acid substitutions) account for approximately ha
 
 ### Zero-Shot Scoring with Protein Language Models
 
-The simplest foundation model approach to missense VEP requires no task-specific training. A protein *language* model trained on masked token prediction assigns probabilities to each amino acid at each position given surrounding context. Variant effect scores emerge from comparing the probability of the reference amino acid to the probability of the variant amino acid.
+The simplest foundation model approach to missense VEP requires no task-specific training. A protein language model trained on masked token prediction assigns probabilities to each amino acid at each position given surrounding context. Variant effect scores emerge from comparing the probability of the reference amino acid to the probability of the variant amino acid.
 
 *ESM*-1v operationalizes this approach using the *ESM*-2 architecture fine-tuned for single-sequence variant effect prediction [@meier_esm-1v_2021]. For a variant substituting amino acid $a_\text{ref}$ with $a_\text{var}$ at position $i$, the score is computed as:
 
@@ -49,7 +49,7 @@ $$\Delta \text{LLR} = \log P(a_\text{var} | \text{context}) - \log P(a_\text{ref
 
 Negative scores indicate that the variant amino acid is less probable than reference in learned evolutionary context, suggesting potential deleteriousness. The model sees only the single query sequence, not multiple sequence alignments, yet achieves discrimination competitive with alignment-based methods on deep mutational scanning benchmarks.
 
-This zero-shot capability reflects what protein *language* models learn during pretraining: structural constraints (buried positions are hydrophobic), functional constraints (active sites are conserved), and co-evolutionary patterns (compensating mutations at contacting residues). The model has never seen pathogenicity labels, yet its predictions correlate with disease association because evolution and disease share underlying biology.
+This zero-shot capability reflects what protein language models learn during pretraining: structural constraints (buried positions are hydrophobic), functional constraints (active sites are conserved), and co-evolutionary patterns (compensating mutations at contacting residues). The model has never seen pathogenicity labels, yet its predictions correlate with disease association because evolution and disease share underlying biology.
 
 ### Alignment-Based Models: EVE and popEVE
 
@@ -59,13 +59,13 @@ The *EVE* architecture consists of an encoder that maps sequences to a latent sp
 
 popEVE extends this framework with improved training procedures and explicit modeling of population allele frequencies [@orenbuch_popeve_2025]. By incorporating frequency information, popEVE better separates rare deleterious variants from common benign polymorphisms. The model achieves strong performance on ClinVar classification while providing uncertainty estimates through ensemble disagreement.
 
-The tradeoff between single-sequence and MSA-based approaches involves coverage versus depth. *ESM*-1v scores any protein *sequence* without requiring alignment construction. *EVE* provides stronger performance when high-quality MSAs are available but cannot score proteins lacking sufficient homologs. For well-studied protein *families* with deep evolutionary sampling, MSA-based methods remain competitive; for orphan proteins or rapidly evolving sequences, single-sequence models offer the only foundation model option.
+The tradeoff between single-sequence and MSA-based approaches involves coverage versus depth. *ESM*-1v scores any protein sequence without requiring alignment construction. *EVE* provides stronger performance when high-quality MSAs are available but cannot score proteins lacking sufficient homologs. For well-studied protein families with deep evolutionary sampling, MSA-based methods remain competitive; for orphan proteins or rapidly evolving sequences, single-sequence models offer the only foundation model option.
 
 ### *AlphaMissense*: Structure-Informed Pathogenicity Prediction
 
-*AlphaMissense* represents the current state of the art for proteome-wide missense pathogenicity prediction, combining protein *language* model representations with structural information from AlphaFold2 [@cheng_alphamissense_2023]. The system provides precomputed scores for 71 million possible missense variants across the human proteome, enabling instant lookup for any variant in any protein-coding gene.
+*AlphaMissense* represents the current state of the art for proteome-wide missense pathogenicity prediction, combining protein language model representations with structural information from AlphaFold2 [@cheng_alphamissense_2023]. The system provides precomputed scores for 71 million possible missense variants across the human proteome, enabling instant lookup for any variant in any protein-coding gene.
 
-The architecture integrates multiple information sources. Sequence representations come from a protein *language* model encoding the wild-type sequence and mutation position. Structural representations derive from AlphaFold2 predictions, capturing local geometry (secondary structure, solvent accessibility, packing density) and longer-range contacts. A neural network combines these representations to produce a pathogenicity probability between 0 and 1.
+The architecture integrates multiple information sources. Sequence representations come from a protein language model encoding the wild-type sequence and mutation position. Structural representations derive from AlphaFold2 predictions, capturing local geometry (secondary structure, solvent accessibility, packing density) and longer-range contacts. A neural network combines these representations to produce a pathogenicity probability between 0 and 1.
 
 Training uses a carefully constructed dataset that avoids the circularity plaguing earlier predictors. Rather than training on ClinVar labels (which themselves derive from computational predictions), *AlphaMissense* uses population frequency as a proxy for pathogenicity: variants common in gnomAD are likely benign, while variants absent from large population samples and observed in disease contexts are likely pathogenic. This approach reduces the risk of learning features that simply recapitulate existing predictor scores.
 
@@ -73,7 +73,7 @@ Calibration receives explicit attention. Raw model outputs undergo isotonic regr
 
 Performance on independent benchmarks substantially exceeds classical predictors. On deep mutational scanning datasets (where experimental fitness measurements provide ground truth independent of clinical labels), *AlphaMissense* achieves correlations of 0.5 to 0.7 depending on the assay, compared to 0.3 to 0.5 for CADD or PolyPhen-2. On ClinVar expert-reviewed variants held out from training, *AlphaMissense* achieves AUROC values above 0.9, representing a meaningful improvement over the 0.85 to 0.88 typical of classical methods.
 
-The structural component proves essential for this performance. Ablation experiments removing AlphaFold2 features degrade performance substantially, particularly for variants at protein-protein *interfaces* and buried core positions where local geometry determines functional impact. The protein *language* model captures evolutionary constraint; structural information explains why that constraint exists.
+The structural component proves essential for this performance. Ablation experiments removing AlphaFold2 features degrade performance substantially, particularly for variants at protein-protei interfaces and buried core positions where local geometry determines functional impact. The protein language model captures evolutionary constraint; structural information explains why that constraint exists.
 
 ::: {#fig-alphamissense layout-ncol=2}
 ![**FIGURE PLACEHOLDER A**](https://placehold.co/300x200?text=FIGURE%20PLACEHOLDER%20A)
@@ -84,7 +84,7 @@ The structural component proves essential for this performance. Ablation experim
 
 ![**FIGURE PLACEHOLDER D**](https://placehold.co/300x200?text=FIGURE%20PLACEHOLDER%20D)
 
-[Essential] Four-panel figure. Panel A (Input Integration): Protein *sequence* → *ESM*-like **embeddings**; mutation position → AlphaFold2 structural context (secondary structure, solvent accessibility, contact density); combined features. Panel B (Training Strategy): NOT trained on ClinVar; instead population frequency as pathogenicity proxy; common in gnomAD → likely benign; absent + disease context → likely pathogenic; reduces circularity risk. Panel C (Calibration): Raw outputs → isotonic regression → calibrated probabilities; reliability diagram; score 0.8 = 80% pathogenic; thresholds annotated. Panel D (Performance): **Deep mutational scanning (DMS)** benchmarks (ρ = 0.5-0.7 vs CADD 0.3-0.5); ClinVar (AUROC >0.9 vs 0.85-0.88); structural component essential.
+[Essential] Four-panel figure. Panel A (Input Integration): Protein sequence → *ESM*-like **embeddings**; mutation position → AlphaFold2 structural context (secondary structure, solvent accessibility, contact density); combined features. Panel B (Training Strategy): NOT trained on ClinVar; instead population frequency as pathogenicity proxy; common in gnomAD → likely benign; absent + disease context → likely pathogenic; reduces circularity risk. Panel C (Calibration): Raw outputs → isotonic regression → calibrated probabilities; reliability diagram; score 0.8 = 80% pathogenic; thresholds annotated. Panel D (Performance): **Deep mutational scanning (DMS)** benchmarks (ρ = 0.5-0.7 vs CADD 0.3-0.5); ClinVar (AUROC >0.9 vs 0.85-0.88); structural component essential.
 :::
 
 
@@ -116,7 +116,7 @@ Sei extends this approach by learning a regulatory vocabulary: clusters of predi
 
 ### DNA Language Models: GPN-MSA and Evo 2
 
-DNA language models provide an alternative to phenotype prediction: scoring variants by how unexpected they appear in learned sequence context, analogous to protein *language* model approaches for missense variants.
+DNA language models provide an alternative to phenotype prediction: scoring variants by how unexpected they appear in learned sequence context, analogous to protein language model approaches for missense variants.
 
 *GPN*-MSA combines DNA language modeling with multi-species sequence alignments [@benegas_gpn-msa_2024]. The model processes aligned sequences from dozens of vertebrate species, learning which positions are conserved and which tolerate variation. Variant scores derive from likelihood ratios: how much less probable is the variant allele compared to reference given the alignment context? This approach captures deep evolutionary constraint missed by simple conservation scores while providing genome-wide coverage including noncoding regions.
 
@@ -181,7 +181,7 @@ Model scores become clinically useful only when they map to actionable categorie
 
 Calibration plots (reliability diagrams) visualize the relationship between predicted probabilities and observed frequencies. Variants are binned by predicted score; the proportion of pathogenic variants in each bin is plotted against the bin's mean predicted probability. Perfect calibration falls on the diagonal: predicted 0.8 pathogenicity corresponds to 80% observed pathogenic rate.
 
-Most raw model outputs are poorly calibrated. Neural networks trained with cross-entropy loss tend toward overconfidence, predicting probabilities near 0 or 1 more often than warranted. Protein *language* model likelihood ratios produce unbounded scores requiring transformation before probability interpretation. Calibration procedures address these systematic biases.
+Most raw model outputs are poorly calibrated. Neural networks trained with cross-entropy loss tend toward overconfidence, predicting probabilities near 0 or 1 more often than warranted. Protein language model likelihood ratios produce unbounded scores requiring transformation before probability interpretation. Calibration procedures address these systematic biases.
 
 Expected calibration error (ECE) quantifies miscalibration as the weighted average absolute difference between predicted and observed frequencies across bins. Lower ECE indicates better calibration. Comparing ECE across models identifies which provide more reliable probability estimates independent of discrimination performance (AUROC).
 
@@ -240,7 +240,7 @@ Conformal prediction provides distribution-free uncertainty quantification with 
 
 ### Out-of-Distribution Detection
 
-Beyond quantifying uncertainty for in-distribution predictions, responsible deployment requires detecting when inputs fall outside the model's training distribution. A protein *language* model trained on natural proteins may produce confident but unreliable predictions for synthetic sequences or fragments. A regulatory model trained on common cell types may fail on rare developmental stages.
+Beyond quantifying uncertainty for in-distribution predictions, responsible deployment requires detecting when inputs fall outside the model's training distribution. A protein language model trained on natural proteins may produce confident but unreliable predictions for synthetic sequences or fragments. A regulatory model trained on common cell types may fail on rare developmental stages.
 
 Likelihood-based detection uses the model's own representations to identify unfamiliar inputs. Sequences with low **embedding** density or anomalous attention patterns may fall outside the training distribution regardless of predicted scores. Flagging these inputs for manual review prevents automated classification of cases the model cannot reliably assess.
 
@@ -275,7 +275,7 @@ These improvements reflect richer representations. Classical methods aggregate i
 
 Classical methods often fail silently on understudied genes, rare variant classes, or poorly annotated regions. **Sorting Intolerant From Tolerant (SIFT)** and PolyPhen require protein *alignments*; variants in singleton genes without homologs receive no prediction. CADD depends on annotation features; variants in regions lacking regulatory marks receive uninformative scores.
 
-Foundation models degrade more gracefully. Protein *language* models score any amino acid sequence regardless of available homologs. DNA language models score any genomic position regardless of existing annotation. This extended coverage matters for clinical sequencing of rare diseases, where pathogenic variants often reside in less-studied genes precisely because their severe effects are incompatible with population frequency.
+Foundation models degrade more gracefully. Protein language models score any amino acid sequence regardless of available homologs. DNA language models score any genomic position regardless of existing annotation. This extended coverage matters for clinical sequencing of rare diseases, where pathogenic variants often reside in less-studied genes precisely because their severe effects are incompatible with population frequency.
 
 ### Mechanistic Interpretability
 
@@ -352,7 +352,7 @@ State-of-the-art foundation models require substantial computational resources f
 
 ## Tools for Interpretation, Not Oracles
 
-Foundation models have transformed variant effect prediction from feature engineering to **representation learning**. Protein *language* models capture evolutionary constraint at resolution that multiple sequence alignments cannot match. DNA language models and regulatory models extend coverage to noncoding variants across the genome. Multi-omic architectures provide mechanistic predictions enabling hypothesis generation beyond bare deleteriousness scores. The best current methods substantially outperform classical approaches on established benchmarks, particularly for rare variants and novel genes where training data are sparse.
+Foundation models have transformed variant effect prediction from feature engineering to **representation learning**. Protein language models capture evolutionary constraint at resolution that multiple sequence alignments cannot match. DNA language models and regulatory models extend coverage to noncoding variants across the genome. Multi-omic architectures provide mechanistic predictions enabling hypothesis generation beyond bare deleteriousness scores. The best current methods substantially outperform classical approaches on established benchmarks, particularly for rare variants and novel genes where training data are sparse.
 
 Yet benchmark performance does not automatically translate to clinical utility. Calibration requires careful attention: a model may discriminate pathogenic from benign variants while systematically overestimating or underestimating probabilities. Uncertainty quantification remains immature; models often produce confident predictions for inputs that fall outside their training distribution. Population bias persists despite foundation model advances; improvements over classical methods are smallest for ancestry groups underrepresented in training data. Complex variant types, combinatorial effects, and tissue-specific consequences remain beyond current capabilities.
 
