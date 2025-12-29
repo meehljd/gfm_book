@@ -1,13 +1,13 @@
 # Regulatory Models {#sec-ch13-regulatory}
 
-An enhancer 80 kilobases from a promoter can determine whether a gene is expressed in liver or brain. An insulator 50 kilobases downstream can block inappropriate activation from a neighboring regulatory domain. A disease-associated variant in an intergenic region may exert its effect by disrupting a distal element that contacts its target gene through chromatin looping. Mammalian gene regulation operates across distances that dwarf the context windows of most sequence models. The convolutional architectures examined in @sec-cnn excel at detecting local motifs but cannot span these distances. A model that processes sequences in kilobase windows treats regulatory elements tens of kilobases away as if they do not exist. For understanding human gene regulation, they effectively do not.
+An enhancer 80 kilobases from a promoter can determine whether a gene is expressed in liver or brain. An insulator 50 kilobases downstream can block inappropriate activation from a neighboring regulatory domain. A disease-associated variant in an intergenic region may exert its effect by disrupting a distal element that contacts its target gene through chromatin looping. Mammalian gene regulation operates across distances that dwarf the context windows of most sequence models. The convolutional architectures examined in @sec-ch06-cnn excel at detecting local motifs but cannot span these distances. A model that processes sequences in kilobase windows treats regulatory elements tens of kilobases away as if they do not exist. For understanding human gene regulation, they effectively do not.
 
-The **attention mechanisms** introduced in @sec-attention could theoretically model arbitrary-range dependencies, but naive transformer application to hundred-kilobase windows is computationally prohibitive. Attention scales quadratically with sequence length: doubling context length quadruples memory and computation. Processing 200 kilobases at single-nucleotide resolution would require attending over 200,000 positions simultaneously, far beyond practical limits. The field needed architectures that could span regulatory distances without the quadratic penalty.
+The **attention mechanisms** introduced in @sec-ch07-attention could theoretically model arbitrary-range dependencies, but naive transformer application to hundred-kilobase windows is computationally prohibitive. Attention scales quadratically with sequence length: doubling context length quadruples memory and computation. Processing 200 kilobases at single-nucleotide resolution would require attending over 200,000 positions simultaneously, far beyond practical limits. The field needed architectures that could span regulatory distances without the quadratic penalty.
 
 Hybrid architectures resolve this tension by combining the strengths of both paradigms. A convolutional front-end efficiently extracts local sequence features and compresses the input to a manageable length, reducing 200 kilobases of sequence to a few thousand feature vectors. A **transformer** backbone then propagates information across this compressed representation through attention. The result is a new class of regulatory models that can capture enhancer-promoter interactions, predict the effects of distal variants on gene expression, and provide mechanistic hypotheses about long-range regulation. *Enformer*, the first widely adopted model in this class, processes 200-kilobase windows and predicts chromatin state, transcription initiation, and gene expression from sequence alone.
 
 
-## Long-Range Regulation Problem {#sec-ch13-long-range-regulation-problem}
+## Long-Range Regulation Problem {#sec-ch13-long-range}
 
 Consider a canonical mammalian gene with complex tissue-specific expression. The promoter sits at the transcription start site, but the sequences that determine when and where the gene is expressed may be scattered across a 200 kilobase neighborhood. Multiple enhancers drive expression in different tissues; silencers suppress expression in inappropriate contexts; insulators demarcate regulatory domains. Chromatin looping brings these distal elements into physical proximity with the promoter, but the loops themselves are dynamic and cell-type-specific.
 
@@ -30,11 +30,11 @@ Attention mechanisms offer a direct solution: by computing pairwise interactions
 :::
 
 
-## *Enformer*: Attention Meets Regulatory Genomics {#sec-ch13-enformer-attention-meets-regulatory}
+## *Enformer*: Attention Meets Regulatory Genomics {#sec-ch13-enformer}
 
 *Enformer* [@avsec_enformer_2021] demonstrated that combining convolutional compression with transformer attention could dramatically improve expression prediction from sequence. The model processes 200 kilobase windows of DNA and predicts thousands of chromatin and transcription tracks across cell types and species, establishing a template that subsequent models have extended and refined.
 
-### Architecture {#sec-ch13-architecture}
+### Architecture {#sec-ch13-enformer-architecture}
 
 The *Enformer* architecture consists of three stages that progressively transform raw sequence into multi-task predictions.
 
@@ -52,21 +52,21 @@ The multi-task design serves multiple purposes. Different assays provide complem
 [Essential] Detailed three-stage architecture. Stage 1 (Convolutional Stem): 200kb one-hot input → conv blocks with residual connections → pooling → ~1,500 tokens (128bp resolution); "Compresses 100×, detects local features." Stage 2 (Transformer Trunk): Stack of self-attention layers, 8 heads, relative positional encodings; "Enables long-range interaction modeling." Stage 3 (Task-Specific Heads): Shared backbone → multiple outputs (DNase, histone marks, CAGE, ~5,000 tracks); "Multi-task regularizes representations." Inset: Why Hybrid Works: quadratic on 1,500 vs 200,000 tokens.
 :::
 
-### Training Data and Cross-Species Learning {#sec-ch13-training-data-cross-species-learning}
+### Training Data and Cross-Species Learning {#sec-ch13-enformer-training}
 
-*Enformer* trains on functional genomics data from both human and mouse, spanning hundreds of assays and cell types. The chromatin accessibility, histone modification, and transcription initiation assays introduced in @sec-data provide the supervision signals: DNase-seq and ATAC-seq measure regulatory potential, ChIP-seq for histone marks identifies active enhancers and promoters, and CAGE captures where transcription begins. Human training data derives largely from ENCODE and Roadmap Epigenomics consortia, supplemented by CAGE data from FANTOM and additional chromatin profiling studies *[Citation Needed]*. Mouse data from analogous consortia provides complementary supervision.
+*Enformer* trains on functional genomics data from both human and mouse, spanning hundreds of assays and cell types. The chromatin accessibility, histone modification, and transcription initiation assays introduced in @sec-ch02-data provide the supervision signals: DNase-seq and ATAC-seq measure regulatory potential, ChIP-seq for histone marks identifies active enhancers and promoters, and CAGE captures where transcription begins. Human training data derives largely from ENCODE and Roadmap Epigenomics consortia, supplemented by CAGE data from FANTOM and additional chromatin profiling studies *[Citation Needed]*. Mouse data from analogous consortia provides complementary supervision.
 
 Cross-species training confers several advantages. Regulatory sequences that are functionally constrained evolve more slowly than neutral sequence, so mouse and human share many regulatory motifs and principles despite 80 million years of divergence. Training on both species helps the model distinguish conserved regulatory logic from species-specific noise, reduces **overfitting** to idiosyncrasies of human data, expands the effective training set without requiring additional human samples, and implicitly emphasizes evolutionarily conserved patterns that are more likely to be functionally important.
 
 The training objective combines losses across all tracks, positions, and species. Count-based likelihoods (Poisson or negative binomial) handle sequencing-derived signals, while correlation-based objectives ensure the model captures the overall shape of coverage profiles. Per-track weighting prevents abundant assays from dominating gradients.
 
-### Variant Effect Prediction {#sec-ch13-variant-effect-prediction}
+### Variant Effect Prediction {#sec-ch13-enformer-vep}
 
 The clinical and scientific value of *Enformer* lies substantially in its ability to predict how sequence variants alter regulatory activity. The procedure follows a straightforward logic: extract a 200 kilobase window containing the variant, compute predictions for the reference allele, compute predictions for the alternative allele, and compare the outputs across all tracks and positions.
 
 The resulting variant effect scores span thousands of dimensions, one for each assay and cell type. A variant might increase predicted DNase accessibility in one cell type while decreasing predicted CAGE signal in another, suggesting context-dependent regulatory effects. By aggregating predictions around gene promoters, researchers can estimate variant effects on gene expression in specific tissues.
 
-Validation against GTEx **expression quantitative trait loci (eQTLs)** demonstrated that *Enformer*'s predictions correlate with observed genetic effects on expression [@avsec_enformer_2021]. Variants with large predicted effects on promoter-proximal CAGE signal were enriched among significant eQTLs. Notably, this correlation extended to distal variants: sequence changes 50 kilobases or more from a gene's transcription start site still showed predictive power when they fell in regions of predicted regulatory activity. This long-range predictive capacity distinguishes *Enformer* from short-context models and validates the architectural investment in extended context windows. These predictions integrate with classical variant effect methods (@sec-vep-classical) and foundation model approaches (@sec-vep-fm) to provide comprehensive variant interpretation.
+Validation against GTEx **expression quantitative trait loci (eQTLs)** demonstrated that *Enformer*'s predictions correlate with observed genetic effects on expression [@avsec_enformer_2021]. Variants with large predicted effects on promoter-proximal CAGE signal were enriched among significant eQTLs. Notably, this correlation extended to distal variants: sequence changes 50 kilobases or more from a gene's transcription start site still showed predictive power when they fell in regions of predicted regulatory activity. This long-range predictive capacity distinguishes *Enformer* from short-context models and validates the architectural investment in extended context windows. These predictions integrate with classical variant effect methods (@sec-ch04-vep-classical) and foundation model approaches (@sec-ch14-vep-fm) to provide comprehensive variant interpretation.
 
 ::: {#fig-regulatory-vep-workflow}
 ![**FIGURE PLACEHOLDER**](https://placehold.co/300x200?text=FIGURE%20PLACEHOLDER)
@@ -75,25 +75,25 @@ Validation against GTEx **expression quantitative trait loci (eQTLs)** demonstra
 :::
 
 
-## *Borzoi*: From Chromatin to Transcriptome {#sec-ch13-borzoi-chromatin-transcriptome}
+## *Borzoi*: From Chromatin to Transcriptome {#sec-ch13-borzoi}
 
 While *Enformer* predicts transcription initiation through CAGE, RNA-seq captures a richer picture of gene expression: not just where transcription begins, but how the transcript is spliced, which isoforms dominate, where transcription terminates, and how stable the resulting mRNA is. *Borzoi* [@linder_borzoi_2025] extends the hybrid architecture paradigm to predict full RNA-seq coverage profiles, enabling a unified view of how sequence variation affects the entire transcriptional program.
 
-### Beyond Transcription Initiation {#sec-ch13-beyond-transcription-initiation}
+### Beyond Transcription Initiation {#sec-ch13-borzoi-transcription}
 
 A single gene can produce multiple transcript isoforms through alternative promoter usage, alternative splicing, and alternative polyadenylation. These isoforms may have different stabilities, different translation efficiencies, and different functions. A variant that shifts isoform ratios without changing total expression could have substantial phenotypic consequences: a switch from a cytoplasmic to a nuclear isoform, for instance, or inclusion of a premature stop codon in the predominant transcript.
 
 CAGE and chromatin assays cannot capture these complexities. They measure where transcription might begin and what the chromatin environment looks like, but they do not reveal how RNA polymerase traverses the gene body, where splicing occurs, or which 3' end is selected. RNA-seq coverage profiles encode all of this information: exon boundaries appear as coverage drops at intron junctions, alternative splicing manifests as variable junction usage, and polyadenylation site choice appears in the coverage pattern near gene 3' ends.
 
-### Predicting Coverage at Nucleotide Resolution {#sec-ch13-prediction-coverage-nucleotide}
+### Predicting Coverage at Nucleotide Resolution {#sec-ch13-borzoi-coverage}
 
 *Borzoi* builds on an *Enformer*-style backbone with modifications tailored to RNA-seq prediction. The convolutional stem and transformer trunk follow similar principles, compressing long input windows and propagating information through attention. Output heads predict stranded RNA-seq coverage across the window, with additional heads for complementary signals like PRO-seq (nascent transcription), CAGE, and other assays when available.
 
 Training on RNA-seq coverage imposes different demands than training on chromatin marks. Coverage varies over orders of magnitude between introns and exons; the model must capture both the overall expression level and the fine structure of the coverage profile. Junction reads that span splice sites provide particularly informative supervision, as they directly constrain the model to learn splicing patterns. The loss function balances accurate prediction of coverage levels with faithful reproduction of the coverage shape, including sharp transitions at exon boundaries.
 
-### Applications Beyond Expression Level {#sec-ch13-applications-beyond-expression-level}
+### Applications Beyond Expression Level {#sec-ch13-borzoi-applications}
 
-By predicting full RNA-seq coverage, *Borzoi* enables analyses that go beyond simple expression quantification. Splicing variant effects can be assessed by comparing predicted coverage at exons and junctions under reference and alternative alleles. A variant that reduces predicted junction reads for a particular exon suggests exon skipping; increased junction reads to a cryptic splice site suggests aberrant splicing. These predictions complement specialized splicing models like *SpliceAI* (@sec-cnn), providing additional context about how splicing changes fit within the broader transcriptional program.
+By predicting full RNA-seq coverage, *Borzoi* enables analyses that go beyond simple expression quantification. Splicing variant effects can be assessed by comparing predicted coverage at exons and junctions under reference and alternative alleles. A variant that reduces predicted junction reads for a particular exon suggests exon skipping; increased junction reads to a cryptic splice site suggests aberrant splicing. These predictions complement specialized splicing models like *SpliceAI* (@sec-ch06-cnn), providing additional context about how splicing changes fit within the broader transcriptional program.
 
 Alternative promoter usage becomes visible through coverage patterns near transcription start sites. A variant that increases coverage downstream of one TSS while decreasing it downstream of another suggests a shift in promoter preference. Such shifts can alter the 5' UTR of the resulting transcript, affecting translation efficiency and regulatory motif content.
 
@@ -112,28 +112,28 @@ Polyadenylation site choice affects 3' UTR length and content. Shorter 3' UTRs m
 :::
 
 
-## *Sei*: A Regulatory Vocabulary from Sequence {#sec-ch13-sei-regulatory-vocabulary-sequence}
+## *Sei*: A Regulatory Vocabulary from Sequence {#sec-ch13-sei}
 
 While *Enformer* and *Borzoi* predict continuous coverage tracks, *Sei* [@chen_deepsea_2022] takes a complementary approach: learning a discrete vocabulary of sequence classes that capture distinct regulatory activities. Rather than predicting thousands of individual assays, *Sei* maps sequences to a reduced set of regulatory states, each associated with characteristic chromatin and transcription patterns.
 
-### Discrete Regulatory States {#sec-ch13-discrete-regulatory-states}
+### Discrete Regulatory States {#sec-ch13-sei-states}
 
 *Sei* builds on observations that chromatin states cluster into interpretable categories: active promoters, strong enhancers, poised enhancers, heterochromatin, and so forth. Previous methods like ChromHMM defined such states from observed chromatin marks in specific cell types *[Citation Needed]*. *Sei* learns to predict sequence class membership directly from DNA, asking what regulatory identity a sequence carries based on its intrinsic properties.
 
 The model predicts 40 sequence classes derived from clustering patterns across chromatin accessibility, histone modifications, and **transcription factor** binding. Each class corresponds to a recognizable regulatory state: promoter-like sequences, enhancer-like sequences, CTCF binding sites, repressed regions, and various intermediate states. The output is not a single class assignment but a probability distribution over classes, reflecting the observation that many sequences have context-dependent regulatory potential.
 
-### Complementary to Track Prediction {#sec-ch13-complementary-track-prediction}
+### Complementary to Track Prediction {#sec-ch13-sei-complementary}
 
 *Sei* and *Enformer*-style models serve complementary purposes. *Enformer* provides detailed, quantitative predictions across specific assays and cell types; *Sei* provides a compressed, interpretable summary of regulatory identity. For variant interpretation, both perspectives can be valuable. *Enformer* might reveal that a variant reduces predicted H3K27ac signal in liver but not heart; *Sei* might reveal that the same variant shifts sequence class membership from "strong enhancer" toward "weak enhancer," a more immediately interpretable characterization.
 
 The regulatory vocabulary approach also facilitates systematic analysis across many variants. Rather than tracking changes in thousands of individual tracks, researchers can ask how a set of variants affects the distribution of regulatory classes, identifying patterns that might be obscured in high-dimensional track space.
 
 
-## *AlphaGenome*: Unifying Modalities at Megabase Scale {#sec-ch13-alphagenome-unifying-modalities-megabase}
+## *AlphaGenome*: Unifying Modalities at Megabase Scale {#sec-ch13-alphagenome}
 
 *AlphaGenome* [@avsec_alphagenome_2025] extends the hybrid modeling paradigm in two directions: longer context windows (approximately one megabase) and broader output modalities spanning chromatin, expression, splicing, and three-dimensional contacts. The goal is a single model that provides a comprehensive view of how sequence determines regulatory state.
 
-### From 200kb to One Megabase {#sec-ch13-200kb-one-megabase}
+### From 200kb to One Megabase {#sec-ch13-alphagenome-scale}
 
 The megabase context window pushes against computational limits even with hybrid architectures. *AlphaGenome* addresses this through efficient attention mechanisms that reduce the quadratic cost, hierarchical processing that handles different output modalities at appropriate resolutions, and architectural refinements accumulated from *Enformer* and *Borzoi* development.
 
@@ -141,59 +141,59 @@ The output repertoire spans chromatin accessibility and histone modifications (f
 
 Unifying these modalities in a single model offers several advantages. The backbone representation must capture information relevant to all outputs, encouraging learning of features that connect chromatin state to transcription to RNA processing. Variant effect predictions become coherent across modalities: a single forward pass reveals how a variant affects chromatin, expression, splicing, and contacts, rather than requiring separate runs through independent models.
 
-### Closed Weights, Open Questions {#sec-ch13-closed-weights-open-questions}
+### Closed Weights, Open Questions {#sec-ch13-alphagenome-access}
 
 *AlphaGenome* is primarily available through an API interface rather than as a downloadable model. This arrangement simplifies use for many applications: researchers can score variants without managing large model weights or specialized hardware. It also introduces constraints around data privacy, customization, and integration with local pipelines. Clinical applications that cannot send patient sequence data to external services may be unable to use API-only models directly, motivating interest in openly available alternatives.
 
-From the perspective of variant interpretation workflows, *AlphaGenome* provides a comprehensive set of predictions from a single query. A variant can be assessed for effects on local chromatin state, expression of nearby genes, splicing of overlapping transcripts, and potential disruption of chromatin contacts, all from the same underlying model. The challenge lies in synthesizing these multiple outputs into actionable conclusions, a topic addressed further in @sec-vep-fm.
+From the perspective of variant interpretation workflows, *AlphaGenome* provides a comprehensive set of predictions from a single query. A variant can be assessed for effects on local chromatin state, expression of nearby genes, splicing of overlapping transcripts, and potential disruption of chromatin contacts, all from the same underlying model. The challenge lies in synthesizing these multiple outputs into actionable conclusions, a topic addressed further in @sec-ch14-vep-fm.
 
 
-## What Hybrid Architectures Accomplish {#sec-ch13-hybrid-architectures-accomplish}
+## What Hybrid Architectures Accomplish {#sec-ch13-accomplishments}
 
 The progression from *DeepSEA* through *Enformer*, *Borzoi*, and *AlphaGenome* reflects accumulating solutions to specific limitations. Each model addresses constraints that bounded its predecessor's utility.
 
-### Spanning Enhancer-Promoter Distances {#sec-ch13-spanning-enhancer-promoter-distances}
+### Spanning Enhancer-Promoter Distances {#sec-ch13-spanning}
 
 The most direct contribution is enabling long-range interaction modeling. A 200 kilobase context window encompasses the distances over which most *cis*-regulatory interactions occur. Attention mechanisms allow the model to learn direct relationships between enhancers and promoters without requiring information to propagate through many intermediate layers. Empirically, this translates to improved prediction of expression and better correlation with eQTLs, particularly for variants in distal regulatory elements.
 
-### Multi-Task Regularization {#sec-ch13-multi-task-regularization}
+### Multi-Task Regularization {#sec-ch13-multitask}
 
 Training on hundreds of assays jointly constrains the model to learn representations that generalize across regulatory modalities. A feature useful only for predicting H3K4me3 in one cell type provides less gradient signal than a feature useful across chromatin, transcription, and accessibility. This multi-task pressure steers the model toward learning fundamental regulatory logic rather than assay-specific artifacts.
 
-### Cross-Species Constraints {#sec-ch13-cross-species-constraints}
+### Cross-Species Constraints {#sec-ch13-cross-species}
 
 Training on human and mouse together further regularizes the model. Species-specific binding site variants, repetitive elements, and technical artifacts in training data affect one species but not the other. Features that generalize across species are more likely to reflect conserved regulatory mechanisms. This provides a form of evolutionary validation built into the training process.
 
-### Unified Variant Effect Prediction {#sec-ch13-unified-variant-effect-prediction}
+### Unified Variant Effect Prediction {#sec-ch13-unified-vep}
 
-Perhaps most practically valuable, hybrid models provide a unified framework for variant effect prediction on expression and related phenotypes. Rather than assembling scores from multiple specialized models, researchers can query a single model for comprehensive predictions. The outputs span cell types and assays, enabling tissue-specific interpretation of regulatory variants. This capability integrates naturally with the variant interpretation workflows described in @sec-vep-fm and the clinical applications examined in @sec-rare-disease.
+Perhaps most practically valuable, hybrid models provide a unified framework for variant effect prediction on expression and related phenotypes. Rather than assembling scores from multiple specialized models, researchers can query a single model for comprehensive predictions. The outputs span cell types and assays, enabling tissue-specific interpretation of regulatory variants. This capability integrates naturally with the variant interpretation workflows described in @sec-ch14-vep-fm and the clinical applications examined in @sec-ch26-rare-disease.
 
 
-## Limitations and Open Challenges {#sec-ch13-limitations-open-challenges}
+## Limitations and Open Challenges {#sec-ch13-limitations}
 
 Despite their power, long-context regulatory models face fundamental limitations that bound their current utility and define directions for future development.
 
-### Training Data Constraints {#sec-ch13-training-data-constraints}
+### Training Data Constraints {#sec-ch13-training-bias}
 
-Functional genomics data is biased in coverage, overrepresenting well-studied cell types (embryonic stem cells, K562, HepG2, lymphoblastoid cell lines) while leaving many tissue types and disease-relevant cell states poorly covered. Models trained on available data will perform better in represented contexts and may fail silently in underrepresented ones. Ancestry bias compounds the problem: most functional genomics studies derive from individuals of European descent, limiting the diversity of haplotypes and regulatory variants represented in training data. These data gaps are examined more comprehensively in @sec-data-encode and @sec-data-functional.
+Functional genomics data is biased in coverage, overrepresenting well-studied cell types (embryonic stem cells, K562, HepG2, lymphoblastoid cell lines) while leaving many tissue types and disease-relevant cell states poorly covered. Models trained on available data will perform better in represented contexts and may fail silently in underrepresented ones. Ancestry bias compounds the problem: most functional genomics studies derive from individuals of European descent, limiting the diversity of haplotypes and regulatory variants represented in training data. These data gaps are examined more comprehensively in @sec-ch02-encode and @sec-ch02-functional.
 
-These biases propagate to variant effect predictions. A variant in a regulatory element active primarily in pancreatic beta cells may receive poor predictions if beta cell data is sparse in training. A variant on a **haplotype** common in African populations but rare in Europeans may fall outside the model's effective training distribution. Users must recognize that prediction confidence varies with representation in training data, a consideration that current models do not explicitly communicate. @sec-confounding examines how such biases can compromise model validity.
+These biases propagate to variant effect predictions. A variant in a regulatory element active primarily in pancreatic beta cells may receive poor predictions if beta cell data is sparse in training. A variant on a **haplotype** common in African populations but rare in Europeans may fall outside the model's effective training distribution. Users must recognize that prediction confidence varies with representation in training data, a consideration that current models do not explicitly communicate. @sec-ch22-confounding examines how such biases can compromise model validity.
 
 ### Finite Context {#sec-ch13-finite-context}
 
 Even megabase-scale windows capture only local regulation. *Trans*-acting factors, three-dimensional contacts spanning multiple megabases, and whole-chromosome organization fall outside model context. Structural variants that rearrange large genomic segments, duplicate enhancers, or create novel fusion genes cannot be modeled within fixed-window architectures. The reference genome assumption underlying these models further limits their applicability to complex haplotypes and populations with substantial structural variation relative to the reference.
 
-### Missing Three-Dimensional Context {#sec-ch13-missing-three-dimensional-context}
+### Missing Three-Dimensional Context {#sec-ch13-missing-3d}
 
-Linear sequence models treat DNA as a one-dimensional string, but gene regulation occurs in three-dimensional nuclear space. Chromatin loops bring distal elements into proximity; nuclear compartmentalization segregates active and repressed regions; phase-separated condensates concentrate regulatory factors. While *AlphaGenome* predicts some contact features, current hybrid models do not fully integrate three-dimensional chromatin organization. The relationship between linear sequence, three-dimensional structure, and regulatory output remains incompletely captured. @sec-3d-genome examines models that explicitly address chromatin architecture.
+Linear sequence models treat DNA as a one-dimensional string, but gene regulation occurs in three-dimensional nuclear space. Chromatin loops bring distal elements into proximity; nuclear compartmentalization segregates active and repressed regions; phase-separated condensates concentrate regulatory factors. While *AlphaGenome* predicts some contact features, current hybrid models do not fully integrate three-dimensional chromatin organization. The relationship between linear sequence, three-dimensional structure, and regulatory output remains incompletely captured. @sec-ch17-3d-genome examines models that explicitly address chromatin architecture.
 
-### Correlation Versus Causation {#sec-ch13-correlation-versus-causation}
+### Correlation Versus Causation {#sec-ch13-correlation}
 
 Hybrid models learn correlations between sequence and functional readouts, not causal mechanisms. A variant might receive a high predicted effect score because it disrupts a motif correlated with expression in training data, not because the motif causally drives expression. Attribution methods can identify which sequence features contribute to predictions, but attribution is not validation. High-confidence predictions require experimental confirmation through approaches like massively parallel reporter assays, CRISPR perturbation, or allelic series analysis.
 
-### Interpretability Challenges {#sec-ch13-interpretability-challenges}
+### Interpretability Challenges {#sec-ch13-interpretability}
 
-The scale of these models (hundreds of millions of parameters) makes mechanistic interpretation difficult. Attention patterns provide some insight into which positions the model considers related, but attention weights are not guaranteed to reflect the model's actual computational strategy. Attribution methods (saliency maps, integrated gradients) can highlight important input positions, but the features the model constructs from those positions remain opaque. @sec-interpretability examines these interpretability methods and their limitations in detail.
+The scale of these models (hundreds of millions of parameters) makes mechanistic interpretation difficult. Attention patterns provide some insight into which positions the model considers related, but attention weights are not guaranteed to reflect the model's actual computational strategy. Attribution methods (saliency maps, integrated gradients) can highlight important input positions, but the features the model constructs from those positions remain opaque. @sec-ch24-interpretability examines these interpretability methods and their limitations in detail.
 
 ::: {#fig-regulatory-limitations layout-ncol=2}
 ![**FIGURE PLACEHOLDER A**](https://placehold.co/300x200?text=FIGURE%20PLACEHOLDER%20A)
@@ -208,11 +208,11 @@ The scale of these models (hundreds of millions of parameters) makes mechanistic
 :::
 
 
-## Relationship to Foundation Models {#sec-ch13-relationship-foundation-models}
+## Relationship to Foundation Models {#sec-ch13-foundation-models}
 
-Long-context regulatory models occupy an interesting position in the genomic foundation model landscape. They share key characteristics with **foundation models**: large scale, broad training data, strong performance across tasks, and utility as feature extractors for downstream applications. Yet they differ from self-supervised DNA language models (@sec-dna-lm) in their heavy reliance on supervised, task-specific training signals.
+Long-context regulatory models occupy an interesting position in the genomic foundation model landscape. They share key characteristics with **foundation models**: large scale, broad training data, strong performance across tasks, and utility as feature extractors for downstream applications. Yet they differ from self-supervised DNA language models (@sec-ch11-dna-lm) in their heavy reliance on supervised, task-specific training signals.
 
-*Enformer* and its descendants can be viewed as highly specialized foundation models, pre-trained on the specific task of regulatory prediction and adaptable to related applications. Their representations encode regulatory logic learned from functional genomics supervision, complementing the sequence patterns learned by self-supervised models from raw DNA. In practice, the two approaches may prove most powerful in combination: self-supervised models provide sequence representations from evolutionary context, while supervised regulatory models provide representations from functional genomics context. Integrating these representations for tasks like variant effect prediction is an active area of development, explored further in @sec-vep-fm.
+*Enformer* and its descendants can be viewed as highly specialized foundation models, pre-trained on the specific task of regulatory prediction and adaptable to related applications. Their representations encode regulatory logic learned from functional genomics supervision, complementing the sequence patterns learned by self-supervised models from raw DNA. In practice, the two approaches may prove most powerful in combination: self-supervised models provide sequence representations from evolutionary context, while supervised regulatory models provide representations from functional genomics context. Integrating these representations for tasks like variant effect prediction is an active area of development, explored further in @sec-ch14-vep-fm.
 
 From a practical standpoint, hybrid regulatory models remain among the most directly useful genomic deep learning systems for variant interpretation. They provide quantitative, tissue-specific predictions for regulatory variants, outperform short-context alternatives on distal regulatory elements, and integrate naturally into variant prioritization workflows. Their limitations are real but understood; their strengths are substantial and empirically validated.
 
@@ -221,6 +221,6 @@ From a practical standpoint, hybrid regulatory models remain among the most dire
 
 Long-range regulatory prediction from sequence is tractable. *Enformer* established that hybrid convolutional neural network (CNN)-transformer architectures could span 200 kilobases and predict expression-related chromatin features. *Borzoi* extended coverage to the full transcriptome with improved quantitative accuracy. *AlphaGenome* unified multiple regulatory modalities at megabase scale, predicting chromatin accessibility, histone modifications, transcription factor binding, and gene expression from a single architecture. Each generation captures more of the regulatory landscape with greater fidelity to experimental measurements.
 
-Yet these models predict regulatory outcomes without explaining regulatory mechanism. They learn that certain sequence patterns associate with certain expression levels, but they do not represent enhancer-promoter contacts, transcription factor cascades, or the causal chain from sequence to phenotype. The attention patterns that span long distances may correspond to genuine regulatory interactions or may reflect confounded sequence features that happen to predict expression. Interpretability methods (@sec-interpretability) can probe what patterns models have learned, but high prediction accuracy does not guarantee mechanistic insight.
+Yet these models predict regulatory outcomes without explaining regulatory mechanism. They learn that certain sequence patterns associate with certain expression levels, but they do not represent enhancer-promoter contacts, transcription factor cascades, or the causal chain from sequence to phenotype. The attention patterns that span long distances may correspond to genuine regulatory interactions or may reflect confounded sequence features that happen to predict expression. Interpretability methods (@sec-ch24-interpretability) can probe what patterns models have learned, but high prediction accuracy does not guarantee mechanistic insight.
 
-This distinction shapes how regulatory model predictions should be used. For variant effect prediction (@sec-vep-fm), regulatory models provide one input among several: they predict whether a variant alters chromatin accessibility or expression, while protein language models (@sec-protein-lm) assess coding consequences and evolutionary models quantify constraint. The clinical integration of these signals (@sec-rare-disease) requires understanding what each model contributes and where each is likely to fail. Regulatory models excel at predicting noncoding variant effects when the relevant cell type is represented in training data; they struggle with cell types absent from training and with variants acting through mechanisms not captured by the output tracks they predict.
+This distinction shapes how regulatory model predictions should be used. For variant effect prediction (@sec-ch14-vep-fm), regulatory models provide one input among several: they predict whether a variant alters chromatin accessibility or expression, while protein language models (@sec-ch12-protein-lm) assess coding consequences and evolutionary models quantify constraint. The clinical integration of these signals (@sec-ch26-rare-disease) requires understanding what each model contributes and where each is likely to fail. Regulatory models excel at predicting noncoding variant effects when the relevant cell type is represented in training data; they struggle with cell types absent from training and with variants acting through mechanisms not captured by the output tracks they predict.

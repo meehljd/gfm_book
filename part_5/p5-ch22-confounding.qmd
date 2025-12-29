@@ -12,7 +12,7 @@ This problem is not unique to deep learning. Linear regression and logistic mode
 [Essential] DAG with genomic example. Main DAG: Confounder (Ancestry) with arrows to Exposure (Genomic features) and Outcome (Disease status); spurious path X ← C → Y highlighted. Annotation boxes explaining how ancestry affects both. Second DAG showing adjustment blocking spurious path. Concrete example: Rare disease clinic → ClinVar submissions → ancestry proxy learned. Key insight: shortcuts appear to work until deployment shifts.
 :::
 
-## Confounding, Bias, and Leakage {#sec-ch22-confounding-bias-leakage}
+## Confounding, Bias, and Leakage
 
 The terminology of confounding, bias, and leakage describes distinct phenomena that often co-occur and reinforce each other. Precision in language helps clarify what has gone wrong when a model fails.
 
@@ -20,14 +20,14 @@ A **confounder** is a variable that influences both the input features and the l
 
 **Bias** refers to systematic deviation from the quantity we intend to estimate or predict. Bias can result from confounding, but also arises from measurement error, label definitions, sampling procedures, or deployment differences. A case-control study with 50% disease prevalence will train models that systematically over-predict risk when deployed in populations where true prevalence is 5%. The model may be perfectly calibrated for the training distribution yet dangerously miscalibrated for clinical use.
 
-**Leakage** occurs when information about the test set inadvertently influences model training or selection. Leakage pathways include overlapping individuals or variants between training and evaluation, shared family members across splits, duplicated samples under different identifiers, and indirect channels such as pretraining on resources that later serve as benchmarks. The circularity between computational predictors and ClinVar annotations discussed in @sec-vep-classical exemplifies this last category: CADD-like scores influence which variants receive pathogenic annotations, and those annotations then become training labels for the next generation of predictors.
+**Leakage** occurs when information about the test set inadvertently influences model training or selection. Leakage pathways include overlapping individuals or variants between training and evaluation, shared family members across splits, duplicated samples under different identifiers, and indirect channels such as pretraining on resources that later serve as benchmarks. The circularity between computational predictors and ClinVar annotations discussed in @sec-ch04-vep-classical exemplifies this last category: CADD-like scores influence which variants receive pathogenic annotations, and those annotations then become training labels for the next generation of predictors.
 
 **Distribution shift** describes mismatch between training and deployment data distributions. Shift can be driven by changes in ancestry composition, sequencing technology, clinical coding practices, or temporal trends in care. A model that learns hospital-specific coding patterns will fail when deployed at a different institution, not because the biology differs but because the label generation process does.
 
 For foundation models, these risks are magnified. Genomes encode ancestry, relatedness, and assay conditions in thousands of subtle features, even when those labels are never explicitly provided. Large transformers find shortcuts that smaller models would miss if those shortcuts improve the training objective. Complex training regimes involving pretraining on biobank-scale data, fine-tuning on curated labels, and evaluation on community benchmarks create many opportunities for direct and indirect leakage
 
 
-## Sources of Confounding in Genomic Data {#sec-ch22-sources-confounding-genomic-data}
+## Sources of Confounding in Genomic Data
 
 Confounders in genomic modeling cluster into several categories, though the same underlying variable (such as recruitment site) may simultaneously induce ancestry differences, **batch effect**s, and label bias.
 
@@ -37,20 +37,20 @@ Sequencing and analysis pipelines introduce their own systematic differences. Di
 
 The institutions where patients receive care introduce additional confounding layers. Hospital systems use distinct coding practices, diagnostic thresholds, and follow-up schedules. Population-based biobanks differ from referral-center cohorts in disease severity, comorbidity patterns, and demographic composition. Individuals who receive genomic testing may be more severely affected, more affluent, or preferentially drawn from particular ancestry groups, introducing selection bias that distorts apparent variant-phenotype relationships.
 
-The process of generating ground truth annotations itself creates biases. Clinical labels derived from billing codes or problem lists reflect documentation practices as much as underlying disease. Variant pathogenicity databases exhibit the systematic biases detailed in @sec-data: ClinVar annotations over-represent European ancestry, well-studied genes, and variants submitted by high-volume clinical laboratories [@landrum_clinvar_2018]. Expression, regulatory, or splicing labels derived from specific tissues or cell lines may not generalize to other biological contexts. The circularity problem identified in @sec-vep-classical persists into the foundation model era: when model predictions influence which variants receive expert review, and expert classifications become training labels, feedback loops amplify historical biases.
+The process of generating ground truth annotations itself creates biases. Clinical labels derived from billing codes or problem lists reflect documentation practices as much as underlying disease. Variant pathogenicity databases exhibit the systematic biases detailed in @sec-ch02-data: ClinVar annotations over-represent European ancestry, well-studied genes, and variants submitted by high-volume clinical laboratories [@landrum_clinvar_2018]. Expression, regulatory, or splicing labels derived from specific tissues or cell lines may not generalize to other biological contexts. The circularity problem identified in @sec-ch04-vep-classical persists into the foundation model era: when model predictions influence which variants receive expert review, and expert classifications become training labels, feedback loops amplify historical biases.
 
 Clinical practice, diagnostic criteria, and coding conventions evolve over time. Sequencing technologies and quality control pipelines also change. A model trained on 2015 data may fail on 2024 data not because biology changed but because documentation practices, coding standards, and available treatments all evolved. This temporal drift affects both the features models learn and the labels they predict.
 
 Even the resources used for training and evaluation create leakage pathways. When databases like gnomAD or UK Biobank appear in both model training and evaluation, indirect information flows compromise apparent generalization. A foundation model pretrained on gnomAD allele frequencies, then evaluated on a benchmark that uses gnomAD for population filtering, faces indirect leakage even if specific variants do not overlap. Community benchmarks that reuse widely available variant sets across multiple publications create additional leakage pathways that accumulate over time as the field iterates.
 
 
-## Population Structure as a Shortcut {#sec-ch22-population-structure-shortcut}
+## Population Structure as a Shortcut
 
 Population structure represents one of the most pervasive confounders in genomic modeling. The core issue is that ancestry simultaneously affects genomic features and many phenotypes through pathways that have nothing to do with direct genetic causation.
 
 Human genetic variation is structured by ancestry: allele frequencies, haplotype blocks, and **linkage disequilibrium** patterns differ across populations in ways that reflect demographic history. Principal components computed from genome-wide genotypes provide a low-dimensional summary of this structure and have become standard in genome-wide association study (**GWAS**) to correct for stratification [@patterson_population_2006; @price_pca_2006]. Yet ancestry is not merely a statistical nuisance. It is intertwined with geography, environment, socioeconomic status, and access to healthcare, factors that directly impact disease risk, likelihood of receiving genetic testing, and the quality of phenotyping when testing occurs.
 
-The statistical genetics community developed these corrections precisely because early genome-wide association studies produced spurious signals driven by ancestry differences between cases and controls rather than causal variant effects (see @sec-gwas for detailed treatment of **population stratification** in association testing). Foundation models face the same fundamental problem in a different guise: ancestry structure that confounded linear regression in GWAS now confounds neural network predictions, and the solutions require similar conceptual foundations even when the technical implementations differ.
+The statistical genetics community developed these corrections precisely because early genome-wide association studies produced spurious signals driven by ancestry differences between cases and controls rather than causal variant effects (see @sec-ch03-gwas for detailed treatment of **population stratification** in association testing). Foundation models face the same fundamental problem in a different guise: ancestry structure that confounded linear regression in GWAS now confounds neural network predictions, and the solutions require similar conceptual foundations even when the technical implementations differ.
 
 ::: {#fig-population-structure-shortcut layout-ncol=2}
 ![**FIGURE PLACEHOLDER A**](https://placehold.co/300x200?text=FIGURE%20PLACEHOLDER%20A)
@@ -71,7 +71,7 @@ Foundation models trained on nucleotide sequences see ancestry information direc
 This mismatch between the populations used for model development and the populations that would benefit from genomic medicine creates a fundamental tension between current practice and equitable healthcare. Models that work primarily for European ancestry individuals perpetuate existing health disparities, regardless of their benchmark performance.
 
 
-## Technical Artifacts as Biological Signal {#sec-ch22-technical-artifacts-biological-signal}
+## Technical Artifacts as Biological Signal
 
 Technical pipelines are complex, and each step from sample collection through final variant calls can introduce systematic differences that models may learn.
 
@@ -92,7 +92,7 @@ When samples from a particular batch or platform are disproportionately drawn fr
 Common patterns suggesting batch confounding include embedding spaces where samples cluster by sequencing center rather than phenotype, strong predictive performance that collapses when evaluated on data from a new platform, and models that can accurately predict batch identity (sequencing center, capture kit, processing date) from inputs that should be batch-independent. When a model designed to predict disease can also predict which laboratory processed the sample, something has gone wrong.
 
 
-## Label Bias and Circularity {#sec-ch22-label-bias-circularity}
+## Label Bias and Circularity
 
 Labels in genomic applications rarely represent ground truth in any absolute sense. They represent the outputs of complex processes involving clinical documentation, expert review, computational prediction, and database curation. These processes introduce biases that models absorb and may amplify.
 
@@ -110,7 +110,7 @@ Variant pathogenicity labels illustrate the problem of circularity. ClinVar aggr
 This circularity extends across the ecosystem of genomic resources. gnomAD allele frequencies inform variant filtering in clinical pipelines. UK Biobank genotype-phenotype associations shape which variants receive functional follow-up. Structural annotations from ENCODE and Roadmap Epigenomics influence which regulatory regions are considered biologically important. Foundation models pretrained on these resources, then evaluated against benchmarks derived from the same resources, may achieve impressive scores while learning to reproduce the assumptions and biases of existing annotations rather than discovering new biology.
 
 
-## Data Splitting {#sec-ch22-data-splitting}
+## Data Splitting
 
 Data splitting is among the primary tools for assessing generalization, yet naive splits can silently permit leakage that inflates apparent performance.
 
@@ -128,31 +128,31 @@ Time-based splits use temporal ordering, training on earlier data and evaluating
 
 Beyond explicit split design, indirect leakage remains a concern. A variant that appears in ClinVar may also appear in gnomAD (with population frequency information), in functional assay datasets (with splicing or expression effects), and in literature-derived databases (with disease associations). Pretraining on any of these resources while evaluating on another creates indirect information flow that standard deduplication would miss.
 
-## Data Leakage as Confounding {#sec-ch22-data-leakage-confounding}
+## Data Leakage as Confounding
 
 Data leakage can be understood as a special case of confounding where the confounder is information that should not exist at prediction time. This framing clarifies why leakage inflates performance estimates and why leaked models fail in deployment: they have learned associations with variables that are unavailable when predictions must actually be made.
 
-@sec-leakage-detection provides a detailed taxonomy of leakage types (label, feature, temporal, and benchmark leakage) along with detection strategies. Here we examine how each leakage type creates confounding structures that distort model evaluation.
+@sec-ch21-leakage-detection provides a detailed taxonomy of leakage types (label, feature, temporal, and benchmark leakage) along with detection strategies. Here we examine how each leakage type creates confounding structures that distort model evaluation.
 
-### The Causal Structure of Leakage {#sec-ch22-causal-structure-leakage}
+### The Causal Structure of Leakage
 
 In causal terms, leakage introduces a backdoor path between features and labels that does not represent the relationship we intend to model. Consider a pathogenicity predictor trained with conservation scores that were computed using alignments incorporating known pathogenic variants. The causal structure includes: (1) the intended path from sequence features through biological mechanism to pathogenicity, and (2) a leaked path from pathogenicity labels through their influence on conservation databases back to conservation features. The model cannot distinguish signal flowing through these two paths, and performance estimates reflect both.
 
 Label leakage creates confounding when the process that generated labels also influenced feature construction. The confounder is the shared information source: ClinVar curators who used computational predictions created a dependency between those predictions and subsequent labels. Feature leakage creates confounding when features correlate with labels through non-causal pathways, such as batch effects that happen to align with case-control status. Temporal leakage creates confounding through time-dependent information flow: future knowledge that influenced either features or labels introduces associations that would not exist in prospective application.
 
-### Compounding Effects {#sec-ch22-compounding-effects}
+### Compounding Effects
 
 These leakage types interact and compound. A model suffering from multiple forms may achieve extraordinary benchmark performance while learning nothing transferable to prospective clinical use. The apparent signal is real within the leaked evaluation framework but spurious for the intended application.
 
 Consider a variant effect predictor that uses conservation scores (feature leakage), was trained on ClinVar labels influenced by earlier predictors (label leakage), and is evaluated on a benchmark constructed using similar computational methods (benchmark leakage). Each leakage type independently inflates performance; together, they create an evaluation that measures something entirely different from prospective predictive ability.
 
-### Implications for Confounding Analysis {#sec-ch22-implications-confounding-analysis}
+### Implications for Confounding Analysis
 
-The confounding framework suggests that leakage detection methods (described in @sec-leakage-detection) can be understood as strategies for identifying and blocking backdoor paths. Feature ablation removes variables that may carry leaked signal. Temporal validation eliminates paths that depend on future information. Baseline analysis reveals when simple confounders explain most of the apparent performance.
+The confounding framework suggests that leakage detection methods (described in @sec-ch21-leakage-detection) can be understood as strategies for identifying and blocking backdoor paths. Feature ablation removes variables that may carry leaked signal. Temporal validation eliminates paths that depend on future information. Baseline analysis reveals when simple confounders explain most of the apparent performance.
 
 This perspective also clarifies why some apparent leakage may be acceptable. If conservation scores will always be available at prediction time, the path through conservation represents legitimate signal rather than confounding. The distinction depends on the deployment context: what information will actually be available when the model must make predictions? Leakage is confounding by information that exists in evaluation but not in application.
 
-## Detecting Confounding {#sec-ch22-detecting-confounding}
+## Detecting Confounding
 
 Confounding is often subtle, requiring systematic diagnostics rather than reliance on aggregate performance metrics.
 
@@ -173,7 +173,7 @@ Varying the splitting strategy probes for leakage. Re-evaluating performance und
 Using outcomes known to be unrelated to genomics as negative controls provides powerful confirmation of confounding. If a model trained to predict disease from genotypes can also predict administrative outcomes (insurance type, documentation completeness) with similar accuracy, it has learned confounders. Shuffling labels within batch or ancestry strata should eliminate predictive signal; if it does not, the model exploits structure that transcends any specific outcome.
 
 
-## Mitigation Strategies {#sec-ch22-mitigation-strategies}
+## Mitigation Strategies
 
 No mitigation strategy eliminates confounding entirely, and each involves trade-offs between bias, variance, and coverage. The approaches described here are complementary: design-based methods constrain confounding before modeling begins, statistical adjustments handle residual confounding, invariance learning provides protection when confounders are incompletely measured, and rigorous benchmark construction ensures that evaluation reflects generalization rather than shortcut learning.
 
@@ -183,7 +183,7 @@ No mitigation strategy eliminates confounding entirely, and each involves trade-
 [Enhancing] Strategy comparison table. Strategies: Study design (match cases/controls, before collection, reduces sample), Covariate adjustment (include ancestry/batch as inputs, during training, may remove real signal), Domain adaptation (train invariant to confounders, complex), Robust optimization (minimize worst-group error, requires group labels), Benchmark design (locus-level splits, during evaluation, harder scores by design). Annotation: "Approaches complementary; use multiple."
 :::
 
-### Study Design and Cohort Construction {#sec-ch22-study-design-cohort-construction}
+### Study Design and Cohort Construction
 
 Design-based approaches provide the most robust protection against confounding because they prevent the problem rather than attempting to correct it statistically. When cases and controls are matched on potential confounders before data collection, those variables cannot drive spurious associations regardless of model complexity.
 
@@ -195,7 +195,7 @@ Prospective collection with diversity targets ensures that training data represe
 
 The limitation of design-based approaches is that they must anticipate which variables will confound. Unknown or unmeasured confounders cannot be matched, and over-matching (matching on variables that are consequences of the exposure) can introduce bias rather than remove it. Design and analysis approaches work best in combination: match on known confounders, then adjust for residual imbalances that matching did not eliminate.
 
-### Covariate Adjustment {#sec-ch22-covariate-adjustment}
+### Covariate Adjustment
 
 Covariate adjustment explicitly models confounders rather than ignoring them, allowing estimation of outcome effects that account for confounding variables. The approach is familiar from genome-wide association studies, where including ancestry principal components as covariates in regression models reduces spurious associations driven by population structure.
 
@@ -207,7 +207,7 @@ Mixed models and hierarchical structures treat institution, batch, or ancestry g
 
 The fundamental limitation of covariate adjustment is that it requires measuring and correctly specifying confounders. Unmeasured confounders remain uncontrolled. Conditioning on colliders (variables caused by both exposure and outcome) introduces bias rather than removing it. Careful causal reasoning, often formalized through directed acyclic graphs, is essential for determining which variables should be adjusted and which should not.
 
-### Domain Adaptation and Invariance Learning {#sec-ch22-domain-adaptation-invariance-learning}
+### Domain Adaptation and Invariance Learning
 
 Domain adaptation methods aim to learn representations that do not encode confounders, achieving predictions that generalize across batches, institutions, or populations without explicitly modeling each source of variation. These approaches are particularly valuable when confounders are numerous, incompletely measured, or difficult to specify.
 
@@ -219,7 +219,7 @@ Group distributionally robust optimization (group DRO) targets worst-group perfo
 
 Importance weighting and distribution matching align feature distributions across domains without explicit adversarial training. Samples from underrepresented domains receive higher weights during training, or feature distributions are explicitly matched through maximum mean discrepancy or optimal transport objectives. These methods can be combined with other approaches and are particularly useful when the target deployment distribution is known but differs from training data.
 
-### Data Curation and Benchmark Design {#sec-ch22-data-curation-benchmark-design}
+### Data Curation and Benchmark Design
 
 The signals available for learning depend entirely on how data are curated and how benchmarks are constructed. Careful attention to data provenance and evaluation design prevents many confounding problems that would otherwise require complex modeling solutions.
 
@@ -231,7 +231,7 @@ Benchmark diversity ensures that evaluation reflects the full range of deploymen
 
 Documentation of overlaps between training resources and benchmarks enables readers to assess potential leakage. When a foundation model is pretrained on gnomAD, fine-tuned on ClinVar, and evaluated on a benchmark that filters variants using gnomAD frequencies, the information flow is complex and potentially circular. Explicit documentation of which resources contributed to which stages of model development allows appropriate skepticism about performance claims. Benchmark papers should catalog known overlaps with major training resources; model papers should acknowledge which benchmarks may be compromised by their pretraining choices.
 
-### Causal Inference Approaches {#sec-ch22-causal-inference-approaches}
+### Causal Inference Approaches
 
 When observational confounding cannot be eliminated through design or statistical adjustment, causal inference frameworks offer principled alternatives that leverage the structure of genetic inheritance itself.
 
@@ -243,7 +243,7 @@ Outcomes and exposures known to be unrelated to the prediction target provide em
 
 These causal approaches do not replace careful study design and rigorous splitting, but they provide additional tools for distinguishing genuine biological signal from confounded associations, particularly when the same observational data must serve both training and evaluation purposes.
 
-## Fairness and External Validity {#sec-ch22-fairness-external-validity}
+## Fairness and External Validity
 
 Confounding connects directly to fairness and health equity. Models that achieve high average performance while failing for specific populations may appear successful while exacerbating existing disparities.
 
@@ -251,13 +251,13 @@ Polygenic risk scores illustrate this tension. European ancestry-derived scores 
 
 Variant interpretation exhibits similar patterns. ClinVar contains many more pathogenic variant classifications for European ancestry individuals than for other populations [@landrum_clinvar_2018]. Predictors trained on ClinVar inherit this imbalance, performing better for variants common in European populations and worse for variants enriched in other ancestries. Clinical deployment of such predictors may reduce diagnostic yield for non-European patients.
 
-The **uncertainty quantification** approaches discussed in @sec-uncertainty provide partial mitigation: models that report high uncertainty for under-represented populations at least flag predictions that should not be trusted. The **interpretability** methods in @sec-interpretability can reveal when models rely on ancestry-correlated features. Yet technical solutions alone are insufficient. Addressing fairness requires intentional data collection that prioritizes under-represented populations, evaluation protocols that mandate subgroup analysis, and deployment decisions that consider equity alongside aggregate accuracy.
+The **uncertainty quantification** approaches discussed in @sec-ch23-uncertainty provide partial mitigation: models that report high uncertainty for under-represented populations at least flag predictions that should not be trusted. The **interpretability** methods in @sec-ch24-interpretability can reveal when models rely on ancestry-correlated features. Yet technical solutions alone are insufficient. Addressing fairness requires intentional data collection that prioritizes under-represented populations, evaluation protocols that mandate subgroup analysis, and deployment decisions that consider equity alongside aggregate accuracy.
 
-External validity asks whether a model's performance in one setting predicts its performance in another. Confounding and distribution shift often cause dramatic external validity failures. A model that achieves excellent metrics in the development cohort may fail when deployed at a different institution, in a different healthcare system, or in a different country. The clinical risk prediction frameworks in @sec-clinical-risk emphasize multi-site validation precisely because single-site performance frequently fails to generalize.
+External validity asks whether a model's performance in one setting predicts its performance in another. Confounding and distribution shift often cause dramatic external validity failures. A model that achieves excellent metrics in the development cohort may fail when deployed at a different institution, in a different healthcare system, or in a different country. The clinical risk prediction frameworks in @sec-ch25-clinical-risk emphasize multi-site validation precisely because single-site performance frequently fails to generalize.
 
-The fairness implications of confounding extend beyond technical model performance into questions of justice in healthcare resource allocation, diagnostic equity, and the distribution of benefits from genomic medicine. @sec-confounding examines these issues systematically, connecting the technical confounding problems discussed here to frameworks for algorithmic fairness, regulatory requirements for equitable AI deployment, and practical strategies for ensuring that genomic foundation models reduce rather than amplify existing health disparities. Governance frameworks for addressing these structural challenges are examined in @sec-future.
+The fairness implications of confounding extend beyond technical model performance into questions of justice in healthcare resource allocation, diagnostic equity, and the distribution of benefits from genomic medicine. @sec-ch22-confounding examines these issues systematically, connecting the technical confounding problems discussed here to frameworks for algorithmic fairness, regulatory requirements for equitable AI deployment, and practical strategies for ensuring that genomic foundation models reduce rather than amplify existing health disparities. Governance frameworks for addressing these structural challenges are examined in @sec-ch29-future.
 
-## A Practical Checklist {#sec-ch22-practical-checklist}
+## A Practical Checklist
 
 The following checklist synthesizes the diagnostics and mitigations discussed above. Systematic application during model development and evaluation surfaces confounding that would otherwise remain hidden.
 
@@ -276,10 +276,10 @@ The following checklist synthesizes the diagnostics and mitigations discussed ab
 Models that pass this checklist provide more reliable evidence of genuine biological learning. Models that fail at multiple points may achieve benchmark success while learning shortcuts that will not transfer to new settings.
 
 
-## Rigor as Response {#sec-ch22-rigor-response}
+## Rigor as Response
 
 These confounding and bias problems are not reasons for despair. They are reasons for rigor. The same expressive capacity that enables foundation models to discover subtle shortcuts also enables them to learn complex biological patterns when training data and evaluation protocols are designed appropriately. The goal is not to abandon powerful models but to create conditions under which their power serves biological discovery rather than benchmark gaming.
 
-Several trends support progress. Multi-ancestry biobanks and international collaborations expand the diversity of available training data. Benchmark developers implement stricter splitting protocols and require subgroup analyses. Pretraining strategies that explicitly promote invariance to technical factors are emerging. Uncertainty quantification methods (@sec-uncertainty) provide mechanisms for models to express appropriate caution when inputs fall outside their training distribution. The problem of confounding is tractable with sustained attention to data provenance, evaluation design, and deployment monitoring.
+Several trends support progress. Multi-ancestry biobanks and international collaborations expand the diversity of available training data. Benchmark developers implement stricter splitting protocols and require subgroup analyses. Pretraining strategies that explicitly promote invariance to technical factors are emerging. Uncertainty quantification methods (@sec-ch23-uncertainty) provide mechanisms for models to express appropriate caution when inputs fall outside their training distribution. The problem of confounding is tractable with sustained attention to data provenance, evaluation design, and deployment monitoring.
 
-Yet vigilance remains essential. New datasets bring new confounders. Novel architectures create new opportunities for shortcut learning. Community benchmarks accumulate indirect leakage as resources are reused across studies. Treating confounding as a first-order concern throughout model development, rather than an afterthought addressed only when reviewers complain, distinguishes models that actually work from models that merely perform well on convenient benchmarks. The interpretability methods in @sec-interpretability provide tools for distinguishing genuine regulatory insight from sophisticated pattern matching, while the uncertainty quantification approaches in @sec-uncertainty enable models to communicate when their predictions should not be trusted. Together with rigorous evaluation, these capabilities move the field toward models that reveal genuine biology and behave reliably across the diverse clinical and scientific settings where they will be deployed.
+Yet vigilance remains essential. New datasets bring new confounders. Novel architectures create new opportunities for shortcut learning. Community benchmarks accumulate indirect leakage as resources are reused across studies. Treating confounding as a first-order concern throughout model development, rather than an afterthought addressed only when reviewers complain, distinguishes models that actually work from models that merely perform well on convenient benchmarks. The interpretability methods in @sec-ch24-interpretability provide tools for distinguishing genuine regulatory insight from sophisticated pattern matching, while the uncertainty quantification approaches in @sec-ch23-uncertainty enable models to communicate when their predictions should not be trusted. Together with rigorous evaluation, these capabilities move the field toward models that reveal genuine biology and behave reliably across the diverse clinical and scientific settings where they will be deployed.

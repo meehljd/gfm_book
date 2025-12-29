@@ -2,25 +2,25 @@
 
 A synonymous mutation changes the DNA codon but preserves the amino acid. By the logic of protein-centric biology, such mutations should be functionally neutral: same protein sequence, same structure, same function. Yet synonymous variants can dramatically alter gene expression, affect protein folding, and cause disease. The mechanisms operate at the RNA level: altered codon optimality changes translation speed, modified mRNA secondary structure affects ribosome processivity, disrupted regulatory motifs change transcript stability. A model that sees only DNA sequence or only protein sequence misses these effects entirely. DNA foundation models learn regulatory sequence patterns; protein language models learn amino acid constraints. Neither captures RNA-level biology: secondary structure stability, RBP binding accessibility, or the coupling between splicing and decay.
 
-RNA occupies a distinct position in the central dogma, essential to every step from transcription to translation, yet historically receiving less computational attention than its neighbors. The disparity reflects data availability more than biological importance. Protein sequences accumulate over billions of years of evolution, providing the massive corpora that enabled *ESM* to learn structure from sequence (@sec-prot). DNA benefits from reference genomes, population sequencing, and functional genomics consortia generating petabytes of data (@sec-data). RNA databases remain comparatively sparse, structural annotations cover only well-characterized families, and no equivalent of *AlphaFold*'s crystallographic training set exists for RNA tertiary structure. The result is a modeling landscape where RNA foundation models exist but remain immature relative to protein and DNA counterparts.
+RNA occupies a distinct position in the central dogma, essential to every step from transcription to translation, yet historically receiving less computational attention than its neighbors. The disparity reflects data availability more than biological importance. Protein sequences accumulate over billions of years of evolution, providing the massive corpora that enabled *ESM* to learn structure from sequence (@sec-ch12-protein-lm). DNA benefits from reference genomes, population sequencing, and functional genomics consortia generating petabytes of data (@sec-ch02-data). RNA databases remain comparatively sparse, structural annotations cover only well-characterized families, and no equivalent of *AlphaFold*'s crystallographic training set exists for RNA tertiary structure. The result is a modeling landscape where RNA foundation models exist but remain immature relative to protein and DNA counterparts.
 
-The foundation models examined previously all manifest their predictions through RNA intermediates: *Enformer* predicts RNA-seq coverage (@sec-hybrid), protein models predict translation products (@sec-prot), *SpliceAI* models spliceosome recognition of RNA (@sec-splice). RNA-specific models add a distinct layer, treating RNA not merely as a readout of DNA or a precursor to protein, but as a structured molecule with its own sequence constraints, folding landscapes, and functional roles. We examine secondary structure prediction, RNA foundation models, codon-level mRNA models, and noncoding RNA classification, while confronting the data limitations that constrain current approaches.
+The foundation models examined previously all manifest their predictions through RNA intermediates: *Enformer* predicts RNA-seq coverage (@sec-ch13-regulatory), protein models predict translation products (@sec-ch12-protein-lm), *SpliceAI* models spliceosome recognition of RNA (@sec-ch06-spliceai). RNA-specific models add a distinct layer, treating RNA not merely as a readout of DNA or a precursor to protein, but as a structured molecule with its own sequence constraints, folding landscapes, and functional roles. We examine secondary structure prediction, RNA foundation models, codon-level mRNA models, and noncoding RNA classification, while confronting the data limitations that constrain current approaches.
 
 
-## RNA as Molecule Versus Transcriptome Readout {#sec-ch15-rna-molecule-versus-transcriptome}
+## RNA as Molecule Versus Transcriptome Readout {#sec-ch15-perspectives}
 
 Two complementary perspectives frame computational approaches to RNA. The molecular view treats RNA as a physical object with primary sequence, secondary structure through base pairing, tertiary organization in three-dimensional space, and chemical modifications that alter its properties. In this view, modeling goals include predicting which bases pair with which, how the molecule folds, which proteins bind to it, and how synthetic RNAs might be designed with desired properties. The transcriptomic view treats RNA as a cellular readout: coverage profiles along the genome, splice junction usage, isoform abundances, expression levels that vary across cell types and conditions. Here the goal is explaining how genomic sequence and chromatin state give rise to these measurements.
 
-Models that predict transcriptomic signals from DNA sequence (*Enformer*, *Borzoi*, and related architectures covered in @sec-hybrid) operate in the second paradigm. They take genomic sequence as input and output RNA-seq or CAGE profiles as predictions. These models never see RNA sequence directly; they learn the mapping from DNA context to transcriptional output. The molecular perspective treats RNA sequence as input and predicts structure, function, or design properties.
+Models that predict transcriptomic signals from DNA sequence (*Enformer*, *Borzoi*, and related architectures covered in @sec-ch13-regulatory) operate in the second paradigm. They take genomic sequence as input and output RNA-seq or CAGE profiles as predictions. These models never see RNA sequence directly; they learn the mapping from DNA context to transcriptional output. The molecular perspective treats RNA sequence as input and predicts structure, function, or design properties.
 
-The distinction parallels the difference between protein language models and proteomics prediction models. *ESM* takes amino acid sequences and learns structural representations (@sec-prot). A model predicting protein abundance from genomic features would be solving a different problem. Both perspectives are valuable, and both ultimately concern RNA, but they operate at different levels of the biological hierarchy and require different architectures and training strategies.
+The distinction parallels the difference between protein language models and proteomics prediction models. *ESM* takes amino acid sequences and learns structural representations (@sec-ch12-protein-lm). A model predicting protein abundance from genomic features would be solving a different problem. Both perspectives are valuable, and both ultimately concern RNA, but they operate at different levels of the biological hierarchy and require different architectures and training strategies.
 
 
-## Why Secondary Structure Creates a Distinct Modeling Challenge {#sec-ch15-secondary-structure-creates-distinct}
+## Why Secondary Structure Creates a Distinct Modeling Challenge {#sec-ch15-structure-challenge}
 
 RNA secondary structure prediction differs fundamentally from protein structure prediction in ways that shape every modeling choice. Three interrelated challenges define the problem: thermodynamic landscapes with multiple competing minima, base-pairing interactions that span hundreds of nucleotides, and **pseudoknot** structures that violate the assumptions of efficient algorithms. Understanding these challenges clarifies why RNA structure remains harder to predict than protein structure despite the apparent simplicity of four bases versus twenty amino acids.
 
-### Flat Energy Landscape Problem {#sec-ch15-flat-energy-landscape-problem}
+### Flat Energy Landscape Problem {#sec-ch15-energy-landscape}
 
 RNA's defining computational challenge emerges from thermodynamics. Proteins fold into stable three-dimensional structures because their energy landscapes contain deep minima: the native state sits in a pronounced funnel that guides the folding process. RNA energy landscapes are remarkably flatter. Multiple conformations compete for occupancy, with free energy differences often smaller than thermal fluctuations at cellular temperatures. A given RNA sequence may adopt several alternative structures with similar stabilities, and the dominant conformation can shift in response to ion concentrations, temperature, protein binding, or chemical modifications.
 
@@ -34,13 +34,13 @@ This conformational plasticity has biological functions (riboswitches that chang
 [Essential] Two-panel comparison. Panel A (Protein Folding): 3D surface with deep funnel topology; clear global minimum (native state); steep energy barriers; folding trajectory descending into funnel; "Deep minimum—single stable structure." Panel B (RNA Folding): Flatter surface with multiple shallow minima at similar energy levels; small energy differences; multiple arrows showing alternative folding paths; "Flat landscape; multiple competing structures." Bottom panel: Same RNA sequence adopting different structures; riboswitch example; RNA thermometer.
 :::
 
-### Base Pairing and Long-Range Dependencies {#sec-ch15-base-pairing-long-range-dependencies}
+### Base Pairing and Long-Range Dependencies {#sec-ch15-base-pairing}
 
 Secondary structure arises from Watson-Crick base pairing (A-U, G-C) and wobble pairs (G-U) that create stems, loops, bulges, and internal loops. Unlike protein secondary structure, where alpha helices and beta sheets are local motifs determined by nearby residues, RNA secondary structure involves long-range contacts. A base at position *i* may pair with a base at position *j* hundreds of nucleotides away. The intervening sequence must accommodate this pairing without introducing steric clashes or thermodynamically unfavorable arrangements.
 
 This long-range dependency structure differs fundamentally from protein contact prediction, where most important contacts occur between residues close in primary sequence. RNA structure prediction must consider all possible pairings across the entire sequence, evaluate their compatibility, and identify the globally optimal (or near-optimal) arrangement. The number of possible secondary structures grows exponentially with sequence length, making exhaustive enumeration intractable for long RNAs.
 
-### Pseudoknots and Tertiary Complexity {#sec-ch15-pseudoknots-tertiary-complexity}
+### Pseudoknots and Tertiary Complexity {#sec-ch15-pseudoknots}
 
 Pseudoknots occur when bases in a loop pair with bases outside that loop, creating interleaved base-pairing patterns that violate the nested structure assumed by standard secondary structure algorithms. A typical pseudoknot involves two stem regions whose base pairs cross each other when drawn in standard notation. These structures are functionally important (the telomerase RNA catalytic core contains a pseudoknot essential for activity) but algorithmically challenging. Standard dynamic programming approaches for secondary structure prediction exclude pseudoknots because their inclusion increases computational complexity from *O(n³)* to *O(n⁶)* or worse. *[Citation Needed]*
 
@@ -59,36 +59,36 @@ Pseudoknots occur when bases in a loop pair with bases outside that loop, creati
 Tertiary structure involves the three-dimensional arrangement of secondary structure elements in space, including long-range interactions mediated by non-Watson-Crick base pairs, metal ion coordination, and RNA-RNA kissing loops. Predicting RNA tertiary structure remains far less developed than protein tertiary structure prediction. No RNA equivalent of *AlphaFold* exists, and the training data situation is dire: the Protein Data Bank contains over 200,000 protein structures but fewer than 2,000 RNA structures, many of which are ribosomal RNA fragments or tRNA variants from the same structural families. *[Citation Needed]*
 
 
-## Classical Approaches to Structure Prediction {#sec-ch15-classical-approaches-structure}
+## Classical Approaches to Structure Prediction {#sec-ch15-classical}
 
 Before deep learning entered the field, two complementary paradigms dominated RNA structure prediction. Thermodynamic approaches compute minimum free energy structures from experimentally calibrated energy parameters, while comparative methods infer structure from patterns of compensatory mutations across homologous sequences. Both approaches remain valuable, and understanding their strengths and limitations illuminates what deep learning models must learn to surpass them.
 
-### Thermodynamic Folding Models {#sec-ch15-thermodynamic-folding-models}
+### Thermodynamic Folding Models {#sec-ch15-thermodynamic}
 
 The dominant classical paradigm for RNA secondary structure prediction relies on nearest-neighbor thermodynamic models. These approaches assign free energy contributions to each base pair and structural element (loops, bulges, internal loops, multiloops) based on experimentally calibrated parameters. Given these parameters, dynamic programming algorithms identify the minimum free energy structure or compute the partition function over all possible structures.
 
 *Mfold* and the *ViennaRNA* package represent the most widely used implementations. *[Citation Needed]* They achieve reasonable accuracy for short, well-behaved RNAs where the thermodynamic parameters are most reliable. Limitations emerge for longer RNAs where the flat energy landscape means many structures have similar energies, for RNAs in complex cellular environments where proteins and other factors alter folding, and for RNAs with modifications or non-canonical interactions not captured by standard parameter sets. These methods also assume equilibrium conditions that may not hold for co-transcriptional folding or kinetically trapped states.
 
-### Comparative and Covariation Methods {#sec-ch15-comparative-covariation-methods}
+### Comparative and Covariation Methods {#sec-ch15-comparative}
 
 For RNAs with sufficient homologous sequences, comparative approaches provide an orthogonal route to structure inference. If two positions exhibit compensatory mutations (G-C changing to A-U while maintaining complementarity), those positions likely base-pair. Databases like Rfam curate consensus secondary structures for RNA families based on these covariation signals. *[Citation Needed]*
 
 Comparative methods are powerful but require multiple sequence alignments of homologous RNAs. Novel RNAs, rapidly evolving regulatory elements, or species-specific transcripts may lack sufficient homologs for reliable inference. The approach also assumes that structure is conserved across the aligned sequences, which breaks down for RNAs that have diverged in function or that adopt condition-specific alternative structures.
 
 
-## Deep Learning for Secondary Structure Prediction {#sec-ch15-deep-learning-secondary-structure}
+## Deep Learning for Secondary Structure Prediction {#sec-ch15-dl-structure}
 
 Deep learning reframes secondary structure prediction as sequence-to-structure mapping, learning the relationship directly from data rather than encoding it through thermodynamic parameters. These models can capture patterns that classical approaches miss, particularly for complex structures and pseudoknots, though they require training data that remains limited compared to protein structure prediction. Two complementary training strategies have emerged: supervised learning from experimentally determined structures and semi-supervised approaches using structure probing data.
 
-### From Thermodynamics to Learned Patterns {#sec-ch15-thermodynamics-learned-patterns}
+### From Thermodynamics to Learned Patterns {#sec-ch15-learned-patterns}
 
-Deep learning models for RNA structure prediction frame the task as sequence-to-structure mapping, analogous to protein contact prediction (@sec-prot). Given an RNA sequence, the model predicts base-pairing probabilities for all position pairs, contact maps indicating which bases interact, or per-nucleotide structural states (paired, unpaired, in loop, in stem).
+Deep learning models for RNA structure prediction frame the task as sequence-to-structure mapping, analogous to protein contact prediction (@sec-ch12-protein-lm). Given an RNA sequence, the model predicts base-pairing probabilities for all position pairs, contact maps indicating which bases interact, or per-nucleotide structural states (paired, unpaired, in loop, in stem).
 
 Models like *SPOT-RNA* use convolutional or attention-based architectures to capture long-range dependencies in sequence. *[Citation Needed]* Some approaches directly predict pairing matrices as dense outputs; others output per-position classifications that are post-processed into structures. Training typically uses experimentally determined structures from databases like RNAstralign or bpRNA, supplemented by computationally predicted structures from thermodynamic models.
 
 Performance on benchmark datasets often exceeds classical thermodynamic methods, particularly for RNAs with complex structures or pseudoknots where dynamic programming approaches struggle. The learned models can capture patterns beyond nearest-neighbor rules, potentially encoding longer-range sequence dependencies that contribute to folding but were not parameterized in classical approaches.
 
-### Structure Probing as Supervision {#sec-ch15-structure-probing-supervision}
+### Structure Probing as Supervision {#sec-ch15-structure-probing}
 
 High-throughput structure probing experiments provide an alternative source of supervision. SHAPE (selective 2'-hydroxyl acylation analyzed by primer extension), DMS-seq, and icSHAPE measure nucleotide accessibility or flexibility across entire transcriptomes. Positions that are base-paired or buried in tertiary structure show lower reactivity than exposed positions. *[Citation Needed]*
 
@@ -97,15 +97,15 @@ These data offer several advantages for model training. They cover far more RNAs
 Models trained on structure probing data learn to predict accessibility profiles from sequence. These predictions can be integrated with thermodynamic models (using predicted accessibility as constraints) or used directly for downstream tasks like predicting RNA-protein binding or designing stable constructs.
 
 
-## RNA Foundation Models {#sec-ch15-rna-foundation-models}
+## RNA Foundation Models {#sec-ch15-foundation}
 
 The success of protein language models naturally prompted attempts to apply the same paradigm to RNA. Train large transformers on massive sequence corpora, learn representations through self-supervised objectives, then transfer to downstream tasks. RNA foundation models exist and show promise, but they have not yet achieved the transformative impact of their protein counterparts. The reasons illuminate fundamental differences between protein and RNA modeling.
 
-### Scale Gap with Protein Language Models {#sec-ch15-scale-gap-protein-language-models}
+### Scale Gap with Protein Language Models {#sec-ch15-scale-gap}
 
 RNA foundation models attempt to replicate the protein language model paradigm: train large transformers on massive sequence corpora using self-supervised objectives, then transfer learned representations to downstream tasks. The approach has produced working models, but the results lag substantially behind protein language models in both scale and demonstrated capabilities.
 
-The comparison with *ESM* illustrates the gap. *ESM-2* trained on over 65 million protein sequences from UniRef, spanning the known diversity of protein families (@sec-prot). *RNA-FM*, one of the more successful RNA foundation models, trained on approximately 23 million noncoding RNA sequences from RNAcentral [@chen_rna-fm_2022]. While not a trivial corpus, this represents an order of magnitude fewer sequences, and the RNA sequences span a narrower range of structural and functional diversity than proteins. The consequences appear in downstream performance: *RNA-FM* improves over baselines on secondary structure prediction and family classification, but shows nothing like the emergent structure prediction that made *ESM-2*'s attention patterns predict contact maps without supervision.
+The comparison with *ESM* illustrates the gap. *ESM-2* trained on over 65 million protein sequences from UniRef, spanning the known diversity of protein families (@sec-ch12-protein-lm). *RNA-FM*, one of the more successful RNA foundation models, trained on approximately 23 million noncoding RNA sequences from RNAcentral [@chen_rna-fm_2022]. While not a trivial corpus, this represents an order of magnitude fewer sequences, and the RNA sequences span a narrower range of structural and functional diversity than proteins. The consequences appear in downstream performance: *RNA-FM* improves over baselines on secondary structure prediction and family classification, but shows nothing like the emergent structure prediction that made *ESM-2*'s attention patterns predict contact maps without supervision.
 
 Several factors explain the disparity. Protein sequences have accumulated over 4 billion years of evolution across all domains of life, with each functional protein family represented by thousands of homologs. RNA databases are biased toward well-characterized structural families (tRNAs, rRNAs, ribozymes) with sparser coverage of regulatory ncRNAs and lineage-specific transcripts. The epitranscriptomic modifications that alter RNA function are invisible in sequence databases, unlike protein post-translational modifications that at least occur at predictable sequence motifs.
 
@@ -121,32 +121,32 @@ Several factors explain the disparity. Protein sequences have accumulated over 4
 [High] Scale comparison. Panel A (Scale Comparison Table): Training sequences (65M vs 23M, 3×); Structural diversity (all protein families vs mainly tRNA/rRNA); Parameters (15B vs ~100M, 150×); Emergent structure (contacts/folding vs limited). Panel B (Training Data Composition): Protein pie chart (diverse families) vs RNA (dominated by tRNA, rRNA, ribozymes). Panel C (Emergent Capabilities Comparison): Protein LMs (structure prediction ✓, variant effects ✓) vs RNA LMs (secondary partial ⚠, tertiary missing). Panel D (The Data Challenge): PDB proteins >200,000 vs RNA <2,000.
 :::
 
-### Architectures and Objectives {#sec-ch15-architectures-objectives}
+### Architectures and Objectives {#sec-ch15-architectures}
 
-Most RNA foundation models follow the **masked language modeling (MLM)** paradigm established by BERT (@sec-token). *RNA-FM* uses a transformer encoder with nucleotide-level tokenization, predicting masked bases from surrounding context. The learned embeddings show some correspondence to secondary structure when probed with downstream tasks, though the correspondence is weaker than the structure-function relationship learned by protein language models.
+Most RNA foundation models follow the **masked language modeling (MLM)** paradigm established by BERT (@sec-ch05-representations). *RNA-FM* uses a transformer encoder with nucleotide-level tokenization, predicting masked bases from surrounding context. The learned embeddings show some correspondence to secondary structure when probed with downstream tasks, though the correspondence is weaker than the structure-function relationship learned by protein language models.
 
 Alternative architectures explore different design choices. Some models incorporate explicit structure tokens or operate on sequence-structure graphs, learning joint representations over both modalities. Others use codon-level tokenization for coding RNAs or explore state-space models and other efficient attention variants to handle longer sequences. *RNAErnie* and related models experiment with multi-task objectives that combine MLM with auxiliary predictions for structural features or family classification. *[Citation Needed]*
 
 The field remains in active development, with no clear consensus on optimal architecture, tokenization, or training strategy. Unlike protein modeling, where *ESM* established a dominant paradigm that subsequent work has refined, RNA modeling still explores fundamental design choices.
 
-### Downstream Applications {#sec-ch15-downstream-applications}
+### Downstream Applications {#sec-ch15-downstream}
 
 RNA foundation model embeddings support various downstream tasks. Secondary structure prediction fine-tunes the model to output pairing probabilities or SHAPE reactivity profiles. RNA-protein binding prediction uses CLIP-seq data to predict interactions with RNA-binding proteins. Family classification assigns sequences to Rfam families or functional categories (tRNA, rRNA, miRNA, lncRNA). Expression and stability tasks predict transcript half-life or steady-state levels from UTR sequences.
 
-Performance varies substantially across tasks. For structurally constrained RNAs like tRNAs and rRNAs, where sequence motifs strongly determine structure and function, foundation model embeddings provide useful features. For regulatory lncRNAs that often lack stable secondary structures and conserved motifs, improvement over baseline methods is more modest. The diversity of RNA types and tasks complicates benchmarking (@sec-eval), and models that excel on one task may struggle on others.
+Performance varies substantially across tasks. For structurally constrained RNAs like tRNAs and rRNAs, where sequence motifs strongly determine structure and function, foundation model embeddings provide useful features. For regulatory lncRNAs that often lack stable secondary structures and conserved motifs, improvement over baseline methods is more modest. The diversity of RNA types and tasks complicates benchmarking (@sec-ch21-eval), and models that excel on one task may struggle on others.
 
 
-## Codon-Level Models for Coding RNA {#sec-ch15-codon-level-models-coding-rna}
+## Codon-Level Models for Coding RNA {#sec-ch15-codon}
 
 Coding sequences present a modeling opportunity that neither DNA nor protein foundation models fully exploit. The genetic code's synonymous redundancy means that mRNA sequence carries information beyond amino acid identity: codon choice affects translation speed, mRNA stability, and co-translational folding. Codon-level foundation models tokenize mRNA into three-nucleotide units, learning representations that capture these codon-specific signals invisible to protein language models.
 
-### Beyond Nucleotide Tokenization {#sec-ch15-beyond-nucleotide-tokenization}
+### Beyond Nucleotide Tokenization {#sec-ch15-codon-tokenization}
 
 Coding sequences occupy a special niche where protein and nucleic acid constraints intersect. The genetic code assigns 61 sense codons to 20 amino acids, creating synonymous redundancy where multiple codons encode the same amino acid. This redundancy is not functionally neutral: synonymous codons differ in tRNA availability, translation speed, co-translational folding effects, and mRNA stability. Protein language models, which operate on amino acid sequences, cannot capture these codon-level signals.
 
 Codon-level foundation models address this gap by tokenizing mRNA into codons rather than nucleotides. Models like *cdsFM*, *EnCodon*, and *DeCodon* treat each three-nucleotide codon as a single token, training on masked codon prediction and related objectives [@naghipourfar_cdsfm_2024]. This tokenization encodes a biological prior: codons are the fundamental units of translation, and mutations at the codon level determine amino acid changes while mutations within synonymous codons affect expression without changing protein sequence.
 
-The codon vocabulary contains 61 tokens (excluding stop codons) plus special tokens for noncoding regions and boundaries. This intermediate vocabulary size (between character-level nucleotide tokenization and typical BPE vocabularies of thousands of tokens) balances resolution with context length (@sec-token). A 300-amino-acid protein corresponds to 900 nucleotides or 300 codons, making whole-gene modeling tractable within standard transformer context windows.
+The codon vocabulary contains 61 tokens (excluding stop codons) plus special tokens for noncoding regions and boundaries. This intermediate vocabulary size (between character-level nucleotide tokenization and typical BPE vocabularies of thousands of tokens) balances resolution with context length (@sec-ch05-representations). A 300-amino-acid protein corresponds to 900 nucleotides or 300 codons, making whole-gene modeling tractable within standard transformer context windows.
 
 ::: {#fig-codon-tokenization layout-ncol=2}
 ![**FIGURE PLACEHOLDER A**](https://placehold.co/300x200?text=FIGURE%20PLACEHOLDER%20A)
@@ -160,20 +160,20 @@ The codon vocabulary contains 61 tokens (excluding stop codons) plus special tok
 [High] Codon-level modeling. Panel A (Same Protein, Different mRNA): Amino acid sequence; multiple mRNA sequences encoding same protein; highlight synonymous codon choices. Panel B (What Codon Choice Affects): tRNA availability, translation speed, mRNA structure, stability (GC content). Panel C (Tokenization Comparison): Character-level (900 tokens for 300 AA), codon-level (300 tokens); "Encodes biological prior." Panel D (Model Capabilities): Protein LM sees amino acids only; DNA LM sees nucleotides but no codon boundaries; Codon LM sees both.
 :::
 
-### What Codon Models Add {#sec-ch15-codon-models-add}
+### What Codon Models Add {#sec-ch15-codon-advantages}
 
 Compared to protein language models, codon-level models enable direct modeling of mRNA design problems where amino acid sequence is fixed but codon choice is variable. They capture codon usage bias and its relationship to expression, model translation elongation dynamics that affect co-translational folding, and distinguish synonymous variants that are neutral at the protein level but affect mRNA properties.
 
 *Life-Code* extends this approach into a central-dogma-wide framework, linking DNA, RNA, and protein representations through shared or aligned embedding spaces [@liu_life-code_2025]. *CodonBERT* specifically targets mRNA design for vaccines and therapeutics, training on over 10 million mRNA sequences to learn representations that predict expression, stability, and immunogenicity [@li_codonbert_2023].
 
-Codon models typically ignore mRNA secondary structure and modifications. Local structure affects ribosome access and translation rate; modifications like m6A influence stability and localization. Combining codon-aware tokenization with structure-aware representations remains an open direction, less mature than the parallel integration of sequence and structure in protein modeling (@sec-prot).
+Codon models typically ignore mRNA secondary structure and modifications. Local structure affects ribosome access and translation rate; modifications like m6A influence stability and localization. Combining codon-aware tokenization with structure-aware representations remains an open direction, less mature than the parallel integration of sequence and structure in protein modeling (@sec-ch12-protein-lm).
 
 
-## UTR Models and Translation Regulation {#sec-ch15-utr-models-translation-regulation}
+## UTR Models and Translation Regulation {#sec-ch15-utr}
 
 The untranslated regions flanking a coding sequence determine how much protein an mRNA produces and how long the message survives in the cell. These regulatory effects operate through distinct mechanisms in the 5' and 3' UTRs, creating opportunities for both understanding endogenous regulation and engineering synthetic mRNAs with desired expression properties.
 
-### Why UTRs Dominate Expression Control {#sec-ch15-utrs-dominate-expression-control}
+### Why UTRs Dominate Expression Control {#sec-ch15-utr-control}
 
 The protein output of an mRNA depends as much on its untranslated regions as on its coding sequence. A transcript's 5' UTR determines whether ribosomes find and engage the start codon; its 3' UTR controls how long the message survives and where in the cell it localizes. Two mRNAs encoding identical proteins can differ by orders of magnitude in expression if their UTRs differ. This regulatory leverage makes UTR modeling essential for both understanding endogenous gene regulation and designing synthetic mRNAs for therapeutic applications.
 
@@ -181,38 +181,38 @@ The 5' UTR spans from the transcription start site to the start codon, typically
 
 The 3' UTR extends from the stop codon to the poly-A tail, ranging from under 100 nucleotides to over 10 kilobases. This region harbors binding sites for RNA-binding proteins and microRNAs that collectively determine mRNA half-life, localization, and translational status. AU-rich elements (AREs) recruit decay machinery in response to cellular signals. Pumilio and other RNA-binding proteins recognize specific motifs to repress or activate translation. The density and arrangement of miRNA binding sites create combinatorial regulatory logic that varies across cell types depending on which miRNAs are expressed.
 
-### Sequence-to-Expression Models {#sec-ch15-sequence-expression-models}
+### Sequence-to-Expression Models {#sec-ch15-expression-models}
 
 High-throughput reporter assays have enabled systematic modeling of UTR function. **Massively parallel reporter assays (MPRAs)** measure expression driven by thousands of UTR variants in a single experiment, providing training data at scales previously unavailable. Sample et al. used such data to train *Optimus 5-Prime*, a convolutional model that predicts ribosome load from 5' UTR sequence with accuracy sufficient to guide synthetic UTR design [@sample_human_2019]. The model learned interpretable features corresponding to known regulatory elements (uORF presence, Kozak strength, secondary structure) while also capturing context-dependent interactions invisible to element-counting approaches.
 
 For 3' UTRs, models must contend with greater length and combinatorial complexity. A 2-kilobase 3' UTR may contain dozens of potential regulatory sites whose effects depend on spacing, secondary structure context, and the expression levels of cognate binding proteins. Approaches range from motif-based models that score individual elements and sum contributions, to deep learning architectures that process entire UTR sequences and learn nonlinear interactions. Agarwal and Kelley trained models on endogenous mRNA stability measurements, demonstrating that 3' UTR sequence features explain substantial variance in half-life across the transcriptome [@agarwal_predicting_2020].
 
-Transfer learning from RNA foundation models offers a complementary approach. Rather than training UTR-specific models from scratch, pretrained representations from *RNA-FM* or similar models can be fine-tuned on expression prediction tasks (@sec-token). The pretrained embeddings encode sequence context and potential structural features that may transfer to UTR function prediction, though systematic comparisons between foundation model transfer and task-specific training remain limited.
+Transfer learning from RNA foundation models offers a complementary approach. Rather than training UTR-specific models from scratch, pretrained representations from *RNA-FM* or similar models can be fine-tuned on expression prediction tasks (@sec-ch05-representations). The pretrained embeddings encode sequence context and potential structural features that may transfer to UTR function prediction, though systematic comparisons between foundation model transfer and task-specific training remain limited.
 
-### Integration with mRNA Design {#sec-ch15-integration-mrna-design}
+### Integration with mRNA Design {#sec-ch15-utr-design}
 
 UTR optimization represents a distinct component of therapeutic mRNA design, complementing codon optimization. For a vaccine or protein replacement therapy, the coding sequence determines what protein is made while the UTRs determine how much protein is made and for how long. Current mRNA therapeutics typically use UTRs borrowed from highly expressed endogenous genes (human alpha-globin and beta-globin UTRs are common choices) rather than computationally optimized sequences. *[Citation Needed]*
 
 Model-guided UTR design could improve on this approach by optimizing for specific objectives: maximizing expression in target tissues, extending mRNA half-life to reduce dosing frequency, or minimizing immunogenicity by avoiding sequences that trigger innate immune sensors. The challenge lies in the combinatorial interaction between UTRs and coding sequence. Secondary structures can span the UTR-CDS boundary, and the optimal 5' UTR for one coding sequence may perform poorly for another. Integrated models that jointly optimize UTRs and coding sequence represent an active research direction, though experimental validation of computationally designed UTRs remains limited compared to the extensive optimization of coding sequences.
 
 
-## mRNA Design and Optimization {#sec-ch15-mrna-design-optimization}
+## mRNA Design and Optimization {#sec-ch15-mrna-design}
 
 Therapeutic mRNA design requires navigating a vast sequence space where multiple objectives compete. Expression, stability, immunogenicity, and manufacturability all depend on sequence choices that interact in complex ways. The COVID-19 vaccines demonstrated that rational mRNA design can achieve clinical efficacy, while also revealing how much of current practice remains empirical rather than model-driven.
 
-### Design Objectives and Trade-offs {#sec-ch15-design-objectives-trade-offs}
+### Design Objectives and Trade-offs {#sec-ch15-design-objectives}
 
 mRNA sequence design selects nucleotide sequences that encode a desired protein while optimizing expression, stability, safety, and manufacturability. For a 300-amino-acid protein, there are approximately 3^300 possible synonymous mRNA sequences (roughly the number of synonymous codons raised to the protein length). This astronomical space cannot be exhaustively searched, motivating both classical heuristics and modern machine learning approaches.
 
 Key objectives include high protein expression in target tissues, mRNA stability during manufacturing and *in vivo*, controlled translation kinetics that influence co-translational folding, and low immunogenicity for therapeutic applications. These objectives often conflict: increasing GC content may improve stability but introduce unwanted secondary structure, while avoiding rare codons may reduce expression if tRNA pools are limiting.
 
-### Lessons from COVID-19 Vaccines {#sec-ch15-lessons-covid-19-vaccines}
+### Lessons from COVID-19 Vaccines {#sec-ch15-covid-vaccines}
 
 The COVID-19 mRNA vaccines provided a high-profile demonstration of mRNA design principles at unprecedented scale. The Pfizer-BioNTech and Moderna vaccines incorporated several design elements: N1-methylpseudouridine modification throughout the sequence to reduce innate immune activation, codon optimization to enhance expression in human cells, optimized 5' and 3' UTRs from highly expressed genes, and sequence modifications to stabilize the prefusion spike conformation. These choices drew on decades of basic research but were refined through empirical optimization rather than systematic model-based design. *[Citation Needed]*
 
 The vaccines' success demonstrated that rationally designed mRNAs can achieve therapeutic efficacy at scale. It also revealed limitations in current understanding: the optimal combination of modifications, codons, and UTRs for a given protein target remains partly empirical, and transferring designs across proteins or therapeutic applications requires substantial optimization.
 
-### Model-Based Design Strategies {#sec-ch15-model-based-design-strategies}
+### Model-Based Design Strategies {#sec-ch15-model-design}
 
 RNA and codon foundation models enable several approaches to systematic design. Scoring and screening use pretrained models to evaluate large candidate sets for predicted expression or stability, selecting top designs for experimental validation. When models are differentiable with respect to input embeddings, gradient-based methods can guide sequence optimization toward desired objectives. Generative approaches sample diverse high-scoring sequences subject to constraints like fixed amino acid sequence or avoided motifs.
 
@@ -225,17 +225,17 @@ Empirical results suggest that deep models trained on high-throughput reporter a
 :::
 
 
-## Noncoding RNA Classification and Function {#sec-ch15-noncoding-rna-classification-function}
+## Noncoding RNA Classification and Function {#sec-ch15-ncrna}
 
 RNA that does not encode protein encompasses an extraordinary range of structures, functions, and regulatory mechanisms. Classifying these transcripts and predicting their functions presents challenges that differ from coding sequence analysis: the relevant features vary across RNA classes, functional annotations remain incomplete, and the boundary between functional ncRNA and transcriptional noise is often unclear.
 
-### Diversity of Noncoding RNA {#sec-ch15-diversity-noncoding-rna}
+### Diversity of Noncoding RNA {#sec-ch15-ncrna-diversity}
 
 RNA that does not encode protein spans an enormous functional and structural range. Housekeeping RNAs (tRNAs, rRNAs, snRNAs, snoRNAs) perform essential cellular functions with well-characterized structures. Regulatory RNAs (miRNAs, siRNAs, piRNAs, lncRNAs) control gene expression through diverse mechanisms. Structural and catalytic RNAs (ribozymes, riboswitches) adopt complex folds that enable enzymatic activity or ligand sensing. Circular RNAs (circRNAs) and other noncanonical species continue to expand the catalog of RNA diversity.
 
 Each class has characteristic lengths, structural motifs, genomic contexts, and functional mechanisms. tRNAs are approximately 76 nucleotides with a conserved cloverleaf structure. miRNAs are approximately 22 nucleotides processed from longer hairpin precursors. lncRNAs span thousands of nucleotides with poorly conserved sequence and often no stable secondary structure. Unifying these classes under a single modeling framework is challenging, and models that excel on one class may fail on others.
 
-### From Handcrafted Features to Learned Representations {#sec-ch15-handcrafted-features-learned}
+### From Handcrafted Features to Learned Representations {#sec-ch15-ncrna-features}
 
 Classical ncRNA classification relied on engineered features: k-mer frequencies, GC content, minimum free energy of predicted secondary structure, structural motif counts, and genomic context features like proximity to coding genes or chromatin marks. These features fed conventional classifiers (SVMs, random forests, shallow neural networks) that achieved reasonable performance for well-studied classes with strong sequence and structure signatures.
 
@@ -244,7 +244,7 @@ The limits of handcrafted features emerge most clearly for lncRNAs. These transc
 Foundation model embeddings offer a more flexible approach. Per-nucleotide representations can be pooled into fixed-dimensional vectors that support classification with simple downstream heads. For ncRNAs without strong sequence motifs, the pretrained embeddings may capture subtle distributional patterns learned during self-supervised training. **Few-shot learning** becomes possible: given a handful of newly characterized RNAs, their embeddings can seed new clusters in representation space, guiding annotation of related sequences.
 
 
-## miRNA Target Prediction {#sec-ch15-mirna-target-prediction}
+## miRNA Target Prediction {#sec-ch15-mirna}
 
 MicroRNAs regulate gene expression by guiding the RNA-induced silencing complex (RISC) to complementary sites in target mRNAs, typically in the 3' UTR. A single miRNA can regulate hundreds of transcripts, and a single transcript can harbor binding sites for dozens of miRNAs. This regulatory network influences virtually every cellular process, and dysregulation of miRNA-target interactions contributes to cancer, cardiovascular disease, and neurodegeneration. Predicting which transcripts a given miRNA targets (and vice versa) has been a persistent computational challenge since the discovery of miRNA-mediated regulation.
 
@@ -252,18 +252,18 @@ The dominant paradigm centers on seed complementarity. Nucleotides 2 through 7 o
 
 Despite decades of refinement, target prediction remains noisy. Experimental validation rates for top predictions rarely exceed 50%, and many functional targets lack canonical seed matches. *[Citation Needed]* The disconnect arises partly from context dependence: a site may be accessible in one cell type but occluded by RNA structure or competing protein binding in another. It arises partly from the limitations of reporter assays that measure binding in artificial contexts rather than endogenous regulatory effects. And it arises from the biology itself, where weak individual sites combine additively and miRNA-target interactions are probabilistic rather than deterministic.
 
-Deep learning approaches attempt to improve on seed-based methods by learning complex sequence features from high-throughput binding data. Models trained on CLIP-seq experiments (which crosslink miRNA-target complexes and identify bound sites transcriptome-wide) can capture non-canonical binding modes and context effects invisible to seed-matching algorithms. These models often overfit to cell-type-specific binding patterns and generalize poorly across contexts (@sec-confound). The fundamental challenge is that miRNA targeting depends on factors beyond sequence: miRNA and target abundance, competition among targets for limiting RISC, and cellular state variables that no sequence-based model can capture.
+Deep learning approaches attempt to improve on seed-based methods by learning complex sequence features from high-throughput binding data. Models trained on CLIP-seq experiments (which crosslink miRNA-target complexes and identify bound sites transcriptome-wide) can capture non-canonical binding modes and context effects invisible to seed-matching algorithms. These models often overfit to cell-type-specific binding patterns and generalize poorly across contexts (@sec-ch22-confounding). The fundamental challenge is that miRNA targeting depends on factors beyond sequence: miRNA and target abundance, competition among targets for limiting RISC, and cellular state variables that no sequence-based model can capture.
 
 For clinical applications, target prediction informs both the mechanism of disease-associated miRNAs and the design of therapeutic interventions. AntimiR oligonucleotides that sequester specific miRNAs have entered clinical trials for hepatitis C (targeting miR-122) and other indications. Predicting off-target effects of such therapeutics requires understanding the full network of targets that will be derepressed when a miRNA is inhibited. Similarly, miRNA mimics designed to replace lost tumor-suppressor miRNAs must be evaluated for potential regulation of unintended targets. In both cases, computational target prediction provides a starting point that experimental validation must refine.
 
 
-## Splicing and Transcript Processing Models {#sec-ch15-splicing-transcript-processing-models}
+## Splicing and Transcript Processing Models {#sec-ch15-splicing}
 
 Splicing models predict how pre-mRNA is processed into mature transcripts, a problem intimately connected to RNA biology even when the models operate on genomic DNA sequence. *SpliceAI* established the paradigm, but extensions address tissue specificity, branchpoint prediction, and quantitative splicing outcomes that the original model does not capture.
 
 ### Beyond SpliceAI {#sec-ch15-beyond-spliceai}
 
-*SpliceAI* demonstrated that deep convolutional networks could predict splice sites with near-spliceosomal precision (@sec-splice). The model's success in identifying cryptic splice variants has made it a standard tool in clinical variant interpretation (@sec-variants). Splicing involves more than splice site recognition, and several extensions address aspects that *SpliceAI* does not fully capture.
+*SpliceAI* demonstrated that deep convolutional networks could predict splice sites with near-spliceosomal precision (@sec-ch06-spliceai). The model's success in identifying cryptic splice variants has made it a standard tool in clinical variant interpretation (@sec-ch14-vep-fm). Splicing involves more than splice site recognition, and several extensions address aspects that *SpliceAI* does not fully capture.
 
 Tissue-specific splicing patterns vary substantially across cell types and developmental stages. A splice site may be used in brain but skipped in liver due to differential expression of splicing factors. Models like *Pangolin* extend splice prediction by training on tissue-specific RNA-seq data, learning to predict not just whether a site is splice-competent but whether it is used in specific cellular contexts. *[Citation Needed]* These models enable variant interpretation that accounts for tissue-relevant splicing patterns rather than generic predictions.
 
@@ -272,33 +272,33 @@ Branchpoint prediction identifies the adenosine residue where the lariat interme
 Alternative splicing prediction moves beyond binary splice site identification to model exon inclusion rates and isoform usage. Models in this space attempt to predict not just whether an exon can be included but quantitative measures of inclusion across conditions, enabling analysis of splicing quantitative trait loci (sQTLs) and their effects on transcript diversity.
 
 
-## Limitations and Open Challenges {#sec-ch15-limitations-open-challenges}
+## Limitations and Open Challenges {#sec-ch15-limitations}
 
 RNA modeling faces constraints that do not apply to protein or DNA foundation models. Data scarcity limits what can be learned from self-supervised training, functional annotations remain incomplete for most ncRNA classes, and the field has not yet achieved the breakthrough moment that *AlphaFold* represented for proteins. These limitations define the current frontier and point toward the advances needed for RNA foundation models to mature.
 
-### Sparse Structural Data {#sec-ch15-sparse-structural-data}
+### Sparse Structural Data {#sec-ch15-sparse-data}
 
 The fundamental limitation of RNA modeling is data scarcity. Protein structure prediction benefits from over 200,000 experimentally determined structures; RNA has fewer than 2,000, heavily biased toward ribosomal RNA and tRNA. *[Citation Needed]* This scarcity limits supervised learning for tertiary structure prediction and constrains the emergence of structural knowledge from self-supervised pretraining. Until high-throughput methods generate RNA structures at scale comparable to protein crystallography and cryo-EM, RNA tertiary structure prediction will remain a frontier problem rather than a solved one.
 
 Secondary structure data is more abundant but still limited. Experimentally validated structures cover mainly well-characterized families, while computational predictions for novel sequences rely on thermodynamic models whose accuracy degrades for long RNAs and complex folds. Structure probing experiments provide genome-wide coverage but measure accessibility rather than pairing directly, requiring inference to convert reactivity profiles into structural models.
 
-### Functional Annotation Gaps {#sec-ch15-functional-annotation-gaps}
+### Functional Annotation Gaps {#sec-ch15-annotation-gaps}
 
 For many ncRNA classes, function remains poorly characterized. LncRNA annotations often specify only genomic location and expression pattern without mechanistic understanding. Circular RNA functions are emerging but incompletely cataloged. Even for better-characterized classes like miRNAs, target prediction remains noisy and context-dependent.
 
-This annotation gap limits supervised learning for function prediction and complicates evaluation (@sec-eval). When ground truth is uncertain, it becomes difficult to assess whether a model's predictions reflect genuine biological insight or artifacts of incomplete training data. The field needs both experimental advances to characterize ncRNA function and computational approaches that can learn from weak or partial supervision.
+This annotation gap limits supervised learning for function prediction and complicates evaluation (@sec-ch21-eval). When ground truth is uncertain, it becomes difficult to assess whether a model's predictions reflect genuine biological insight or artifacts of incomplete training data. The field needs both experimental advances to characterize ncRNA function and computational approaches that can learn from weak or partial supervision.
 
 ### Maturity Gap {#sec-ch15-maturity-gap}
 
 RNA foundation models exist but have not achieved the transformative impact of protein language models. *ESM-2* enabled *ESMFold*, providing structure prediction from single sequences that nearly matches *AlphaFold*. No comparable RNA breakthrough has occurred. The reasons include data scarcity, the conformational complexity of RNA, and the diversity of RNA classes that makes unified modeling difficult.
 
-This maturity gap represents both a limitation and an opportunity. The techniques that succeeded for proteins (large-scale self-supervised learning, attention mechanisms, scaling laws) provide a roadmap (@sec-dna). Applying that roadmap to RNA requires addressing the data challenge through structure probing, synthetic data generation, or more efficient use of limited experimental structures. It requires architectural innovations that handle RNA's long-range base pairing and conformational flexibility. And it requires benchmarks and evaluation frameworks that cover the full diversity of RNA types and tasks.
+This maturity gap represents both a limitation and an opportunity. The techniques that succeeded for proteins (large-scale self-supervised learning, attention mechanisms, scaling laws) provide a roadmap (@sec-ch11-dna-lm). Applying that roadmap to RNA requires addressing the data challenge through structure probing, synthetic data generation, or more efficient use of limited experimental structures. It requires architectural innovations that handle RNA's long-range base pairing and conformational flexibility. And it requires benchmarks and evaluation frameworks that cover the full diversity of RNA types and tasks.
 
 
-## Bridge Between Sequence and Cell {#sec-ch15-bridge-sequence-cell}
+## Bridge Between Sequence and Cell {#sec-ch15-bridge}
 
-RNA occupies a distinctive position in genomic AI, bridging the sequence-level models of Part III with the cellular perspectives that follow. Splicing models like *SpliceAI* operate on pre-mRNA and predict transcript processing outcomes (@sec-splice). Codon-level models capture translation dynamics invisible to protein language models. mRNA therapeutic design demonstrates practical value through codon optimization, UTR engineering, and stability prediction. These applications proceed despite the absence of the structure prediction breakthrough that transformed protein modeling; secondary structure prediction has advanced through deep learning, but tertiary structure accuracy lags protein structure by a wide margin.
+RNA occupies a distinctive position in genomic AI, bridging the sequence-level models of Part III with the cellular perspectives that follow. Splicing models like *SpliceAI* operate on pre-mRNA and predict transcript processing outcomes (@sec-ch06-spliceai). Codon-level models capture translation dynamics invisible to protein language models. mRNA therapeutic design demonstrates practical value through codon optimization, UTR engineering, and stability prediction. These applications proceed despite the absence of the structure prediction breakthrough that transformed protein modeling; secondary structure prediction has advanced through deep learning, but tertiary structure accuracy lags protein structure by a wide margin.
 
-The relationship between RNA models and other modalities reflects RNA's position in the central dogma. RNA is the product of transcription that regulatory models predict (@sec-reg, @sec-hybrid), the substrate for translation that protein models assume (@sec-prot), and the primary measurement that single-cell models use to represent cellular state (@sec-multi). Foundation models that learn from RNA sequence capture patterns distinct from those in DNA or protein: codon usage biases, secondary structure constraints, and post-transcriptional regulatory elements that neither genomic nor protein models directly represent.
+The relationship between RNA models and other modalities reflects RNA's position in the central dogma. RNA is the product of transcription that regulatory models predict (@sec-ch13-regulatory, @sec-ch13-regulatory), the substrate for translation that protein models assume (@sec-ch12-protein-lm), and the primary measurement that single-cell models use to represent cellular state (@sec-ch19-multi-omics). Foundation models that learn from RNA sequence capture patterns distinct from those in DNA or protein: codon usage biases, secondary structure constraints, and post-transcriptional regulatory elements that neither genomic nor protein models directly represent.
 
-Beyond sequence, biological understanding requires cellular and tissue context. Single-cell models treat RNA expression as the primary readout of cellular state, learning representations that capture cell type identity and perturbation response (@sec-multi). Three-dimensional genome models add spatial context that influences transcription. Network models integrate gene relationships that transcend individual sequences. RNA models provide sequence-level representations that feed into these higher-level frameworks, completing the molecular arc from DNA through RNA to protein while opening the path to systems-level integration.
+Beyond sequence, biological understanding requires cellular and tissue context. Single-cell models treat RNA expression as the primary readout of cellular state, learning representations that capture cell type identity and perturbation response (@sec-ch19-multi-omics). Three-dimensional genome models add spatial context that influences transcription. Network models integrate gene relationships that transcend individual sequences. RNA models provide sequence-level representations that feed into these higher-level frameworks, completing the molecular arc from DNA through RNA to protein while opening the path to systems-level integration.
