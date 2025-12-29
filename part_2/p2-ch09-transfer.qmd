@@ -6,7 +6,7 @@ The promise of transfer learning is substantial. Foundation models trained on bi
 
 The reality requires careful navigation. Every adaptation decision involves tradeoffs: preserving pretrained knowledge versus enabling task-specific learning, computational efficiency versus model flexibility, rapid deployment versus careful validation. Full **fine-tuning** updates all parameters, risking catastrophic forgetting of pretrained knowledge. Feature extraction freezes all pretrained parameters, limiting adaptation to task-specific patterns. Parameter-efficient methods (adapters, LoRA, prompt tuning) navigate between these extremes, but each makes different assumptions about where adaptation should occur.
 
-## Source and Target Domains {#sec-ch09-source-target}
+## Source and Target Domains {#sec-ch09-source-target-domains}
 
 When a cardiologist requests variant interpretation for a patient with hypertrophic cardiomyopathy, the clinical need (classifying a specific *MYH7* variant) differs fundamentally from the data available during model development (millions of protein sequences sampled across all of evolution). Bridging this gap requires understanding what properties of pretraining determine whether transfer will succeed. When this bridge fails, patients receive confident predictions based on patterns irrelevant to their clinical context.
 
@@ -16,7 +16,7 @@ When a cardiologist requests variant interpretation for a patient with hypertrop
 [Essential] Schematic illustrating domain shift in genomic transfer learning. Left panel (Source Domain): Diverse genomic sequences during pretraining, with learned representations capturing statistical regularities (local motifs, composition, conservation). Right panel (Target Domain): Sparse labeled examples for clinical task (e.g., pathogenic variants, tissue-specific enhancers), highlighting distributional differences. Center: Representation space showing well-transferred features (local motifs, conservation patterns) connected by solid arrows vs. poorly-transferred features (long-range regulatory logic, tissue-specific patterns) with dashed arrows indicating transfer failure.
 :::
 
-### Gap Between Pretraining and Deployment {#sec-ch09-pretraining-deployment-gap}
+### Gap Between Pretraining and Deployment {#sec-ch09-gap-pretraining-deployment}
 
 The **source domain** encompasses the data and objectives used during pretraining. For DNA foundation models, source domains typically include reference genomes, pan-genomic collections spanning population diversity, or metagenomic assemblies sampling environmental sequence space. For protein models, databases like UniRef provide billions of sequences representing the diversity of evolutionary history *[Citation Needed]*. Pretraining objectives (masked language modeling, next-token prediction, contrastive learning) encourage models to capture statistical regularities that help predict held-out tokens: local motifs, compositional patterns, and the signatures distinguishing functional from random sequence (see @sec-ch08-pretraining for detailed treatment of these objectives). These learned regularities become the representations that might transfer to downstream tasks.
 
@@ -24,12 +24,12 @@ The **target domain** presents a fundamentally different challenge. Rather than 
 
 Four factors determine whether this distributional gap can be bridged. Task relatedness measures whether target predictions depend on patterns the model learned during pretraining; predicting transcription factor binding after sequence pretraining succeeds because both involve local motif recognition, while predicting three-dimensional chromatin contacts may require spatial relationships the pretraining objective never captured. Target data quantity constrains which adaptation strategies avoid overfitting; with thousands of labeled examples, aggressive fine-tuning can reshape representations, but with dozens, only the lightest approaches remain viable. Model expressiveness influences adaptation flexibility, as larger models encode richer internal representations that can potentially serve more diverse downstream tasks but also risk memorizing small target datasets. Distribution overlap between source and target determines how much learned knowledge applies; human regulatory elements share patterns with mouse elements (enabling cross-species transfer) but diverge in species-specific enhancers (limiting it).
 
-### Recognizing Transfer Outcomes {#sec-ch09-transfer-outcomes}
+### Recognizing Transfer Outcomes {#sec-ch09-recognizing-transfer-outcomes}
 
 Not all transfer helps, and distinguishing outcomes requires explicit validation. **Positive transfer** accelerates learning or improves final performance beyond training from scratch. **Negative transfer** occurs when pretraining actively hurts, either because learned features conflict with task requirements or because pretrained initialization creates optimization difficulties *[Citation Needed]*. Neutral transfer describes situations where pretraining neither helps nor hurts, wasting computational resources on pretrained models without benefit. When a pharmacogenomics team adapts a DNA language model for *CYP2D6* metabolizer status prediction, they must empirically verify which outcome applies to their specific task rather than assuming transfer will help because it helped elsewhere.
 
 
-## Feature Extraction and Representation Analysis {#sec-ch09-feature-extraction}
+## Feature Extraction and Representation Analysis {#sec-ch09-feature-extraction-representation}
 
 Clinical laboratories processing hundreds of variants daily cannot afford to fine-tune models for each new gene or variant class. When a novel gene enters diagnostic panels, classifiers must be deployed rapidly using whatever labeled examples exist. A molecular diagnostics team with 200 annotated *RYR1* variants for malignant hyperthermia risk prediction cannot fine-tune a 500-million parameter model; they need an approach that works with minimal data while avoiding adaptation risk entirely.
 
@@ -41,7 +41,7 @@ Why does the simplest possible classifier often suffice? If pretrained represent
 
 Ji et al. demonstrated that *DNABERT* embeddings paired with linear probes achieve competitive chromatin accessibility prediction from a few hundred positive and negative examples, matching convolutional neural network baselines requiring far more labeled data *[Citation Needed]*. Dalla-Torre et al. showed similar results with *Nucleotide Transformer*, where linear probes on frozen embeddings approached fine-tuned performance for promoter detection and splice site recognition *[Citation Needed]*. These successes reflect alignment between pretraining objectives (predicting masked tokens from local context) and target tasks (distinguishing sequences based on motif patterns the model already learned to recognize).
 
-### When Linear Probing Fails {#sec-ch09-linear-probing-limits}
+### When Linear Probing Fails {#sec-ch09-when-linear-probing-failure}
 
 Linear probes fail when relevant information exists in embeddings but requires nonlinear transformation to extract. Shallow multilayer perceptrons (one or two hidden layers) extend linear probing by enabling more complex decision boundaries while maintaining computational efficiency. With several thousand labeled examples, shallow MLPs on *HyenaDNA* embeddings improve splice site prediction over linear probes by capturing interactions between features that linear models cannot represent *[Citation Needed]*. The additional expressiveness helps when task-relevant patterns are distributed across embedding dimensions in ways that linear combination cannot capture.
 
@@ -53,24 +53,24 @@ A variant effect predictor built on *ESM* embeddings achieves 85% accuracy in in
 
 **Probing classifiers** answer these diagnostic questions by systematically interrogating representations before deployment. The methodology converts the abstract question "will transfer help?" into concrete evidence about representation content: train lightweight classifiers to predict properties of interest from frozen embeddings, then examine how accurately different properties can be decoded. If chromatin accessibility can be predicted with 85% accuracy from a linear probe, the representations already encode accessibility-relevant features and frozen feature extraction will likely succeed. If transcription factor binding requires a deep nonlinear classifier to reach the same accuracy, relevant information exists but is not linearly separable, suggesting PEFT might help by reorganizing representations for easier extraction. If a property cannot be predicted above chance even with flexible classifiers, the representations may lack necessary information entirely, and transfer to this task may fail regardless of adaptation strategy.
 
-### What Probing Reveals About Pretrained Models {#sec-ch09-probing-results}
+### What Probing Reveals About Pretrained Models {#sec-ch09-probing-reveals-pretrained-models}
 
 Systematic probing reveals what models learn during pretraining. Rives et al. demonstrated that *ESM* protein embeddings encode secondary structure so thoroughly that linear probes achieve near state-of-the-art helix/sheet/coil prediction accuracy *[Citation Needed]*. Contact prediction (which residues are spatially close in folded structure) requires nonlinear probes but still achieves strong performance, indicating that tertiary structure information is present but requires transformation to extract. DNA language models show similar patterns: local motif information is recoverable by linear probes while long-range dependencies require multi-layer networks *[Citation Needed]*.
 
 Layer-wise probing reveals how information transforms through the model. Early layers typically encode local compositional features (*k*-mer frequencies, simple motifs, sequence statistics) while later layers capture more abstract patterns (regulatory signatures, evolutionary constraints, functional classifications) *[Citation Needed]*. For tasks depending on local features, representations from early or middle layers may outperform final-layer embeddings that have abstracted away relevant details. Layer selection becomes another hyperparameter to optimize during adaptation.
 
-### Probing Guides Adaptation Strategy {#sec-ch09-probing-guides-adaptation}
+### Probing Guides Adaptation Strategy {#sec-ch09-probing-guides-adaptation-strategy}
 
 The diagnostic value extends beyond predicting which adaptation strategy to use. When probing reveals that required features are absent from pretrained representations, practitioners face a choice: commit to full fine-tuning with sufficient target data (hoping the model can learn missing features), switch to a different foundation model whose pretraining objective better aligns with task requirements, or proceed with from-scratch training that does not inherit inappropriate inductive biases. The investment in probing before adaptation often saves months of wasted effort on transfer that was doomed from the start.
 
 
-## Parameter-Efficient Fine-Tuning {#sec-ch09-peft}
+## Parameter-Efficient Fine-Tuning {#sec-ch09-parameter-efficient-fine-tuning}
 
 A research hospital developing tissue-specific expression predictors faces an impossible choice. Frozen features from *Enformer* provide reasonable baselines, but full fine-tuning for each of fifty tissue types would require months of GPU time and risk overfitting the thousands of tissue-specific training examples. The team needs an intermediate approach: enough flexibility to improve over frozen features, enough constraint to prevent overfitting, enough efficiency to iterate across dozens of tissues.
 
 **Parameter-efficient fine-tuning (PEFT)** methods resolve this tension by updating a small subset of parameters while keeping the majority frozen, enabling task-specific adaptation without the computational expense or overfitting risk of modifying all weights *[Citation Needed]*. The key insight is that useful adaptation often requires changing only a small subspace of model behavior, not rewriting everything the model learned during pretraining.
 
-### Low-Rank Adaptation {#sec-ch09-lora}
+### Low-Rank Adaptation {#sec-ch09-low-rank-adaptation}
 
 **Low-Rank Adaptation (LoRA)** has emerged as the dominant PEFT technique in genomic applications because it directly operationalizes this insight. Rather than updating a large weight matrix *W* directly, LoRA introduces two smaller matrices *A* and *B* whose product approximates the desired weight change: *W'* = *W* + *BA* *[Citation Needed]*. During fine-tuning, *W* remains frozen while only *A* and *B* receive gradient updates. The rank of these matrices (typically 8 to 64 for genomic models) controls adaptation expressiveness: lower ranks introduce fewer parameters and stronger implicit regularization; higher ranks enable more flexible task-specific modification at greater overfitting risk.
 
@@ -82,7 +82,7 @@ The efficiency gains prove substantial. A transformer with 500 million parameter
 [Essential] Schematic of LoRA adaptation showing original frozen weight matrix W alongside low-rank decomposition matrices A and B. Indicate parameter counts (e.g., 500M frozen vs. 2-5M trainable). Show how the effective weight becomes W + BA during forward pass.
 :::
 
-### Configuring Low-Rank Adaptation {#sec-ch09-lora-config}
+### Configuring Low-Rank Adaptation {#sec-ch09-configuring-low-rank-adaptation}
 
 Selecting LoRA hyperparameters requires balancing expressiveness against overfitting risk, with optimal choices depending on task alignment and available data. The rank parameter controls how many dimensions of modification are possible. Ranks of 4 to 16 typically suffice for tasks closely aligned with pretraining objectives, where small perturbations to pretrained weights capture the required adaptation. When target tasks diverge more substantially from pretraining, ranks of 32 to 64 may prove necessary, though higher ranks approach the parameter count where full fine-tuning becomes competitive. Empirical comparison across ranks on held-out validation data remains the most reliable selection method; theoretical guidance for optimal rank given task characteristics does not yet exist.
 
@@ -94,26 +94,26 @@ Within layers, LoRA can be applied to query, key, value, and output projection m
 
 These heuristics provide starting points, not guarantees. The interaction between model architecture, pretraining objective, target task, and available data creates a combinatorial space that resists simple rules. Systematic hyperparameter search over rank, layer selection, and weight matrix targeting, guided by validation performance on data matching the deployment distribution, remains the most reliable path to effective adaptation.
 
-## Full Fine-Tuning {#sec-ch09-full-finetuning}
+## Full Fine-Tuning {#sec-ch09-full-fine-tuning}
 
 When Avsec et al. sought to predict gene expression from sequence across hundreds of cell types, they required a model capturing tissue-specific regulatory logic unavailable from any generic pretrained representation *[Citation Needed]*. With millions of labeled examples spanning thousands of genomic tracks, they could afford to update all model parameters, reshaping internal representations entirely for their specific predictive task. Constrained adaptation would have left tissue-specific regulatory patterns unlearned.
 
 Full fine-tuning offers maximum flexibility: every parameter becomes tunable, enabling the model to learn whatever features the target task requires regardless of pretraining emphasis. This flexibility comes with risks proportional to its power.
 
-### Making Full Fine-Tuning Work {#sec-ch09-full-finetuning-practice}
+### Making Full Fine-Tuning Work {#sec-ch09-making-full-fine-tuning-work}
 
 Full fine-tuning updates all model parameters during adaptation but requires careful attention to optimization dynamics. Learning rates must be substantially lower than during pretraining (often 10 to 100 times smaller) to avoid catastrophically disrupting learned representations in early training steps *[Citation Needed]*. **Gradual unfreezing**, where top layers update first and deeper layers progressively join training, helps preserve low-level features (local motifs, basic sequence statistics) while allowing high-level task-specific adjustment. Regularization through weight decay, dropout, and early stopping on validation data prevents overfitting to target datasets.
 
 The approach suits scenarios when labeled datasets are large (tens of thousands of examples or more), when the target task diverges substantially from pretraining such that constrained adaptation proves insufficient, or when performance requirements justify computational investment. *Enformer* fine-tuning for new chromatin assays requires updating most parameters to capture assay-specific signal characteristics distinct from original training conditions. Expression prediction across novel cell types benefits from full adaptation when sufficient tissue-specific data exists.
 
-### Risks of Unconstrained Adaptation {#sec-ch09-finetuning-risks}
+### Risks of Unconstrained Adaptation {#sec-ch09-risks-unconstrained-adaptation}
 
 **Catastrophic forgetting** occurs when fine-tuning overwrites general knowledge useful for related tasks or out-of-distribution inputs; a model fine-tuned aggressively on lymphocyte data may lose performance on epithelial cells it previously handled well *[Citation Needed]*. Overfitting afflicts small target datasets, where the model memorizes training examples rather than learning generalizable patterns. Computational expense can be prohibitive for models with billions of parameters. When negative transfer occurs (pretraining initialization actually hurts optimization), full fine-tuning may underperform training from scratch despite the additional expense.
 
 The conservative strategy is to start with simpler methods and escalate only when they demonstrably fail. Establish frozen feature baselines first. If frozen features outperform random initialization, try PEFT methods before committing to full fine-tuning. Compare fine-tuned models against properly-tuned from-scratch baselines on the same target data. Monitor for overfitting through validation curves and early stopping. The goal is achieving required performance with minimal adaptation complexity.
 
 
-## Choosing an Adaptation Strategy {#sec-ch09-choosing-strategy}
+## Choosing an Adaptation Strategy {#sec-ch09-selection-adaptation-strategy}
 
 The preceding sections described what each adaptation approach does; here we address when to use each. Two factors dominate the decision: how much labeled data exists, and how closely the target task aligns with pretraining objectives. @fig-adaptation-decision-tree provides a decision framework, but the underlying logic is straightforward.
 
@@ -127,11 +127,11 @@ These heuristics indicate which strategies merit trying first, but empirical val
 [Essential] Flowchart guiding adaptation strategy selection. Decision nodes: (1) "Labeled data quantity?" with branches <500, 500-5000, >10000. (2) "Task similarity to pretraining?" with branches high/moderate/low. (3) "Computational constraints?" with branches limited/moderate/substantial. Terminal nodes recommend: Linear probing, LoRA/Adapters, Full fine-tuning, or From-scratch training. Include expected tradeoffs at each terminal (accuracy, compute, overfitting risk).
 :::
 
-## Domain Shift and Cross-Context Transfer {#sec-ch09-domain-shift}
+## Domain Shift and Cross-Context Transfer {#sec-ch09-domain-shift-cross-context-transfer}
 
 The *CYP2D6* gene encodes a cytochrome P450 enzyme metabolizing approximately 25% of clinically used drugs, including codeine (where poor metabolizers experience no analgesic effect) and tamoxifen (where poor metabolizers show reduced breast cancer treatment efficacy) *[Citation Needed]*. A foundation model trained on human genomic data and adapted for *CYP2D6* variant classification might achieve 90% accuracy on common variants well-represented in training data. But the variants most important clinically are rare: novel star alleles in underrepresented populations, structural variants creating gene duplications or deletions, population-specific haplotypes absent from reference databases. Domain shift between training and deployment distributions creates systematic blind spots precisely where clinical stakes are highest.
 
-### Types of Domain Shift in Genomics {#sec-ch09-domain-shift-types}
+### Types of Domain Shift in Genomics {#sec-ch09-types-domain-shift-genomics}
 
 Three types of **domain shift** commonly afflict genomic transfer learning, each creating different patterns of failure.
 
@@ -141,7 +141,7 @@ Tissue-specific regulatory programs create equally severe challenges for cross-t
 
 Differences in molecular readout technology create a more subtle form of shift that affects cross-assay transfer. ChIP-seq and ATAC-seq both measure chromatin state but with different biochemistry, resolution, and signal characteristics. Models trained on one assay may learn assay-specific artifacts rather than underlying biology, producing predictions that fail when applied to related assays measuring the same phenomenon differently. Multi-task pretraining across assays helps models distinguish biological signal from assay-specific noise.
 
-### Detecting and Mitigating Shift {#sec-ch09-detecting-shift}
+### Detecting and Mitigating Shift {#sec-ch09-detecting-mitigating-shift}
 
 Detecting domain shift before deployment prevents silent clinical failures. Statistical divergence measures comparing source and target distributions quantify distribution differences. Embedding visualizations (t-SNE or UMAP projections) reveal whether target examples fall within the source distribution or occupy unfamiliar regions of representation space. Monitoring performance on canary examples (known easy cases that should always be predicted correctly) provides early warning of severe shift during deployment.
 
@@ -157,17 +157,17 @@ When domain shift is detected, mitigation strategies include domain-adaptive fin
 [High] Three-panel visualization of domain shift detection. Panel A: UMAP/t-SNE projection of embeddings showing training distribution (dense cluster) and test examples at varying distances, with out-of-distribution examples clearly separated. Panel B: Calibration curves comparing confidence vs. accuracy for in-distribution (well-calibrated diagonal) vs. out-of-distribution examples (overconfident, curve below diagonal). Panel C: Performance degradation curve showing accuracy declining as distributional distance from training data increases.
 :::
 
-## Minimal-Data and Emerging Transfer Paradigms {#sec-ch09-minimal-data}
+## Minimal-Data and Emerging Transfer Paradigms {#sec-ch09-minimal-data-emerging-transfer-paradigms}
 
 A geneticist studying a newly characterized neurodevelopmental disorder has identified 15 patients with variants in a previously unstudied gene. Functional studies confirm pathogenicity for 8 variants; the remaining 7 are benign. Training a classifier from 15 examples using standard supervised learning would be absurd, yet the clinical need for variant interpretation is immediate. Parents are waiting for diagnoses. **Few-shot learning** and **zero-shot learning** address these extreme data scarcity scenarios that characterize many genomic applications, where clinical urgency outpaces data availability.
 
-### Few-Shot Learning with Minimal Examples {#sec-ch09-few-shot}
+### Few-Shot Learning with Minimal Examples {#sec-ch09-few-shot-learning-minimal-examples}
 
 When only 10 to 100 examples per class exist, standard adaptation overfits catastrophically. The core insight of few-shot learning is that models can be trained explicitly for rapid adaptation by optimizing across many few-shot tasks during a meta-training phase *[Citation Needed]*. **Model-Agnostic Meta-Learning (MAML)** exemplifies this approach by finding parameter initializations that can be fine-tuned effectively from minimal data. The initialization represents a point in parameter space from which a few gradient steps reach good task-specific solutions. At deployment, the meta-trained model adapts to new tasks from a handful of labeled examples, having learned during meta-training what features are generally useful and how to adapt quickly.
 
 A simpler alternative avoids gradient updates at deployment entirely. **Prototypical networks** learn to embed sequences such that examples from the same class cluster together *[Citation Needed]*. At inference, class prototypes are computed as the mean embedding of the few available examples per class, and novel sequences are classified based on distance to prototypes. With 10 pathogenic and 10 benign variants as prototypes, novel variants are classified by which prototype cluster they fall nearest in embedding space. The approach requires no parameter updates during deployment, only forward passes to compute embeddings and distances.
 
-### Zero-Shot Transfer Without Task-Specific Data {#sec-ch09-zero-shot}
+### Zero-Shot Transfer Without Task-Specific Data {#sec-ch09-zero-shot-transfer-task-specific-data}
 
 The most extreme adaptation scenario eliminates task-specific examples entirely. Zero-shot transfer makes predictions using only the pretrained model's outputs, without any task-specific adaptation. For protein variant effect prediction, *ESM* log-likelihood ratios score variants by how much they reduce the model's probability of the observed sequence *[Citation Needed]*. Variants that violate the model's learned expectations for natural proteins (disrupting conserved residues, introducing destabilizing substitutions) receive low likelihood ratios, flagging them as potentially deleterious. This approach proves competitive with supervised methods for ClinVar pathogenicity prediction because evolutionary constraint (what masked language modeling learns to predict) correlates with functional importance (what pathogenicity classification measures).
 
@@ -181,26 +181,26 @@ Adaptation need not be confined to training time. **Test-time adaptation** updat
 
 Privacy constraints have motivated development of **federated transfer learning**, which enables collaborative model development across institutions without sharing raw genomic data *[Citation Needed]*. Institutions train local models on private patient data and share only aggregated parameter updates, enabling foundation models to learn from far more diverse data than any single institution can access while preserving patient privacy. This approach could help address the population bias in current genomic datasets by enabling contributions from institutions serving underrepresented populations (see @sec-ch03-data-resources for discussion of population representation in genomic databases).
 
-### Toward Theoretical Foundations {#sec-ch09-theory}
+### Toward Theoretical Foundations {#sec-ch09-toward-theoretical-foundations}
 
 Theoretical foundations for predicting transfer success based on measurable properties of source and target domains would reduce trial-and-error *[Citation Needed]*. Currently practitioners must empirically test whether transfer helps; theoretical guidance specifying when transfer will succeed based on domain divergence measures, task similarity metrics, or representation analysis could focus effort on promising applications and avoid wasted investment in doomed transfer attempts.
 
 
-## Diagnosing Transfer: Validation and Failure Modes {#sec-ch09-diagnosing-transfer}
+## Diagnosing Transfer: Validation and Failure Modes {#sec-ch09-diagnosing-transfer-validation-failure}
 
 The research team had done everything right. They selected a state-of-the-art DNA foundation model pretrained on diverse genomic sequences. They applied LoRA adaptation using 5,000 carefully curated training examples. Validation accuracy reached 88%. But when deployed on prospectively collected samples, performance collapsed to 62%, barely better than chance for a binary classification task. Transfer had failed. For the patients whose variants were misclassified during those weeks before the failure was detected, the consequences were real: delayed diagnoses, inappropriate treatments, unnecessary anxiety. Understanding why transfer fails prevents repeating the mistake.
 
-### Diagnosing Negative Transfer {#sec-ch09-negative-transfer}
+### Diagnosing Negative Transfer {#sec-ch09-diagnosing-negative-transfer}
 
 Negative transfer occurs when pretraining actively hurts performance, producing adapted models worse than those trained from scratch on target data alone. Pretraining on human coding sequences may encode codon usage patterns and amino acid preferences that create false expectations when applied to bacterial sequences with different GC content and codon bias. Pretraining on healthy tissue samples may learn features of normal cellular function that prove misleading for cancer samples where regulatory programs are fundamentally altered. The pretrained initialization, rather than providing a useful starting point, creates an optimization landscape that leads to poor task-specific solutions *[Citation Needed]*.
 
 Diagnostic steps identify whether transfer helps or hurts. First, compare adapted model performance against a from-scratch baseline trained on identical target data with equivalent hyperparameter tuning; if the pretrained model does not meaningfully outperform from-scratch training, transfer provides no benefit and the computational overhead of working with large pretrained models is wasted. Second, establish that simpler adaptation strategies were tried before complex ones; if linear probing fails, full fine-tuning rarely succeeds unless target data is very large. Third, visualize embeddings from the pretrained model using dimensionality reduction; if target task classes are not separated in embedding space, pretrained representations may lack task-relevant features. Fourth, ablate pretraining entirely by comparing against randomly initialized models of identical architecture; this isolates whether pretrained weights provide value or whether architectural choices alone drive performance.
 
-### Remediation When Transfer Fails {#sec-ch09-remediation}
+### Remediation When Transfer Fails {#sec-ch09-remediation-when-transfer-failure}
 
 When diagnostics reveal fundamental mismatches, several remediation strategies apply. Task-specific pretraining on data more closely aligned with target requirements can bridge the gap; pretraining specifically on regulatory regions for regulatory prediction tasks rather than genome-wide pretraining may produce more suitable representations. Hybrid architectures combining pretrained and randomly-initialized components allow selective use of transfer where it helps while avoiding its limitations elsewhere. Trying alternative foundation models whose pretraining objectives better match task requirements may reveal that the problem was model selection rather than transfer learning generally. And accepting that transfer provides no benefit for this specific task, proceeding with from-scratch training, remains a valid conclusion when evidence supports it.
 
-### Validation and Common Pitfalls {#sec-ch09-validation-pitfalls}
+### Validation and Common Pitfalls {#sec-ch09-validation-common-pitfalls}
 
 A research group reports that their foundation model adaptation achieves 95% accuracy for splice variant classification, far exceeding previous methods. Six months later, clinical deployment reveals performance closer to 70%, with systematic failures on the rare variants that matter most. The initial evaluation was not wrong, but it was misleading. Proper validation separates genuine transfer success from evaluation artifacts that dissolve on contact with clinical reality (see @sec-ch17-benchmarks for expanded discussion of evaluation methodology).
 
@@ -217,7 +217,7 @@ A research group reports that their foundation model adaptation achieves 95% acc
 :::
 
 
-### Sources of Spurious Success {#sec-ch09-spurious-success}
+### Sources of Spurious Success {#sec-ch09-sources-spurious-success}
 
 Test set overlap with pretraining data creates artificial performance inflation. Foundation models trained on massive genomic corpora may inadvertently include sequences later used for evaluation. When benchmarking on variants that appeared in pretraining data (even if unlabeled at pretraining time), the model has seen the sequences and may have memorized relevant patterns. Verifying that test sequences were excluded from pretraining requires careful provenance tracking, which published benchmarks often lack *[Citation Needed]*. Chromosome-based splits help but do not fully address the problem when pretraining spans multiple species or includes population-level diversity (see @sec-ch18-confounding for detailed treatment of data leakage).
 
@@ -225,42 +225,42 @@ Temporal leakage uses future information unavailable at prediction time. Evaluat
 
 Inappropriate baselines inflate apparent transfer benefits. Comparing adapted foundation models against weak or poorly-tuned from-scratch baselines makes transfer look more valuable than warranted. Strong baselines require equivalent hyperparameter tuning, appropriate architectures for the task, and sufficient training on the same target data. When properly-tuned CNNs match or exceed foundation model performance for a task, the additional complexity of pretrained models may not be justified.
 
-### Evaluation Practices That Reveal True Performance {#sec-ch09-evaluation-practices}
+### Evaluation Practices That Reveal True Performance {#sec-ch09-evaluation-practices-reveal-true}
 
 Single-metric reporting obscures important performance characteristics. A model achieving 90% overall accuracy may show 95% accuracy on common variants and 50% accuracy on rare variants, with the clinically important rare cases hidden by aggregate metrics. Stratified evaluation by allele frequency, variant type, gene family, and other clinically relevant categories reveals whether transfer benefits generalize or concentrate in particular subgroups.
 
 Confidence interval reporting and multiple training runs reveal performance variability. A single training run may produce misleadingly good or bad results through random initialization effects or data sampling. Testing on multiple independent datasets rather than a single benchmark reveals whether gains generalize beyond the specific evaluation setting.
 
 
-## Case Studies in Transfer Learning {#sec-ch09-case-studies}
+## Case Studies in Transfer Learning {#sec-ch09-case-studies-transfer-learning}
 
 Transfer succeeds when pretraining objectives align with downstream requirements; it fails when they diverge. Four cases illustrate the conditions that distinguish success from failure.
 
-### *DNABERT* for Chromatin Accessibility {#sec-ch09-case-dnabert}
+### *DNABERT* for Chromatin Accessibility {#sec-ch09-dnabert-chromatin-accessibility}
 
 Ji et al. pretrained *DNABERT* using masked language modeling on *k*-mer tokenized human genomic sequence *[Citation Needed]*. For ATAC-seq peak classification, they applied linear probes to [CLS] token embeddings without updating backbone parameters. The approach achieved competitive performance with CNNs trained from scratch while requiring approximately 10 times less labeled data.
 
 Success reflected strong alignment between pretraining and target task: both involve recognizing local sequence motifs (transcription factor binding sites, nucleosome positioning signals) that determine chromatin state. The pretrained representations already encoded the relevant patterns; the linear probe simply learned to separate accessible from inaccessible regions in this well-structured embedding space.
 
-### *ESM* for Variant Pathogenicity {#sec-ch09-case-esm}
+### *ESM* for Variant Pathogenicity {#sec-ch09-esm-variant-pathogenicity}
 
 Rives et al. pretrained *ESM* on UniRef protein sequences using masked language modeling *[Citation Needed]*. For ClinVar pathogenicity classification, Meier et al. showed that zero-shot scoring based on variant effects on sequence likelihood proved competitive with supervised methods *[Citation Needed]*. Adding a linear probe on *ESM* embeddings improved performance further, but the zero-shot baseline was already strong.
 
 Success reflected implicit alignment: evolutionary constraint (what masked language modeling captures) correlates with functional importance (what pathogenicity measures). The pretraining objective, though never explicitly targeting variant classification, learned representations directly relevant to it.
 
-### *Enformer* for Cross-Tissue Expression {#sec-ch09-case-enformer}
+### *Enformer* for Cross-Tissue Expression {#sec-ch09-enformer-cross-tissue-expression}
 
 Avsec et al. pretrained *Enformer* on thousands of chromatin and expression tracks spanning dozens of cell types *[Citation Needed]*. Fine-tuning with tissue-specific prediction heads for individual cell types captured regulatory logic unavailable from frozen features, outperforming both frozen *Enformer* and from-scratch models trained on individual tissues.
 
 Success required both the large scale of pretraining (establishing general sequence-to-function mappings) and extensive fine-tuning data (enabling tissue-specific adaptation). With smaller fine-tuning datasets, the approach would have overfit; without diverse pretraining, the model would have lacked transferable regulatory knowledge.
 
-### Cross-Species Regulatory Prediction {#sec-ch09-case-cross-species}
+### Cross-Species Regulatory Prediction {#sec-ch09-cross-species-regulatory-prediction}
 
 Models pretrained on human regulatory sequences and applied to zebrafish enhancer prediction often underperform zebrafish-specific models despite the apparent relevance of regulatory sequence patterns *[Citation Needed]*. The failure reflects both sequence divergence (zebrafish regulatory motifs differ from human) and lineage-specific regulatory innovations (teleost-specific enhancers have no human homologs from which to transfer).
 
 The boundary between success and failure corresponds to evolutionary conservation: patterns shared across species transfer; species-specific patterns do not. Transfer succeeds for deeply conserved elements (core promoters, splice sites) but fails for lineage-specific regulatory logic.
 
-## What Transfers, What Breaks {#sec-ch09-conclusion}
+## What Transfers, What Breaks {#sec-ch09-transfers-breaks}
 
 Transfer learning amplifies the value of pretrained models by connecting learned representations to specific applications. A foundation model pretrained on billions of sequences encodes patterns that would require orders of magnitude more labeled data to learn from scratch. Effective transfer realizes this investment; ineffective transfer inherits hidden limitations without the promised benefits.
 

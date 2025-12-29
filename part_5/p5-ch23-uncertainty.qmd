@@ -1,15 +1,15 @@
-# Uncertainty Quantification {#sec-uncertainty}
+# Uncertainty Quantification {#sec-ch23-uncertainty}
 
 A pathogenicity score of 0.73 means nothing unless we know what 0.73 means. If the model is well-calibrated, approximately 73% of variants receiving this score are truly pathogenic, and a clinician can weigh this probability against the costs of further testing. If the model is miscalibrated, the true pathogenicity rate among variants scored at 0.73 could be 40% or 95%, and the nominal probability provides no reliable basis for decision-making. The distinction is not between accurate and inaccurate models but between models that know what they know and models that do not. A miscalibrated model with high average accuracy can be more dangerous than a calibrated model with lower accuracy, because the miscalibrated model provides false confidence that leads to systematically wrong decisions.
 
 Foundation models produce continuous scores, but clinical decisions require categorical actions: test or do not test, treat or do not treat, report to the family or continue monitoring. This translation from probability to action only works when probabilities are trustworthy. A model that systematically overstates confidence will trigger unnecessary interventions. A model that understates confidence will miss actionable findings. A model that reports high confidence on inputs it has never seen before fails at a fundamental level regardless of its average performance on familiar data. Uncertainty quantification provides the tools to assess when model predictions deserve trust.
 
 
-## Types of Uncertainty in Genomic Prediction {#sec-uncertainty-types}
+## Types of Uncertainty in Genomic Prediction {#sec-ch23-types-uncertainty-genomic-prediction}
 
 Uncertainty in genomic prediction arises from two fundamentally different sources that demand different responses. One source reflects limitations in what the model has learned from available data; this uncertainty can, in principle, be reduced by gathering more examples or improving model architecture. The other source reflects genuine randomness in the biological system itself, where identical genotypes produce variable phenotypes through stochastic developmental processes, environmental interactions, or incomplete penetrance. Distinguishing between these sources determines whether additional data collection would help or whether we must accept irreducible limits on predictive confidence.
 
-### Why Uncertainty Matters
+### Why Uncertainty Matters {#sec-ch23-uncertainty-matters}
 
 Clinical genetics operates under fundamental uncertainty. When a laboratory reports a variant of uncertain significance (VUS), they acknowledge that current evidence cannot confidently classify the variant as pathogenic or benign. **ClinVar** contains approximately two million VUS compared to roughly 250,000 variants classified as pathogenic [@landrum_clinvar_2018], reflecting the reality that most genetic variation remains incompletely understood. Foundation models inherit and sometimes amplify this uncertainty: they may produce confident-seeming scores for variants where the underlying biology remains genuinely unknown.
 
@@ -17,7 +17,7 @@ The consequences of ignoring uncertainty extend beyond statistical abstraction. 
 
 Decision theory formalizes this intuition. The expected value of a clinical action depends on the probability of each outcome weighted by its utility. When a model reports 0.73 probability of pathogenicity, downstream decision-making implicitly assumes this probability is accurate. If the true probability is 0.50, actions optimized for 0.73 will systematically err. Uncertainty quantification ensures that the probabilities entering clinical decisions reflect genuine knowledge rather than artifacts of model architecture or training procedure.
 
-### Epistemic Uncertainty
+### Epistemic Uncertainty {#sec-ch23-epistemic-uncertainty}
 
 A model trained exclusively on European-ancestry data encounters its first genome from an individual of African ancestry. The model's predictions may be statistically valid within the distribution it has seen, yet unreliable for this new input due to limited exposure to ancestry-specific patterns of variation, **linkage disequilibrium**, and regulatory architecture. This uncertainty about what the model has learned, as distinct from noise inherent in the prediction task itself, constitutes epistemic uncertainty.
 
@@ -35,7 +35,7 @@ Mathematically, epistemic uncertainty reflects uncertainty over model parameters
 
 Foundation models exhibit epistemic uncertainty through several observable signatures. Embeddings for unfamiliar sequences cluster in sparse regions of representation space, distant from the dense clusters formed by well-represented sequence families. Ensemble members trained with different random seeds produce divergent predictions for novel inputs while converging for familiar ones. Fine-tuning on the same downstream task with different random seeds yields inconsistent results for edge cases. These signatures provide practical diagnostics for identifying when epistemic uncertainty is high.
 
-### Aleatoric Uncertainty
+### Aleatoric Uncertainty {#sec-ch23-aleatoric-uncertainty}
 
 Some variants are genuinely ambiguous regardless of how much data we collect. The same pathogenic variant in *BRCA1* causes breast cancer in one carrier but not another due to modifier genes, hormonal exposures, or stochastic developmental processes. Incomplete penetrance, the phenomenon where disease-associated variants do not always produce disease, creates irreducible uncertainty that no amount of training data can eliminate. This inherent randomness in the mapping from genotype to phenotype constitutes aleatoric uncertainty.
 
@@ -43,7 +43,7 @@ Aleatoric uncertainty reflects noise or stochasticity intrinsic to the predictio
 
 Aleatoric uncertainty often varies with the input, a property termed heteroscedasticity. Coding variants in essential genes may have relatively low aleatoric uncertainty because strong selection pressure produces consistent phenotypic effects. Regulatory variants exhibit higher aleatoric uncertainty because their effects depend on cellular context, developmental timing, and interactions with other genetic and environmental factors. A model that captures this heteroscedasticity can provide more informative uncertainty estimates by conveying that some predictions are inherently more reliable than others.
 
-### Decomposing Total Uncertainty
+### Decomposing Total Uncertainty {#sec-ch23-decomposing-total-uncertainty}
 
 Total predictive uncertainty combines epistemic and aleatoric components, and distinguishing between them has practical implications for decision-making. High epistemic uncertainty suggests that gathering more data, either through additional training examples or further investigation of the specific case, could reduce uncertainty and improve the prediction. High aleatoric uncertainty indicates that the prediction is as good as it can get given inherent noise in the problem; additional data will not help because the underlying biology is stochastic.
 
@@ -52,7 +52,7 @@ The law of total variance provides a mathematical framework for decomposition. T
 These decompositions depend on modeling assumptions and provide approximations rather than exact separations. Ensemble disagreement may underestimate epistemic uncertainty if all members share similar biases from common training data. Heteroscedastic models may confound aleatoric and epistemic uncertainty if the training data is too sparse to reliably estimate noise levels. Despite these limitations, approximate decomposition provides actionable information: variants flagged for high epistemic uncertainty warrant additional data collection or expert review, while variants with high aleatoric uncertainty may require acceptance of irreducible limits on predictive confidence.
 
 
-## Calibration and Confidence Interpretation {#sec-calibration}
+## Calibration and Confidence Interpretation {#sec-ch23-calibration-confidence-interpretation}
 
 Calibration determines whether model outputs can be interpreted as probabilities. A score of 0.85 from a pathogenicity predictor should mean that 85% of variants receiving similar scores are truly pathogenic; only then can clinicians rationally weight computational evidence against other diagnostic criteria. This chapter provides the comprehensive treatment of calibration theory and methods. Readers encountering calibration in applied contexts, whether variant effect prediction (@sec-vep-fm) or evaluation methodology (@sec-evaluation), are referred here for the formal foundations and complete methodological catalog.
 
@@ -68,7 +68,7 @@ Calibration determines whether model outputs can be interpreted as probabilities
 [Essential] Four-panel figure. Panel A (Perfect calibration): Reliability diagram with points on diagonal; annotation "Predictions match reality." Panel B (Overconfident): Points below diagonal; model predicts 0.9, true frequency 0.6; annotation "Common for deep neural networks" and "Dangerous for clinical use." Panel C (Underconfident): Points above diagonal; annotation "May miss actionable variants." Panel D (Miscalibration by subgroup): Two reliability curves (European ancestry, African ancestry); one well-calibrated, one poorly calibrated; annotation "Aggregate metrics can mask disparities." Include expected calibration error (ECE) values, prediction histograms showing score distributions, and note "Calibration ≠ discrimination."
 :::
 
-### The Calibration Problem
+### The Calibration Problem {#sec-ch23-calibration-problem}
 
 AlphaMissense outputs a continuous score between 0 and 1 for each possible missense variant in the human proteome. When it reports 0.85 for a particular variant, what does this number mean? If the model is calibrated, collecting all variants scored near 0.85 and checking their true clinical status should reveal that approximately 85% are pathogenic. Perfect calibration means that predicted probabilities match observed frequencies across the entire range of model outputs: among variants scored at 0.30, roughly 30% should be pathogenic; among variants scored at 0.95, roughly 95% should be pathogenic. This alignment between stated confidence and empirical accuracy is calibration, and most foundation models fail to achieve it.
 
@@ -78,7 +78,7 @@ Modern deep neural networks are systematically miscalibrated despite achieving h
 
 Calibration and discrimination are distinct properties. A model can achieve perfect area under the receiver operating characteristic curve (auROC), correctly ranking all positive examples above all negative examples, while being arbitrarily miscalibrated. If a classifier assigns probability 0.99 to all positive examples and 0.98 to all negative examples, it ranks perfectly but provides useless probability estimates. Conversely, a calibrated model that assigns 0.51 to positives and 0.49 to negatives would be calibrated but nearly useless for discrimination. Clinical applications typically require both: accurate ranking to identify high-risk variants and accurate probabilities to inform decision-making.
 
-### Measuring Calibration
+### Measuring Calibration {#sec-ch23-measuring-calibration}
 
 **Reliability diagrams** provide visual assessment of calibration by plotting predicted probabilities against observed frequencies. Construction involves binning predictions into intervals (commonly ten bins spanning 0 to 0.1, 0.1 to 0.2, and so forth), computing the mean predicted probability within each bin, computing the fraction of positive examples within each bin, and plotting these two quantities against each other. A perfectly calibrated model produces points along the diagonal where predicted probability equals observed frequency. Systematic deviations reveal calibration patterns: points below the diagonal indicate overconfidence (predictions exceed reality), points above indicate underconfidence, and S-shaped curves suggest nonlinear miscalibration requiring more flexible correction.
 
@@ -92,7 +92,7 @@ where $B_m$ denotes the set of examples in bin $m$, $|B_m|$ is the number of exa
 
 **Brier score** decomposes into components measuring calibration and discrimination (refinement), providing a single proper scoring rule that rewards both properties. The Brier score equals the mean squared difference between predicted probabilities and binary outcomes, and its decomposition reveals whether poor scores stem from miscalibration, poor discrimination, or both.
 
-### Why Foundation Models Are Often Miscalibrated
+### Why Foundation Models Are Often Miscalibrated {#sec-ch23-foundation-models-often-miscalibrated}
 
 Foundation models face calibration challenges beyond those affecting standard neural networks. Pretraining objectives like masked language modeling optimize for predicting held-out tokens, not for producing calibrated probability distributions over downstream tasks. The representations learned during pretraining may encode useful information about sequence biology while providing no guarantee that fine-tuned classifiers will be well-calibrated.
 
@@ -102,7 +102,7 @@ Label noise in training data propagates to calibration errors. ClinVar annotatio
 
 Zero-shot approaches present particular calibration challenges. ESM-1v log-likelihood ratios measure how surprising a mutation is to the language model, but these ratios are not probabilities and have no inherent calibration. Converting log-likelihood ratios to pathogenicity probabilities requires explicit calibration against external labels, and the resulting calibration depends on the reference dataset used for this conversion.
 
-### Calibration Across Subgroups
+### Calibration Across Subgroups {#sec-ch23-calibration-across-subgroups}
 
 Aggregate calibration metrics can mask severe miscalibration in clinically important subgroups. A model might achieve low ECE overall while being dramatically overconfident for variants in African-ancestry individuals and underconfident for European-ancestry individuals, with opposite errors canceling in aggregate statistics. Subgroup-stratified calibration assessment is essential for any model intended for diverse populations.
 
@@ -110,7 +110,7 @@ Ancestry-stratified calibration reveals systematic patterns in current foundatio
 
 Calibration may also vary by variant class, gene constraint level, protein family, or disease category. Missense variants in highly constrained genes may show different calibration patterns than those in tolerant genes. Variants in well-studied protein families with abundant training examples may be better calibrated than variants in orphan proteins. Stratified reliability diagrams across these categories reveal whether a single calibration correction suffices or whether subgroup-specific approaches are necessary.
 
-## Post-Hoc Calibration Methods {#sec-post-hoc-calibration}
+## Post-Hoc Calibration Methods {#sec-ch23-post-hoc-calibration-methods}
 
 ::: {#fig-calibration-methods layout-ncol=3}
 ![**FIGURE PLACEHOLDER A**](https://placehold.co/300x200?text=FIGURE%20PLACEHOLDER%20A)
@@ -122,7 +122,7 @@ Calibration may also vary by variant class, gene constraint level, protein famil
 [High] Three-column comparison with before/after. Column 1 (Temperature scaling): Formula p = softmax(z/T); single parameter T; before/after reliability; preserves ranking; can't fix complex patterns. Column 2 (Platt scaling): Formula p = σ(az + b); two parameters; handles bias and confidence; assumes logistic. Column 3 (Isotonic regression): Non-parametric monotonic fit; flexible, no assumptions; overfits with limited data. Bottom: Decision guide for method selection.
 :::
 
-### Temperature Scaling
+### Temperature Scaling {#sec-ch23-temperature-scaling}
 
 The simplest calibration fix is often the most effective. Temperature scaling applies a single learned parameter to adjust model confidence, dramatically improving calibration with minimal computational overhead and no change to model predictions' ranking.
 
@@ -136,7 +136,7 @@ Temperature scaling preserves the model's ranking because dividing all logits by
 
 The method's simplicity (one parameter) is both strength and limitation. A single global temperature cannot fix heterogeneous miscalibration where the model is overconfident in some regions of input space and underconfident in others. When reliability diagrams show complex nonlinear patterns, more flexible calibration methods are necessary.
 
-### Platt Scaling
+### Platt Scaling {#sec-ch23-platt-scaling}
 
 Platt scaling fits a logistic regression model on the original model's outputs, learning both a slope and intercept to transform scores into calibrated probabilities. For binary classification:
 
@@ -146,13 +146,13 @@ where $f(x)$ is the original model's output, $\sigma$ is the sigmoid function, a
 
 Platt scaling is appropriate when miscalibration involves systematic bias (predictions consistently too high or too low) in addition to over- or underconfidence. The method assumes that a monotonic logistic transformation suffices to correct miscalibration, which may not hold for models with complex, non-monotonic calibration curves.
 
-### Isotonic Regression
+### Isotonic Regression {#sec-ch23-isotonic-regression}
 
 Isotonic regression provides a non-parametric approach that fits a monotonically increasing function mapping raw scores to calibrated probabilities. Unlike temperature or Platt scaling, isotonic regression makes no assumptions about the functional form of miscalibration, allowing it to correct arbitrary monotonic patterns.
 
 The method works by pooling adjacent bins whose empirical frequencies violate monotonicity, then assigning each bin its pooled frequency. The resulting calibration function is a step function that increases with the original score. This flexibility comes at a cost: with limited calibration data, isotonic regression may overfit to noise in the calibration set, and the step-function output can appear discontinuous. Additionally, isotonic regression provides no uncertainty estimate on the calibration itself; we learn a point estimate of the calibration function without knowing how reliable that estimate is.
 
-### Calibrating Foundation Model Outputs
+### Calibrating Foundation Model Outputs {#sec-ch23-calibrating-foundation-model-outputs}
 
 Genomic foundation models present specific calibration considerations beyond standard classification settings. The choice of calibration approach depends on whether the model produces logits, log-likelihood ratios, or continuous regression outputs, and on whether calibration targets are available for the deployment distribution.
 
@@ -163,7 +163,7 @@ Multi-output models that predict across many tasks (multiple cell types, tissues
 Temporal stability of calibration deserves consideration. As ClinVar annotations evolve with new evidence, the ground truth against which models were calibrated changes. A model calibrated against 2020 ClinVar labels may become miscalibrated relative to 2025 labels as variant classifications are updated. Periodic recalibration against current labels helps maintain clinical relevance.
 
 
-## Uncertainty Quantification Methods for Foundation Models {#sec-uq-methods}
+## Uncertainty Quantification Methods for Foundation Models {#sec-ch23-uncertainty-quantification-methods}
 
 Calibration ensures that stated probabilities match observed frequencies, but even well-calibrated models provide only point estimates. When a model reports 0.70 pathogenicity probability, is that uncertainty reducible with more data, or does it reflect genuine ambiguity in the biological signal? Distinguishing these sources of uncertainty enables more appropriate clinical responses: epistemic uncertainty (arising from limited data) suggests the prediction might change with additional evidence, while aleatoric uncertainty (inherent to the problem) indicates that even perfect models would remain uncertain.
 
@@ -173,7 +173,7 @@ Calibration ensures that stated probabilities match observed frequencies, but ev
 [High] Method comparison across four approaches. Deep ensembles: 5 models independently trained; variance/entropy computed across predictions; 5× training and inference cost; gold standard for epistemic uncertainty. MC Dropout: Single model with multiple stochastic forward passes; variance across dropout samples; 1× training cost, N× inference cost; approximates ensemble behavior. Last-layer ensembles: Frozen pretrained backbone with ensemble of prediction heads; head disagreement captures fine-tuning uncertainty; 1× pretraining cost plus 5× cheap head training; practical for foundation models. Heteroscedastic networks: Single model outputs mean plus variance; learned input-dependent uncertainty; 1× training and inference cost; captures aleatoric but not epistemic uncertainty. Comparison table showing which methods capture epistemic vs. aleatoric uncertainty, computational cost, and foundation model compatibility.
 :::
 
-### Deep Ensembles
+### Deep Ensembles {#sec-ch23-deep-ensembles}
 
 If one model expresses uncertainty about a prediction, querying multiple models reveals whether that uncertainty reflects genuine ambiguity in the data or an artifact of a particular training run. When five independently trained models agree on a prediction, confidence is warranted; when they disagree, the disagreement itself signals uncertainty. Ensemble disagreement provides one of the most reliable uncertainty estimates available in deep learning, at the cost of training and maintaining multiple models.
 
@@ -183,7 +183,7 @@ The theoretical basis for ensemble uncertainty estimation rests on the observati
 
 For foundation models with billions of parameters, training full ensembles becomes prohibitively expensive. Training five copies of ESM-2 requires approximately five times the compute of a single model, potentially millions of dollars in cloud computing costs. Several practical alternatives reduce this burden. Last-layer ensembles freeze the pretrained backbone and train only an ensemble of prediction heads, reducing cost by orders of magnitude while still capturing uncertainty from the fine-tuning process. Snapshot ensembles save model checkpoints at various points during optimization and use these snapshots as ensemble members, requiring only single-model training time. Multi-seed fine-tuning trains the same architecture from multiple random seeds on the fine-tuning task, which is far cheaper than multi-seed pretraining.
 
-### Monte Carlo Dropout
+### Monte Carlo Dropout {#sec-ch23-monte-carlo-dropout}
 
 Monte Carlo (MC) dropout provides uncertainty estimates from a single trained model by treating dropout regularization as approximate Bayesian inference. During standard training with dropout, random subsets of neurons are zeroed at each forward pass. MC dropout keeps dropout active at test time and performs multiple stochastic forward passes, treating the variation across passes as a measure of model uncertainty.
 
@@ -193,7 +193,7 @@ MC dropout offers the significant advantage of requiring only a single trained m
 
 Limitations temper the method's appeal. Modern transformer architectures often do not use dropout in their standard configurations, or use dropout only in specific locations (attention dropout, residual dropout) where the approximation may be less accurate. The quality of uncertainty estimates depends on the dropout rate and architecture, with higher dropout rates providing better uncertainty estimates but potentially degrading mean predictions. Empirical comparisons often find that MC dropout underestimates uncertainty relative to deep ensembles, particularly in low-data regimes where epistemic uncertainty should be high.
 
-### Heteroscedastic Models
+### Heteroscedastic Models {#sec-ch23-heteroscedastic-models}
 
 Standard regression models predict a single output value, implicitly assuming constant noise variance across all inputs. Heteroscedastic models instead predict both a mean and a variance for each input, capturing the intuition that prediction uncertainty varies depending on the input. For genomic applications, this approach naturally handles the observation that some prediction tasks are inherently noisier than others: coding variant effects may be more predictable than regulatory variant effects, constrained genes more predictable than tolerant genes.
 
@@ -205,7 +205,7 @@ The first term penalizes prediction errors, weighted by inverse variance so that
 
 Heteroscedastic models capture aleatoric uncertainty but not epistemic uncertainty. The predicted variance reflects noise inherent in the labels, not uncertainty about model parameters. Combining heteroscedastic outputs with ensemble methods provides estimates of both uncertainty types: ensemble disagreement captures epistemic uncertainty while the predicted variance captures aleatoric uncertainty.
 
-### Evidential Deep Learning
+### Evidential Deep Learning {#sec-ch23-evidential-deep-learning}
 
 Evidential deep learning places a prior distribution over the class probabilities themselves rather than directly predicting probabilities. For classification, the model outputs parameters of a Dirichlet distribution, which serves as a prior over the simplex of class probabilities. The concentration parameters of this Dirichlet encode both the predicted class probabilities (via their relative magnitudes) and the model's uncertainty (via their absolute magnitudes).
 
@@ -213,7 +213,7 @@ Low total concentration indicates high uncertainty: the model is unsure which cl
 
 Critics have noted that evidential deep learning can produce unreliable uncertainty estimates when the distributional assumptions are violated or when training data is limited. Practical experience suggests that ensembles and MC dropout often provide more robust uncertainty estimates, though evidential methods continue to be refined.
 
-### Selecting Uncertainty Quantification Methods
+### Selecting Uncertainty Quantification Methods {#sec-ch23-selecting-uncertainty-quantification}
 
 The choice among uncertainty quantification methods depends on computational constraints, the types of uncertainty relevant to the application, and the foundation model architecture.
 
@@ -224,7 +224,7 @@ For foundation model applications where full ensembles are impractical, last-lay
 For real-time applications requiring single forward passes, evidential deep learning or heteroscedastic models provide uncertainty estimates without inference-time overhead. These methods capture aleatoric uncertainty effectively but may underestimate epistemic uncertainty for out-of-distribution inputs.
 
 
-## Conformal Prediction: Distribution-Free Guarantees {#sec-conformal}
+## Conformal Prediction: Distribution-Free Guarantees {#sec-ch23-conformal-prediction-distribution-free}
 
 Most uncertainty quantification methods make assumptions about model behavior or data distributions that may not hold in practice. Temperature scaling assumes miscalibration follows a particular functional form. Ensembles assume that disagreement reflects epistemic uncertainty rather than artifacts of training. Bayesian methods assume specific priors over model parameters. When these assumptions fail, uncertainty estimates may be unreliable precisely when reliability matters most.
 
@@ -236,7 +236,7 @@ Conformal prediction offers something stronger: finite-sample coverage guarantee
 [High] Workflow diagram with variant classification examples. Step 1 (Calibration): Score variants on held-out calibration set; histogram of non-conformity scores. Step 2 (Threshold): Find threshold $q$ for desired coverage (e.g., 90%); vertical line on histogram. Step 3 (Prediction sets): Include classes with scores below threshold. Example outputs showing set sizes conveying confidence: High confidence → {Pathogenic}, moderate confidence → {Pathogenic, VUS}, low confidence → {Pathogenic, VUS, Benign}, abstention → {}. Key properties annotated: "Coverage guarantee (≥90% marginal)"; "Set size conveys uncertainty"; "No probability interpretation needed." Limitation note: "Marginal, not conditional coverage."
 :::
 
-### Split Conformal Prediction
+### Split Conformal Prediction {#sec-ch23-split-conformal-prediction}
 
 The most practical conformal method, split conformal prediction, begins by partitioning labeled data into training and calibration subsets. After training the model exclusively on the training portion, non-conformity scores are computed for each calibration example, where higher scores indicate poorer agreement between prediction and true label. The threshold $q$ is then set at the $(1-\alpha)(1+1/n)$ quantile of these calibration scores. At test time, the prediction set includes all labels whose non-conformity score falls below this threshold.
 
@@ -246,7 +246,7 @@ The construction ensures coverage because calibration scores are exchangeable wi
 
 The coverage guarantee is finite-sample: it holds exactly for any sample size, not just asymptotically. For clinical genomics applications where individual predictions carry significant consequences, this finite-sample property provides assurance that cannot be obtained from asymptotic calibration arguments.
 
-### Conformal Prediction for Variant Classification
+### Conformal Prediction for Variant Classification {#sec-ch23-conformal-prediction-variant}
 
 Variant effect prediction, examined in detail in @sec-vep-fm, concentrates the challenges of uncertainty quantification. Instead of reporting a single pathogenicity score, a conformalized variant classifier outputs a prediction set from the possibilities: {pathogenic}, {benign}, {pathogenic, benign}, or the empty set. The set is guaranteed to contain the true label at the specified coverage rate.
 
@@ -254,7 +254,7 @@ Adaptive set sizes convey uncertainty naturally. Confident predictions yield sma
 
 Calibration set construction requires careful thought. Holding out variants at random may not prevent information leakage if related variants (same gene, same protein domain) appear in both calibration and test sets. Holding out entire genes or protein families provides more stringent evaluation but may reduce calibration set size for rare gene families. For applications intended to work across populations, calibration sets should include diverse ancestries to ensure coverage guarantees hold across patient populations.
 
-### Conformal Prediction Intervals
+### Conformal Prediction Intervals {#sec-ch23-conformal-prediction-intervals}
 
 For regression tasks such as expression prediction or quantitative trait prediction, conformalized quantile regression produces intervals guaranteed to contain the true value with specified probability. The method fits separate models for the lower and upper quantiles of the conditional distribution, then applies conformal calibration to ensure finite-sample coverage.
 
@@ -262,7 +262,7 @@ The resulting prediction intervals are directly interpretable: a 90% prediction 
 
 Interval width varies with prediction difficulty. Variants where the model is confident produce narrow intervals; variants where the model is uncertain produce wide intervals. This adaptive behavior makes conformal intervals useful for identifying predictions that warrant additional scrutiny or experimental validation.
 
-### Limitations and Practical Considerations
+### Limitations and Practical Considerations {#sec-ch23-limitations-practical-considerations}
 
 Conformal guarantees are marginal rather than conditional. The coverage guarantee holds on average across all test examples, not for each individual example. A model might achieve exact 90% coverage overall while dramatically undercovering some subgroups and overcovering others. Subgroup-conditional coverage requires additional assumptions or methods like stratified conformal prediction.
 
@@ -270,14 +270,14 @@ The exchangeability assumption can fail in practice. If the calibration set deri
 
 Prediction set size trades off against informativeness. Larger sets provide more reliable coverage but less useful predictions. A model that produces {pathogenic, benign} for every variant achieves perfect coverage but provides no discrimination. Careful model development to improve underlying accuracy reduces average set size while maintaining coverage guarantees.
 
-### Integration with Clinical Workflows
+### Integration with Clinical Workflows {#sec-ch23-integration-clinical-workflows}
 
 Conformal prediction sets integrate naturally with existing variant classification frameworks. The ACMG-AMP guidelines already accommodate uncertainty through categories like "variant of uncertain significance." Conformal sets provide a principled basis for this categorization: variants receiving singleton sets ({pathogenic} or {benign}) have strong computational evidence, while variants receiving larger sets have uncertain computational evidence.
 
 The coverage guarantee provides a quantitative basis for laboratory policies. A laboratory might decide that computational evidence should achieve 95% coverage before contributing to variant classification, using conformal methods to verify this threshold is met. The guarantee holds regardless of which specific variants are encountered, providing assurance that the policy will perform as intended across the laboratory's case mix.
 
 Conformal methods also enable selective prediction, where the model abstains rather than producing uncertain predictions. By setting coverage requirements appropriately, laboratories can identify variants where computational methods provide reliable evidence and variants where human review is essential. This selective approach focuses expert attention where it is most needed while allowing automated processing of straightforward cases.
-## Out-of-Distribution Detection {#sec-ood-detection}
+## Out-of-Distribution Detection {#sec-ch23-out-distribution-detection}
 
 ::: {#fig-ood-detection layout-ncol=2}
 ![**FIGURE PLACEHOLDER A**](https://placehold.co/300x200?text=FIGURE%20PLACEHOLDER%20A)
@@ -289,7 +289,7 @@ Conformal methods also enable selective prediction, where the model abstains rat
 [High] Embedding space visualization. Main panel: UMAP/t-SNE; dense training clusters (blue); isolated OOD points (red); examples (novel archaeal sequence, synthetic protein, variant in poorly characterized gene). Detection methods (side panels): Mahalanobis distance (histogram ID vs OOD, threshold), nearest neighbor distance, ensemble disagreement. Key insight: Flag for manual review rather than automate.
 :::
 
-###  Out-of-Distribution Problem
+###  Out-of-Distribution Problem {#sec-ch23-out-distribution-problem}
 
 A DNA language model trained on mammalian genomes encounters a novel archaeal sequence. The model's embedding places this sequence in an unfamiliar region of representation space, far from the clusters formed by training examples. Yet the model still produces a prediction, potentially with high confidence, because standard neural networks are not designed to recognize when inputs lie outside their training distribution. Detecting out-of-distribution (OOD) inputs is essential for safe deployment of foundation models in settings where novel sequences are inevitable.
 
@@ -297,7 +297,7 @@ OOD detection identifies inputs that differ meaningfully from training data, all
 
 The confidence problem compounds OOD challenges. Neural networks often produce high-confidence predictions on OOD inputs because nothing in standard training penalizes confidence on unfamiliar examples. A classifier trained to distinguish pathogenic from benign variants may confidently predict "pathogenic" for a completely random sequence, not because it has evidence for pathogenicity but because it lacks the capacity to say "I don't know." This failure mode makes OOD detection essential rather than optional.
 
-### Likelihood-Based Detection and Its Failures
+### Likelihood-Based Detection and Its Failures {#sec-ch23-likelihood-based-detection-failures}
 
 The intuitive approach to OOD detection uses model likelihood: inputs the model finds improbable should be flagged as OOD. Language models assign likelihoods to sequences; surely OOD sequences should receive low likelihood?
 
@@ -305,7 +305,7 @@ This intuition fails for deep generative models. Complex models can assign high 
 
 Empirically, language models assign high likelihood to repetitive sequences, sequences with unusual but consistent patterns, and sequences from different domains that happen to share statistical properties with training data. For genomic models, this means likelihood alone cannot reliably distinguish novel biological sequences from sequences within the training distribution.
 
-### Embedding-Based Detection
+### Embedding-Based Detection {#sec-ch23-embedding-based-detection}
 
 Learned representations provide more reliable OOD detection than raw likelihood. The key insight is that embeddings encode semantic structure: similar sequences cluster together in embedding space, and OOD sequences land in sparse regions distant from training clusters.
 
@@ -315,7 +315,7 @@ Nearest-neighbor methods provide a non-parametric alternative. For a test embedd
 
 For genomic foundation models, embedding-based OOD detection enables practical deployment safeguards. *ESM* embeddings place novel protein folds in regions distant from characterized folds, allowing detection of sequences outside the model's training experience. DNABERT embeddings reveal unusual sequence composition or repeat structures that may confound predictions. Flagging these cases for expert review prevents confident but unreliable predictions from reaching clinical decisions.
 
-### Practical OOD Detection for Genomic Applications
+### Practical OOD Detection for Genomic Applications {#sec-ch23-practical-ood-detection-genomic}
 
 Defining what counts as OOD requires domain knowledge. Novel species or clades may share evolutionary history with training examples yet differ enough to warrant caution. Extreme GC content can indicate contamination, unusual biology, or simply under-represented genomic regions. Engineered sequences (designed proteins, synthetic regulatory elements) intentionally explore regions of sequence space not represented in natural sequences.
 
@@ -324,7 +324,7 @@ Combining multiple OOD signals improves reliability. Embedding distance, likelih
 The operational response to OOD detection depends on the application. For variant interpretation, OOD inputs might trigger automatic flagging for expert review rather than automated classification. For high-throughput screening, OOD inputs might receive tentative predictions with explicit uncertainty warnings. For safety-critical applications, OOD inputs might trigger rejection with a request for additional information.
 
 
-## Selective Prediction and Abstention {#sec-selective-prediction}
+## Selective Prediction and Abstention {#sec-ch23-selective-prediction-abstention}
 
 ::: {#fig-selective-prediction}
 ![**FIGURE PLACEHOLDER**](https://placehold.co/300x200?text=FIGURE%20PLACEHOLDER)
@@ -332,7 +332,7 @@ The operational response to OOD detection depends on the application. For varian
 [Enhancing] Accuracy-coverage tradeoff. Main plot: Coverage (x) vs Accuracy (y); curve rising as coverage decreases (more selective = more accurate). Operating point selection: Clinical applications need different tradeoffs. Reject option: High uncertainty → abstain. Example: 90% coverage with 85% accuracy vs 70% coverage with 95% accuracy. Connection to clinical workflow: Rejected variants → expert review.
 :::
 
-### When to Abstain
+### When to Abstain {#sec-ch23-when-abstain}
 
 A variant effect predictor achieving 95% accuracy overall provides more clinical value if it can identify which predictions are reliable. Selective prediction allows models to abstain on difficult cases, concentrating predictions on inputs where confidence is warranted. The trade-off between coverage (fraction of inputs receiving predictions) and accuracy (correctness among predictions made) defines the selective prediction problem.
 
@@ -340,7 +340,7 @@ The coverage-accuracy trade-off reflects a fundamental tension. At 100% coverage
 
 Abstention is appropriate when the cost of errors exceeds the cost of deferral. In clinical variant interpretation, a confident but incorrect pathogenic prediction may trigger unnecessary medical intervention, while abstention merely defers the decision to expert review. If expert review is available and affordable relative to error costs, abstaining on uncertain cases improves overall decision quality. Conversely, in high-throughput screening where expert review is infeasible, abstention may provide little benefit because all predictions eventually require automated handling.
 
-### Selective Prediction Methods
+### Selective Prediction Methods {#sec-ch23-selective-prediction-methods}
 
 Confidence-based selection abstains when the model's maximum predicted probability falls below a threshold. For a classifier producing probabilities over classes, if $\max_c \hat{p}_c < \tau$, the model abstains. This simple approach works well when model confidence correlates with correctness, but fails when models are confidently wrong.
 
@@ -350,7 +350,7 @@ Conformal selection abstains when prediction sets exceed a size threshold. If th
 
 Learned selection trains a separate model to predict whether the primary model will be correct on each input. This "rejection model" learns to identify failure modes that simple confidence thresholds miss, potentially achieving better coverage-accuracy trade-offs than heuristic methods.
 
-### Evaluating Selective Prediction
+### Evaluating Selective Prediction {#sec-ch23-evaluating-selective-prediction}
 
 Risk-coverage curves plot accuracy (or its complement, risk) as a function of coverage, revealing how performance improves as the model becomes more selective. The area under the risk-coverage curve summarizes overall selective prediction quality. Models with better uncertainty estimates produce steeper curves, achieving high accuracy at lower coverage.
 
@@ -359,11 +359,11 @@ Selective accuracy at fixed coverage specifies a coverage level (e.g., 80%) and 
 Comparison across methods requires matched coverage levels. A method that achieves 99% accuracy at 50% coverage and 95% accuracy at 90% coverage may be preferable to a method achieving 97% accuracy at both levels, depending on operational requirements. Reporting full risk-coverage curves enables stakeholders to select operating points appropriate to their cost structures.
 
 
-## Uncertainty for Specific Genomic Tasks {#sec-genomic-uq}
+## Uncertainty for Specific Genomic Tasks {#sec-ch23-uncertainty-specific-genomic-tasks}
 
 The general principles of uncertainty quantification apply differently across genomic prediction tasks. Variant effect prediction, regulatory variant interpretation, and cross-population generalization each present distinct challenges for calibration, coverage, and out-of-distribution detection. The sources of uncertainty vary: coding variants benefit from stronger evolutionary constraint and clearer functional readouts, while regulatory variants operate through context-dependent mechanisms that introduce irreducible noise. Population-specific uncertainty reflects training data composition and has direct implications for equitable clinical deployment.
 
-### Variant Effect Prediction Uncertainty
+### Variant Effect Prediction Uncertainty {#sec-ch23-variant-effect-prediction-uncertainty}
 
 Variant effect prediction concentrates the challenges of uncertainty quantification. Epistemic uncertainty arises from poorly characterized genes, novel protein folds, and under-represented populations in training data. Aleatoric uncertainty stems from incomplete penetrance, variable expressivity, and noise in functional assay labels. Both types of uncertainty must be estimated and communicated for variant predictions to inform clinical decisions appropriately.
 
@@ -371,7 +371,7 @@ Calibration challenges for VEP include the evolving nature of ground truth label
 
 Population-specific calibration addresses the reality that training data predominantly derive from European-ancestry cohorts. For patients from other ancestral backgrounds, both epistemic uncertainty (fewer training examples) and calibration (different baseline pathogenicity rates, different patterns of variation) may differ from the aggregate. Stratified reliability diagrams by ancestry reveal these differences; ancestry-conditional calibration may be necessary for equitable performance across populations. The governance and policy dimensions of ensuring equitable uncertainty communication are addressed in @sec-future.
 
-### Regulatory Variant Uncertainty
+### Regulatory Variant Uncertainty {#sec-ch23-regulatory-variant-uncertainty}
 
 Regulatory variants present distinct uncertainty challenges. Unlike coding variants where effects can be localized to specific amino acid changes, regulatory variants act through complex mechanisms involving transcription factor binding, chromatin accessibility, and three-dimensional genome organization. This mechanistic complexity translates to higher aleatoric uncertainty: even perfectly characterized regulatory variants may have context-dependent effects that vary across cell types, developmental stages, and genetic backgrounds. A variant that disrupts a transcription factor binding site may have dramatic effects in tissues where that factor is active and negligible effects elsewhere, yet the model must predict across all contexts simultaneously.
 
@@ -379,7 +379,7 @@ The context-dependence of regulatory effects creates a calibration challenge dis
 
 Expression prediction models like Enformer and Borzoi provide uncertainty estimates for predicted expression changes through several approaches. Ensemble methods quantify disagreement across model variants trained with different random seeds. Heteroscedastic architectures predict tissue-specific confidence alongside tissue-specific expression, learning that predictions for well-characterized tissues deserve higher confidence than those for rarely profiled contexts. These uncertainties propagate to downstream interpretations: a variant predicted to alter expression with high uncertainty warrants different treatment than one with narrow confidence bounds, and the tissue-specificity of uncertainty may itself be informative about which experimental follow-up would most reduce ambiguity.
 
-### Uncertainty Across Populations
+### Uncertainty Across Populations {#sec-ch23-uncertainty-across-populations}
 
 Differential uncertainty across populations has direct implications for health equity. Models trained predominantly on European-ancestry data exhibit higher epistemic uncertainty for other populations, manifesting in several observable ways: larger prediction sets from conformal methods, higher abstention rates from selective prediction, greater ensemble disagreement, and less reliable confidence estimates from calibration. These differences arise from multiple sources. Linkage disequilibrium patterns differ across populations, meaning that variant correlations learned from European data may not transfer. Population-specific variants absent from training data generate pure epistemic uncertainty. Even shared variants may have different effect sizes across populations due to gene-environment interactions or epistatic backgrounds that vary by ancestry.
 
@@ -388,11 +388,11 @@ Quantifying population-specific uncertainty requires appropriate calibration and
 Transparent reporting of population-stratified uncertainty metrics enables informed decisions about model deployment. If a model abstains on 30% of variants in one population but only 10% in another, users can make informed choices about supplementary analyses for the higher-abstention population. Clinical laboratories might establish ancestry-specific thresholds for automated reporting versus expert review. Research applications might weight predictions by ancestry-specific confidence when aggregating across diverse cohorts. Ignoring these differences risks providing lower-quality predictions to already under-served populations while presenting a false appearance of uniform reliability, compounding existing disparities in genomic medicine.
 
 
-## Communicating Uncertainty to End Users {#sec-uncertainty-communication}
+## Communicating Uncertainty to End Users {#sec-ch23-communicating-uncertainty-end-users}
 
 Statistical uncertainty estimates serve clinical decisions only when they reach end users in interpretable form. The translation from model outputs to actionable information involves choices about categorical versus continuous reporting, numerical versus visual presentation, and whether to frame results as probabilities or as expected outcomes under alternative decisions. Different stakeholders require different presentations: clinicians need actionable categories, researchers need distributional information, and patients need accessible risk communication.
 
-###  Communication Challenge
+###  Communication Challenge {#sec-ch23-communication-challenge}
 
 A pathogenicity score of $0.73 \pm 0.15$ may be statistically accurate but nearly useless to a clinician deciding whether to order confirmatory testing. The gap between statistical uncertainty and decision-relevant communication presents a persistent challenge for genomic AI deployment. Different users reason differently about probability and risk; effective communication requires understanding these differences.
 
@@ -400,7 +400,7 @@ Cognitive biases complicate probability interpretation. Humans tend toward overc
 
 Different stakeholders have different needs. Clinicians require actionable categories that map to clinical decision points, not continuous scores requiring interpretation. Researchers may prefer full probability distributions enabling flexible downstream analysis. Patients and families need understandable risk communication that supports informed decision-making without inducing inappropriate anxiety or false reassurance.
 
-### Categorical Reporting
+### Categorical Reporting {#sec-ch23-categorical-reporting}
 
 Clinical genetics has established categorical frameworks for variant interpretation. The ACMG-AMP guidelines define five categories: pathogenic, likely pathogenic, variant of uncertain significance, likely benign, and benign. Mapping continuous model outputs to these categories requires threshold selection that balances sensitivity and specificity at clinically meaningful operating points.
 
@@ -408,7 +408,7 @@ Uncertainty within categories can be conveyed through confidence qualifiers or n
 
 Threshold selection involves value judgments beyond pure statistics. The consequences of false positive and false negative pathogenic calls differ by clinical context. For a severe, treatable condition, false negatives carry higher cost, warranting lower thresholds for pathogenic classification. For untreatable conditions where pathogenic classification affects reproductive decisions, the calculus differs. Uncertainty quantification enables informed threshold selection by revealing the trade-offs at different operating points.
 
-### Visual Communication
+### Visual Communication {#sec-ch23-visual-communication}
 
 Probability bars and confidence intervals provide visual representation of uncertainty, though their interpretation depends on user familiarity with statistical graphics. Icon arrays, which represent probabilities as proportions of colored icons in a grid (e.g., 73 red icons and 27 blue icons out of 100), improve comprehension for users without statistical training. The visual representation of proportion is more intuitive than numerical probability for many audiences.
 
@@ -416,14 +416,14 @@ Risk ladders place the prediction in context by showing where it falls relative 
 
 Interactive visualizations allow users to explore uncertainty in detail, examining how predictions change under different assumptions or how uncertainty varies across related variants. These approaches suit sophisticated users engaged in research or detailed clinical analysis but may overwhelm users seeking simple answers.
 
-### Decision-Theoretic Framing
+### Decision-Theoretic Framing {#sec-ch23-decision-theoretic-framing}
 
 Rather than communicating probability alone, decision-theoretic framing presents expected outcomes under different actions. Instead of "this variant has 73% probability of being pathogenic," the report might state "if we assume this variant is pathogenic and proceed with surveillance, the expected outcomes are X; if we assume it is benign and decline surveillance, the expected outcomes are Y."
 
 This framing integrates uncertainty with action, helping users understand how uncertainty affects what they should do rather than treating probability as an end in itself. The approach requires modeling clinical outcomes, which introduces additional assumptions, but makes explicit the decision-relevant implications of uncertainty rather than leaving users to integrate probability with consequences on their own.
 
 
-## Necessary but Insufficient
+## Necessary but Insufficient {#sec-ch23-necessary-but-insufficient}
 
 Uncertainty quantification transforms foundation model outputs from opaque scores into components of rational decision processes. A well-calibrated pathogenicity prediction that honestly communicates its limitations enables appropriate clinical reasoning: high confidence warrants action, low confidence warrants additional testing or expert review. An overconfident score that claims false precision causes harm through both false positives (unnecessary interventions) and false negatives (missed diagnoses). Temperature scaling, conformal prediction, and out-of-distribution detection together provide the technical foundation for trustworthy genomic AI.
 

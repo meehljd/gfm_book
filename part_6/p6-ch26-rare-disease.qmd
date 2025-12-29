@@ -2,7 +2,7 @@
 * Global Genes or similar — 300 million affected
 :::
 
-# Rare Disease Diagnosis {#sec-rare-disease}
+# Rare Disease Diagnosis {#sec-ch26-rare-disease}
 
 A four-year-old presents with developmental delay, hypotonia, and seizures that began at eighteen months. Standard metabolic testing reveals nothing. A gene panel for epilepsy returns negative. The neurologist orders whole-exome sequencing, which identifies 23,847 single nucleotide variants and 1,203 small insertions or deletions compared to the reference genome. Somewhere in this list of approximately 25,000 variants may lie the molecular explanation for this child's condition. The clinical team must reduce this number to a handful of candidates for expert review, ideally to a single variant or gene that explains the phenotype and guides management. This is the diagnostic odyssey: the gap between sequencing a genome and understanding what it means for a patient.
 
@@ -10,7 +10,7 @@ This scenario plays out thousands of times daily across clinical laboratories wo
 
 Foundation models offer new tools for this interpretive challenge. As detailed in @sec-vep-fm, models like *AlphaMissense* provide proteome-wide estimates of missense pathogenicity, while regulatory models like *Enformer* predict variant effects on gene expression across tissues. These computational predictions become one line of evidence within structured interpretation frameworks. Foundation model outputs integrate into clinical variant interpretation workflows: from initial prioritization that reduces 25,000 variants to dozens, through ACMG-AMP evidence classification that structures expert review, to family-based analysis that leverages inheritance patterns, and laboratory validation that confirms computational predictions. The goal is not prediction for its own sake but actionable clinical insight: which variant explains this patient's disease, and what should we do about it?
 
-##  Variant Prioritization Funnel
+##  Variant Prioritization Funnel {#sec-ch26-variant-prioritization-funnel}
 
 Clinical variant interpretation operates through progressive filtering, narrowing tens of thousands of candidates to a manageable set for expert review. Each filtering step applies different types of evidence, and foundation models contribute at multiple stages.
 
@@ -20,31 +20,31 @@ Clinical variant interpretation operates through progressive filtering, narrowin
 [Essential] Inverted funnel with filtering stages. Stages with numbers: (1) Raw variants (~25,000); (2) Quality filtered (~22,000); (3) Population frequency filtered (~500-1,000); (4) Consequence filtered (~100-200); (5) Foundation model scored (~20-50); (6) Expert review candidates (~5-10). Annotations: Percentage removed, time/compute cost, where FMs contribute most. Key insight: FMs contribute at scoring stage, after basic filtering, before expert review.
 :::
 
-### Quality and Technical Filters
+### Quality and Technical Filters {#sec-ch26-quality-technical-filters}
 
 The first filter removes variants that are likely technical artifacts rather than true biological variation. Sequencing depth below 20x, strand bias exceeding established thresholds, and clustering of variants in repetitive regions all raise suspicion of false positives. Variant calling pipelines like GATK and DeepVariant (@sec-ngs) produce quality scores that guide this initial triage. As discussed in @sec-calibration, these confidence estimates require careful calibration; systematic miscalibration in specific genomic contexts propagates directly into interpretation, creating blind spots where uncertain calls masquerade as confident ones or vice versa. Variants failing quality thresholds are removed before any biological interpretation begins.
 
 For trio analysis (proband plus both parents), Mendelian inheritance consistency provides an additional quality check. A variant called heterozygous in the child should appear in at least one parent unless it arose *de novo*. Widespread Mendelian inconsistencies indicate sample swaps, contamination, or systematic calling errors that must be resolved before interpretation proceeds.
 
-### Population Frequency Filters
+### Population Frequency Filters {#sec-ch26-population-frequency-filters}
 
 Variants common in the general population are unlikely to cause rare, severe disease. If a variant appears in 1% of gnomAD individuals, it cannot plausibly explain a condition affecting one in 100,000 people under a dominant model. Frequency thresholds depend on inheritance mode and disease prevalence: dominant conditions with complete penetrance require extremely rare variants (often absent from population databases), while recessive conditions can tolerate higher carrier frequencies.
 
 The gnomAD database provides allele frequencies across over 800,000 individuals from diverse ancestries [@karczewski_mutational_2020]. Applying a frequency threshold of 0.01% for dominant conditions and 1% for recessive carriers typically removes 95% or more of variants from consideration. Ancestry-matched frequencies matter: a variant rare in European populations may be common in African or East Asian populations, and global frequency alone can be misleading.
 
-### Consequence and Gene Filters
+### Consequence and Gene Filters {#sec-ch26-consequence-gene-filters}
 
 Predicted functional consequence shapes prioritization. Loss-of-function variants (frameshift, nonsense, canonical splice site) in genes intolerant to haploinsufficiency receive immediate attention. Missense variants require additional assessment, as most are benign. Intronic and intergenic variants have historically been deprioritized, though foundation models are beginning to identify functional noncoding variants with greater precision.
 
 Gene-level filters incorporate prior knowledge. Curated gene panels for specific phenotypes (such as the PanelApp epilepsy panel or cardiomyopathy panel) restrict analysis to genes with established disease associations. For undiagnosed cases without clear phenotype match, broader approaches may include all OMIM disease genes or genes with high constraint (low observed/expected loss-of-function ratios in gnomAD).
 
-### Foundation Model Scoring
+### Foundation Model Scoring {#sec-ch26-foundation-model-scoring}
 
 After quality, frequency, and consequence filters, foundation model predictions provide quantitative effect estimates for remaining candidates. For missense variants, *AlphaMissense* scores offer genome-wide pathogenicity estimates derived from protein structure and evolutionary conservation [@cheng_alphamissense_2023]. For splice-region variants, SpliceAI predictions quantify the probability and magnitude of splicing disruption [@jaganathan_spliceai_2019]. For regulatory variants, *Enformer* and related models estimate effects on chromatin accessibility and gene expression in relevant tissues [@avsec_enformer_2021].
 
 These scores do not directly translate to pathogenicity classifications. A high *AlphaMissense* score indicates that the protein change is likely functionally disruptive, not that it causes a specific disease. The clinical relevance of any functional disruption depends on the gene's role in the patient's phenotype, the inheritance pattern, and whether disruption of that gene produces the observed clinical features. Foundation model scores become one input to a structured evidence framework, not a standalone answer.
 
-## ACMG-AMP Criteria and Computational Evidence
+## ACMG-AMP Criteria and Computational Evidence {#sec-ch26-acmg-amp-criteria-computational-evidence}
 
 The American College of Medical Genetics and Genomics and Association for Molecular Pathology (ACMG-AMP) framework provides the dominant structure for clinical variant classification [@richards_standards_2015]. Published in 2015 and subsequently refined through ClinGen expert panels, this framework assigns variants to five categories: pathogenic, likely pathogenic, variant of uncertain significance (VUS), likely benign, and benign. Classification emerges from combining multiple evidence types, each assigned a strength level (very strong, strong, moderate, supporting) and direction (pathogenic or benign).
 
@@ -54,13 +54,13 @@ The American College of Medical Genetics and Genomics and Association for Molecu
 [Essential] Evidence combination diagram. Columns (evidence categories): Population data, Computational predictions, Functional data, Segregation, *de novo*, Clinical. Rows (evidence strength): Very Strong (*PVS1*), Strong, Moderate, Supporting. Combination rules: Pathogenic criteria, Likely Pathogenic, VUS, Likely Benign, Benign. FM contribution highlighted: *PP3*/*BP4* box emphasized; "Traditionally supporting strength"; arrow showing potential upgrade for calibrated predictors. Classification distribution showing VUS dominates.
 :::
 
-### Evidence Categories
+### Evidence Categories {#sec-ch26-evidence-categories}
 
 ACMG-AMP evidence spans several domains. Population data includes allele frequency in controls (*BA1*, *BS1*, *BS2* for benign; *PM2* for pathogenic support when absent). Computational predictions include *in silico* tools predicting deleterious effects (*PP3* for pathogenic support) or benign effects (*BP4* for benign support). Functional data includes well-established functional assays demonstrating deleterious (*PS3*) or no (*BS3*) effect. Segregation data addresses co-segregation with disease in multiple affected family members (*PP1*) or lack of segregation (*BS4*). *de novo* status assigns strong (*PS2*) or moderate (*PM6*) evidence when parental samples are available and the variant is absent in both parents. Clinical information incorporates specific phenotype match (*PP4*) and prevalence considerations.
 
 The framework combines these evidence types through defined rules. Pathogenic classification requires either one very strong criterion plus one strong, or two strong criteria, with additional supporting evidence. Likely pathogenic requires somewhat less evidence. Most variants end up as VUS because available evidence is insufficient for confident classification in either direction.
 
-### *PP3* and *BP4*: Computational Evidence
+### *PP3* and *BP4*: Computational Evidence {#sec-ch26-pp3-bp4-computational-evidence}
 
 Computational predictions enter the ACMG-AMP framework primarily through *PP3* (pathogenic supporting evidence from computational predictions) and *BP4* (benign supporting evidence). These criteria apply when multiple *in silico* tools agree that a variant is deleterious (*PP3*) or benign (*BP4*).
 
@@ -70,7 +70,7 @@ Foundation models raise new questions about computational evidence strength. *Al
 
 Responsible application of foundation model predictions in ACMG-AMP classification requires gene-specific and variant-type-specific calibration whenever possible, explicit acknowledgment that *PP3*/*BP4* evidence is supporting unless upgraded by expert panel guidance, use of multiple orthogonal predictors rather than reliance on any single model, and clear documentation of which tools were applied and how predictions were interpreted.
 
-### Calibrating Predictions to Evidence Strength
+### Calibrating Predictions to Evidence Strength {#sec-ch26-calibrating-predictions-evidence}
 
 The calibration problem is central to using foundation model predictions clinically. A model outputs a continuous score; clinical classification requires discrete evidence categories. How should thresholds be set, and what strength should be assigned?
 
@@ -78,7 +78,7 @@ The ClinGen Sequence Variant Interpretation Recommendations address this through
 
 For *AlphaMissense* and similar foundation models, published validation shows that the highest-scoring variants (above 0.9) achieve odds ratios exceeding the strong evidence threshold in some gene contexts [@pejaver_calibration_2022; @bergquist_calibration_2025]. ClinGen expert panels have begun incorporating these calibrations for specific genes, allowing upgraded evidence strength when predictions meet defined criteria. Clinicians should follow gene-specific expert panel recommendations when available rather than applying uniform thresholds across all genes.
 
-## Family-Based Analysis
+## Family-Based Analysis {#sec-ch26-family-based-analysis}
 
 Rare disease interpretation rarely relies on proband sequence alone. Family structure provides substantial additional information through inheritance pattern constraints, *de novo* status determination, and segregation analysis.
 
@@ -92,7 +92,7 @@ Rare disease interpretation rarely relies on proband sequence alone. Family stru
 [High] Three-panel scenarios. Panel A (*de novo* Detection): Trio pedigree; variant present in proband, absent in parents; strong evidence (*PS2*); FM prioritizes among multiple de novos. Panel B (Compound Het Trans): Two variants in same gene from different parents; biallelic disruption; FM assesses severity of each. Panel C (Compound Het Cis): Both from same parent; one functional copy remains; recessive doesn't fit; FM identifies if either alone sufficient. Phasing methods sidebar: Long-read, trio, statistical.
 :::
 
-### *De Novo* Variants
+### *De Novo* Variants {#sec-ch26-de-novo-variants}
 
 *de novo* variants arise newly in the proband and are absent in both parents. For severe, early-onset dominant conditions, *de novo* mutations are expected: affected individuals rarely reproduce, so the disease-causing allele must arise fresh each generation. Observing a damaging variant as *de novo* provides strong evidence for pathogenicity under ACMG-AMP (*PS2*), often sufficient to push a candidate toward likely pathogenic or pathogenic classification.
 
@@ -100,7 +100,7 @@ The informativeness of *de novo* status depends on the mutation rate at that sit
 
 Foundation models assist *de novo* interpretation by providing effect estimates that help prioritize among multiple *de novo* variants (typical trio sequencing identifies one to three *de novo* coding variants) and by identifying *de novo* variants in noncoding regions that might disrupt critical regulatory elements. A *de novo* variant in a brain-specific enhancer upstream of a known epilepsy gene, predicted by Enformer to substantially reduce gene expression, warrants investigation even though traditional pipelines might overlook noncoding *de novo* events.
 
-### Compound Heterozygosity and Phasing
+### Compound Heterozygosity and Phasing {#sec-ch26-compound-heterozygosity-phasing}
 
 Recessive diseases require biallelic disruption: both copies of the gene must be affected for disease to manifest. When a proband carries two different heterozygous variants in the same gene, the critical question is whether these variants are in trans (on opposite chromosomes, leading to biallelic disruption) or in cis (on the same chromosome, leaving one copy functional).
 
@@ -110,7 +110,7 @@ For clinical interpretation, trio phasing is often the most practical approach. 
 
 Foundation models contribute by estimating the functional severity of each variant. A missense variant with marginal *AlphaMissense* score might not warrant attention alone, but paired in trans with a clear loss-of-function variant, the compound heterozygous combination could produce sufficient functional disruption to cause disease.
 
-### Segregation Analysis
+### Segregation Analysis {#sec-ch26-segregation-analysis}
 
 In larger families with multiple affected and unaffected individuals, segregation analysis examines whether candidate variants track with disease status. Under a dominant model, all affected individuals should carry the variant, and penetrance assumptions constrain how many unaffected carriers are expected. Under a recessive model, affected individuals should be homozygous or compound heterozygous, carriers should be heterozygous, and unaffected non-carriers should lack the variant entirely.
 
@@ -118,11 +118,11 @@ Strong segregation evidence (*PP1*, upgradable to strong evidence with sufficien
 
 Segregation analysis requires accurate pedigree information, confirmed sample identities, and careful consideration of age-dependent penetrance and phenocopies. A variant might be present in an unaffected young relative who will develop disease later, or an affected relative might have a different etiology (phenocopy). These complexities require clinical judgment that no computational model can replace.
 
-## Somatic Variant Interpretation in Cancer
+## Somatic Variant Interpretation in Cancer {#sec-ch26-somatic-variant-interpretation-cancer}
 
 Cancer genomics presents distinct interpretive challenges. Tumor genomes accumulate mutations throughout malignant evolution, creating a mix of driver mutations (those conferring selective advantage and contributing to cancer development) and passenger mutations (bystanders with no functional consequence). The interpretive task shifts from identifying variants causing inherited disease to identifying variants driving tumor biology and predicting therapeutic response.
 
-### Germline versus Somatic Distinction
+### Germline versus Somatic Distinction {#sec-ch26-germline-versus-somatic-distinction}
 
 Cancer sequencing must distinguish germline variants (present in all cells, inherited or *de novo*) from somatic variants (acquired in the tumor lineage). Tumor-only sequencing cannot make this distinction reliably, as rare germline variants may be mistaken for somatic events. Paired tumor-normal sequencing, comparing tumor to a non-malignant sample from the same patient, enables confident somatic variant identification.
 
@@ -136,7 +136,7 @@ Cancer sequencing must distinguish germline variants (present in all cells, inhe
 
 This distinction has direct clinical implications. A germline pathogenic variant in *BRCA1* indicates hereditary cancer predisposition affecting the patient and potentially their family members, warranting genetic counseling and possibly risk-reducing interventions. A somatic *BRCA1* mutation arose in the tumor and has no implications for inherited risk, though it may still predict response to PARP inhibitors.
 
-### Driver Classification
+### Driver Classification {#sec-ch26-driver-classification}
 
 Among somatic mutations, identifying drivers requires different evidence than germline pathogenicity assessment. Recurrence across independent tumors suggests selective advantage: if *BRAF* V600E appears in 50% of melanomas, this frequency far exceeds what chance would predict, implying functional importance. Databases like COSMIC catalog somatic mutation frequencies across cancer types, enabling recurrence-based prioritization [@tate_cosmic_2019].
 
@@ -144,13 +144,13 @@ Functional impact predictions from foundation models apply somewhat differently 
 
 Tumor mutational burden provides context for individual variant interpretation. Hypermutated tumors (from mismatch repair deficiency or POLE mutations) may carry thousands of coding mutations, making it difficult to identify drivers against this noisy background. In such cases, restricting attention to known hotspots, truncating mutations in tumor suppressors, and variants with strong functional predictions helps prioritize the likely relevant events.
 
-### Therapeutic Biomarkers
+### Therapeutic Biomarkers {#sec-ch26-therapeutic-biomarkers}
 
 Somatic variant interpretation increasingly focuses on therapeutic implications. Specific variants predict response to targeted therapies: *EGFR* exon 19 deletions and L858R mutations predict erlotinib response in lung cancer; *BRAF* V600E predicts vemurafenib response in melanoma; *PIK3CA* mutations indicate alpelisib benefit in breast cancer [@lynch_activating_2004; @chapman_improved_2011; @andre_alpelisib_2019]. These associations derive from clinical trials demonstrating differential response by mutation status.
 
 Foundation models do not directly predict therapeutic response, as they lack the clinical outcome data that would be required. Their contribution is in characterizing novel variants in known therapeutic target genes. A patient whose tumor carries an unusual *EGFR* mutation not previously characterized might be evaluated using structural models and effect predictions to estimate whether the mutation likely preserves the drug-binding site and confers similar dependency as canonical sensitizing mutations. Such analyses are hypothesis-generating rather than definitive but can inform clinical decision-making when direct trial evidence is unavailable.
 
-## Laboratory Validation
+## Laboratory Validation {#sec-ch26-laboratory-validation}
 
 Computational predictions, however accurate, remain predictions. Functional assays provide direct experimental evidence of variant effects, and ACMG-AMP appropriately weights functional data (*PS3* for damaging functional effect, *BS3* for no functional effect) as strong evidence when assays are well-validated.
 
@@ -161,7 +161,7 @@ Computational predictions, however accurate, remain predictions. Functional assa
 :::
 
 
-### Types of Functional Assays
+### Types of Functional Assays {#sec-ch26-types-functional-assays}
 
 Different variant types require different assay approaches. For missense variants, protein function assays measure specific biochemical activities of the mutant protein: enzyme activity, DNA binding, protein-protein interactions, or cellular phenotypes in model systems. Deep mutational scanning systematically characterizes all possible amino acid substitutions at each position in a protein, creating comprehensive functional maps. These maps enable immediate lookup of functional effects for any observed missense variant, though coverage remains incomplete across the proteome.
 
@@ -169,7 +169,7 @@ For splicing variants, minigene assays clone genomic regions containing the vari
 
 For regulatory variants, reporter assays measure whether variant-containing regulatory elements drive appropriate expression patterns. Massively parallel reporter assays (MPRAs) enable testing thousands of variants simultaneously, generating the training data that informs foundation model development while also providing direct validation for specific variants of clinical interest. CRISPR-based approaches can introduce variants into endogenous genomic contexts rather than artificial reporter constructs, providing more physiologically relevant readouts.
 
-### Integrating Functional Evidence
+### Integrating Functional Evidence {#sec-ch26-integrating-functional-evidence}
 
 Functional data enters ACMG-AMP classification through *PS3* (strong pathogenic evidence from functional studies showing deleterious effect) and *BS3* (strong benign evidence from functional studies showing no effect) [@brnich_recommendations_2019]. The strength assignment depends on assay validation: well-established assays measuring physiologically relevant endpoints warrant strong evidence, while novel or less-validated assays may warrant only moderate or supporting strength.
 
@@ -177,7 +177,7 @@ ClinGen has developed detailed recommendations for functional evidence evaluatio
 
 Foundation model predictions can prioritize which variants most warrant functional follow-up. When resources limit testing to a subset of VUS, selecting those with discordant computational predictions (high predicted impact but uncertain clinical classification) maximizes the information gained. Variants where functional testing might resolve classification provide greater value than variants where classification is already clear or unlikely to change regardless of functional results.
 
-### Closing the VUS Loop
+### Closing the VUS Loop {#sec-ch26-closing-vus-loop}
 
 The accumulation of variants of uncertain significance represents a major challenge in clinical genetics. Patients receive results that cannot be interpreted, creating anxiety and uncertainty. As more individuals undergo sequencing, VUS prevalence grows. Systematic efforts to resolve VUS through functional characterization could dramatically improve the clinical utility of genetic testing.
 
@@ -185,11 +185,11 @@ High-throughput functional approaches offer a path forward. Saturation genome ed
 
 Foundation models trained on these functional datasets can generalize beyond directly measured variants, predicting effects for positions or genes not yet characterized experimentally. This creates a productive cycle: functional data improves model training, improved models identify high-priority variants for follow-up, and targeted experiments fill gaps while further improving models.
 
-## Practical Workflow Integration
+## Practical Workflow Integration {#sec-ch26-practical-workflow-integration}
 
 Translating foundation model capabilities into clinical practice requires integration with existing laboratory and clinical workflows. The technical and interpretive steps must fit within established regulatory frameworks, electronic health record systems, and clinical team structures.
 
-### Laboratory Workflow
+### Laboratory Workflow {#sec-ch26-laboratory-workflow}
 
 Clinical sequencing laboratories operate under regulatory oversight (CLIA certification, state licensure, and potentially CAP accreditation in the United States). Validated pipelines must produce consistent, reproducible results. Introducing new computational tools requires formal validation demonstrating that the tool performs as expected on representative sample types, that outputs are interpretable and actionable by clinical staff, and that results are documented and traceable.
 
@@ -197,7 +197,7 @@ For foundation model integration, validation studies should assess performance o
 
 Laboratory information management systems must capture foundation model predictions alongside other variant annotations. Reports to clinicians should clearly indicate the role of computational evidence, the specific tools applied, and the evidence strength assigned. Overreliance on computational predictions, or failure to communicate their limitations, risks inappropriate clinical decisions.
 
-### Clinical Decision-Making
+### Clinical Decision-Making {#sec-ch26-clinical-decision-making}
 
 Variant interpretation reports ultimately inform clinical decisions: whether to pursue additional testing, what genetic counseling to provide, whether to adjust medical management, and what surveillance or prevention strategies to recommend. These decisions rest with clinicians and genetic counselors working with patients, not with computational algorithms.
 
@@ -205,13 +205,13 @@ Foundation model predictions support this process by improving the efficiency an
 
 The interpretive report should convey both what computational predictions indicate and the uncertainty that remains. Clinicians must understand that even highly accurate models make errors, that predictions may be less reliable for underrepresented populations or unusual variant types, and that computational evidence is one component of a comprehensive assessment. Shared decision-making with patients should acknowledge these limitations while conveying the best current understanding.
 
-### Regulatory and Ethical Considerations
+### Regulatory and Ethical Considerations {#sec-ch26-regulatory-ethical-considerations}
 
 Clinical use of foundation model predictions raises regulatory questions addressed more fully in @sec-future. In the United States, laboratory-developed tests using computational predictions fall under CLIA oversight, with additional U.S. Food and Drug Administration (FDA) jurisdiction increasingly asserted for software as a medical device. European regulations under IVDR impose their own requirements. Laboratories must navigate this evolving landscape while ensuring that clinical utility keeps pace with regulatory compliance.
 
 Equity concerns deserve particular attention. Foundation models trained predominantly on data from individuals of European ancestry may perform less well for other populations. If computational predictions systematically provide less informative evidence for underrepresented groups, this could widen existing disparities in diagnostic yield and clinical care. Ongoing efforts to diversify training data and evaluate performance across ancestries are essential for equitable clinical deployment.
 
-##  Interpretive Partnership
+##  Interpretive Partnership {#sec-ch26-interpretive-partnership}
 
 Foundation models transform variant interpretation by providing more accurate, comprehensive, and fine-grained predictions than previous computational approaches. Missense pathogenicity can be estimated proteome-wide with unprecedented accuracy. Regulatory variant effects can be predicted across tissues and cell types. Splicing disruption can be quantified with clinical-grade precision. These capabilities accelerate the diagnostic odyssey, enabling faster and more confident resolution for patients who have often waited years for answers.
 

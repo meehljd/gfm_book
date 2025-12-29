@@ -1,4 +1,4 @@
-# Transformers and Attention {#sec-attention}
+# Transformers and Attention {#sec-ch07-attention}
 
 Where convolutional networks ask "what local pattern exists here," attention asks a different question: "what distant information matters here?" This reformulation changed what genomic models could learn. A convolutional filter scanning across a sequence detects motifs, chromatin marks, and regulatory grammar with high fidelity, but it remains blind to dependencies beyond its **receptive field**. Attention computes direct interactions between all positions simultaneously, allowing a nucleotide near a gene promoter to attend to an enhancer 100 kilobases away without information passing through intermediate layers. The shift is not merely architectural; it reflects a different assumption about how sequence encodes function. Local patterns matter, but so do long-range relationships that convolutions cannot capture.
 
@@ -7,7 +7,7 @@ The **attention mechanism**, introduced for machine translation by Vaswani et al
 Attention enables capabilities that convolutions cannot achieve. Regulatory interactions spanning distances beyond any practical **convolutional neural network (CNN)** receptive field become directly modelable when every position can attend to every other. Different attention heads specialize for different relationship types: some learn to focus on nearby positions for local motif context, others attend across tens of kilobases to capture enhancer-promoter relationships, and still others exhibit periodic patterns suggestive of nucleosome spacing or chromatin organization. These specializations emerge from training without explicit supervision. The transformer architecture that houses these attention mechanisms has become the dominant substrate for genomic foundation models, from *DNABERT*'s regulatory sequence representations to *Enformer*'s expression predictions to *ESM-2*'s protein embeddings. Yet attention mechanisms still struggle with the quadratic computational cost that limits context length, creating a tension between the long-range modeling that genomic applications require and the practical constraints of current hardware.
 
 
-## Self-Attention Mechanism {#sec-ch07-self-attention}
+## Self-Attention Mechanism {#sec-ch07-self-attention-mechanism}
 
 A 28-year-old woman presents with dilated cardiomyopathy and a variant of uncertain significance in the *LMNA* gene's promoter region. Her clinician needs to determine whether this variant disrupts regulatory elements that control *LMNA* expression in cardiac tissue. The relevant information spans thousands of base pairs: transcription factor binding sites flanking the variant, enhancers that drive cardiac-specific expression, and insulators that constrain regulatory interactions. A model that can only aggregate local context (through convolutional or recurrent operations) must pass information through many intermediate layers, each adding noise and limiting what survives the journey. When this information pathway fails, the variant appears as noise rather than the pathogenic regulatory disruption it may represent. The fundamental question is how to let any position in a sequence directly access information from any other position, regardless of distance.
 
@@ -19,7 +19,7 @@ A 28-year-old woman presents with dilated cardiomyopathy and a variant of uncert
 
 **Self-attention** answers this question by computing all pairwise interactions simultaneously, allowing the model to directly relate any position to any other regardless of distance. Where convolutions apply fixed filters uniformly across the sequence, attention performs dynamic routing: each position queries the entire sequence and aggregates information based on content-dependent relevance scores. The routing changes for every input because attention weights depend on what the sequence contains, not just where positions sit relative to each other. For the *LMNA* variant, this means the model can directly assess whether the variant position interacts with known cardiac enhancers without that signal degrading through layer after layer of local aggregation.
 
-### Query, Key, and Value Vectors {#sec-ch07-qkv}
+### Query, Key, and Value Vectors {#sec-ch07-query-key-value-vectors}
 
 At each position in the input sequence, self-attention computes three vectors: a **query**, a **key**, and a **value**. These vectors emerge from multiplying the input embedding at that position by three learned weight matrices *W^Q*, *W^K*, and *W^V*. The query represents what information this position seeks from other positions. The key represents what information this position offers to queries from elsewhere. The value represents the actual information this position contributes when attended to. This query-key-value structure separates the question of "which positions should interact" (determined by query-key similarity) from "what information flows between them" (determined by values).
 
@@ -43,7 +43,7 @@ $$
 
 This weighted aggregation forms the core of self-attention. Each output position receives a mixture of information from across the entire sequence, with mixture proportions learned through backpropagation. For genomic sequences, this means a position near a splice site can attend to both the upstream exon and downstream intron, integrating context that determines whether splicing occurs. A position in a promoter can attend to distant enhancers, learning which distal elements influence expression at this gene. When predicting the pathogenicity of a variant in the *SCN5A* promoter (mutations in which cause Brugada syndrome and long QT syndrome, affecting approximately 1 in 2,000 individuals), the model can simultaneously consider the core promoter elements, upstream enhancers that drive cardiac-specific expression, and downstream regulatory regions that modulate expression levels.
 
-### Multi-Head Attention {#sec-ch07-multihead}
+### Multi-Head Attention {#sec-ch07-multi-head-attention}
 
 ::: {#fig-multihead-attention}
 ![**FIGURE PLACEHOLDER**](https://placehold.co/300x200?text=FIGURE%20PLACEHOLDER)
@@ -90,7 +90,7 @@ Self-attention, by design, computes interactions based purely on content: the at
 [High] Four-panel comparison of position encoding approaches. Panel A (Absolute/Learned): Heatmap showing learned position embeddings across dimensions, with note about fixed maximum length. Panel B (Sinusoidal): Wave patterns at different frequencies across positions, showing how different dimensions capture different scales. Panel C (ALiBi): Attention bias matrix showing linear decay with distance, highlighting the implicit local preference. Panel D (RoPE): 2D rotation visualization in embedding subspace showing how relative position is encoded through rotation angle.
 :::
 
-### Absolute Position Encodings {#sec-ch07-absolute-position}
+### Absolute Position Encodings {#sec-ch07-absolute-position-encodings}
 
 The original transformer used sinusoidal functions with different frequencies for each embedding dimension [@vaswani_attention_2017]. For position *pos* and dimension *i*:
 
@@ -106,7 +106,7 @@ These fixed patterns have useful properties. They are deterministic (the same fo
 
 Many genomic models use **learned positional embeddings** instead: lookup tables where each position has a learned vector added to the input embedding. *DNABERT* and *Nucleotide Transformer* both employ learned positional embeddings, allowing the model to discover position-dependent patterns specific to genomic data [@ji_dnabert_2021; @dalla-torre_nucleotide_2023]. The trade-off is that learned embeddings do not automatically extrapolate to longer sequences. A model trained with maximum sequence length of 512 tokens has no learned embedding for position 513, creating a hard boundary on sequence length at inference time. This fixed maximum context proves particularly restrictive for genomics, where biological phenomena span scales from individual binding sites to megabase regulatory domains.
 
-### Relative Position Encodings {#sec-ch07-relative-position}
+### Relative Position Encodings {#sec-ch07-relative-position-encodings}
 
 Absolute encodings treat position 1,000 and position 1,001 as having different representations even though their relative relationship (adjacent positions) may matter more than their absolute locations. For genomic applications, relative distance often carries more biological meaning than absolute coordinates: nucleosomes are spaced approximately 200 base pairs apart regardless of genomic location, and enhancer-promoter interactions depend on distance rather than absolute position. A transcription factor binding site 50 bases upstream of a transcription start site has similar effects whether the TSS sits at genomic position 1,000 or 1,000,000. **Relative positional encodings** address this by encoding distances between positions rather than absolute coordinates.
 
@@ -116,7 +116,7 @@ Extrapolation to longer sequences than seen during training poses a persistent c
 
 An alternative approach encodes position through geometric transformation rather than additive bias. Rotary Position Embeddings (*RoPE*) multiply query and key vectors by rotation matrices whose angles depend on position [@su_roformer_2024]. The dot product between rotated query and key then depends on their relative distance, combining benefits of relative encoding with efficient implementation. *RoPE* has become standard in recent large language models and appears increasingly in genomic transformers, including variants of *Nucleotide Transformer*, offering a balance between the flexibility of learned embeddings and the extrapolation capability of fixed schemes. The choice between *ALiBi* and *RoPE* often depends on whether the application prioritizes aggressive length extrapolation (favoring *ALiBi*) or compatibility with pretrained language model architectures (favoring *RoPE*).
 
-### Genomic Position Considerations {#sec-ch07-genomic-position}
+### Genomic Position Considerations {#sec-ch07-genomic-position-considerations}
 
 Genomic sequences impose requirements on positional encoding beyond what natural language demands. DNA has strand directionality: ACGT on the forward strand has different regulatory meaning than the same sequence on the reverse strand. Positional encodings should enable the model to learn strand-specific patterns. Some genomic transformers encode both strands separately and combine predictions; others rely on the model learning strand orientation from sequence content alone.
 
@@ -148,7 +148,7 @@ Deep transformer networks would be untrainable without mechanisms to stabilize g
 
 Normalization alone cannot solve the **vanishing gradient** problem that plagues deep networks. **Residual connections** provide the second essential stabilization mechanism by adding each sublayer's input directly to its output, creating gradient highways that bypass the transformations within attention and feed-forward operations. These connections serve two critical functions. First, they allow gradients to flow directly through many layers without repeated transformation, enabling training of very deep networks. Second, they create an inductive bias toward incremental refinement: each layer makes small adjustments to the representation rather than constructing entirely new representations from scratch. For genomic models, this incremental refinement maps naturally onto biological interpretation, where early layers might identify motifs, middle layers might recognize motif combinations, and later layers might integrate these patterns into regulatory predictions.
 
-### Information Flow and Depth {#sec-ch07-depth}
+### Information Flow and Depth {#sec-ch07-information-flow-depth}
 
 The flow through a pre-norm transformer block proceeds as follows. Input *X* is normalized, processed by multi-head attention to produce *X'*, and added back via residual connection, yielding *X* + *X'*. This sum is normalized, passed through the feed-forward network to produce *X''*, and added via another residual connection, yielding final output *X* + *X'* + *X''*. Each layer thus adds refinements to the representation while preserving information from earlier processing.
 
@@ -157,7 +157,7 @@ Stacking depth determines how many times this refinement occurs. Shallow transfo
 The choice of depth balances capacity against trainability. Deeper networks learn more complex functions but are harder to optimize, prone to overfitting without sufficient data, and more expensive at training and inference. For genomic models, depth often correlates with the complexity of patterns being modeled. Simple motif recognition tasks might benefit more from wider layers (larger *d*) than deeper stacks, while tasks requiring hierarchical integration (understanding how promoter-enhancer-insulator relationships determine expression) may benefit from additional depth that builds increasingly abstract representations layer by layer.
 
 
-## Scaling to Genomic Sequences {#sec-ch07-scaling}
+## Scaling to Genomic Sequences {#sec-ch07-scaling-genomic-sequences}
 
 A 52-year-old patient presents with unexplained cardiomyopathy, and whole-genome sequencing reveals a structural variant spanning 500 kilobases on chromosome 14, disrupting the *MYH7* locus and several upstream regulatory elements. The clinical team needs to assess whether this variant explains the patient's phenotype. Standard transformers cannot help: the quadratic complexity of self-attention makes 500-kilobase contexts computationally intractable. This gap between clinical need and computational capability defines a central challenge for genomic AI. The attention mechanism enables long-range modeling in principle, but practical constraints on memory and computation limit what contexts can actually be processed. Effective application of transformers to genomics requires strategies for managing these constraints.
 
@@ -167,7 +167,7 @@ Computing all pairwise attention scores requires *O*(*L*²) operations, where *L
 
 This scaling constraint directly limits what clinical questions transformers can address. The *HLA* region (critical for transplant matching and autoimmune disease risk in the approximately 40,000 organ transplants performed annually in the United States) spans approximately 4 megabases and contains the most polymorphic genes in the human genome. Modeling this region with standard self-attention would require 16 × 10¹² attention computations per layer, far exceeding practical limits. Structural variant detection often requires analyzing megabase-scale contexts to identify breakpoints and assess functional impact, yet these contexts remain computationally intractable for standard transformers. A patient with a suspected chromosomal translocation cannot benefit from transformer-based analysis when the relevant context exceeds computational capacity.
 
-### Parameter Considerations {#sec-ch07-parameters}
+### Parameter Considerations {#sec-ch07-parameter-considerations}
 
 The number of parameters a transformer can effectively utilize depends on both training data quantity and the complexity of patterns to be learned. Transformer parameters come primarily from two sources. Width (model dimension *d*) determines embedding and hidden state sizes; increasing width allows more complex pattern representation at each position but increases parameters quadratically because weight matrices scale as *d* × *d*. Depth (number of layers) determines how many refinement steps occur; increasing depth allows hierarchical abstractions through repeated processing but increases parameters linearly.
 
@@ -175,7 +175,7 @@ Scaling laws from natural language processing suggest performance improves smoot
 
 Genomic foundation models span a wide parameter range. *DNABERT* uses approximately 110 million parameters, comparable to BERT-base [@ji_dnabert_2021]. *Nucleotide Transformer* scales from 50 million to 2.5 billion parameters across model variants [@dalla-torre_nucleotide_2023]. The largest genomic transformers approach 10 billion parameters, though whether this scale provides commensurate benefit for genomic tasks remains under investigation. The relationship between parameter count and downstream task performance is not always monotonic: a well-trained smaller model can outperform a poorly trained larger one, and task-specific fine-tuning often matters more than pretraining scale for focused clinical applications.
 
-### Context Length Strategies {#sec-ch07-context-strategies}
+### Context Length Strategies {#sec-ch07-context-length-strategies}
 
 Standard self-attention's *O*(*L*²) complexity becomes prohibitive for long genomic contexts, forcing architectural choices that trade expressiveness for tractability. The strategies employed reflect different assumptions about which interactions matter most for genomic modeling.
 
@@ -185,14 +185,14 @@ Hierarchical approaches recover some long-range capability while maintaining eff
 
 Mathematical approximations offer yet another path, preserving dense connectivity while reducing computational cost. *Linformer* approximates the attention matrix through low-rank decomposition, reducing complexity to linear in sequence length [@wang_linformer_2020]. *Performer* uses random feature methods to approximate attention scores without explicitly computing the full *L* × *L* matrix [@choromanski_rethinking_2022]. These approximations trade some expressiveness for efficiency and may miss certain long-range dependencies that low-rank structure cannot capture. The choice among sparse patterns, hierarchical designs, and mathematical approximations depends on whether the target biology demands single-nucleotide resolution, long-range connectivity, or both.
 
-### Memory and Precision {#sec-ch07-memory}
+### Memory and Precision {#sec-ch07-memory-precision}
 
 Memory requirements compound computational challenges for genomic transformers. Training requires storing activations for backpropagation, and attention matrices are particularly memory-intensive. A 100-kilobase sequence with 16 attention heads and 12 layers requires storing 16 × 12 × 100,000 × 100,000 attention weights, approximately 2 terabytes at 32-bit precision before considering other activations.
 
 Memory constraints often limit model size and sequence length more than computational budget. Recomputing activations during the backward pass rather than storing them (a technique called **gradient checkpointing**) trades additional computation for reduced memory footprint, enabling training of larger models or longer sequences on fixed hardware at the cost of 20 to 30 percent additional training time. Further memory savings come from reducing numerical precision: using 16-bit floating point for most computations while maintaining 32-bit precision for critical operations like loss computation and optimizer updates. Modern GPUs accelerate 16-bit arithmetic substantially, providing near 2× speedup with minimal precision loss. *Flash Attention* implements memory-efficient attention computation that avoids materializing the full attention matrix, enabling longer contexts within fixed memory budgets [@dao_flashattention_2022]. Together, these optimizations determine the practical limits of what can be trained on available hardware.
 
 
-## Architectural Variants for Genomics {#sec-ch07-variants}
+## Architectural Variants for Genomics {#sec-ch07-architectural-variants-genomics}
 
 A clinical laboratory evaluating a novel missense variant needs a model that integrates bidirectional protein context to assess pathogenicity. A biotechnology company designing synthetic promoters needs a model that generates novel sequences with specified expression properties. A research team studying protein-RNA interactions needs a model that predicts binding from sequence features. These distinct requirements have driven development of architectural variants that make different trade-offs between representation learning, generation capability, and computational efficiency. The choice of architecture shapes what questions can be asked and how answers emerge.
 
@@ -206,7 +206,7 @@ A clinical laboratory evaluating a novel missense variant needs a model that int
 [Enhancing] Three-panel comparison. Panel A (Encoder-only, e.g., *BERT*/*DNABERT*): Bidirectional attention pattern (full matrix), typical use for classification/embedding. Panel B (Decoder-only, e.g., GPT/*Evo*): Causal attention pattern (lower triangular), typical use for generation. Panel C (Hybrid CNN-Transformer, e.g., *Enformer*): CNN downsampling followed by transformer, showing how hybrid reduces sequence length before attention.
 :::
 
-### Encoder-Only Transformers {#sec-ch07-encoder-only}
+### Encoder-Only Transformers {#sec-ch07-encoder-only-transformers}
 
 When a clinical laboratory queries a pathogenicity database for a novel missense variant, they need a model that integrates information from the entire protein sequence: upstream domains that establish structural context, downstream regions that complete functional units, and evolutionary patterns that distinguish tolerated from deleterious changes. **Encoder-only transformers** process sequences bidirectionally, allowing each position to attend to all other positions including those that follow in the sequence. This bidirectional context produces richer representations than unidirectional processing because each position's representation incorporates information from the entire sequence.
 
@@ -214,7 +214,7 @@ When a clinical laboratory queries a pathogenicity database for a novel missense
 
 Bidirectional attention suits tasks where both upstream and downstream context matters for understanding a position. Transcription factor binding depends on flanking sequence in both directions. Splice site recognition requires seeing both exonic and intronic context. Variant pathogenicity may depend on protein domain context from both N-terminal and C-terminal directions. The limitation is that encoder-only architectures cannot generate sequences autoregressively because they require seeing the full sequence to produce any output; they answer "what does this sequence mean" rather than "what sequence should come next."
 
-### Decoder-Only Transformers {#sec-ch07-decoder-only}
+### Decoder-Only Transformers {#sec-ch07-decoder-only-transformers}
 
 Generating synthetic genomic sequences for therapeutic design, creating diverse antibody libraries for drug discovery, or sampling from learned regulatory grammars all require models that produce sequences one token at a time. **Decoder-only transformers** use **causal attention** where each position attends only to itself and preceding positions. This structure enables **autoregressive generation**: the model produces sequences one token at a time, conditioning each new token on all previous tokens.
 
@@ -222,7 +222,7 @@ Generating synthetic genomic sequences for therapeutic design, creating diverse 
 
 The trade-off is that causal attention produces less rich representations for fixed sequences because each position sees only partial context. Position 100 in a 1000-position sequence has access to only the first 100 positions, not the remaining 900 that might provide relevant information. For variant effect prediction where downstream context matters, this limitation can be substantial. The choice between encoder and decoder architectures reflects a fundamental tension: representation learning benefits from bidirectional context, while generation requires causal structure.
 
-### Encoder-Decoder Transformers {#sec-ch07-encoder-decoder}
+### Encoder-Decoder Transformers {#sec-ch07-encoder-decoder-transformers}
 
 Some genomic tasks require transforming one sequence into another of different length or structure. Predicting protein sequence from coding DNA, generating variant descriptions from sequence context, or translating between sequence representations all involve input-output relationships that neither pure encoder nor pure decoder architectures handle naturally. **Encoder-decoder architectures** combine bidirectional encoding with autoregressive decoding [@vaswani_attention_2017].
 
@@ -230,7 +230,7 @@ The encoder processes an input sequence with full bidirectional attention, produ
 
 Encoder-decoder models are less common in genomic applications than encoder-only or decoder-only variants because most genomic tasks either need representations (favoring encoders) or generation (favoring decoders), not both simultaneously. Machine translation exemplifies the encoder-decoder use case: encode a sentence in one language, decode into another. Genomic analogs might include predicting protein sequences from codon-optimized DNA or generating clinical variant reports from sequence features, but these applications remain less developed than pure representation or generation tasks.
 
-### Hybrid CNN-Transformer Models {#sec-ch07-hybrid}
+### Hybrid CNN-Transformer Models {#sec-ch07-hybrid-cnn-transformer-models}
 
 The most successful genomic transformers combine convolutional and attention mechanisms rather than using transformers alone. This hybrid approach exploits CNNs' efficiency for local pattern extraction while using transformers for long-range integration, matching the multi-scale structure of genomic regulation where both local motifs and distal interactions determine function.
 
@@ -239,7 +239,7 @@ The most successful genomic transformers combine convolutional and attention mec
 The hybrid approach also addresses the quadratic attention bottleneck indirectly. By downsampling sequences before transformer layers (often by factors of 128 or more), hybrids reduce effective sequence length and thus attention cost. A 200-kilobase genomic region compressed to 1,500 positions requires only 2.25 million attention computations per layer rather than 40 billion for the uncompressed sequence. The cost is loss of single-nucleotide resolution in transformer layers, though the CNN stem preserves local detail that attention layers integrate but do not need to resolve. @sec-regulatory examines *Enformer* and related hybrid architectures in detail.
 
 
-## Training Dynamics {#sec-ch07-training}
+## Training Dynamics {#sec-ch07-training-dynamics}
 
 When a model trained to predict pathogenic variants misclassifies a disease-causing *BRCA1* mutation as benign, the consequences extend beyond benchmark metrics. Clinical laboratories may return incorrect results; patients may forego preventive surgeries that could save their lives. Training failures matter clinically because they determine what models learn and what they miss. A model that overfits to common polymorphisms in training data will fail on the rare variants that matter most for diagnosis. A model whose gradients vanish during training will never learn the subtle regulatory patterns that distinguish pathogenic from benign promoter variants. Understanding training dynamics helps predict and prevent these failures.
 
@@ -259,20 +259,20 @@ Transformers' high parameter counts create substantial overfitting risk, particu
 
 Constraining parameter magnitudes provides orthogonal regularization. **Weight decay** penalizes large parameter values, encouraging smaller weights that generalize better to unseen data. For transformers, this penalty is typically applied to all parameters except biases and layer normalization parameters. The coefficient requires careful tuning: too little provides insufficient regularization; too much constrains capacity and reduces model expressiveness. Values of 0.01 to 0.1 are common, with higher values for smaller datasets where overfitting risk is greater. The interaction between dropout and weight decay means that optimal settings for each depend on the other, requiring joint tuning rather than independent optimization.
 
-### Gradient Stability {#sec-ch07-gradients}
+### Gradient Stability {#sec-ch07-gradient-stability}
 
 Gradient issues plague deep network training and require specific attention for genomic transformers. Vanishing gradients occur when gradients become extremely small through many layers, preventing learning in early layers. **Exploding gradients** are the opposite: gradients grow exponentially and destabilize training. Transformers mitigate vanishing gradients through residual connections that provide direct gradient paths, allowing gradients to flow from output to early layers without passing through potentially attenuating transformations. Exploding gradients are addressed through **gradient clipping**, which rescales gradients when their norm exceeds a threshold.
 
 For genomic transformers, gradient issues manifest differently than in language models. Genomic sequences have less hierarchical structure than natural language (no grammatical sentence organization), which affects gradient flow through attention layers. Imbalanced token frequencies create gradient imbalances: common *k*-mers receive large gradients from frequent occurrence while rare but biologically important tokens (such as *k*-mers containing the stop codon TAG) receive small gradients from infrequent occurrence. Addressing this imbalance may require loss reweighting or adaptive sampling that ensures rare tokens appear frequently enough for effective learning.
 
-### Distributed Training {#sec-ch07-distributed}
+### Distributed Training {#sec-ch07-distributed-training}
 
 The computational scale of genomic foundation models typically exceeds single-graphics processing unit (GPU) capacity, requiring distributed training strategies. **Data parallelism** replicates the model across GPUs, splitting batches across devices and aggregating gradients. This approach scales well up to batch sizes limited by convergence requirements but does not help when the model itself exceeds GPU memory. **Model parallelism** splits the model across devices, necessary when parameters exceed single-GPU memory. **Pipeline parallelism** divides layers across devices and pipelines forward and backward passes, interleaving computation to improve device utilization.
 
 Batch size selection involves competing considerations. Larger batches provide more stable gradient estimates and better GPU utilization but require more memory and may reduce generalization. Genomic transformers often use **gradient accumulation** to simulate large batches: small batches process sequentially, gradients accumulate, then a single parameter update occurs. This strategy provides large-batch gradient stability without the memory cost, though it increases training time proportionally. Effective batch sizes of 256 to 4096 sequences are common for genomic transformers, achieved through accumulation over many smaller physical batches.
 
 
-## Limitations and Emerging Alternatives {#sec-ch07-limitations}
+## Limitations and Emerging Alternatives {#sec-ch07-limitations-emerging-alternatives}
 
 A 48-year-old patient presents with a suspected Lynch syndrome diagnosis, and genetic testing reveals a structural variant spanning 3 megabases on chromosome 2 that may disrupt the *MSH2* gene and its upstream regulatory region. The clinical team needs to determine whether this variant explains the patient's early-onset colorectal cancer and guides surveillance recommendations for family members. Standard transformers cannot address this question: the quadratic complexity of self-attention makes 3-megabase contexts computationally intractable. Current models can span 200 kilobases with hybrid architectures, yet the structural variants and chromosomal rearrangements that cause many inherited cancer syndromes remain beyond reach. This gap between clinical need and computational capability defines the frontier of genomic AI.
 
@@ -288,13 +288,13 @@ The quadratic complexity of self-attention remains transformers' most severe lim
 
 Recent models have pushed context lengths substantially. *Enformer* handles 200 kilobases; emerging models approach 1 megabase. But these achievements rely on hybrid architectures with significant downsampling or hierarchical windowing that may miss certain long-range patterns or single-nucleotide resolution details. Pure transformers without such modifications remain limited to shorter contexts. The fundamental constraint shapes what questions transformers can address and motivates alternatives that escape quadratic scaling.
 
-### State Space Models {#sec-ch07-ssm}
+### State Space Models {#sec-ch07-state-space-models}
 
 **State space models (SSMs)** address the quadratic barrier directly by achieving linear complexity while maintaining long-range modeling capability. Rather than computing all pairwise interactions, SSMs represent sequences as continuous-time dynamical systems, maintaining memory through recurrent state updates that propagate information across positions without explicit pairwise computation.
 
 Architectures like *S4*, *Hyena*, and *Mamba* have demonstrated competitive or superior performance to transformers on various sequence modeling tasks while scaling to much longer contexts [@gu_efficiently_2022; @poli_hyena_2023; @gu_mamba_2024]. For genomics, this capability enables whole-chromosome or potentially whole-genome modeling that remains intractable for standard transformers. *HyenaDNA* processes sequences up to 1 million nucleotides at single-nucleotide resolution, enabling analysis of structural variants and long-range regulatory interactions that transformers cannot approach [@nguyen_hyenadna_2023]. The *Evo* model extends this further, achieving context lengths sufficient for bacterial genome-scale modeling. @sec-dna-lm examines these architectures in detail, exploring how linear complexity enables new categories of genomic analysis.
 
-### Choosing Architectures {#sec-ch07-choosing}
+### Choosing Architectures {#sec-ch07-selection-architectures}
 
 The choice between transformers and alternatives depends on the biological question and computational constraints. Transformers excel when global context matters but sequences are not extremely long (under 10 to 50 kilobases depending on computational resources). Attention maps provide interpretability, showing which positions the model considers relevant for predictions. Transformers benefit from extensive tooling and pretrained models from NLP that transfer readily to genomics.
 
@@ -305,7 +305,7 @@ Hybrid approaches often achieve the best practical results for intermediate-scal
 The transition toward sub-quadratic architectures continues. Early results suggest SSMs match or exceed transformers on some genomic benchmarks while scaling to longer contexts. The question is no longer whether alternatives to quadratic attention exist, but which tasks benefit most from linear-complexity architectures and which retain advantages from explicit pairwise attention computation.
 
 
-## Capacity Without Direction {#sec-ch07-conclusion}
+## Capacity Without Direction {#sec-ch07-capacity-direction}
 
 The transformer architecture provides the computational substrate for modern genomic foundation models, but architecture alone does not determine what models learn. Attention mechanisms enable pairwise interaction modeling across arbitrary sequence distances. Position encodings break permutation invariance to preserve the sequential structure essential to regulatory grammar. Stacked blocks build hierarchical representations through iterative refinement. These components create capacity; training objectives and data determine how that capacity is used.
 

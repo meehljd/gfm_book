@@ -1,0 +1,992 @@
+## `index.qmd`
+- Introduction — `` → `@sec-intro`
+  - Why Foundation Models for Genomics? — `` → `@sec-intro-motivation`
+  - Recurring Themes — `` → `@sec-intro-themes`
+  - Typography and Formatting — `` → `@sec-intro-typography`
+  - Structure and Organization — `` → `@sec-intro-organization`
+  - A Framework, Not a Snapshot — `` → `@sec-intro-framework`
+
+## `preface.qmd`
+- Preface — `` → `@sec-preface`
+  - Why I Wrote This Book — `` → `@sec-preface-motivation`
+  - How This Book Came Together — `` → `@sec-preface-development`
+  - How to Read This Book — `` → `@sec-preface-reading-guide`
+  - What This Book Assumes (and What It Does Not) — `` → `@sec-preface-assumptions`
+  - A Note on Scope and Opinions — `` → `@sec-preface-scope`
+  - Acknowledgements — `` → `@sec-preface-acknowledgements`
+
+## `p1--foundations.qmd`
+- Part I: Data Foundations — `` → `@sec-part1-intro`
+
+## `p1-ch01-ngs.qmd`
+- From Reads to Variants — `@sec-ngs` → `@sec-ch01-ngs`
+  - NGS Data Challenges — `@sec-ngs-challenges` → `@sec-ch01-ngs-data-challenges`
+  - Targeting Strategies: Panels, Exomes, and Genomes — `@sec-ngs-targeting` → `@sec-ch01-targeting-strategies-panels-exomes`
+    - Targeted and Panel Sequencing — `@sec-ngs-panels` → `@sec-ch01-targeted-panel-sequencing`
+    - Whole-Exome Sequencing — `@sec-ngs-wes` → `@sec-ch01-whole-exome-sequencing`
+    - Whole-Genome Sequencing — `@sec-ngs-wgs` → `@sec-ch01-whole-genome-sequencing`
+    - Long-Read Sequencing Technologies — `@sec-ngs-longread` → `@sec-ch01-long-reading-sequencing-technologies`
+  - Classical Variant Calling Pipelines — `@sec-ngs-classical` → `@sec-ch01-classical-variant-calling-pipelines`
+    - From Sequencer to Aligned Reads — `@sec-ngs-alignment` → `@sec-ch01-sequencer-aligned-reads`
+    - Per-Sample Variant Calling — `@sec-ngs-persample` → `@sec-ch01-per-sample-variant-calling`
+    - Cohort Calling and Filtering — `@sec-ngs-cohort` → `@sec-ch01-cohort-calling-filtering`
+    - Sample-Level Quality Control — `@sec-ngs-qc` → `@sec-ch01-sample-level-quality-control`
+  - Haplotype Phasing — `@sec-ngs-phasing` → `@sec-ch01-haplotype-phasing`
+    - Clinical and Analytical Importance — `@sec-ngs-phasing-importance` → `@sec-ch01-clinical-analytical-importance`
+    - Phasing Methods — `@sec-ngs-phasing-methods` → `@sec-ch01-phasing-methods`
+    - Phasing Approaches — `@sec-ngs-phasing-approaches` → `@sec-ch01-phasing-approaches`
+    - Genotype Imputation and Refinement — `@sec-ngs-imputation` → `@sec-ch01-genotype-imputation-refinement`
+    - Hybrid Sequencing and Coverage Boosting — `@sec-ngs-hybrid` → `@sec-ch01-hybrid-sequencing-coverage-boosting`
+  - Sources of Error and Uncertainty — `@sec-ngs-errors` → `@sec-ch01-sources-error-uncertainty`
+    - Mapping Ambiguity and Reference Bias — `@sec-ngs-mapping-bias` → `@sec-ch01-mapping-ambiguity-reference-bias`
+    - Systematic Sequencing Artifacts — `@sec-ngs-artifacts` → `@sec-ch01-systematic-sequencing-artifacts`
+    - Coverage Gaps and Allelic Imbalance — `@sec-ngs-coverage` → `@sec-ch01-coverage-gaps-allelic-imbalance`
+    - Complex Variants and Representation — `@sec-ngs-complex` → `@sec-ch01-complex-variants-representation`
+  - Difficult Regions: The Limits of Short-Read Calling — `@sec-ngs-difficult` → `@sec-ch01-difficult-regions-limits-short-reading`
+    - Segmental Duplications and Gene Families — `@sec-ngs-segdup` → `@sec-ch01-segmental-duplications-gene-families`
+    - Low-Complexity and Repetitive Sequence — `@sec-ngs-repeats` → `@sec-ch01-low-complexity-repetitive-sequence`
+    - HLA Region Complexity — `@sec-ngs-hla` → `@sec-ch01-hla-region-complexity`
+  - Benchmarking and Ground Truth — `@sec-ngs-benchmarks` → `@sec-ch01-benchmarking-ground-truth`
+    - GIAB Reference Samples — `@sec-ngs-giab` → `@sec-ch01-giab-reference-samples`
+    - Metrics and Their Meaning — `@sec-ngs-metrics` → `@sec-ch01-metrics-meaning`
+    - Limitations of Benchmarks — `@sec-ngs-benchmark-limits` → `@sec-ch01-limitations-benchmarks`
+  - DeepVariant: Variant Calling as Image Classification — `@sec-ngs-deepvariant` → `@sec-ch01-deepvariant-variant-calling-image`
+    - Pileup Images as Input — `@sec-ngs-pileup` → `@sec-ch01-pileup-images-input`
+    - Architecture and Training — `@sec-ngs-deepvariant-arch` → `@sec-ch01-architecture-training`
+    - Cohort Calling with GLnexus — `@sec-ngs-glnexus` → `@sec-ch01-cohort-calling-glnexus`
+    - Comparison with Classical Approaches — `@sec-ngs-deepvariant-comparison` → `@sec-ch01-comparison-classical-approaches`
+  - Implications for Genomic Deep Learning — `@sec-ngs-implications` → `@sec-ch01-implications-genomic-deep-learning`
+    - Variants as Atomic Units — `@sec-ngs-atomic` → `@sec-ch01-variants-atomic-units`
+    - Inherited Biases and Blind Spots — `@sec-ngs-inherited` → `@sec-ch01-inherited-biases-blind-spots`
+    - Effect Sizes Across the Frequency Spectrum — `@sec-ngs-effect-sizes` → `@sec-ch01-effect-sizes-across-frequency-spectrum`
+  - Reliability Landscape — `@sec-ngs-reliability` → `@sec-ch01-reliability-landscape`
+
+## `p1-ch02-data.qmd`
+- Data Landscape — `@sec-data` → `@sec-ch02-data`
+  - Reference Genomes and Gene Annotations — `@sec-data-reference` → `@sec-ch02-reference-genomes-gene-annotations`
+    - Reference Assemblies — `@sec-data-reference-assemblies` → `@sec-ch02-reference-assemblies`
+    - Gene Models — `@sec-data-gene-models` → `@sec-ch02-gene-models`
+  - Population Variant Catalogs and Allele Frequencies — `@sec-data-population` → `@sec-ch02-population-variant-catalogs-allele`
+    - dbSNP and Variant Identifiers — `@sec-data-dbsnp` → `@sec-ch02-dbsnp-variant-identifiers`
+    - 1000 Genomes and Early Reference Panels — `@sec-data-1000genomes` → `@sec-ch02-1000-genomes-early-reference-panels`
+    - Genome Aggregation Database (gnomAD) — `@sec-data-gnomad` → `@sec-ch02-genome-aggregation-database-gnomad`
+  - Biobanks and GWAS Data — `@sec-data-biobanks` → `@sec-ch02-biobanks-gwas-data`
+    - Large Population Cohorts — `@sec-data-cohorts` → `@sec-ch02-large-population-cohorts`
+    - GWAS Summary Statistics — `@sec-data-gwas-summary` → `@sec-ch02-gwas-summary-statistics`
+  - Functional Genomics and Regulatory Landscapes — `@sec-data-functional` → `@sec-ch02-functional-genomics-regulatory`
+    - ENCODE, Roadmap, and Related Consortia — `@sec-data-encode` → `@sec-ch02-encode-roadmap-related-consortia`
+    - Cistrome Data Browser — `@sec-data-cistrome` → `@sec-ch02-cistrome-data-browser`
+    - From Assays to Training Labels — `@sec-data-assays-labels` → `@sec-ch02-assays-training-labels`
+    - Deep Mutational Scanning and Multiplexed Variant Assays — `@sec-data-dms` → `@sec-ch02-deep-mutational-scanning-multiplexed`
+  - Expression and eQTL Resources — `@sec-data-expression` → `@sec-ch02-expression-eqtl-resources`
+    - Bulk Expression Atlases — `@sec-data-gtex` → `@sec-ch02-bulk-expression-atlases`
+    - Single-Cell and Context-Specific Expression — `@sec-data-single-cell` → `@sec-ch02-single-cell-context-specific-expression`
+  - Phenotype Definition and Data Quality — `@sec-data-phenotypes` → `@sec-ch02-phenotype-definition-data-quality`
+    - Problem of Binary Disease Definitions — `@sec-data-binary-phenotypes` → `@sec-ch02-problem-binary-disease-definitions`
+    - Electronic Health Record Quality and Completeness — `@sec-data-ehr` → `@sec-ch02-electronic-health-record-quality`
+    - Coding Inconsistencies and Label Noise — `@sec-data-label-noise` → `@sec-ch02-coding-inconsistencies-label-noise`
+    - Deep Phenotyping Approaches — `@sec-data-deep-phenotyping` → `@sec-ch02-deep-phenotyping-approaches`
+    - Impact on Downstream Modeling — `@sec-data-phenotype-impact` → `@sec-ch02-impact-downstream-modeling`
+  - Variant Interpretation Databases and Clinical Labels — `@sec-data-clinical` → `@sec-ch02-variant-interpretation-databases`
+    - ClinVar and Clinical Assertions — `@sec-data-clinvar` → `@sec-ch02-clinvar-clinical-assertions`
+    - Complementary Clinical Databases — `@sec-data-clinical-other` → `@sec-ch02-complementary-clinical-databases`
+    - ClinGen and Expert Curation — `@sec-data-clingen` → `@sec-ch02-clingen-expert-curation`
+    - Pharmacogenomics Resources — `@sec-data-pharmacogenomics` → `@sec-ch02-pharmacogenomics-resources`
+  - Inherited Constraints — `@sec-data-constraints` → `@sec-ch02-inherited-constraints`
+
+## `p1-ch03-gwas.qmd`
+- GWAS and Polygenic Scores — `@sec-gwas` → `@sec-ch03-gwas`
+  - GWAS Framework — `@sec-ch03-gwas-framework` → `@sec-ch03-gwas-framework`
+    - Association Models for Quantitative Traits — `@sec-ch03-linear-models` → `@sec-ch03-association-models-quantitative-traits`
+    - Association Models for Disease Outcomes — `@sec-ch03-logistic-models` → `@sec-ch03-association-models-disease-outcomes`
+    - Manhattan Plots and Q-Q Plots — `@sec-ch03-visualization` → `@sec-ch03-manhattan-plots-q-q-plots`
+    - Population Structure Control — `@sec-ch03-population-structure` → `@sec-ch03-population-structure-control`
+  - Heritability: What Genetics Can Explain — `@sec-ch03-heritability` → `@sec-ch03-heritability-genetics-can-explain`
+    - Pedigree Heritability — `@sec-ch03-pedigree-heritability` → `@sec-ch03-pedigree-heritability`
+    - SNP-Heritability and the Missing Heritability Problem — `@sec-ch03-snp-heritability` → `@sec-ch03-snp-heritability-missing-heritability`
+    - Implications for GWAS and Polygenic Scores — `@sec-ch03-heritability-implications` → `@sec-ch03-implications-gwas-polygenic-scores`
+  - Linkage Disequilibrium and the Association-Causation Gap — `@sec-ch03-ld` → `@sec-ch03-linkage-disequilibrium-association`
+    - Structure of Linkage Disequilibrium — `@sec-ch03-ld-structure` → `@sec-ch03-structure-linkage-disequilibrium`
+    - Causal Variants, Tag Variants, and GWAS Catalogs — `@sec-ch03-causal-vs-tag` → `@sec-ch03-causal-variants-tag-variants-gwas`
+  - Fine-Mapping: From Loci to Causal Variants — `@sec-ch03-fine-mapping` → `@sec-ch03-fine-mapping-loci-causal-variants`
+    - Statistical Framework — `@sec-ch03-fine-mapping-stats` → `@sec-ch03-statistical-framework`
+    - Functional Annotation Priors — `@sec-ch03-functional-priors` → `@sec-ch03-functional-annotation-priors`
+    - Multi-Ancestry Fine-Mapping — `@sec-ch03-multi-ancestry-fine-mapping` → `@sec-ch03-multi-ancestry-fine-mapping`
+  - Polygenic Score Construction — `@sec-ch03-pgs-construction` → `@sec-ch03-polygenic-score-construction`
+    - Clumping and Thresholding — `@sec-ch03-clumping-thresholding` → `@sec-ch03-clumping-thresholding`
+    - LD-Aware Bayesian Methods — `@sec-ch03-bayesian-pgs` → `@sec-ch03-ld-aware-bayesian-methods`
+    - Fine-Mapping-Informed Scores — `@sec-ch03-fine-mapping-informed-pgs` → `@sec-ch03-fine-mapping-informed-scores`
+  - Polygenic Score Interpretation — `@sec-ch03-pgs-interpretation` → `@sec-ch03-polygenic-score-interpretation`
+    - Relative Risk and Percentiles — `@sec-ch03-relative-risk` → `@sec-ch03-relative-risk-percentiles`
+    - Absolute Risk — `@sec-ch03-absolute-risk` → `@sec-ch03-absolute-risk`
+    - Explained Variance and Discrimination — `@sec-ch03-variance-discrimination` → `@sec-ch03-explained-variance-discrimination`
+  - Ancestry, Portability, and Fairness — `@sec-ch03-portability` → `@sec-ch03-ancestry-portability-fairness`
+    - Portability Problem — `@sec-ch03-portability-problem` → `@sec-ch03-portability-problem`
+    - Fairness and Health Equity — `@sec-ch03-fairness` → `@sec-ch03-fairness-health-equity`
+  - Phenome-Wide Association Studies — `@sec-ch03-phewas` → `@sec-ch03-phenome-wide-association-studies`
+    - PheWAS Framework — `@sec-ch03-phewas-framework` → `@sec-ch03-phewas-framework`
+    - PheWAS for Polygenic Score Interpretation — `@sec-ch03-prs-phewas` → `@sec-ch03-phewas-polygenic-score-interpretation`
+    - Phenotype Quality and PheWAS Power — `@sec-ch03-phenotype-quality` → `@sec-ch03-phenotype-quality-phewas-power`
+    - Deep Phenotyping and Embedding-Enhanced GWAS — `@sec-ch03-deep-phenotyping` → `@sec-ch03-deep-phenotyping-embedding-enhanced-gwas`
+  - From Association to Mechanism — `@sec-ch03-mechanism` → `@sec-ch03-association-mechanism`
+
+## `p1-ch04-vep-classical.qmd`
+- Classical Variant Prediction — `@sec-vep-classical` → `@sec-ch04-vep-classical`
+  - Conservation-Based Approaches — `@sec-ch04-conservation` → `@sec-ch04-conservation-based-approaches`
+    - Evolutionary Constraint Metrics — `@sec-ch04-constraint-metrics` → `@sec-ch04-evolutionary-constraint-metrics`
+    - What Conservation Measures Versus What Clinicians Need — `@sec-ch04-conservation-clinical-gap` → `@sec-ch04-conservation-measures-versus-clinicians`
+    - Clinical Application and Boundaries — `@sec-ch04-conservation-boundaries` → `@sec-ch04-clinical-application-boundaries`
+    - ACMG-AMP Variant Classification Framework — `` → `@sec-ch04-acmg-amp-variant-classification`
+  - Protein-Level Predictors — `@sec-ch04-protein-predictors` → `@sec-ch04-protein-level-predictors`
+    - *SIFT*: Sequence Homology as Functional Constraint — `@sec-ch04-sift` → `@sec-ch04-sift-sequence-homology-functional`
+    - *PolyPhen-2*: Integrating Structure and Sequence — `@sec-ch04-polyphen` → `@sec-ch04-polyphen-2-integrating-structure`
+    - From Sequence to Function — `@sec-ch04-sequence-to-function` → `@sec-ch04-sequence-function`
+    - Boundaries of Protein-Level Prediction — `@sec-ch04-protein-boundaries` → `@sec-ch04-boundaries-protein-level-prediction`
+  - *CADD* Framework — `@sec-ch04-cadd` → `@sec-ch04-cadd-framework`
+    - Evolutionary Proxy Training and Label Sources — `@sec-ch04-cadd-training` → `@sec-ch04-evolutionary-proxy-training-label`
+    - Feature Integration — `@sec-ch04-cadd-features` → `@sec-ch04-feature-integration`
+    - Model Architecture and Scoring — `@sec-ch04-cadd-scoring` → `@sec-ch04-model-architecture-scoring`
+    - Evolutionary Proxy Problem — `@sec-ch04-proxy-problem` → `@sec-ch04-evolutionary-proxy-problem`
+  - Other Ensemble Methods — `@sec-ch04-ensemble-methods` → `@sec-ch04-other-ensemble-methods`
+    - *REVEL* — `@sec-ch04-revel` → `@sec-ch04-revel`
+    - *M-CAP* — `@sec-ch04-mcap` → `@sec-ch04-m-cap`
+    - Comparison and Selection — `@sec-ch04-ensemble-comparison` → `@sec-ch04-comparison-selection`
+  - Circularity and Ascertainment Bias — `@sec-ch04-circularity` → `@sec-ch04-circularity-ascertainment-bias`
+    - Circularity Problem — `@sec-ch04-circularity-definition` → `@sec-ch04-circularity-problem`
+    - Ascertainment Bias — `@sec-ch04-ascertainment` → `@sec-ch04-ascertainment-bias`
+    - Implications for Clinical Use — `@sec-ch04-clinical-implications` → `@sec-ch04-implications-clinical-use`
+  - Limitations of the Feature Engineering Paradigm — `@sec-ch04-feature-limitations` → `@sec-ch04-limitations-feature-engineering-paradigm`
+    - Feature Ceiling — `@sec-ch04-feature-ceiling` → `@sec-ch04-feature-ceiling`
+    - Limited Context — `@sec-ch04-limited-context` → `@sec-ch04-limited-context`
+    - Persistent Gap Between Measurement and Need — `@sec-ch04-measurement-gap` → `@sec-ch04-persistent-gap-measurement-need`
+    - From Features to Representations — `@sec-ch04-features-to-representations` → `@sec-ch04-features-representations`
+
+## `p2--principles.qmd`
+- Part II: Sequence Architectures — `` → `@sec-part2-intro`
+
+## `p2-ch05-representations.qmd`
+- Tokens and Embeddings — `@sec-ch05-representations` → `@sec-ch05-representations`
+  - One-Hot Encoding: The CNN Foundation — `@sec-ch05-onehot` → `@sec-ch05-one-hot-encoding-cnn-foundation`
+  - *K*-mer Tokenization: The DNABERT Approach — `@sec-ch05-kmer` → `@sec-ch05-k-mer-tokenization-dnabert-approach`
+  - Byte Pair Encoding: Learning the Vocabulary — `@sec-ch05-bpe` → `@sec-ch05-byte-pair-encoding-learning-vocabulary`
+  - Single-Nucleotide Tokenization: Maximum Resolution — `@sec-ch05-single-nucleotide` → `@sec-ch05-single-nucleotide-tokenization-maximum`
+  - Biologically-Informed Tokenization — `@sec-ch05-biological-tokenization` → `@sec-ch05-biologically-informed-tokenization`
+  - From Tokens to Embeddings: Learning Representations — `@sec-ch05-embeddings` → `@sec-ch05-tokens-embeddings-learning`
+    - Position in Sequence — `@sec-ch05-position` → `@sec-ch05-position-sequence`
+  - Special Considerations for Biological Sequences — `@sec-ch05-biological-special` → `@sec-ch05-special-considerations-biological`
+  - Tradeoffs and Practical Guidance — `@sec-ch05-tradeoffs` → `@sec-ch05-tradeoffs-practical-guidance`
+    - Resolution Versus Compression — `@sec-ch05-resolution-compression` → `@sec-ch05-resolution-versus-compression`
+    - Vocabulary Size and Model Capacity — `@sec-ch05-vocabulary-capacity` → `@sec-ch05-vocabulary-size-model-capacity`
+    - Computational Efficiency — `@sec-ch05-computational-efficiency` → `@sec-ch05-computational-efficiency`
+    - Variant Interpretation Requirements — `@sec-ch05-variant-interpretation` → `@sec-ch05-variant-interpretation-requirements`
+    - Practical Heuristics — `@sec-ch05-heuristics` → `@sec-ch05-practical-heuristics`
+  - Representation as Foundation — `@sec-ch05-foundation` → `@sec-ch05-representation-foundation`
+
+## `p2-ch06-cnn.qmd`
+- Convolutional Networks — `@sec-cnn` → `@sec-ch06-cnn`
+  - Convolutions as Sequence Pattern Detectors — `@sec-ch06-convolutions` → `@sec-ch06-convolutions-sequence-pattern-detectors`
+  - *DeepSEA*: Regulatory Prediction from Sequence — `@sec-deepsea` → `@sec-ch06-deepsea-regulatory-prediction-sequence`
+    - Architecture and Training — `@sec-ch06-deepsea-architecture` → `@sec-ch06-architecture-training`
+    - Learned Representations and Biological Validation — `@sec-ch06-deepsea-validation` → `@sec-ch06-learned-representations-biological`
+    - Variant Effect Prediction — `@sec-ch06-deepsea-vep` → `@sec-ch06-variant-effect-prediction`
+  - Cell-Type Specificity and Regulatory Grammar — `@sec-ch06-basset` → `@sec-ch06-cell-type-specificity-regulatory-grammar`
+  - *ExPecto*: From Chromatin to Expression — `@sec-expecto` → `@sec-ch06-expecto-chromatin-expression`
+    - Modular Architecture — `@sec-ch06-expecto-architecture` → `@sec-ch06-modular-architecture`
+    - Expression Prediction and Variant Effects — `@sec-ch06-expecto-validation` → `@sec-ch06-expression-prediction-variant-effects`
+  - *SpliceAI*: Clinical-Grade Splicing Prediction — `@sec-spliceai` → `@sec-ch06-spliceai-clinical-grade-splicing`
+    - Architecture: Depth and Dilation — `@sec-ch06-spliceai-architecture` → `@sec-ch06-architecture-depth-dilation`
+    - Performance and Validation — `@sec-ch06-spliceai-performance` → `@sec-ch06-performance-validation`
+    - Clinical Impact — `@sec-ch06-spliceai-clinical` → `@sec-ch06-clinical-impact`
+  - Receptive Field Ceiling — `@sec-ch06-receptive-field` → `@sec-ch06-receptive-field-ceiling`
+  - Sequential Approaches and Their Costs — `@sec-ch06-sequential` → `@sec-ch06-sequential-approaches-costs`
+    - Vanishing Gradient Problem — `@sec-ch06-vanishing-gradient` → `@sec-ch06-vanishing-gradient-problem`
+    - *DanQ*: Combining Convolutions and Recurrence — `@sec-ch06-danq` → `@sec-ch06-danq-integration-convolutions-recurrence`
+    - Sequential Bottleneck — `@sec-ch06-sequential-bottleneck` → `@sec-ch06-sequential-bottleneck`
+  - Specialization and Its Limits — `@sec-ch06-specialization` → `@sec-ch06-specialization-limits`
+
+## `p2-ch07-attention.qmd`
+- Transformers and Attention — `@sec-attention` → `@sec-ch07-attention`
+  - Self-Attention Mechanism — `@sec-ch07-self-attention` → `@sec-ch07-self-attention-mechanism`
+    - Query, Key, and Value Vectors — `@sec-ch07-qkv` → `@sec-ch07-query-key-value-vectors`
+    - Multi-Head Attention — `@sec-ch07-multihead` → `@sec-ch07-multi-head-attention`
+  - Positional Encoding — `@sec-ch07-positional-encoding` → `@sec-ch07-positional-encoding`
+    - Absolute Position Encodings — `@sec-ch07-absolute-position` → `@sec-ch07-absolute-position-encodings`
+    - Relative Position Encodings — `@sec-ch07-relative-position` → `@sec-ch07-relative-position-encodings`
+    - Genomic Position Considerations — `@sec-ch07-genomic-position` → `@sec-ch07-genomic-position-considerations`
+  - Transformer Block — `@sec-ch07-transformer-block` → `@sec-ch07-transformer-block`
+    - Block Components — `@sec-ch07-block-components` → `@sec-ch07-block-components`
+    - Information Flow and Depth — `@sec-ch07-depth` → `@sec-ch07-information-flow-depth`
+  - Scaling to Genomic Sequences — `@sec-ch07-scaling` → `@sec-ch07-scaling-genomic-sequences`
+    - Quadratic Barrier — `@sec-ch07-quadratic-barrier` → `@sec-ch07-quadratic-barrier`
+    - Parameter Considerations — `@sec-ch07-parameters` → `@sec-ch07-parameter-considerations`
+    - Context Length Strategies — `@sec-ch07-context-strategies` → `@sec-ch07-context-length-strategies`
+    - Memory and Precision — `@sec-ch07-memory` → `@sec-ch07-memory-precision`
+  - Architectural Variants for Genomics — `@sec-ch07-variants` → `@sec-ch07-architectural-variants-genomics`
+    - Encoder-Only Transformers — `@sec-ch07-encoder-only` → `@sec-ch07-encoder-only-transformers`
+    - Decoder-Only Transformers — `@sec-ch07-decoder-only` → `@sec-ch07-decoder-only-transformers`
+    - Encoder-Decoder Transformers — `@sec-ch07-encoder-decoder` → `@sec-ch07-encoder-decoder-transformers`
+    - Hybrid CNN-Transformer Models — `@sec-ch07-hybrid` → `@sec-ch07-hybrid-cnn-transformer-models`
+  - Training Dynamics — `@sec-ch07-training` → `@sec-ch07-training-dynamics`
+    - Optimization — `@sec-ch07-optimization` → `@sec-ch07-optimization`
+    - Regularization — `@sec-ch07-regularization` → `@sec-ch07-regularization`
+    - Gradient Stability — `@sec-ch07-gradients` → `@sec-ch07-gradient-stability`
+    - Distributed Training — `@sec-ch07-distributed` → `@sec-ch07-distributed-training`
+  - Limitations and Emerging Alternatives — `@sec-ch07-limitations` → `@sec-ch07-limitations-emerging-alternatives`
+    - Quadratic Ceiling — `@sec-ch07-quadratic-ceiling` → `@sec-ch07-quadratic-ceiling`
+    - State Space Models — `@sec-ch07-ssm` → `@sec-ch07-state-space-models`
+    - Choosing Architectures — `@sec-ch07-choosing` → `@sec-ch07-selection-architectures`
+  - Capacity Without Direction — `@sec-ch07-conclusion` → `@sec-ch07-capacity-direction`
+
+## `p2-ch08-pretraining.qmd`
+- Pretraining Strategies — `@sec-pretraining` → `@sec-ch08-pretraining`
+  - Masked Language Modeling — `@sec-ch08-mlm` → `@sec-ch08-masked-language-modeling`
+    - Masking Strategies and Their Implications — `@sec-ch08-mlm-strategies` → `@sec-ch08-masking-strategies-implications`
+    - What Masked Language Models Learn — `@sec-ch08-mlm-learning` → `@sec-ch08-masked-language-models-learn`
+  - Next-Token Prediction — `@sec-ch08-autoregressive` → `@sec-ch08-next-token-prediction`
+    - Genomic Applications — `@sec-ch08-autoregressive-genomics` → `@sec-ch08-genomic-applications`
+    - MLM and Autoregressive Comparison — `@sec-ch08-comparison` → `@sec-ch08-mlm-autoregressive-comparison`
+  - Span Corruption and Denoising — `@sec-ch08-denoising` → `@sec-ch08-span-corruption-denoising`
+    - Corruption Beyond Masking — `@sec-ch08-corruption` → `@sec-ch08-corruption-beyond-masking`
+    - Biologically Motivated Corruption — `@sec-ch08-biological-corruption` → `@sec-ch08-biologically-motivated-corruption`
+  - Contrastive Learning — `@sec-ch08-contrastive` → `@sec-ch08-contrastive-learning`
+    - Augmentation Design for Genomic Sequences — `@sec-ch08-augmentation` → `@sec-ch08-augmentation-design-genomic-sequences`
+    - Cross-Species Contrastive Learning — `@sec-ch08-cross-species` → `@sec-ch08-cross-species-contrastive-learning`
+  - Multi-Task Pretraining — `@sec-ch08-multitask` → `@sec-ch08-multi-task-pretraining`
+    - Task Selection and Architecture — `@sec-ch08-task-selection` → `@sec-ch08-task-selection-architecture`
+    - Loss Weighting and Balancing — `@sec-ch08-loss-weighting` → `@sec-ch08-loss-weighting-balancing`
+    - Large-Scale Multi-Task Examples — `@sec-ch08-multitask-examples` → `@sec-ch08-large-scale-multi-task-examples`
+    - When Multi-Task Learning Fails — `@sec-ch08-multitask-failure` → `@sec-ch08-when-multi-task-learning-failure`
+  - Data Strategies for Pretraining — `@sec-ch08-data` → `@sec-ch08-data-strategies-pretraining`
+    - Reference Genomes and Population Diversity — `@sec-ch08-reference-genomes` → `@sec-ch08-reference-genomes-population-diversity`
+    - Repeat Handling — `@sec-ch08-repeats` → `@sec-ch08-repeat-handling`
+    - Multi-Species and Augmentation Strategies — `@sec-ch08-multispecies` → `@sec-ch08-multi-species-augmentation-strategies`
+  - Optimization and Scaling — `@sec-ch08-optimization` → `@sec-ch08-optimization-scaling`
+    - Optimization Hyperparameters — `@sec-ch08-hyperparameters` → `@sec-ch08-optimization-hyperparameters`
+    - Scaling Laws and Emergence — `@sec-ch08-scaling` → `@sec-ch08-scaling-laws-emergence`
+  - Training Diagnostics — `@sec-ch08-diagnostics` → `@sec-ch08-training-diagnostics`
+    - Monitoring Loss and Gradients — `@sec-ch08-monitoring` → `@sec-ch08-monitoring-loss-gradients`
+    - Functional Probing — `@sec-ch08-probing` → `@sec-ch08-functional-probing`
+  - Strategy Selection — `@sec-ch08-selection` → `@sec-ch08-strategy-selection`
+  - Pretraining in Practice: Case Studies — `@sec-ch08-case-studies` → `@sec-ch08-pretraining-practice-case-studies`
+    - DNABERT — `@sec-ch08-dnabert` → `@sec-ch08-dnabert`
+    - HyenaDNA — `@sec-ch08-hyenadna` → `@sec-ch08-hyenadna`
+    - Enformer — `@sec-ch08-enformer` → `@sec-ch08-enformer`
+    - ESM-2 — `@sec-ch08-esm2` → `@sec-ch08-esm-2`
+  - Open Questions — `@sec-ch08-open-questions` → `@sec-ch08-open-questions`
+  - From Sequence Statistics to Biological Knowledge — `@sec-ch08-sequence-to-knowledge` → `@sec-ch08-sequence-statistics-biological-knowledge`
+
+## `p2-ch09-transfer.qmd`
+- Transfer and Adaptation — `@sec-ch09-transfer` → `@sec-ch09-transfer`
+  - Source and Target Domains — `@sec-ch09-source-target` → `@sec-ch09-source-target-domains`
+    - Gap Between Pretraining and Deployment — `@sec-ch09-pretraining-deployment-gap` → `@sec-ch09-gap-pretraining-deployment`
+    - Recognizing Transfer Outcomes — `@sec-ch09-transfer-outcomes` → `@sec-ch09-recognizing-transfer-outcomes`
+  - Feature Extraction and Representation Analysis — `@sec-ch09-feature-extraction` → `@sec-ch09-feature-extraction-representation`
+    - Linear Probing — `@sec-ch09-linear-probing` → `@sec-ch09-linear-probing`
+    - When Linear Probing Fails — `@sec-ch09-linear-probing-limits` → `@sec-ch09-when-linear-probing-failure`
+    - Probing Representations — `@sec-ch09-probing-representations` → `@sec-ch09-probing-representations`
+    - What Probing Reveals About Pretrained Models — `@sec-ch09-probing-results` → `@sec-ch09-probing-reveals-pretrained-models`
+    - Probing Guides Adaptation Strategy — `@sec-ch09-probing-guides-adaptation` → `@sec-ch09-probing-guides-adaptation-strategy`
+  - Parameter-Efficient Fine-Tuning — `@sec-ch09-peft` → `@sec-ch09-parameter-efficient-fine-tuning`
+    - Low-Rank Adaptation — `@sec-ch09-lora` → `@sec-ch09-low-rank-adaptation`
+    - Configuring Low-Rank Adaptation — `@sec-ch09-lora-config` → `@sec-ch09-configuring-low-rank-adaptation`
+  - Full Fine-Tuning — `@sec-ch09-full-finetuning` → `@sec-ch09-full-fine-tuning`
+    - Making Full Fine-Tuning Work — `@sec-ch09-full-finetuning-practice` → `@sec-ch09-making-full-fine-tuning-work`
+    - Risks of Unconstrained Adaptation — `@sec-ch09-finetuning-risks` → `@sec-ch09-risks-unconstrained-adaptation`
+  - Choosing an Adaptation Strategy — `@sec-ch09-choosing-strategy` → `@sec-ch09-selection-adaptation-strategy`
+  - Domain Shift and Cross-Context Transfer — `@sec-ch09-domain-shift` → `@sec-ch09-domain-shift-cross-context-transfer`
+    - Types of Domain Shift in Genomics — `@sec-ch09-domain-shift-types` → `@sec-ch09-types-domain-shift-genomics`
+    - Detecting and Mitigating Shift — `@sec-ch09-detecting-shift` → `@sec-ch09-detecting-mitigating-shift`
+  - Minimal-Data and Emerging Transfer Paradigms — `@sec-ch09-minimal-data` → `@sec-ch09-minimal-data-emerging-transfer-paradigms`
+    - Few-Shot Learning with Minimal Examples — `@sec-ch09-few-shot` → `@sec-ch09-few-shot-learning-minimal-examples`
+    - Zero-Shot Transfer Without Task-Specific Data — `@sec-ch09-zero-shot` → `@sec-ch09-zero-shot-transfer-task-specific-data`
+    - Emerging Approaches — `@sec-ch09-emerging-approaches` → `@sec-ch09-emerging-approaches`
+    - Toward Theoretical Foundations — `@sec-ch09-theory` → `@sec-ch09-toward-theoretical-foundations`
+  - Diagnosing Transfer: Validation and Failure Modes — `@sec-ch09-diagnosing-transfer` → `@sec-ch09-diagnosing-transfer-validation-failure`
+    - Diagnosing Negative Transfer — `@sec-ch09-negative-transfer` → `@sec-ch09-diagnosing-negative-transfer`
+    - Remediation When Transfer Fails — `@sec-ch09-remediation` → `@sec-ch09-remediation-when-transfer-failure`
+    - Validation and Common Pitfalls — `@sec-ch09-validation-pitfalls` → `@sec-ch09-validation-common-pitfalls`
+    - Sources of Spurious Success — `@sec-ch09-spurious-success` → `@sec-ch09-sources-spurious-success`
+    - Evaluation Practices That Reveal True Performance — `@sec-ch09-evaluation-practices` → `@sec-ch09-evaluation-practices-reveal-true`
+  - Case Studies in Transfer Learning — `@sec-ch09-case-studies` → `@sec-ch09-case-studies-transfer-learning`
+    - *DNABERT* for Chromatin Accessibility — `@sec-ch09-case-dnabert` → `@sec-ch09-dnabert-chromatin-accessibility`
+    - *ESM* for Variant Pathogenicity — `@sec-ch09-case-esm` → `@sec-ch09-esm-variant-pathogenicity`
+    - *Enformer* for Cross-Tissue Expression — `@sec-ch09-case-enformer` → `@sec-ch09-enformer-cross-tissue-expression`
+    - Cross-Species Regulatory Prediction — `@sec-ch09-case-cross-species` → `@sec-ch09-cross-species-regulatory-prediction`
+  - What Transfers, What Breaks — `@sec-ch09-conclusion` → `@sec-ch09-transfers-breaks`
+
+## `p3--architectures.qmd`
+- Part III: Foundation Model Families — `` → `@sec-part3-intro`
+
+## `p3-ch10-fm-principles.qmd`
+- Foundation Model Paradigm — `@sec-fm-principles` → `@sec-ch10-fm-principles`
+  - From Task-Specific Models to Foundation Models — `@sec-ch10-task-specific` → `@sec-ch10-task-specific-models-foundation-models`
+  - Defining Genomic Foundation Models — `@sec-ch10-defining` → `@sec-ch10-defining-genomic-foundation-models`
+    - Essential Properties — `@sec-ch10-essential-properties` → `@sec-ch10-essential-properties`
+    - What Doesn't Count — `@sec-ch10-what-doesnt-count` → `@sec-ch10-doesn-t-count`
+    - Limitations of the Foundation Model Concept — `@sec-ch10-concept-limitations` → `@sec-ch10-limitations-foundation-model-concept`
+  - Scaling Laws and Compute-Optimal Training — `@sec-ch10-scaling` → `@sec-ch10-scaling-laws-compute-optimal-training`
+    - Scaling Law Framework — `@sec-ch10-scaling-framework` → `@sec-ch10-scaling-law-framework`
+    - Empirical Scaling in Genomic Models — `@sec-ch10-empirical-scaling` → `@sec-ch10-empirical-scaling-genomic-models`
+    - Compute-Optimal Decisions for Genomics — `@sec-ch10-compute-optimal` → `@sec-ch10-compute-optimal-decisions-genomics`
+    - Emergent Capabilities — `@sec-ch10-emergence` → `@sec-ch10-emergent-capabilities`
+  - A Taxonomy of Genomic Foundation Models — `@sec-ch10-taxonomy` → `@sec-ch10-taxonomy-genomic-foundation-models`
+    - DNA Language Models — `@sec-ch10-dna-lm` → `@sec-ch10-dna-language-models`
+    - Sequence-to-Function Foundation Models — `@sec-ch10-seq-to-func` → `@sec-ch10-sequence-function-foundation-models`
+    - Variant Effect Prediction Models — `@sec-ch10-vep-models` → `@sec-ch10-variant-effect-prediction-models`
+    - Multi-Omic Foundation Models — `@sec-ch10-multi-omic` → `@sec-ch10-multi-omic-foundation-models`
+  - Design Dimensions — `@sec-ch10-design-dimensions` → `@sec-ch10-design-dimensions`
+    - Data Composition — `@sec-ch10-data-composition` → `@sec-ch10-data-composition`
+    - Architecture Choices — `@sec-ch10-architecture` → `@sec-ch10-architecture-choices`
+    - Context Length — `@sec-ch10-context-length` → `@sec-ch10-context-length`
+    - Tokenization — `@sec-ch10-tokenization` → `@sec-ch10-tokenization`
+  - Build Versus Use Decisions — `@sec-ch10-build-vs-use` → `@sec-ch10-build-versus-use-decisions`
+    - When to Use Existing Models — `@sec-ch10-use-existing` → `@sec-ch10-when-use-existing-models`
+    - When to Adapt Existing Models — `@sec-ch10-adapt-existing` → `@sec-ch10-when-adapt-existing-models`
+    - When to Train from Scratch — `@sec-ch10-train-scratch` → `@sec-ch10-when-train-scratch`
+    - Cost-Benefit Analysis — `@sec-ch10-cost-benefit` → `@sec-ch10-cost-benefit-analysis`
+  - Evaluation Principles — `@sec-ch10-evaluation` → `@sec-ch10-evaluation-principles`
+    - Multi-Task Assessment — `@sec-ch10-multi-task` → `@sec-ch10-multi-task-assessment`
+    - Transfer Versus Pretraining Performance — `@sec-ch10-transfer-eval` → `@sec-ch10-transfer-versus-pretraining-performance`
+  - Foundation Model Ecosystem — `@sec-ch10-ecosystem` → `@sec-ch10-foundation-model-ecosystem`
+    - Model Distribution — `@sec-ch10-distribution` → `@sec-ch10-model-distribution`
+    - Documentation Requirements — `@sec-ch10-documentation` → `@sec-ch10-documentation-requirements`
+    - Industry and Academic Contributions — `@sec-ch10-contributions` → `@sec-ch10-industry-academic-contributions`
+  - Open Questions — `@sec-ch10-open-questions` → `@sec-ch10-open-questions`
+  - Convergence Without Consolidation — `@sec-ch10-convergence` → `@sec-ch10-convergence-consolidation`
+
+## `p3-ch11-dna-lm.qmd`
+- DNA Language Models — `@sec-dna-lm` → `@sec-ch11-dna-lm`
+  - From Task-Specific CNNs to General-Purpose Language Models — `@sec-ch11-task-specific-to-general` → `@sec-ch11-task-specific-cnns-general-purpose`
+  - *DNABERT*: The First DNA Language Model — `@sec-ch11-dnabert` → `@sec-ch11-dnabert-first-dna-language-model`
+  - *Nucleotide Transformer*: Scaling Data and Model Diversity — `@sec-ch11-nucleotide-transformer` → `@sec-ch11-nucleotide-transformer-scaling-data`
+  - *GPN*: Cross-Species Pretraining for Variant Effect Prediction — `@sec-ch11-gpn` → `@sec-ch11-gpn-cross-species-pretraining-variant`
+  - Long-Context Revolution — `@sec-ch11-long-context` → `@sec-ch11-long-context-revolution`
+    - *HyenaDNA*: Megabase Context via Implicit Convolutions — `@sec-ch11-hyenadna` → `@sec-ch11-hyenadna-megabase-context-implicit`
+    - *Caduceus*: Bidirectional Processing with Reverse-Complement Equivariance — `@sec-ch11-caduceus` → `@sec-ch11-caduceus-bidirectional-processing`
+    - *Evo 2*: Genome-Scale Modeling Across the Tree of Life — `@sec-ch11-evo2` → `@sec-ch11-evo-2-genome-scale-modeling-across-tree`
+  - Training Data and What Models Learn — `@sec-ch11-training-data` → `@sec-ch11-training-data-models-learn`
+    - Training Corpus Composition — `@sec-ch11-corpus-composition` → `@sec-ch11-training-corpus-composition`
+    - Probing What Models Learn — `@sec-ch11-probing` → `@sec-ch11-probing-models-learn`
+    - What Models Do Not Learn — `@sec-ch11-limitations-learned` → `@sec-ch11-models-not-learn`
+  - Benchmark Performance and Evaluation — `@sec-ch11-benchmarks` → `@sec-ch11-benchmark-performance-evaluation`
+    - Major Benchmark Suites — `@sec-ch11-benchmark-suites` → `@sec-ch11-major-benchmark-suites`
+    - Benchmark Limitations — `@sec-ch11-benchmark-limitations` → `@sec-ch11-benchmark-limitations`
+  - Annotation-Aware Extensions — `@sec-ch11-annotation-aware` → `@sec-ch11-annotation-aware-extensions`
+  - Using DNA Language Models in Practice — `@sec-ch11-practical-use` → `@sec-ch11-using-dna-language-models-practice`
+    - Embeddings as Universal Features — `@sec-ch11-embeddings` → `@sec-ch11-embeddings-universal-features`
+    - Fine-Tuning and Adaptation — `@sec-ch11-fine-tuning` → `@sec-ch11-fine-tuning-adaptation`
+    - Zero-Shot and Few-Shot Scoring — `@sec-ch11-zero-shot` → `@sec-ch11-zero-shot-few-shot-scoring`
+  - Limitations and Open Challenges — `@sec-ch11-open-challenges` → `@sec-ch11-limitations-open-challenges`
+  - Representations Without Predictions — `@sec-ch11-soft-landing` → `@sec-ch11-representations-predictions`
+
+## `p3-ch12-protein-lm.qmd`
+- Protein Language Models — `@sec-protein-lm` → `@sec-ch12-protein-lm`
+  - ESM Model Family — `@sec-ch12-esm-family` → `@sec-ch12-esm-model-family`
+    - ESM-1b: Establishing the Paradigm — `@sec-ch12-esm1b` → `@sec-ch12-esm-1b-establishing-paradigm`
+    - Emergent Biological Knowledge — `@sec-ch12-emergent-knowledge` → `@sec-ch12-emergent-biological-knowledge`
+    - ESM-2: Scaling Up — `@sec-ch12-esm2` → `@sec-ch12-esm-2-scaling-up`
+  - Alternative Architectures — `@sec-ch12-alternative-architectures` → `@sec-ch12-alternative-architectures`
+  - Attention and Evolutionary Coupling — `@sec-ch12-attention-coupling` → `@sec-ch12-attention-evolutionary-coupling`
+  - ESMFold: Structure from Sequence — `@sec-ch12-esmfold` → `@sec-ch12-esmfold-structure-sequence`
+    - Alignment-Free Prediction — `@sec-ch12-alignment-free` → `@sec-ch12-alignment-free-prediction`
+    - What ESMFold Reveals About PLMs — `@sec-ch12-esmfold-implications` → `@sec-ch12-esmfold-reveals-plms`
+  - Function Prediction — `@sec-ch12-function-prediction` → `@sec-ch12-function-prediction`
+  - Variant Effect Prediction — `@sec-ch12-variant-effects` → `@sec-ch12-variant-effect-prediction`
+  - Integration with Structure Prediction — `@sec-ch12-structure-integration` → `@sec-ch12-integration-structure-prediction`
+  - Limitations — `@sec-ch12-limitations` → `@sec-ch12-limitations`
+    - Orphan and Dark Proteins — `@sec-ch12-orphan-proteins` → `@sec-ch12-orphan-dark-proteins`
+    - Novel Folds — `@sec-ch12-novel-folds` → `@sec-ch12-novel-folds`
+    - Conformational Flexibility — `@sec-ch12-conformational-flexibility` → `@sec-ch12-conformational-flexibility`
+    - Epistasis — `@sec-ch12-epistasis` → `@sec-ch12-epistasis`
+    - Interpretability — `@sec-ch12-interpretability` → `@sec-ch12-interpretability`
+  - Lessons for Genomic Foundation Models — `@sec-ch12-lessons` → `@sec-ch12-lessons-genomic-foundation-models`
+    - Self-Supervised Biological Knowledge — `@sec-ch12-self-supervised` → `@sec-ch12-self-supervised-biological-knowledge`
+    - Scaling Benefits — `@sec-ch12-scaling` → `@sec-ch12-scaling-benefits`
+    - Effective Transfer Learning — `@sec-ch12-transfer` → `@sec-ch12-effective-transfer-learning`
+    - Architecture-Sequence Matching — `@sec-ch12-architecture-matching` → `@sec-ch12-architecture-sequence-matching`
+    - Integration Benefits — `@sec-ch12-integration` → `@sec-ch12-integration-benefits`
+  - Paradigm That Generalized — `@sec-ch12-conclusion` → `@sec-ch12-paradigm-generalized`
+
+## `p3-ch13-regulatory.qmd`
+- Regulatory Models — `@sec-regulatory` → `@sec-ch13-regulatory`
+  - Long-Range Regulation Problem — `@sec-ch13-long-range` → `@sec-ch13-long-range-regulation-problem`
+  - *Enformer*: Attention Meets Regulatory Genomics — `@sec-ch13-enformer` → `@sec-ch13-enformer-attention-meets-regulatory`
+    - Architecture — `@sec-ch13-enformer-architecture` → `@sec-ch13-architecture`
+    - Training Data and Cross-Species Learning — `@sec-ch13-enformer-training` → `@sec-ch13-training-data-cross-species-learning`
+    - Variant Effect Prediction — `@sec-ch13-enformer-vep` → `@sec-ch13-variant-effect-prediction`
+  - *Borzoi*: From Chromatin to Transcriptome — `@sec-ch13-borzoi` → `@sec-ch13-borzoi-chromatin-transcriptome`
+    - Beyond Transcription Initiation — `@sec-ch13-borzoi-transcription` → `@sec-ch13-beyond-transcription-initiation`
+    - Predicting Coverage at Nucleotide Resolution — `@sec-ch13-borzoi-coverage` → `@sec-ch13-prediction-coverage-nucleotide`
+    - Applications Beyond Expression Level — `@sec-ch13-borzoi-applications` → `@sec-ch13-applications-beyond-expression-level`
+  - *Sei*: A Regulatory Vocabulary from Sequence — `@sec-ch13-sei` → `@sec-ch13-sei-regulatory-vocabulary-sequence`
+    - Discrete Regulatory States — `@sec-ch13-sei-states` → `@sec-ch13-discrete-regulatory-states`
+    - Complementary to Track Prediction — `@sec-ch13-sei-complementary` → `@sec-ch13-complementary-track-prediction`
+  - *AlphaGenome*: Unifying Modalities at Megabase Scale — `@sec-ch13-alphagenome` → `@sec-ch13-alphagenome-unifying-modalities-megabase`
+    - From 200kb to One Megabase — `@sec-ch13-alphagenome-scale` → `@sec-ch13-200kb-one-megabase`
+    - Closed Weights, Open Questions — `@sec-ch13-alphagenome-access` → `@sec-ch13-closed-weights-open-questions`
+  - What Hybrid Architectures Accomplish — `@sec-ch13-accomplishments` → `@sec-ch13-hybrid-architectures-accomplish`
+    - Spanning Enhancer-Promoter Distances — `@sec-ch13-spanning` → `@sec-ch13-spanning-enhancer-promoter-distances`
+    - Multi-Task Regularization — `@sec-ch13-multitask` → `@sec-ch13-multi-task-regularization`
+    - Cross-Species Constraints — `@sec-ch13-cross-species` → `@sec-ch13-cross-species-constraints`
+    - Unified Variant Effect Prediction — `@sec-ch13-unified-vep` → `@sec-ch13-unified-variant-effect-prediction`
+  - Limitations and Open Challenges — `@sec-ch13-limitations` → `@sec-ch13-limitations-open-challenges`
+    - Training Data Constraints — `@sec-ch13-training-bias` → `@sec-ch13-training-data-constraints`
+    - Finite Context — `@sec-ch13-finite-context` → `@sec-ch13-finite-context`
+    - Missing Three-Dimensional Context — `@sec-ch13-missing-3d` → `@sec-ch13-missing-three-dimensional-context`
+    - Correlation Versus Causation — `@sec-ch13-correlation` → `@sec-ch13-correlation-versus-causation`
+    - Interpretability Challenges — `@sec-ch13-interpretability` → `@sec-ch13-interpretability-challenges`
+  - Relationship to Foundation Models — `@sec-ch13-foundation-models` → `@sec-ch13-relationship-foundation-models`
+  - Prediction Without Explanation — `@sec-ch13-prediction-explanation` → `@sec-ch13-prediction-explanation`
+
+## `p3-ch14-vep-fm.qmd`
+- Variant Effect Prediction — `@sec-vep-fm` → `@sec-ch14-vep-fm`
+  - Foundation Model Paradigm for Variant Interpretation — `@sec-ch14-fm-paradigm` → `@sec-ch14-foundation-model-paradigm-variant`
+    - Zero-Shot and Supervised Approaches — `@sec-ch14-zeroshot-supervised` → `@sec-ch14-zero-shot-supervised-approaches`
+  - Protein-Based Variant Effect Prediction — `@sec-ch14-protein-vep` → `@sec-ch14-protein-based-variant-effect-prediction`
+    - Zero-Shot Scoring with Protein Language Models — `@sec-ch14-zeroshot-plm` → `@sec-ch14-zero-shot-scoring-protein-language`
+    - Alignment-Based Models: EVE and popEVE — `@sec-ch14-alignment-models` → `@sec-ch14-alignment-based-models-eve-popeve`
+    - AlphaMissense: Structure-Informed Pathogenicity Prediction — `@sec-ch14-alphamissense` → `@sec-ch14-alphamissense-structure-informed`
+  - DNA-Based Variant Effect Prediction — `@sec-ch14-dna-vep` → `@sec-ch14-dna-based-variant-effect-prediction`
+    - Splice Variant Prediction with SpliceAI — `@sec-ch14-spliceai` → `@sec-ch14-splice-variant-prediction-spliceai`
+    - Regulatory Variant Prediction with Enformer — `@sec-ch14-enformer-vep` → `@sec-ch14-regulatory-variant-prediction-enformer`
+    - DNA Language Models: GPN-MSA and Evo 2 — `@sec-ch14-dna-lm-vep` → `@sec-ch14-dna-language-models-gpn-msa-evo-2`
+    - AlphaGenome: Unified Multi-Omic Variant Effect Prediction — `@sec-ch14-alphagenome` → `@sec-ch14-alphagenome-unified-multi-omic-variant`
+  - Combining Evidence Across Modalities — `@sec-ch14-combining-evidence` → `@sec-ch14-integration-evidence-across-modalities`
+    - Integration Strategies — `@sec-ch14-integration-strategies` → `@sec-ch14-integration-strategies`
+    - Avoiding Double-Counting — `@sec-ch14-double-counting` → `@sec-ch14-avoidance-double-counting`
+    - Practical Workflow Design — `@sec-ch14-workflow-design` → `@sec-ch14-practical-workflow-design`
+  - Calibration and Clinical Categories — `@sec-ch14-calibration` → `@sec-ch14-calibration-clinical-categories`
+    - Assessing Calibration — `@sec-ch14-assessing-calibration` → `@sec-ch14-assessing-calibration`
+    - Calibration Methods for Variant Effect Prediction — `@sec-ch14-calibration-methods` → `@sec-ch14-calibration-methods-variant-effect`
+    - Mapping to ACMG Categories — `@sec-ch14-acmg-mapping` → `@sec-ch14-mapping-acmg-categories`
+    - The Challenge of Uncertain Significance — `@sec-ch14-vus-challenge` → `@sec-ch14-challenge-uncertain-significance`
+  - Uncertainty Quantification — `@sec-ch14-uncertainty` → `@sec-ch14-uncertainty-quantification`
+    - Sources of Uncertainty — `@sec-ch14-uncertainty-sources` → `@sec-ch14-sources-uncertainty`
+    - Uncertainty Estimation Methods — `@sec-ch14-uncertainty-methods` → `@sec-ch14-uncertainty-estimation-methods`
+    - Out-of-Distribution Detection — `@sec-ch14-ood-detection` → `@sec-ch14-out-distribution-detection`
+  - What Foundation Models Add — `@sec-ch14-fm-gains` → `@sec-ch14-foundation-models-add`
+    - Improved Discrimination — `@sec-ch14-improved-discrimination` → `@sec-ch14-improved-discrimination`
+    - Extended Coverage — `@sec-ch14-extended-coverage` → `@sec-ch14-extended-coverage`
+    - Mechanistic Interpretability — `@sec-ch14-mechanistic-interpretability` → `@sec-ch14-mechanistic-interpretability`
+    - Persistent Limitations — `@sec-ch14-persistent-limitations` → `@sec-ch14-persistent-limitations`
+  - Clinical Integration Considerations — `@sec-ch14-clinical-integration` → `@sec-ch14-clinical-integration-considerations`
+    - Laboratory Validation — `@sec-ch14-lab-validation` → `@sec-ch14-laboratory-validation`
+    - Workflow Integration — `@sec-ch14-workflow-integration` → `@sec-ch14-workflow-integration`
+    - Communication to Clinicians — `@sec-ch14-clinical-communication` → `@sec-ch14-communication-clinicians`
+  - Open Challenges — `@sec-ch14-open-challenges` → `@sec-ch14-open-challenges`
+    - Complex Variant Types — `@sec-ch14-complex-variants` → `@sec-ch14-complex-variant-types`
+    - Combinatorial Effects — `@sec-ch14-combinatorial` → `@sec-ch14-combinatorial-effects`
+    - Phenotype Specificity — `@sec-ch14-phenotype-specificity` → `@sec-ch14-phenotype-specificity`
+    - Temporal and Environmental Context — `@sec-ch14-temporal-context` → `@sec-ch14-temporal-environmental-context`
+    - Equity and Access — `@sec-ch14-equity` → `@sec-ch14-equity-access`
+  - Tools for Interpretation, Not Oracles — `@sec-ch14-conclusion` → `@sec-ch14-tools-interpretation-not-oracles`
+
+## `p4--multi-scale.qmd`
+- Part IV: Systems and Scale — `` → `@sec-part4-intro`
+
+## `p4-ch15-rna.qmd`
+- RNA Structure and Function — `@sec-rna` → `@sec-ch15-rna`
+  - RNA as Molecule Versus Transcriptome Readout — `@sec-rna-perspectives` → `@sec-ch15-rna-molecule-versus-transcriptome`
+  - Why Secondary Structure Creates a Distinct Modeling Challenge — `@sec-rna-structure-challenge` → `@sec-ch15-secondary-structure-creates-distinct`
+    - Flat Energy Landscape Problem — `@sec-rna-energy-landscape` → `@sec-ch15-flat-energy-landscape-problem`
+    - Base Pairing and Long-Range Dependencies — `@sec-rna-base-pairing` → `@sec-ch15-base-pairing-long-range-dependencies`
+    - Pseudoknots and Tertiary Complexity — `@sec-rna-pseudoknots` → `@sec-ch15-pseudoknots-tertiary-complexity`
+  - Classical Approaches to Structure Prediction — `@sec-rna-classical` → `@sec-ch15-classical-approaches-structure`
+    - Thermodynamic Folding Models — `@sec-rna-thermodynamic` → `@sec-ch15-thermodynamic-folding-models`
+    - Comparative and Covariation Methods — `@sec-rna-comparative` → `@sec-ch15-comparative-covariation-methods`
+  - Deep Learning for Secondary Structure Prediction — `@sec-rna-dl-structure` → `@sec-ch15-deep-learning-secondary-structure`
+    - From Thermodynamics to Learned Patterns — `@sec-rna-learned-patterns` → `@sec-ch15-thermodynamics-learned-patterns`
+    - Structure Probing as Supervision — `@sec-rna-structure-probing` → `@sec-ch15-structure-probing-supervision`
+  - RNA Foundation Models — `@sec-rna-foundation` → `@sec-ch15-rna-foundation-models`
+    - Scale Gap with Protein Language Models — `@sec-rna-scale-gap` → `@sec-ch15-scale-gap-protein-language-models`
+    - Architectures and Objectives — `@sec-rna-architectures` → `@sec-ch15-architectures-objectives`
+    - Downstream Applications — `@sec-rna-downstream` → `@sec-ch15-downstream-applications`
+  - Codon-Level Models for Coding RNA — `@sec-rna-codon` → `@sec-ch15-codon-level-models-coding-rna`
+    - Beyond Nucleotide Tokenization — `@sec-rna-codon-tokenization` → `@sec-ch15-beyond-nucleotide-tokenization`
+    - What Codon Models Add — `@sec-rna-codon-advantages` → `@sec-ch15-codon-models-add`
+  - UTR Models and Translation Regulation — `@sec-rna-utr` → `@sec-ch15-utr-models-translation-regulation`
+    - Why UTRs Dominate Expression Control — `@sec-rna-utr-control` → `@sec-ch15-utrs-dominate-expression-control`
+    - Sequence-to-Expression Models — `@sec-rna-expression-models` → `@sec-ch15-sequence-expression-models`
+    - Integration with mRNA Design — `@sec-rna-utr-design` → `@sec-ch15-integration-mrna-design`
+  - mRNA Design and Optimization — `@sec-rna-mrna-design` → `@sec-ch15-mrna-design-optimization`
+    - Design Objectives and Trade-offs — `@sec-rna-design-objectives` → `@sec-ch15-design-objectives-trade-offs`
+    - Lessons from COVID-19 Vaccines — `@sec-rna-covid-vaccines` → `@sec-ch15-lessons-covid-19-vaccines`
+    - Model-Based Design Strategies — `@sec-rna-model-design` → `@sec-ch15-model-based-design-strategies`
+  - Noncoding RNA Classification and Function — `@sec-rna-ncrna` → `@sec-ch15-noncoding-rna-classification-function`
+    - Diversity of Noncoding RNA — `@sec-rna-ncrna-diversity` → `@sec-ch15-diversity-noncoding-rna`
+    - From Handcrafted Features to Learned Representations — `@sec-rna-ncrna-features` → `@sec-ch15-handcrafted-features-learned`
+  - miRNA Target Prediction — `@sec-rna-mirna` → `@sec-ch15-mirna-target-prediction`
+  - Splicing and Transcript Processing Models — `@sec-rna-splicing` → `@sec-ch15-splicing-transcript-processing-models`
+    - Beyond SpliceAI — `@sec-rna-beyond-spliceai` → `@sec-ch15-beyond-spliceai`
+  - Limitations and Open Challenges — `@sec-rna-limitations` → `@sec-ch15-limitations-open-challenges`
+    - Sparse Structural Data — `@sec-rna-sparse-data` → `@sec-ch15-sparse-structural-data`
+    - Functional Annotation Gaps — `@sec-rna-annotation-gaps` → `@sec-ch15-functional-annotation-gaps`
+    - Maturity Gap — `@sec-rna-maturity-gap` → `@sec-ch15-maturity-gap`
+  - Bridge Between Sequence and Cell — `@sec-rna-bridge` → `@sec-ch15-bridge-sequence-cell`
+
+## `p4-ch16-single-cell.qmd`
+- Single-Cell Models — `@sec-single-cell` → `@sec-ch16-single-cell`
+  - Single-Cell Data Landscape — `@sec-single-cell-data` → `@sec-ch16-single-cell-data-landscape`
+    - From Bulk to Single-Cell Resolution — `@sec-single-cell-bulk-to-sc` → `@sec-ch16-bulk-single-cell-resolution`
+    - Technical Challenges and Data Characteristics — `@sec-single-cell-technical` → `@sec-ch16-technical-challenges-data`
+  - Cellular Language Models — `@sec-single-cell-clm` → `@sec-ch16-cellular-language-models`
+    - *Geneformer*: Learning Network Biology — `@sec-single-cell-geneformer` → `@sec-ch16-geneformer-learning-network-biology`
+    - *scGPT*: Generative Pretraining for Single-Cell Analysis — `@sec-single-cell-scgpt` → `@sec-ch16-scgpt-generative-pretraining-single-cell`
+    - *scFoundation* and Scaling Single-Cell Models — `@sec-single-cell-scfoundation` → `@sec-ch16-scfoundation-scaling-single-cell-models`
+    - *TranscriptFormer*: Cross-Species Cellular Models — `@sec-single-cell-transcriptformer` → `@sec-ch16-transcriptformer-cross-species-cellular`
+  - Perturbation Response Prediction — `@sec-single-cell-perturbation` → `@sec-ch16-perturbation-response-prediction`
+    - *In Silico* Experiment Promise — `@sec-single-cell-in-silico` → `@sec-ch16-silico-experiment-promise`
+    - Perturb-seq and Foundation Model Training — `@sec-single-cell-perturb-seq` → `@sec-ch16-perturb-seq-foundation-model-training`
+    - Limitations of Current Approaches — `@sec-single-cell-perturbation-limits` → `@sec-ch16-limitations-current-approaches`
+  - Epigenomic Foundation Models — `@sec-single-cell-epigenomic` → `@sec-ch16-epigenomic-foundation-models`
+    - DNA Methylation and *CpGPT* — `@sec-single-cell-methylation` → `@sec-ch16-dna-methylation-cpgpt`
+    - Chromatin Accessibility Models — `@sec-single-cell-accessibility` → `@sec-ch16-chromatin-accessibility-models`
+  - Cross-Modality Integration — `@sec-single-cell-integration` → `@sec-ch16-cross-modality-integration`
+    - Unpaired Integration Challenge — `@sec-single-cell-unpaired` → `@sec-ch16-unpaired-integration-challenge`
+    - *GLUE*: Graph-Linked Unified Embedding — `@sec-single-cell-glue` → `@sec-ch16-glue-graph-linked-unified-embedding`
+    - Applications of Cross-Modal Integration — `@sec-single-cell-cross-modal-apps` → `@sec-ch16-applications-cross-modal-integration`
+  - Practical Challenges and Limitations — `@sec-single-cell-limitations` → `@sec-ch16-practical-challenges-limitations`
+    - Batch Effects and Technical Artifacts — `@sec-single-cell-batch-effects` → `@sec-ch16-batch-effects-technical-artifacts`
+    - Cell Type Imbalance — `@sec-single-cell-imbalance` → `@sec-ch16-cell-type-imbalance`
+    - Evaluation Complexity — `@sec-single-cell-evaluation` → `@sec-ch16-evaluation-complexity`
+    - Causality and Mechanism — `@sec-single-cell-causality` → `@sec-ch16-causality-mechanism`
+  - From Sequence to State — `@sec-single-cell-conclusion` → `@sec-ch16-sequence-state`
+
+## `p4-ch17-3d-genome.qmd`
+- 3D Genome Organization — `@sec-ch17-3d-genome` → `@sec-ch17-3d-genome`
+  - Chromatin Organization Hierarchy — `@sec-ch17-chromatin-hierarchy` → `@sec-ch17-chromatin-organization-hierarchy`
+    - Chromosome Territories and Compartments — `@sec-ch17-territories-compartments` → `@sec-ch17-chromosome-territories-compartments`
+    - Topologically Associating Domains — `@sec-ch17-tads` → `@sec-ch17-topologically-associating-domains`
+    - Loop Extrusion Mechanism — `@sec-ch17-loop-extrusion` → `@sec-ch17-loop-extrusion-mechanism`
+    - Fine-Scale Chromatin Loops — `@sec-ch17-fine-scale-loops` → `@sec-ch17-fine-scale-chromatin-loops`
+  - Measuring the 3D Genome — `@sec-ch17-3d-measurement` → `@sec-ch17-measuring-3d-genome`
+    - Hi-C and Contact Matrices — `@sec-ch17-hic-matrices` → `@sec-ch17-hi-c-contact-matrices`
+    - Resolution and Data Resources — `@sec-ch17-3d-data-resources` → `@sec-ch17-resolution-data-resources`
+  - Predicting 3D Structure from Sequence — `@sec-ch17-3d-prediction` → `@sec-ch17-prediction-3d-structure-sequence`
+    - *Akita* and Dilated Convolutions — `@sec-ch17-akita` → `@sec-ch17-akita-dilated-convolutions`
+    - *Orca* and Multiscale Prediction — `@sec-ch17-orca` → `@sec-ch17-orca-multiscale-prediction`
+    - *C.Origami* and Cross-Cell-Type Transfer — `@sec-ch17-c-origami` → `@sec-ch17-c-origami-cross-cell-type-transfer`
+    - Learned Sequence Determinants — `@sec-ch17-3d-interpretability` → `@sec-ch17-learned-sequence-determinants`
+  - 3D Structure and Gene Regulation — `@sec-ch17-3d-regulation` → `@sec-ch17-3d-structure-gene-regulation`
+    - Beyond One-Dimensional Models — `@sec-ch17-beyond-1d` → `@sec-ch17-beyond-one-dimensional-models`
+    - Structural Variant Interpretation — `@sec-ch17-sv-interpretation` → `@sec-ch17-structural-variant-interpretation`
+    - Causality and Permissive Architecture — `@sec-ch17-3d-causality` → `@sec-ch17-causality-permissive-architecture`
+  - Spatial Transcriptomics — `@sec-ch17-spatial-transcriptomics` → `@sec-ch17-spatial-transcriptomics`
+    - Measurement Technologies — `@sec-ch17-spatial-technologies` → `@sec-ch17-measurement-technologies`
+    - Computational Challenges — `@sec-ch17-spatial-computation` → `@sec-ch17-computational-challenges`
+    - Spatial Foundation Models — `@sec-ch17-spatial-models` → `@sec-ch17-spatial-foundation-models`
+  - Limitations and Open Questions — `@sec-ch17-3d-limitations` → `@sec-ch17-limitations-open-questions`
+  - Structure as Context, Not Cause — `@sec-ch17-structure-context` → `@sec-ch17-structure-context-not-cause`
+
+## `p4-ch18-networks.qmd`
+- Graph and Network Models — `@sec-networks` → `@sec-ch18-networks`
+  - Biological Networks and Data Resources — `@sec-ch18-biological-networks` → `@sec-ch18-biological-networks-data-resources`
+    - Landscape of Biological Graphs — `@sec-ch18-landscape` → `@sec-ch18-landscape-biological-graphs`
+    - Biases and Limitations — `@sec-ch18-network-biases` → `@sec-ch18-biases-limitations`
+  - Graph Neural Network Fundamentals — `@sec-ch18-gnn-fundamentals` → `@sec-ch18-graph-neural-network-fundamentals`
+    - Message Passing Principles — `@sec-ch18-message-passing` → `@sec-ch18-message-passing-principles`
+    - Canonical Architectures — `@sec-ch18-canonical-architectures` → `@sec-ch18-canonical-architectures`
+  - Foundation Model Embeddings as Node Features — `@sec-ch18-fm-embeddings` → `@sec-ch18-foundation-model-embeddings-node`
+    - Integration Principle — `@sec-ch18-integration-principle` → `@sec-ch18-integration-principle`
+    - Practical Integration Patterns — `@sec-ch18-practical-patterns` → `@sec-ch18-practical-integration-patterns`
+    - Evidence for the Integration Benefit — `@sec-ch18-integration-evidence` → `@sec-ch18-evidence-integration-benefit`
+  - Applications — `@sec-ch18-applications` → `@sec-ch18-applications`
+    - Disease Gene Prioritization — `@sec-ch18-disease-gene` → `@sec-ch18-disease-gene-prioritization`
+    - Drug-Target Interaction Prediction — `@sec-ch18-drug-target` → `@sec-ch18-drug-target-interaction-prediction`
+    - Knowledge Graph Reasoning and Drug Repurposing — `@sec-ch18-kg-reasoning` → `@sec-ch18-knowledge-graph-reasoning-drug`
+    - Pathway and Module Analysis — `@sec-ch18-pathway-analysis` → `@sec-ch18-pathway-module-analysis`
+    - Cell Type and State Annotation — `@sec-ch18-cell-annotation` → `@sec-ch18-cell-type-state-annotation`
+  - Practical Considerations — `@sec-ch18-practical` → `@sec-ch18-practical-considerations`
+    - Graph Construction Quality — `@sec-ch18-graph-construction` → `@sec-ch18-graph-construction-quality`
+    - Scalability and Mini-Batching — `@sec-ch18-scalability` → `@sec-ch18-scalability-mini-batching`
+    - Robustness to Noise and Missingness — `@sec-ch18-robustness` → `@sec-ch18-robustness-noise-missingness`
+    - Interpretation and Validation — `@sec-ch18-interpretation` → `@sec-ch18-interpretation-validation`
+  - Limitations and Open Challenges — `@sec-ch18-limitations` → `@sec-ch18-limitations-open-challenges`
+    - Study Bias Problem — `@sec-ch18-study-bias` → `@sec-ch18-study-bias-problem`
+    - Causality Versus Association — `@sec-ch18-causality` → `@sec-ch18-causality-versus-association`
+    - Negative Data and Class Imbalance — `@sec-ch18-negative-data` → `@sec-ch18-negative-data-class-imbalance`
+    - Distribution Shift — `@sec-ch18-distribution-shift` → `@sec-ch18-distribution-shift`
+  - Sequence Encodes, Structure Connects — `@sec-ch18-conclusion` → `@sec-ch18-sequence-encodes-structure-connects`
+
+## `p4-ch19-multi-omics.qmd`
+- Multi-Omics Integration — `@sec-multi-omics` → `@sec-ch19-multi-omics`
+  - Limits of Single-Modality Models — `` → `@sec-ch19-limits-single-modality-models`
+  - Integration Strategies and Their Tradeoffs — `` → `@sec-ch19-integration-strategies-tradeoffs`
+    - Early Fusion — `` → `@sec-ch19-early-fusion`
+    - Late Fusion — `` → `@sec-ch19-late-fusion`
+    - Intermediate Fusion — `` → `@sec-ch19-intermediate-fusion`
+  - Multi-Omics Foundation Models — `` → `@sec-ch19-multi-omics-foundation-models`
+    - Factor-Based Integration — `` → `@sec-ch19-factor-based-integration`
+    - Deep Generative Multi-Omics Models — `` → `@sec-ch19-deep-generative-multi-omics-models`
+    - Contrastive Multi-Modal Learning — `` → `@sec-ch19-contrastive-multi-modal-learning`
+  - Clinical Integration: EHR, Imaging, and Molecular Data — `` → `@sec-ch19-clinical-integration-ehr-imaging`
+    - Electronic Health Records as a Modality — `` → `@sec-ch19-electronic-health-records-modality`
+    - Imaging Integration — `` → `@sec-ch19-imaging-integration`
+    - Multi-Modal Clinical Prediction Models — `` → `@sec-ch19-multi-modal-clinical-prediction-models`
+  - Systems View: From Variant to Phenotype — `` → `@sec-ch19-systems-view-variant-phenotype`
+    - Information Cascade — `` → `@sec-ch19-information-cascade`
+    - Bottleneck Modalities — `` → `@sec-ch19-bottleneck-modalities`
+    - Causal vs. Correlational Integration — `` → `@sec-ch19-causal-correlational-integration`
+  - Handling Missing Modalities — `` → `@sec-ch19-handling-missing-modalities`
+    - Training with Incomplete Data — `` → `@sec-ch19-training-incomplete-data`
+    - Cross-Modal Imputation — `` → `@sec-ch19-cross-modal-imputation`
+    - Zero-Shot Cross-Modal Transfer — `` → `@sec-ch19-zero-shot-cross-modal-transfer`
+  - Practical Challenges — `` → `@sec-ch19-practical-challenges`
+    - Batch Effects Across Modalities — `` → `@sec-ch19-batch-effects-across-modalities`
+    - Sample Size and Power — `` → `@sec-ch19-sample-size-power`
+    - Interpretability Across Modalities — `` → `@sec-ch19-interpretability-across-modalities`
+    - Evaluation Complexity — `` → `@sec-ch19-evaluation-complexity`
+  - Integration as Means, Not End — `` → `@sec-ch19-integration-means-not-end`
+
+## `p5--eval-interp.qmd`
+- Part V: Evaluation and Trust — `` → `@sec-part5-intro`
+
+## `p5-ch20-benchmarks.qmd`
+- Benchmarks — `@sec-benchmarks` → `@sec-ch20-benchmarks`
+  - Protein Language Model Benchmarks — `` → `@sec-ch20-protein-language-model-benchmarks`
+    - TAPE: Tasks Assessing Protein Embeddings — `` → `@sec-ch20-tape-tasks-assessing-protein-embeddings`
+    - FLIP: Function-Linked Protein Benchmark — `` → `@sec-ch20-flip-function-linked-protein-benchmark`
+    - ProteinGym: Comprehensive Variant Effect Evaluation — `` → `@sec-ch20-proteingym-comprehensive-variant-effect`
+    - Structure Prediction Benchmarks — `` → `@sec-ch20-structure-prediction-benchmarks`
+  - DNA and Regulatory Benchmarks — `` → `@sec-ch20-dna-regulatory-benchmarks`
+    - Classical Regulatory Prediction Tasks — `` → `@sec-ch20-classical-regulatory-prediction-tasks`
+    - Quantitative Regulatory Prediction — `` → `@sec-ch20-quantitative-regulatory-prediction`
+    - Genomic Benchmarks — `` → `@sec-ch20-genomic-benchmarks`
+    - BEND: Benchmark for DNA Language Models — `` → `@sec-ch20-bend-benchmark-dna-language-models`
+    - Long-Range Benchmarks — `` → `@sec-ch20-long-range-benchmarks`
+    - Cross-Species Evaluation — `` → `@sec-ch20-cross-species-evaluation`
+  - Variant Effect Prediction Benchmarks — `` → `@sec-ch20-variant-effect-prediction-benchmarks`
+    - Clinical Variant Databases — `` → `@sec-ch20-clinical-variant-databases`
+    - CAGI: Critical Assessment of Genome Interpretation — `` → `@sec-ch20-cagi-critical-assessment-genome`
+    - Deep Mutational Scanning Benchmarks — `` → `@sec-ch20-deep-mutational-scanning-benchmarks`
+    - Regulatory and Non-Coding Variant Benchmarks — `` → `@sec-ch20-regulatory-non-coding-variant-benchmarks`
+  - Trait and Population-Level Benchmarks — `` → `@sec-ch20-trait-population-level-benchmarks`
+    - Polygenic Score Evaluation — `` → `@sec-ch20-polygenic-score-evaluation`
+    - TraitGym — `` → `@sec-ch20-traitgym`
+    - EmbedGEM Framework — `` → `@sec-ch20-embedgem-framework`
+  - Benchmark Construction and Hidden Assumptions — `` → `@sec-ch20-benchmark-construction-hidden`
+    - Data Sources and Label Provenance — `` → `@sec-ch20-data-sources-label-provenance`
+    - Splitting Strategies and Leakage — `` → `@sec-ch20-splitting-strategies-leakage`
+    - Metric Selection and Aggregation — `` → `@sec-ch20-metric-selection-aggregation`
+    - Goodhart's Law and Benchmark Gaming — `` → `@sec-ch20-goodhart-s-law-benchmark-gaming`
+  - Benchmark Saturation and Staleness — `` → `@sec-ch20-benchmark-saturation-staleness`
+    - Saturation: When Benchmarks Stop Discriminating — `` → `@sec-ch20-saturation-when-benchmarks-stop`
+    - Staleness: When Benchmarks Diverge from Practice — `` → `@sec-ch20-staleness-when-benchmarks-diverge`
+    - Leakage from Scale — `` → `@sec-ch20-leakage-scale`
+  - Benchmark-Deployment Gap — `` → `@sec-ch20-benchmark-deployment-gap`
+    - Distribution Shift — `` → `@sec-ch20-distribution-shift`
+    - Calibration Requirements — `` → `@sec-ch20-calibration-requirements`
+    - Metric Mismatch — `` → `@sec-ch20-metric-mismatch`
+    - Practical Constraints — `` → `@sec-ch20-practical-constraints`
+  - Systematic Gaps in Current Benchmarks — `` → `@sec-ch20-systematic-gaps-current-benchmarks`
+  - The Proxy Problem — `` → `@sec-ch20-proxy-problem`
+
+## `p5-ch21-eval.qmd`
+- Evaluation Principles — `@sec-evaluation` → `@sec-ch21-eval`
+  - Why Random Splits Fail — `` → `@sec-ch21-random-splits-failure`
+  - Homology-Aware Splitting — `` → `@sec-ch21-homology-aware-splitting`
+    - Clustering Tools and Workflows — `` → `@sec-ch21-clustering-tools-workflows`
+    - Practical Considerations — `` → `@sec-ch21-practical-considerations`
+  - Splitting by Biological Axis — `` → `@sec-ch21-splitting-biological-axis`
+    - Splitting by Individual — `` → `@sec-ch21-splitting-individual`
+    - Splitting by Genomic Region — `` → `@sec-ch21-splitting-genomic-region`
+    - Splitting by Gene or Protein Family — `` → `@sec-ch21-splitting-gene-or-protein-family`
+    - Splitting by Experimental Context — `` → `@sec-ch21-splitting-experimental-context`
+    - Splitting by Ancestry — `` → `@sec-ch21-splitting-ancestry`
+    - Splitting by Time — `` → `@sec-ch21-splitting-time`
+  - Leakage Taxonomy and Detection — `@sec-leakage-detection` → `@sec-ch21-leakage-taxonomy-detection`
+    - Label Leakage — `` → `@sec-ch21-label-leakage`
+    - Feature Leakage — `` → `@sec-ch21-feature-leakage`
+    - Temporal Leakage — `` → `@sec-ch21-temporal-leakage`
+    - Benchmark Leakage — `` → `@sec-ch21-benchmark-leakage`
+    - Detecting Leakage — `` → `@sec-ch21-detecting-leakage`
+  - Metrics for Genomic Tasks — `` → `@sec-ch21-metrics-genomic-tasks`
+    - Discrimination Metrics — `` → `@sec-ch21-discrimination-metrics`
+    - Regression and Correlation Metrics — `` → `@sec-ch21-regression-correlation-metrics`
+    - Ranking and Prioritization Metrics — `` → `@sec-ch21-ranking-prioritization-metrics`
+    - Clinical Utility Metrics — `` → `@sec-ch21-clinical-utility-metrics`
+  - Baseline Selection — `` → `@sec-ch21-baseline-selection`
+    - Strong Baselines, Not Straw Men — `` → `@sec-ch21-strong-baselines-not-straw-men`
+    - Historical Baselines and Progress Tracking — `` → `@sec-ch21-historical-baselines-progress-tracking`
+    - Non-Deep-Learning Baselines — `` → `@sec-ch21-non-deep-learning-baselines`
+  - Ablation Studies — `` → `@sec-ch21-ablation-studies`
+    - Component Isolation — `` → `@sec-ch21-component-isolation`
+    - Hyperparameter Sensitivity — `` → `@sec-ch21-hyperparameter-sensitivity`
+    - Architecture Search Confounds — `` → `@sec-ch21-architecture-search-confounds`
+    - Reporting Standards — `` → `@sec-ch21-reporting-standards`
+  - Statistical Rigor — `` → `@sec-ch21-statistical-rigor`
+    - Significance Testing — `` → `@sec-ch21-significance-testing`
+    - Effect Sizes — `` → `@sec-ch21-effect-sizes`
+    - Confidence Intervals on Metrics — `` → `@sec-ch21-confidence-intervals-metrics`
+    - Variance Across Random Seeds — `` → `@sec-ch21-variance-across-random-seeds`
+  - Evaluating Foundation Models — `` → `@sec-ch21-evaluating-foundation-models`
+    - Zero-Shot Evaluation — `` → `@sec-ch21-zero-shot-evaluation`
+    - Linear Probing — `` → `@sec-ch21-linear-probing`
+    - Fine-Tuning Evaluation — `` → `@sec-ch21-fine-tuning-evaluation`
+    - Transfer Across Tasks — `` → `@sec-ch21-transfer-across-tasks`
+  - Calibration Essentials — `` → `@sec-ch21-calibration-essentials`
+    - Assessing Calibration — `` → `@sec-ch21-assessing-calibration`
+    - Recalibration Methods — `` → `@sec-ch21-recalibration-methods`
+    - Calibration in Model Comparison — `` → `@sec-ch21-calibration-model-comparison`
+  - Putting It All Together — `` → `@sec-ch21-putting-it-all-together`
+  - The Question Behind the Metric — `` → `@sec-ch21-question-behind-metric`
+
+## `p5-ch22-confounding.qmd`
+- Confounders and Leakage — `@sec-confounding` → `@sec-ch22-confounding`
+  - Confounding, Bias, and Leakage — `` → `@sec-ch22-confounding-bias-leakage`
+  - Sources of Confounding in Genomic Data — `` → `@sec-ch22-sources-confounding-genomic-data`
+  - Population Structure as a Shortcut — `` → `@sec-ch22-population-structure-shortcut`
+  - Technical Artifacts as Biological Signal — `` → `@sec-ch22-technical-artifacts-biological-signal`
+  - Label Bias and Circularity — `` → `@sec-ch22-label-bias-circularity`
+  - Data Splitting — `` → `@sec-ch22-data-splitting`
+  - Data Leakage as Confounding — `` → `@sec-ch22-data-leakage-confounding`
+    - The Causal Structure of Leakage — `` → `@sec-ch22-causal-structure-leakage`
+    - Compounding Effects — `` → `@sec-ch22-compounding-effects`
+    - Implications for Confounding Analysis — `` → `@sec-ch22-implications-confounding-analysis`
+  - Detecting Confounding — `` → `@sec-ch22-detecting-confounding`
+  - Mitigation Strategies — `` → `@sec-ch22-mitigation-strategies`
+    - Study Design and Cohort Construction — `` → `@sec-ch22-study-design-cohort-construction`
+    - Covariate Adjustment — `` → `@sec-ch22-covariate-adjustment`
+    - Domain Adaptation and Invariance Learning — `` → `@sec-ch22-domain-adaptation-invariance-learning`
+    - Data Curation and Benchmark Design — `` → `@sec-ch22-data-curation-benchmark-design`
+    - Causal Inference Approaches — `` → `@sec-ch22-causal-inference-approaches`
+  - Fairness and External Validity — `` → `@sec-ch22-fairness-external-validity`
+  - A Practical Checklist — `` → `@sec-ch22-practical-checklist`
+  - Rigor as Response — `` → `@sec-ch22-rigor-response`
+
+## `p5-ch23-uncertainty.qmd`
+- Uncertainty Quantification — `@sec-uncertainty` → `@sec-ch23-uncertainty`
+  - Types of Uncertainty in Genomic Prediction — `@sec-uncertainty-types` → `@sec-ch23-types-uncertainty-genomic-prediction`
+    - Why Uncertainty Matters — `` → `@sec-ch23-uncertainty-matters`
+    - Epistemic Uncertainty — `` → `@sec-ch23-epistemic-uncertainty`
+    - Aleatoric Uncertainty — `` → `@sec-ch23-aleatoric-uncertainty`
+    - Decomposing Total Uncertainty — `` → `@sec-ch23-decomposing-total-uncertainty`
+  - Calibration and Confidence Interpretation — `@sec-calibration` → `@sec-ch23-calibration-confidence-interpretation`
+    - The Calibration Problem — `` → `@sec-ch23-calibration-problem`
+    - Measuring Calibration — `` → `@sec-ch23-measuring-calibration`
+    - Why Foundation Models Are Often Miscalibrated — `` → `@sec-ch23-foundation-models-often-miscalibrated`
+    - Calibration Across Subgroups — `` → `@sec-ch23-calibration-across-subgroups`
+  - Post-Hoc Calibration Methods — `@sec-post-hoc-calibration` → `@sec-ch23-post-hoc-calibration-methods`
+    - Temperature Scaling — `` → `@sec-ch23-temperature-scaling`
+    - Platt Scaling — `` → `@sec-ch23-platt-scaling`
+    - Isotonic Regression — `` → `@sec-ch23-isotonic-regression`
+    - Calibrating Foundation Model Outputs — `` → `@sec-ch23-calibrating-foundation-model-outputs`
+  - Uncertainty Quantification Methods for Foundation Models — `@sec-uq-methods` → `@sec-ch23-uncertainty-quantification-methods`
+    - Deep Ensembles — `` → `@sec-ch23-deep-ensembles`
+    - Monte Carlo Dropout — `` → `@sec-ch23-monte-carlo-dropout`
+    - Heteroscedastic Models — `` → `@sec-ch23-heteroscedastic-models`
+    - Evidential Deep Learning — `` → `@sec-ch23-evidential-deep-learning`
+    - Selecting Uncertainty Quantification Methods — `` → `@sec-ch23-selecting-uncertainty-quantification`
+  - Conformal Prediction: Distribution-Free Guarantees — `@sec-conformal` → `@sec-ch23-conformal-prediction-distribution-free`
+    - Split Conformal Prediction — `` → `@sec-ch23-split-conformal-prediction`
+    - Conformal Prediction for Variant Classification — `` → `@sec-ch23-conformal-prediction-variant`
+    - Conformal Prediction Intervals — `` → `@sec-ch23-conformal-prediction-intervals`
+    - Limitations and Practical Considerations — `` → `@sec-ch23-limitations-practical-considerations`
+    - Integration with Clinical Workflows — `` → `@sec-ch23-integration-clinical-workflows`
+  - Out-of-Distribution Detection — `@sec-ood-detection` → `@sec-ch23-out-distribution-detection`
+    - Out-of-Distribution Problem — `` → `@sec-ch23-out-distribution-problem`
+    - Likelihood-Based Detection and Its Failures — `` → `@sec-ch23-likelihood-based-detection-failures`
+    - Embedding-Based Detection — `` → `@sec-ch23-embedding-based-detection`
+    - Practical OOD Detection for Genomic Applications — `` → `@sec-ch23-practical-ood-detection-genomic`
+  - Selective Prediction and Abstention — `@sec-selective-prediction` → `@sec-ch23-selective-prediction-abstention`
+    - When to Abstain — `` → `@sec-ch23-when-abstain`
+    - Selective Prediction Methods — `` → `@sec-ch23-selective-prediction-methods`
+    - Evaluating Selective Prediction — `` → `@sec-ch23-evaluating-selective-prediction`
+  - Uncertainty for Specific Genomic Tasks — `@sec-genomic-uq` → `@sec-ch23-uncertainty-specific-genomic-tasks`
+    - Variant Effect Prediction Uncertainty — `` → `@sec-ch23-variant-effect-prediction-uncertainty`
+    - Regulatory Variant Uncertainty — `` → `@sec-ch23-regulatory-variant-uncertainty`
+    - Uncertainty Across Populations — `` → `@sec-ch23-uncertainty-across-populations`
+  - Communicating Uncertainty to End Users — `@sec-uncertainty-communication` → `@sec-ch23-communicating-uncertainty-end-users`
+    - Communication Challenge — `` → `@sec-ch23-communication-challenge`
+    - Categorical Reporting — `` → `@sec-ch23-categorical-reporting`
+    - Visual Communication — `` → `@sec-ch23-visual-communication`
+    - Decision-Theoretic Framing — `` → `@sec-ch23-decision-theoretic-framing`
+  - Necessary but Insufficient — `` → `@sec-ch23-necessary-but-insufficient`
+
+## `p5-ch24-interpretability.qmd`
+- Interpretability — `@sec-interpretability` → `@sec-ch24-interpretability`
+  - Attribution Methods and Input Importance — `` → `@sec-ch24-attribution-methods-input-importance`
+    - *In Silico* Mutagenesis — `` → `@sec-ch24-silico-mutagenesis`
+    - Gradient-Based Attribution — `` → `@sec-ch24-gradient-based-attribution`
+    - Reconciling Attribution Methods — `` → `@sec-ch24-reconciling-attribution-methods`
+  - Interpreting Convolutional Filters — `` → `@sec-ch24-interpreting-convolutional-filters`
+    - From Filters to Position Weight Matrices — `` → `@sec-ch24-filters-position-weight-matrices`
+    - Deeper Layers and Combinatorial Patterns — `` → `@sec-ch24-deeper-layers-combinatorial-patterns`
+  - Motif Discovery from Attributions — `` → `@sec-ch24-motif-discovery-attributions`
+  - Probing Learned Representations — `` → `@sec-ch24-probing-learned-representations`
+    - Probing Methodology — `` → `@sec-ch24-probing-methodology`
+    - Limitations of Probing — `` → `@sec-ch24-limitations-probing`
+  - Attention Patterns in Transformer Models — `` → `@sec-ch24-attention-patterns-transformer-models`
+    - What Attention Patterns Reveal — `` → `@sec-ch24-attention-patterns-reveal`
+    - Why Attention Weights Mislead — `` → `@sec-ch24-attention-weights-mislead`
+  - Regulatory Vocabularies and Global Interpretability — `` → `@sec-ch24-regulatory-vocabularies-global`
+    - Sequence Classes from Sei — `` → `@sec-ch24-sequence-classes-sei`
+    - Embedding Geometry and Regulatory Programs — `` → `@sec-ch24-embedding-geometry-regulatory-programs`
+  - Mechanistic Interpretability — `` → `@sec-ch24-mechanistic-interpretability`
+    - Circuits and Features — `` → `@sec-ch24-circuits-features`
+    - Applications to Genomic Models — `` → `@sec-ch24-applications-genomic-models`
+  - Validation: From Explanations to Experiments — `` → `@sec-ch24-validation-explanations-experiments`
+    - Faithfulness Testing — `` → `@sec-ch24-faithfulness-testing`
+    - Experimental Validation — `` → `@sec-ch24-experimental-validation`
+  - Interpretability in Clinical Variant Assessment — `` → `@sec-ch24-interpretability-clinical-variant`
+  - Practical Approaches for Foundation Model Analysis — `` → `@sec-ch24-practical-approaches-foundation-model`
+  - Plausibility Is Not Faithfulness — `` → `@sec-ch24-plausibility-not-faithfulness`
+
+## `p6--translation.qmd`
+- Part VI: Clinical Translation — `@sec-part6-intro` → `@sec-part6-intro`
+
+## `p6-ch25-clinical-risk.qmd`
+- Clinical Risk Prediction — `@sec-clinical-risk` → `@sec-ch25-clinical-risk`
+  - From Polygenic Scores to Foundation Model Features — `` → `@sec-ch25-polygenic-scores-foundation-model`
+  - Defining Clinical Risk Prediction — `` → `@sec-ch25-defining-clinical-risk-prediction`
+  - Feature Integration Architectures — `` → `@sec-ch25-feature-integration-architectures`
+  - EHR Integration and Phenotype Embeddings — `` → `@sec-ch25-ehr-integration-phenotype-embeddings`
+    - EEPRS Framework — `` → `@sec-ch25-eeprs-framework`
+    - Understanding When Embeddings Help — `` → `@sec-ch25-interpretation-when-embeddings-help`
+    - PRS-PheWAS for Clinical Interpretation — `` → `@sec-ch25-prs-phewas-clinical-interpretation`
+    - Implementation Considerations — `` → `@sec-ch25-implementation-considerations`
+    - Integration with Foundation Model Features — `` → `@sec-ch25-integration-foundation-model-features`
+  - Temporal Modeling Architectures — `` → `@sec-ch25-temporal-modeling-architectures`
+  - Evaluation for Clinical Deployment — `` → `@sec-ch25-evaluation-clinical-deployment`
+    - Discrimination — `` → `@sec-ch25-discrimination`
+    - Calibration — `` → `@sec-ch25-calibration`
+    - Clinical Utility — `` → `@sec-ch25-clinical-utility`
+    - Validation Hierarchy — `` → `@sec-ch25-validation-hierarchy`
+  - Uncertainty Quantification — `` → `@sec-ch25-uncertainty-quantification`
+  - Fairness and Health Equity — `` → `@sec-ch25-fairness-health-equity`
+  - Clinical Integration — `` → `@sec-ch25-clinical-integration`
+    - Workflow Integration Patterns — `` → `@sec-ch25-workflow-integration-patterns`
+    - System Architecture — `` → `@sec-ch25-system-architecture`
+    - Post-Deployment Monitoring — `` → `@sec-ch25-post-deployment-monitoring`
+  - Regulatory and Quality Frameworks — `` → `@sec-ch25-regulatory-quality-frameworks`
+  - Case Studies — `` → `@sec-ch25-case-studies`
+    - Cardiometabolic Risk Stratification — `` → `@sec-ch25-cardiometabolic-risk-stratification`
+    - Oncology Prognosis — `` → `@sec-ch25-oncology-prognosis`
+    - Pharmacogenomic Adverse Event Prediction — `` → `@sec-ch25-pharmacogenomic-adverse-event-prediction`
+  - Translation as the Test — `` → `@sec-ch25-translation-test`
+
+## `p6-ch26-rare-disease.qmd`
+- Rare Disease Diagnosis — `@sec-rare-disease` → `@sec-ch26-rare-disease`
+  - Variant Prioritization Funnel — `` → `@sec-ch26-variant-prioritization-funnel`
+    - Quality and Technical Filters — `` → `@sec-ch26-quality-technical-filters`
+    - Population Frequency Filters — `` → `@sec-ch26-population-frequency-filters`
+    - Consequence and Gene Filters — `` → `@sec-ch26-consequence-gene-filters`
+    - Foundation Model Scoring — `` → `@sec-ch26-foundation-model-scoring`
+  - ACMG-AMP Criteria and Computational Evidence — `` → `@sec-ch26-acmg-amp-criteria-computational-evidence`
+    - Evidence Categories — `` → `@sec-ch26-evidence-categories`
+    - *PP3* and *BP4*: Computational Evidence — `` → `@sec-ch26-pp3-bp4-computational-evidence`
+    - Calibrating Predictions to Evidence Strength — `` → `@sec-ch26-calibrating-predictions-evidence`
+  - Family-Based Analysis — `` → `@sec-ch26-family-based-analysis`
+    - *De Novo* Variants — `` → `@sec-ch26-de-novo-variants`
+    - Compound Heterozygosity and Phasing — `` → `@sec-ch26-compound-heterozygosity-phasing`
+    - Segregation Analysis — `` → `@sec-ch26-segregation-analysis`
+  - Somatic Variant Interpretation in Cancer — `` → `@sec-ch26-somatic-variant-interpretation-cancer`
+    - Germline versus Somatic Distinction — `` → `@sec-ch26-germline-versus-somatic-distinction`
+    - Driver Classification — `` → `@sec-ch26-driver-classification`
+    - Therapeutic Biomarkers — `` → `@sec-ch26-therapeutic-biomarkers`
+  - Laboratory Validation — `` → `@sec-ch26-laboratory-validation`
+    - Types of Functional Assays — `` → `@sec-ch26-types-functional-assays`
+    - Integrating Functional Evidence — `` → `@sec-ch26-integrating-functional-evidence`
+    - Closing the VUS Loop — `` → `@sec-ch26-closing-vus-loop`
+  - Practical Workflow Integration — `` → `@sec-ch26-practical-workflow-integration`
+    - Laboratory Workflow — `` → `@sec-ch26-laboratory-workflow`
+    - Clinical Decision-Making — `` → `@sec-ch26-clinical-decision-making`
+    - Regulatory and Ethical Considerations — `` → `@sec-ch26-regulatory-ethical-considerations`
+  - Interpretive Partnership — `` → `@sec-ch26-interpretive-partnership`
+
+## `p6-ch27-drug-discovery.qmd`
+- Drug Discovery — `@sec-drug-discovery` → `@sec-ch27-drug-discovery`
+  - Genetic Foundation of Target Selection — `` → `@sec-ch27-genetic-foundation-target-selection`
+    - From Variant-Level Predictions to Gene-Level Evidence — `` → `@sec-ch27-variant-level-predictions-gene-level`
+    - Linking Genetics to Target Safety and Efficacy — `` → `@sec-ch27-linkage-genetics-target-safety-efficacy`
+  - Network-Aware Target Discovery and Repurposing — `` → `@sec-ch27-network-aware-target-discovery`
+    - Propagating Genetic Signals Through Networks — `` → `@sec-ch27-propagating-genetic-signals-through`
+    - Drug Repurposing Through Shared Representations — `` → `@sec-ch27-drug-repurposing-through-shared`
+  - Drug-Target Interaction Prediction — `` → `@sec-ch27-drug-target-interaction-prediction`
+    - Representing Targets for Binding Prediction — `` → `@sec-ch27-representation-targets-binding`
+    - Selectivity and Off-Target Prediction — `` → `@sec-ch27-selectivity-off-target-prediction`
+  - Toxicity Prediction from Genomic Context — `` → `@sec-ch27-toxicity-prediction-genomic-context`
+    - Genetic Evidence of Target Liabilities — `` → `@sec-ch27-genetic-evidence-target-liabilities`
+    - Expression-Based Toxicity Prediction — `` → `@sec-ch27-expression-based-toxicity-prediction`
+    - Integrating Genomic Context with Chemical Properties — `` → `@sec-ch27-integrating-genomic-context-chemical`
+  - Functional Genomics Screens and Perturbation Models — `` → `@sec-ch27-functional-genomics-screens-perturbation`
+    - Designing Informative Perturbation Libraries — `` → `@sec-ch27-designing-informative-perturbation`
+    - Perturb-seq and Transcriptomic Readouts — `` → `@sec-ch27-perturb-seq-transcriptomic-readouts`
+    - Closing the Loop: Lab-in-the-Loop Refinement — `` → `@sec-ch27-closing-loop-lab-loop-refinement`
+  - Biomarker Development and Patient Stratification — `` → `@sec-ch27-biomarker-development-patient`
+    - Foundation Model Features for Stratification — `` → `@sec-ch27-foundation-model-features-stratification`
+    - Multi-Omic Biomarker Discovery — `` → `@sec-ch27-multi-omic-biomarker-discovery`
+    - Trial Design and Endpoint Selection — `` → `@sec-ch27-trial-design-endpoint-selection`
+  - Industry Workflows and Infrastructure — `` → `@sec-ch27-industry-workflows-infrastructure`
+    - Building Model Infrastructure — `` → `@sec-ch27-building-model-infrastructure`
+    - Strategic Choices: Build, Buy, or Fine-Tune — `` → `@sec-ch27-strategic-choices-build-buy-or-fine-tune`
+    - Industry Context: Timelines and Decision Gates — `` → `@sec-ch27-industry-context-timelines-decision`
+    - Intellectual Property and Data Considerations — `` → `@sec-ch27-intellectual-property-data`
+  - Evaluation and Validation — `` → `@sec-ch27-evaluation-validation`
+    - Benchmark Limitations — `` → `@sec-ch27-benchmark-limitations`
+    - From Prediction to Validation — `` → `@sec-ch27-prediction-validation`
+  - Connections to Molecular Design — `` → `@sec-ch27-connections-molecular-design`
+  - Prioritization, Not Automation — `` → `@sec-ch27-prioritization-not-automation`
+
+## `p6-ch28-design.qmd`
+- Sequence Design — `@sec-design` → `@sec-ch28-design`
+  - Design Formalism — `` → `@sec-ch28-design-formalism`
+  - Protein Design with Language Models — `` → `@sec-ch28-protein-design-language-models`
+    - Sequence Generation from Language Model Priors — `` → `@sec-ch28-sequence-generation-language-model`
+    - Structure-Aware Design with Diffusion Models — `` → `@sec-ch28-structure-aware-design-diffusion-models`
+    - Functional Conditioning and Multi-Objective Optimization — `` → `@sec-ch28-functional-conditioning-multi-objective`
+  - Regulatory Sequence Design — `` → `@sec-ch28-regulatory-sequence-design`
+    - Promoter and Enhancer Engineering — `` → `@sec-ch28-promoter-enhancer-engineering`
+    - Splicing and RNA Processing Elements — `` → `@sec-ch28-splicing-rna-processing-elements`
+  - mRNA Design and Optimization — `` → `@sec-ch28-mrna-design-optimization`
+    - Codon Optimization Principles — `` → `@sec-ch28-codon-optimization-principles`
+    - Stability Engineering and UTR Design — `` → `@sec-ch28-stability-engineering-utr-design`
+    - Immunogenicity Considerations — `` → `@sec-ch28-immunogenicity-considerations`
+  - Antibody and Vaccine Design — `` → `@sec-ch28-antibody-vaccine-design`
+    - CDR Optimization and Humanization — `` → `@sec-ch28-cdr-optimization-humanization`
+    - Vaccine Antigen Design — `` → `@sec-ch28-vaccine-antigen-design`
+  - Closed-Loop Design-Build-Test-Learn Cycles — `` → `@sec-ch28-closed-loop-design-build-test-learn`
+    - Active Learning for Efficient Exploration — `` → `@sec-ch28-active-learning-efficient-exploration`
+    - High-Throughput Experimentation Integration — `` → `@sec-ch28-high-throughput-experimentation`
+  - Validation Requirements and Failure Modes — `` → `@sec-ch28-validation-requirements-failure-modes`
+    - Validation Hierarchy — `` → `@sec-ch28-validation-hierarchy`
+    - Characteristic Failure Patterns — `` → `@sec-ch28-characteristic-failure-patterns`
+  - Practical Design Constraints — `` → `@sec-ch28-practical-design-constraints`
+    - Manufacturing and Developability — `` → `@sec-ch28-manufacturing-developability`
+    - Safety and Biosecurity Considerations — `` → `@sec-ch28-safety-biosecurity-considerations`
+  - Algorithmic Search and Optimization — `` → `@sec-ch28-algorithmic-search-optimization`
+  - From Understanding to Creating — `` → `@sec-ch28-interpretation-creating`
+
+## `p6-ch29-future.qmd`
+- Ethics and Frontiers — `@sec-future` → `@sec-ch29-future`
+  - Regulatory Frameworks for Genomic AI — `` → `@sec-ch29-regulatory-frameworks-genomic-ai`
+    - Software as Medical Device Paradigm — `` → `@sec-ch29-software-medical-device-paradigm`
+    - European and Global Regulatory Landscapes — `` → `@sec-ch29-european-global-regulatory-landscapes`
+    - Validation Requirements for Clinical Genomic AI — `` → `@sec-ch29-validation-requirements-clinical-genomic`
+  - Data Governance and Consent — `` → `@sec-ch29-data-governance-consent`
+    - Consent Problem at Scale — `` → `@sec-ch29-consent-problem-scale`
+    - Biobank Governance Models — `` → `@sec-ch29-biobank-governance-models`
+    - Secondary Use and Data Futures — `` → `@sec-ch29-secondary-use-data-futures`
+  - Privacy and Genomic Data — `` → `@sec-ch29-privacy-genomic-data`
+    - Re-identification Challenge — `` → `@sec-ch29-re-identification-challenge`
+    - Family and Relational Privacy — `` → `@sec-ch29-family-relational-privacy`
+  - Intellectual Property and Ownership — `` → `@sec-ch29-intellectual-property-ownership`
+    - Genomic Data Ownership — `` → `@sec-ch29-genomic-data-ownership`
+    - Model Weights as Assets — `` → `@sec-ch29-model-weights-assets`
+    - Prediction Ownership and Liability — `` → `@sec-ch29-prediction-ownership-liability`
+  - Responsible Development Practices — `` → `@sec-ch29-responsible-development-practices`
+    - Transparency and Documentation — `` → `@sec-ch29-transparency-documentation`
+    - Fairness and Performance Equity — `` → `@sec-ch29-fairness-performance-equity`
+    - Human Oversight and Decision Support — `` → `@sec-ch29-human-oversight-decision-support`
+  - Dual Use and Biosecurity — `` → `@sec-ch29-dual-use-biosecurity`
+    - Generative Models and Pathogen Enhancement — `` → `@sec-ch29-generative-models-pathogen-enhancement`
+    - Access Controls and Responsible Release — `` → `@sec-ch29-access-controls-responsible-release`
+  - Open Technical Problems — `` → `@sec-ch29-open-technical-problems`
+    - Scaling and Efficiency — `` → `@sec-ch29-scaling-efficiency`
+    - Context and Multi-Scale Integration — `` → `@sec-ch29-context-multi-scale-integration`
+    - Causality and Mechanism — `` → `@sec-ch29-causality-mechanism`
+  - Emerging Directions — `` → `@sec-ch29-emerging-directions`
+    - Multimodal Integration — `` → `@sec-ch29-multimodal-integration`
+    - Agentic and Closed-Loop Systems — `` → `@sec-ch29-agentic-closed-loop-systems`
+    - Clinical Integration and Learning Health Systems — `` → `@sec-ch29-clinical-integration-learning-health`
+  - Work Ahead — `` → `@sec-ch29-work-ahead`
