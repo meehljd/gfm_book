@@ -72,7 +72,7 @@ These decompositions depend on modeling assumptions and provide approximations r
 
 *AlphaMissense* outputs a continuous score between 0 and 1 for each possible missense variant in the human proteome. When it reports 0.85 for a particular variant, what does this number mean? If the model is calibrated, collecting all variants scored near 0.85 and checking their true clinical status should reveal that approximately 85% are pathogenic. Perfect calibration means that predicted probabilities match observed frequencies across the entire range of model outputs: among variants scored at 0.30, roughly 30% should be pathogenic; among variants scored at 0.95, roughly 95% should be pathogenic. This alignment between stated confidence and empirical accuracy is calibration, and most foundation models fail to achieve it.
 
-Formally, a model *f* mapping inputs *X* to probability estimates *p* = *f*(*X*) is calibrated if P(*Y*=1 | *f*(*X*)=*p*) = *p* for all *p* in the interval from 0 to 1. The calibration condition requires that the model's stated confidence equals the true probability of the positive class conditional on that stated confidence. Miscalibration occurs when this equality fails: overconfident models produce predicted probabilities that exceed true frequencies (a variant scored at 0.85 is pathogenic only 60% of the time), while underconfident models produce predicted probabilities below true frequencies.
+Formally, a model $f$ mapping inputs $X$ to probability estimates $p = f(X)$ is calibrated if $P(Y = 1 \mid f(X) = p) = p$ for all $p$ in the interval from $0$ to $1$. The calibration condition requires that the model's stated confidence equals the true probability of the positive class conditional on that stated confidence. Miscalibration occurs when this equality fails: overconfident models produce predicted probabilities that exceed true frequencies (a variant scored at $0.85$ is pathogenic only $60\%$ of the time), while underconfident models produce predicted probabilities below true frequencies.
 
 Modern deep neural networks are systematically miscalibrated despite achieving high accuracy. Guo and colleagues demonstrated that contemporary architectures exhibit worse calibration than older, less accurate models [@guo_calibration_2017]. The phenomenon arises because standard training objectives like cross-entropy loss optimize for discrimination (separating positive from negative examples) rather than calibration (matching predicted probabilities to frequencies). Over-parameterized models with capacity exceeding what the data requires can achieve near-perfect training loss while producing overconfident predictions on held-out data. The softmax temperature in transformer architectures affects the sharpness of probability distributions, and default settings often produce excessively peaked outputs.
 
@@ -84,9 +84,11 @@ Calibration and discrimination are distinct properties. A model can achieve perf
 
 **Expected calibration error (ECE)** provides a scalar summary of calibration quality. ECE computes the weighted average absolute difference between predicted probabilities and observed frequencies across bins:
 
-$$\text{ECE} = \sum_{m=1}^{M} \frac{|B_m|}{n} \left| \text{acc}(B_m) - \text{conf}(B_m) \right|$$
+$$
+\text{ECE} = \sum_{m=1}^{M} \frac{|B_m|}{n} \left| \text{acc}(B_m) - \text{conf}(B_m) \right|
+$$
 
-where *B_m* denotes the set of examples in bin *m*, |*B_m*| is the number of examples in that bin, *n* is the total number of examples, acc(*B_m*) is the accuracy (fraction of positives) in bin *m*, and conf(*B_m*) is the mean predicted probability in bin *m*. Lower ECE indicates better calibration, with zero representing perfect calibration. ECE depends on binning strategy; equal-width bins may place most examples in a few bins for models with concentrated predictions, while equal-mass bins ensure each bin contains the same number of examples but may span wide probability ranges.
+where $B_m$ denotes the set of examples in bin $m$, $|B_m|$ is the number of examples in that bin, $n$ is the total number of examples, $\text{acc}(B_m)$ is the accuracy (fraction of positives) in bin $m$, and $\text{conf}(B_m)$ is the mean predicted probability in bin $m$. Lower ECE indicates better calibration, with zero representing perfect calibration. ECE depends on binning strategy; equal-width bins may place most examples in a few bins for models with concentrated predictions, while equal-mass bins ensure each bin contains the same number of examples but may span wide probability ranges.
 
 **Maximum calibration error (MCE)** captures worst-case miscalibration by reporting the largest absolute gap between predicted and observed frequencies across all bins. MCE is appropriate when any severe miscalibration is unacceptable, as in high-stakes clinical applications where even rare catastrophic errors carry significant consequences.
 
@@ -143,7 +145,7 @@ The method's simplicity (one parameter) is both strength and limitation. A singl
 
 $$\hat{p} = \sigma(a \cdot f(x) + b)$$
 
-where *f*(*x*) is the original model's output, σ is the sigmoid function, and parameters *a* and *b* are learned on calibration data. The two parameters provide more flexibility than temperature scaling's single parameter, allowing correction of both the sharpness and the location of the probability distribution.
+where $f(x)$ is the original model's output, $\sigma$ is the sigmoid function, and parameters $a$ and $b$ are learned on calibration data. The two parameters provide more flexibility than temperature scaling's single parameter, allowing correction of both the sharpness and the location of the probability distribution.
 
 Platt scaling is appropriate when miscalibration involves systematic bias (predictions consistently too high or too low) in addition to over- or underconfidence. The method assumes that a monotonic logistic transformation suffices to correct miscalibration, which may not hold for models with complex, non-monotonic calibration curves.
 
@@ -198,7 +200,7 @@ Limitations temper the method's appeal. Modern transformer architectures often d
 
 Standard regression models predict a single output value, implicitly assuming constant noise variance across all inputs. **Heteroscedastic models** instead predict both a mean and a variance for each input, capturing the intuition that prediction uncertainty varies depending on the input. For genomic applications, this approach naturally handles the observation that some prediction tasks are inherently noisier than others: coding variant effects may be more predictable than regulatory variant effects, constrained genes more predictable than tolerant genes.
 
-Architecture modifications are minimal. Instead of outputting a single value, the model outputs two values interpreted as the mean μ(*x*) and variance σ²(*x*) of a Gaussian distribution over outputs. Training uses negative log-likelihood loss under this Gaussian, which penalizes both prediction errors and miscalibrated variance estimates:
+Architecture modifications are minimal. Instead of outputting a single value, the model outputs two values interpreted as the mean $\mu(x)$ and variance $\sigma^2(x)$ of a Gaussian distribution over outputs. Training uses negative log-likelihood loss under this Gaussian, which penalizes both prediction errors and miscalibrated variance estimates:
 
 $$\mathcal{L} = \frac{1}{2\sigma^2(x)}(y - \mu(x))^2 + \frac{1}{2}\log \sigma^2(x)$$
 
@@ -306,7 +308,7 @@ Learned representations provide more reliable OOD detection than raw likelihood.
 
 **Mahalanobis distance** measures how far a test embedding lies from training data, accounting for the covariance structure of the embedding space. For each class, compute the mean embedding and covariance matrix from training examples. For a test input, compute its distance to each class centroid in units of standard deviations, accounting for correlations between embedding dimensions. Large Mahalanobis distance indicates OOD inputs.
 
-Nearest-neighbor methods provide a non-parametric alternative. For a test embedding, find the *k* nearest neighbors among training embeddings and compute the average distance. Large average distance to neighbors indicates the test input lies in a sparse region of embedding space, suggesting it is OOD. This approach makes no distributional assumptions and scales well with modern approximate nearest-neighbor algorithms.
+Nearest-neighbor methods provide a non-parametric alternative. For a test embedding, find the $k$ nearest neighbors among training embeddings and compute the average distance. Large average distance to neighbors indicates the test input lies in a sparse region of embedding space, suggesting it is OOD. This approach makes no distributional assumptions and scales well with modern approximate nearest-neighbor algorithms.
 
 For genomic foundation models, embedding-based OOD detection enables practical deployment safeguards. *ESM* embeddings place novel protein folds in regions distant from characterized folds, allowing detection of sequences outside the model's training experience. *DNABERT* embeddings reveal unusual sequence composition or repeat structures that may confound predictions. Flagging these cases for expert review prevents confident but unreliable predictions from reaching clinical decisions. The properties of DNA and protein language model embeddings are discussed in @sec-ch11-dna-lm and @sec-ch12-protein-lm.
 
