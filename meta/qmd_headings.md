@@ -99,6 +99,7 @@
 ## Expression and eQTL Resources {#sec-ch02-expression}
 ### Bulk Expression Atlases {#sec-ch02-gtex}
 ### Single-Cell and Context-Specific Expression {#sec-ch02-single-cell}
+## Protein Databases {#sec-ch02-protein-databases}
 ## Phenotype Definition and Data Quality {#sec-ch02-phenotypes}
 ### Problem of Binary Disease Definitions {#sec-ch02-binary-phenotypes}
 ### Electronic Health Record Quality and Completeness {#sec-ch02-ehr}
@@ -262,7 +263,8 @@
 ### What Masked Language Models Learn {#sec-ch08-mlm-learning}
 ## Next-Token Prediction {#sec-ch08-autoregressive}
 ### Genomic Applications {#sec-ch08-autoregressive-genomics}
-### MLM and Autoregressive Comparison {#sec-ch08-comparison}
+## MLM and Autoregressive Comparison {#sec-ch08-comparison}
+### Hybrid Architectures {#sec-ch08-hybrid}
 ## Span Corruption and Denoising {#sec-ch08-denoising}
 ### Corruption Beyond Masking {#sec-ch08-corruption}
 ### Biologically Motivated Corruption {#sec-ch08-biological-corruption}
@@ -274,6 +276,13 @@
 ### Loss Weighting and Balancing {#sec-ch08-loss-weighting}
 ### Large-Scale Multi-Task Examples {#sec-ch08-multitask-examples}
 ### When Multi-Task Learning Fails {#sec-ch08-multitask-failure}
+## Staged Pretraining Strategies {#sec-ch08-staged}
+### Context Length Curricula {#sec-ch08-context-curriculum}
+### Domain-Adaptive Pretraining {#sec-ch08-domain-adaptive}
+### Continued Pretraining on Expanded Data {#sec-ch08-continued-pretraining}
+### Multi-Objective Schedules {#sec-ch08-multiobjective-schedule}
+### Data Complexity Curricula {#sec-ch08-data-complexity}
+### Practical Considerations {#sec-ch08-staged-practical}
 ## Data Strategies for Pretraining {#sec-ch08-data}
 ### Reference Genomes and Population Diversity {#sec-ch08-reference-genomes}
 ### Repeat Handling {#sec-ch08-repeats}
@@ -298,18 +307,35 @@
 ## Source and Target Domains {#sec-ch09-source-target}
 ### Gap Between Pretraining and Deployment {#sec-ch09-pretraining-deployment-gap}
 ### Recognizing Transfer Outcomes {#sec-ch09-transfer-outcomes}
+## Factors Determining Transfer Success {#sec-ch09-transfer-factors}
+### Task Relatedness {#sec-ch09-task-relatedness}
+### Target Data Quantity {#sec-ch09-target-data-quantity}
+### Model Expressiveness {#sec-ch09-model-expressiveness}
+### Distribution Overlap {#sec-ch09-distribution-overlap}
+### Factor Interactions
 ## Feature Extraction and Representation Analysis {#sec-ch09-feature-extraction}
 ### Linear Probing {#sec-ch09-linear-probing}
 ### When Linear Probing Fails {#sec-ch09-linear-probing-limits}
 ### Probing Representations {#sec-ch09-probing-representations}
 ### What Probing Reveals About Pretrained Models {#sec-ch09-probing-results}
-### Probing Guides Adaptation Strategy {#sec-ch09-probing-guides-adaptation}
+### Probe-Guided Adaptation {#sec-ch09-probe-guided-adaptation}
 ## Parameter-Efficient Fine-Tuning {#sec-ch09-peft}
 ### Low-Rank Adaptation {#sec-ch09-lora}
 ### Configuring Low-Rank Adaptation {#sec-ch09-lora-config}
+## Layer Selection for Embedding Extraction {#sec-ch09-layer-selection}
+### The Encoder Advantage
+### The Decoder Dilemma
+### Practical Consequences
+### Layer Averaging and Weighted Combinations
+### Systematic Layer Probing
+### Implications for Model Selection
+### Cross-Reference to Pretraining Objectives
 ## Full Fine-Tuning {#sec-ch09-full-finetuning}
 ### Making Full Fine-Tuning Work {#sec-ch09-full-finetuning-practice}
 ### Risks of Unconstrained Adaptation {#sec-ch09-finetuning-risks}
+### The `[CLS]` Token and Sequence Aggregation {#sec-ch09-cls-token}
+### Mean Pooling and Alternatives
+### Practical Considerations for Genomic Sequences
 ## Choosing an Adaptation Strategy {#sec-ch09-choosing-strategy}
 ## Domain Shift and Cross-Context Transfer {#sec-ch09-domain-shift}
 ### Types of Domain Shift in Genomics {#sec-ch09-domain-shift-types}
@@ -319,6 +345,11 @@
 ### Zero-Shot Transfer Without Task-Specific Data {#sec-ch09-zero-shot}
 ### Emerging Approaches {#sec-ch09-emerging-approaches}
 ### Toward Theoretical Foundations {#sec-ch09-theory}
+## Label and Class Imbalance {#sec-ch09-label-imbalance}
+### Manifestations During Transfer
+### Mitigation Strategies
+### Evaluation Under Imbalance
+### Imbalance as Fundamental Constraint
 ## Diagnosing Transfer: Validation and Failure Modes {#sec-ch09-diagnosing-transfer}
 ### Diagnosing Negative Transfer {#sec-ch09-negative-transfer}
 ### Remediation When Transfer Fails {#sec-ch09-remediation}

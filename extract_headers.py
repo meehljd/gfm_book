@@ -3,7 +3,7 @@ import re
 from pathlib import Path
 
 root = Path(".")
-out_path = Path("qmd_headings.md")  # change as you like
+out_path = Path("meta/qmd_headings.md")  # change as you like
 
 heading_re = re.compile(r"^\s{0,3}#{1,6}\s+\S")
 
