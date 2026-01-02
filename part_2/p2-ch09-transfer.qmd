@@ -1,5 +1,3 @@
-LOST CITATIONS
-
 # Transfer and Adaptation {#sec-ch09-transfer}
 
 **Transfer learning** fails as often as it succeeds, and the failures are silent. A protein language model trained on human sequences may confidently score variants in mouse orthologs, producing predictions that look reasonable but reflect human-specific evolutionary pressures irrelevant to mouse biology. A foundation model pretrained on coding sequences may extract features actively misleading for noncoding regulatory elements. A classifier achieving 90% accuracy on common variants may collapse to chance performance on the rare variants that matter most clinically. Nothing in the model's outputs signals these failures. The predictions look the same whether transfer has succeeded or catastrophically failed. This asymmetry between confident outputs and actual reliability creates the central methodological challenge of applying pretrained models: detecting when transfer works and when it does not, before the predictions reach clinical applications where failures have consequences.
@@ -13,7 +11,7 @@ The reality requires careful navigation. Every adaptation decision involves trad
 When a cardiologist requests variant interpretation for a patient with hypertrophic cardiomyopathy, the clinical need (classifying a specific *MYH7* variant) differs fundamentally from the data available during model development (millions of protein sequences sampled across all of evolution). Bridging this gap requires understanding what properties of pretraining determine whether transfer will succeed. When this bridge fails, patients receive confident predictions based on patterns irrelevant to their clinical context.
 
 ::: {#fig-domain-alignment}
-![**FIGURE PLACEHOLDER**](https://placehold.co/300x200?text=FIGURE%20PLACEHOLDER)
+![**FIGURE PLACEHOLDER**](../figs/part_2/ch09/01-fig-domain-alignment.png)
 
 [Essential] Schematic illustrating domain shift in genomic transfer learning. Left panel (Source Domain): Diverse genomic sequences during pretraining, with learned representations capturing statistical regularities (local motifs, composition, conservation). Right panel (Target Domain): Sparse labeled examples for clinical task (e.g., pathogenic variants, tissue-specific enhancers), highlighting distributional differences. Center: Representation space showing well-transferred features (local motifs, conservation patterns) connected by solid arrows vs. poorly-transferred features (long-range regulatory logic, tissue-specific patterns) with dashed arrows indicating transfer failure.
 :::
@@ -129,7 +127,7 @@ A research hospital developing tissue-specific expression predictors faces an im
 The efficiency gains prove substantial. A transformer with 500 million parameters might require updating only 2 to 5 million LoRA parameters (representing the low-rank decompositions applied to attention weight matrices), reducing memory requirements by an order of magnitude compared with full fine-tuning. This efficiency enables training on consumer GPUs for models that would otherwise require specialized infrastructure, and enables systematic hyperparameter search that would be prohibitive with full parameter updates. Zhou et al. demonstrated that LoRA adapters on *Nucleotide Transformer* enable tissue-specific chromatin accessibility prediction, where separate low-rank matrices capture tissue-specific regulatory patterns while the pretrained backbone encodes general sequence understanding [@zhou_dnabert-2_2024]. Clinical applications of parameter-efficient fine-tuning for risk prediction appear in @sec-ch25-clinical-risk.
 
 ::: {#fig-lora-architecture}
-![**FIGURE PLACEHOLDER**](https://placehold.co/300x200?text=FIGURE%20PLACEHOLDER)
+![**FIGURE PLACEHOLDER**](../figs/part_2/ch09/02-fig-lora-architecture.png)
 
 [Essential] Schematic of LoRA adaptation showing original frozen weight matrix W alongside low-rank decomposition matrices A and B. Indicate parameter counts (e.g., 500M frozen vs. 2-5M trainable). Show how the effective weight becomes W + BA during forward pass.
 :::
@@ -192,8 +190,10 @@ This probing step reveals not just the optimal layer but the shape of performanc
 
 For genomic models specifically, probing results often correlate with task properties. Tasks requiring recognition of local sequence motifs (transcription factor binding) show best performance in earlier layers where positional patterns are most directly encoded. Tasks requiring integration of broader context (enhancer-promoter association, long-range regulatory effects) show best performance in deeper middle layers where more context has been accumulated through the causal attention stack. Tasks most aligned with the next-token prediction objective (predicting the next nucleotide) show best performance in later layers, as expected.
 
-::: {#fig-layer-probing-decoder}
-![**FIGURE PLACEHOLDER**](https://placehold.co/600x300?text=FIGURE%20PLACEHOLDER)
+::: {#fig-layer-probing-decoder layout-ncol=2}
+![**FIGURE PLACEHOLDER A**](../figs/part_2/ch09/03-A-fig-layer-probing-decoder.png)
+
+![**FIGURE PLACEHOLDER B**](../figs/part_2/ch09/03-B-fig-layer-probing-decoder.png)
 
 [Essential] Two-panel figure comparing layer-wise probing results for encoder vs. decoder architectures on the same downstream task (e.g., splice site classification). Panel A: Encoder model showing relatively flat performance across layers with slight improvement toward final layers. Panel B: Decoder model showing inverted-U pattern with peak performance at middle layers and degraded performance at final layer. Annotate the "layer hunting problem" region for decoder models.
 :::
@@ -273,7 +273,7 @@ Data quantity determines what is possible. With fewer than 500 labeled examples,
 These heuristics indicate which strategies merit trying first, but empirical validation supersedes any rule. No formula reliably predicts which approach will succeed for a specific combination of model, task, and data. The conservative path is to establish frozen feature baselines first, escalate to PEFT when frozen features prove insufficient, and reserve full fine-tuning for cases where simpler methods demonstrably fail and sufficient data exists to justify the risk.
 
 ::: {#fig-adaptation-decision-tree}
-![**FIGURE PLACEHOLDER**](https://placehold.co/300x200?text=FIGURE%20PLACEHOLDER)
+![**FIGURE PLACEHOLDER**](../figs/part_2/ch09/04-fig-adaptation-decision-tree.png)
 
 [Essential] Flowchart guiding adaptation strategy selection. Decision nodes: (1) "Labeled data quantity?" with branches <500, 500-5000, >10000. (2) "Task similarity to pretraining?" with branches high/moderate/low. (3) "Computational constraints?" with branches limited/moderate/substantial. Terminal nodes recommend: Linear probing, LoRA/Adapters, Full fine-tuning, or From-scratch training. Include expected tradeoffs at each terminal (accuracy, compute, overfitting risk).
 :::
@@ -303,11 +303,11 @@ Detecting domain shift before deployment prevents silent clinical failures. Stat
 When domain shift is detected, mitigation strategies include domain-adaptive fine-tuning, importance weighting of training examples, and explicit modeling of shift through domain-adversarial training [@ganin_domain-adversarial_2016]. When shift is severe and cannot be mitigated, acknowledging that transfer is inappropriate for this context prevents overconfident deployment of models that will fail.
 
 ::: {#fig-domain-shift-detection layout-ncol=3}
-![**FIGURE PLACEHOLDER A**](https://placehold.co/300x200?text=FIGURE%20PLACEHOLDER%20A)
+![**FIGURE PLACEHOLDER A**](../figs/part_2/ch09/05-A-fig-domain-shift-detection.png)
 
-![**FIGURE PLACEHOLDER B**](https://placehold.co/300x200?text=FIGURE%20PLACEHOLDER%20B)
+![**FIGURE PLACEHOLDER B**](../figs/part_2/ch09/05-B-fig-domain-shift-detection.png)
 
-![**FIGURE PLACEHOLDER C**](https://placehold.co/300x200?text=FIGURE%20PLACEHOLDER%20C)
+![**FIGURE PLACEHOLDER C**](../figs/part_2/ch09/05-C-fig-domain-shift-detection.png)
 
 [High] Three-panel visualization of domain shift detection. Panel A: UMAP/t-SNE projection of embeddings showing training distribution (dense cluster) and test examples at varying distances, with out-of-distribution examples clearly separated. Panel B: Calibration curves comparing confidence vs. accuracy for in-distribution (well-calibrated diagonal) vs. out-of-distribution examples (overconfident, curve below diagonal). Panel C: Performance degradation curve showing accuracy declining as distributional distance from training data increases.
 :::
@@ -405,13 +405,13 @@ When diagnostics reveal fundamental mismatches, several remediation strategies a
 A research group reports that their foundation model adaptation achieves 95% accuracy for splice variant classification, far exceeding previous methods. Six months later, clinical deployment reveals performance closer to 70%, with systematic failures on the rare variants that matter most. The initial evaluation was not wrong, but it was misleading. Proper validation separates genuine transfer success from evaluation artifacts that dissolve on contact with clinical reality. The benchmark landscape and its limitations are examined in @sec-ch20-benchmarks, evaluation methodology in @sec-ch21-eval, and systematic sources of inflated performance in @sec-ch22-confounding.
 
 ::: {#fig-validation-pitfalls layout-ncol=2}
-![**FIGURE PLACEHOLDER A**](https://placehold.co/300x200?text=FIGURE%20PLACEHOLDER%20A)
+![**FIGURE PLACEHOLDER A**](../figs/part_2/ch09/06-A-fig-validation-pitfalls.png)
 
-![**FIGURE PLACEHOLDER B**](https://placehold.co/300x200?text=FIGURE%20PLACEHOLDER%20B)
+![**FIGURE PLACEHOLDER B**](../figs/part_2/ch09/06-B-fig-validation-pitfalls.png)
 
-![**FIGURE PLACEHOLDER C**](https://placehold.co/300x200?text=FIGURE%20PLACEHOLDER%20C)
+![**FIGURE PLACEHOLDER C**](../figs/part_2/ch09/06-C-fig-validation-pitfalls.png)
 
-![**FIGURE PLACEHOLDER D**](https://placehold.co/300x200?text=FIGURE%20PLACEHOLDER%20D)
+![**FIGURE PLACEHOLDER D**](../figs/part_2/ch09/06-D-fig-validation-pitfalls.png)
 
 [High] Multi-panel figure illustrating common validation failures. Panel A: Venn diagram showing pretraining data / test data overlap creating leakage (inflated performance). Panel B: Timeline showing temporal leakage when training on variants annotated after test set creation. Panel C: Bar chart comparing foundation model against weak baseline (large gap, misleading) vs. properly-tuned baseline (small gap, realistic). Panel D: Stratified performance showing aggregate accuracy (90%) vs. rare-variant accuracy (50%), revealing hidden failures.
 :::
