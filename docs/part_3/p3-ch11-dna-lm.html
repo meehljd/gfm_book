@@ -95,6 +95,35 @@ div.csl-indent {
   }
 }</script>
 
+  <script src="https://cdnjs.cloudflare.com/polyfill/v3/polyfill.min.js?features=es6"></script>
+  <script src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-chtml-full.js" type="text/javascript"></script>
+
+<script type="text/javascript">
+const typesetMath = (el) => {
+  if (window.MathJax) {
+    // MathJax Typeset
+    window.MathJax.typeset([el]);
+  } else if (window.katex) {
+    // KaTeX Render
+    var mathElements = el.getElementsByClassName("math");
+    var macros = [];
+    for (var i = 0; i < mathElements.length; i++) {
+      var texText = mathElements[i].firstChild;
+      if (mathElements[i].tagName == "SPAN" && texText && texText.data) {
+        window.katex.render(texText.data, mathElements[i], {
+          displayMode: mathElements[i].classList.contains('display'),
+          throwOnError: false,
+          macros: macros,
+          fleqn: false
+        });
+      }
+    }
+  }
+}
+window.Quarto = {
+  typesetMath
+};
+</script>
 
 <link rel="stylesheet" href="../styles.css">
 </head>
@@ -680,7 +709,7 @@ div.csl-indent {
 <div aria-describedby="fig-dna-lm-timeline-caption-0ceaefa1-69ba-4598-a22c-09a6ac19f8ca">
 <div class="quarto-figure quarto-figure-center">
 <figure class="figure">
-<p><img src="https://placehold.co/300x200?text=FIGURE%20PLACEHOLDER.png" class="img-fluid figure-img"></p>
+<p><img src="../figs/part_3/ch11/01-fig-dna-lm-timeline.png" class="img-fluid figure-img"></p>
 <figcaption><strong>FIGURE PLACEHOLDER</strong></figcaption>
 </figure>
 </div>
@@ -690,14 +719,14 @@ Figure&nbsp;11.1: [Essential] Horizontal timeline with milestones and architectu
 </figcaption>
 </figure>
 </div>
-<p>This paradigm succeeded but imposed three constraints that limited scalability. Every new assay, cell type, or phenotype required fresh labeled data; a model trained on ENCODE chromatin data could not predict histone modifications in a new cell type without additional labeled examples. Model architecture was bound to specific prediction problems: <em>SpliceAI</em>’s dilated convolutions were tailored for splice junction detection, and <em>ExPecto</em>’s spatial transformation was designed for the distance-dependent relationship between regulatory elements and transcription start sites. These architectural choices, while effective, did not transfer naturally to other problems. Features learned for one task could not easily support others; a model that learned to recognize transcription factor binding sites during chromatin accessibility training could not directly apply those representations to variant effect prediction without substantial re-engineering.</p>
+<p>This paradigm succeeded but imposed three constraints that limited scalability. Every new assay, cell type, or phenotype required fresh labeled data; a model trained on ENCODE chromatin data could not predict histone modifications in a new cell type without additional labeled examples. Model architecture was bound to specific prediction problems: <em>SpliceAI’s</em> dilated convolutions were tailored for splice junction detection, and <em>ExPecto’s</em> spatial transformation was designed for the distance-dependent relationship between regulatory elements and transcription start sites. These architectural choices, while effective, did not transfer naturally to other problems. Features learned for one task could not easily support others; a model that learned to recognize transcription factor binding sites during chromatin accessibility training could not directly apply those representations to variant effect prediction without substantial re-engineering.</p>
 <p>Protein language models demonstrated an alternative. <em>ESM</em> and related models trained on massive corpora of protein sequences using <strong>masked language modeling</strong> (predicting held-out amino acids from context) or <strong>autoregressive</strong> objectives (predicting the next amino acid). The resulting representations transferred to structure prediction, function annotation, and variant effect scoring without architecture changes (<a href="p3-ch12-protein-lm.html" class="quarto-xref"><span>Chapter 12</span></a>). DNA language models import this recipe: pretrain on large collections of genomic sequences using self-supervised objectives, then adapt the learned representations to downstream tasks through probing, fine-tuning, or zero-shot scoring.</p>
 <p>The practical workflow begins with training a language model on unlabeled genomic sequences to predict masked or subsequent nucleotides. From the trained model, <strong>embeddings</strong> are extracted for sequences of interest (windows around variants, regulatory elements, or entire genes). These embeddings then support downstream tasks through probing with lightweight classifiers, fine-tuning for specific applications, or zero-shot scoring via probability comparisons. Once a sufficiently powerful backbone exists, it becomes the default starting point for nearly any DNA-level prediction problem.</p>
 </section>
 <section id="sec-ch11-dnabert" class="level2" data-number="11.2">
 <h2 data-number="11.2" class="anchored" data-anchor-id="sec-ch11-dnabert"><span class="header-section-number">11.2</span> <em>DNABERT</em>: The First DNA Language Model</h2>
-<p><em>DNABERT</em> applied the <em>BERT</em> masked language modeling framework to genomic sequences, establishing proof of concept for DNA self-supervision <span class="citation" data-cites="ji_dnabert_2021">(<a href="../bib/references.html#ref-ji_dnabert_2021" role="doc-biblioref">Ji et al. 2021</a>)</span>. The model used overlapping <em>k</em>-mers (typically 6-mers) as tokens, creating a vocabulary of 4,096 tokens from the 4^6 possible hexamers. This tokenization strategy, detailed in <a href="../part_2/p2-ch05-representations.html#sec-ch05-kmer" class="quarto-xref"><span>Section 5.2</span></a>, provided computational efficiency at the cost of positional ambiguity for variants. Training on the human reference genome, <em>DNABERT</em> learned to predict masked tokens from surrounding context using the standard <em>BERT</em> architecture.</p>
-<p>The design choices reflected computational constraints of the time. The <em>k</em>-mer <strong>tokenization</strong> provided some sequence compression compared to single-nucleotide representations, but the overlapping nature (each nucleotide participates in multiple adjacent <em>k</em>-mers) meant the compression was modest and created ambiguity about precise variant positions. Context windows were limited to 512 tokens, corresponding to a few hundred base pairs of genomic sequence. The standard <strong>transformer architecture</strong> with quadratic attention complexity made longer contexts computationally prohibitive, a limitation examined in <a href="../part_2/p2-ch07-attention.html" class="quarto-xref"><span>Chapter 7</span></a> and resolved by the architectural innovations in <a href="#sec-ch11-hyenadna" class="quarto-xref"><span>Section 11.5.1</span></a> and <a href="#sec-ch11-caduceus" class="quarto-xref"><span>Section 11.5.2</span></a>.</p>
+<p><em>DNABERT</em> applied the <em>BERT</em> masked language modeling framework to genomic sequences, establishing proof of concept for DNA self-supervision <span class="citation" data-cites="ji_dnabert_2021">(<a href="../bib/references.html#ref-ji_dnabert_2021" role="doc-biblioref">Ji et al. 2021</a>)</span>. The model used overlapping k-mers (typically 6-mers) as tokens, creating a vocabulary of 4,096 tokens from the 4^6 possible hexamers. This tokenization strategy, detailed in <a href="../part_2/p2-ch05-representations.html#sec-ch05-kmer" class="quarto-xref"><span>Section 5.2</span></a>, provided computational efficiency at the cost of positional ambiguity for variants. Training on the human reference genome, <em>DNABERT</em> learned to predict masked tokens from surrounding context using the standard <em>BERT</em> architecture.</p>
+<p>The design choices reflected computational constraints of the time. The <span class="math inline">\(k\)</span>-mer <strong>tokenization</strong> provided some sequence compression compared to single-nucleotide representations, but the overlapping nature (each nucleotide participates in multiple adjacent k-mers) meant the compression was modest and created ambiguity about precise variant positions. Context windows were limited to 512 tokens, corresponding to a few hundred base pairs of genomic sequence. The standard <strong>transformer architecture</strong> with quadratic attention complexity made longer contexts computationally prohibitive, a limitation examined in <a href="../part_2/p2-ch07-attention.html" class="quarto-xref"><span>Chapter 7</span></a> and resolved by the architectural innovations in <a href="#sec-ch11-hyenadna" class="quarto-xref"><span>Section 11.5.1</span></a> and <a href="#sec-ch11-caduceus" class="quarto-xref"><span>Section 11.5.2</span></a>.</p>
 <p>Despite these limitations, <em>DNABERT</em> demonstrated several important principles. Fine-tuning on downstream tasks (promoter classification, splice site prediction, transcription factor binding site identification) achieved competitive performance with task-specific models trained from scratch. Learned embeddings captured biologically meaningful patterns, with similar sequences clustering together in embedding space even when trained only on the reference genome. The <em>BERT</em>-style architecture could be reused across multiple tasks with modest adaptation.</p>
 <p><em>DNABERT-2</em> addressed the tokenization limitations through improved approaches including BPE-style token merging that better compressed repetitive sequences <span class="citation" data-cites="zhou_dnabert-2_2024">(<a href="../bib/references.html#ref-zhou_dnabert-2_2024" role="doc-biblioref">Zhou et al. 2024</a>)</span>. The resulting model could represent longer genomic contexts within the same number of tokens, improving computational efficiency. On standardized benchmarks spanning sequence classification, regulatory element prediction, and variant effect scoring (<a href="../part_5/p5-ch20-benchmarks.html" class="quarto-xref"><span>Chapter 20</span></a>), <em>DNABERT-2</em> achieved consistent gains over both the original <em>DNABERT</em> and non-pretrained baselines. These improvements validated the importance of thoughtful tokenization design for genomic applications (see <a href="../part_2/p2-ch05-representations.html" class="quarto-xref"><span>Chapter 5</span></a> for detailed discussion of tokenization strategies).</p>
 <p>The <em>DNABERT</em> family collectively established that self-supervision on DNA works, that tokenization choices substantially affect performance, and that masked language model training produces reusable representations for diverse sequence tasks. The foundation model paradigm transfers effectively from natural language to genomic sequence.</p>
@@ -711,7 +740,7 @@ Figure&nbsp;11.1: [Essential] Horizontal timeline with milestones and architectu
 </section>
 <section id="sec-ch11-gpn" class="level2" data-number="11.4">
 <h2 data-number="11.4" class="anchored" data-anchor-id="sec-ch11-gpn"><span class="header-section-number">11.4</span> <em>GPN</em>: Cross-Species Pretraining for Variant Effect Prediction</h2>
-<p>While the <em>Nucleotide Transformer</em> demonstrated the value of scaling, the Genomic Pre-trained Network (<em>GPN</em>) explored a complementary direction: what can be learned from cross-species pretraining on relatively small, well-annotated genomes <span class="citation" data-cites="benegas_gpn_2023">(<a href="../bib/references.html#ref-benegas_gpn_2023" role="doc-biblioref">Benegas, Batra, and Song 2023</a>)</span>. Rather than scaling to maximum size, <em>GPN</em> asked whether self-supervision could yield useful variant effect predictors even in constrained settings.</p>
+<p>While the <em>Nucleotide Transformer</em> demonstrated the value of scaling, the Genomic Pretrained Network (<em>GPN</em>) explored a complementary direction: what can be learned from cross-species pretraining on relatively small, well-annotated genomes <span class="citation" data-cites="benegas_gpn_2023">(<a href="../bib/references.html#ref-benegas_gpn_2023" role="doc-biblioref">Benegas, Batra, and Song 2023</a>)</span>. Rather than scaling to maximum size, <em>GPN</em> asked whether self-supervision could yield useful variant effect predictors even in constrained settings.</p>
 <p><em>GPN</em> was trained on unaligned reference genomes from <em>Arabidopsis thaliana</em> and seven related species within the Brassicales order using masked language modeling. Despite this modest training corpus, analysis revealed emergent encoding of gene structure (exon-intron boundaries, splice sites) and DNA sequence motifs (transcription factor binding patterns) without explicit supervision. The model discovered these patterns purely from statistical regularities of genomic sequence across related species.</p>
 <p>For variant effect prediction, <em>GPN</em> used a <strong>likelihood ratio</strong> approach. Given reference and alternate alleles at a position, the model computes the log-likelihood of each under the learned sequence distribution. Variants that substantially reduce sequence likelihood (relative to the reference) are inferred to be more disruptive. This scoring strategy exploits the fact that constrained positions should have confident predictions for the reference allele, while unconstrained positions allow more flexibility.</p>
 <p>Evaluated on <em>A. thaliana</em> variants using allele frequencies from the 1001 Genomes Project, <em>GPN</em> outperformed traditional conservation scores including phyloP and phastCons <span class="citation" data-cites="benegas_gpn_2023">(<a href="../bib/references.html#ref-benegas_gpn_2023" role="doc-biblioref">Benegas, Batra, and Song 2023</a>)</span>. This was notable because phyloP and phastCons require explicit multiple sequence alignments and evolutionary models, while <em>GPN</em> learned its representations from unaligned sequences through self-supervision alone. The later <em>GPN-MSA</em> extended this approach to mammalian genomes by incorporating multi-species alignments, achieving strong performance on human variant benchmarks (<a href="p3-ch14-vep-fm.html#sec-ch14-dna-lm-vep" class="quarto-xref"><span>Section 14.3.3</span></a>). The success of this approach informed subsequent development of zero-shot variant scoring methods for clinical applications (<a href="../part_6/p6-ch26-rare-disease.html#sec-ch26-fm-scoring" class="quarto-xref"><span>Section 26.1.4</span></a>).</p>
@@ -727,7 +756,7 @@ Figure&nbsp;11.1: [Essential] Horizontal timeline with milestones and architectu
 <div class="quarto-layout-cell" style="flex-basis: 50.0%;justify-content: flex-start;">
 <div class="quarto-figure quarto-figure-center">
 <figure class="figure">
-<p><img src="https://placehold.co/300x200?text=FIGURE%20PLACEHOLDER%20A.png" class="img-fluid figure-img"></p>
+<p><img src="../figs/part_3/ch11/02-A-fig-long-context-revolution.png" class="img-fluid figure-img"></p>
 <figcaption><strong>FIGURE PLACEHOLDER A</strong></figcaption>
 </figure>
 </div>
@@ -735,7 +764,7 @@ Figure&nbsp;11.1: [Essential] Horizontal timeline with milestones and architectu
 <div class="quarto-layout-cell" style="flex-basis: 50.0%;justify-content: flex-start;">
 <div class="quarto-figure quarto-figure-center">
 <figure class="figure">
-<p><img src="https://placehold.co/300x200?text=FIGURE%20PLACEHOLDER%20B.png" class="img-fluid figure-img"></p>
+<p><img src="../figs/part_3/ch11/02-B-fig-long-context-revolution.png" class="img-fluid figure-img"></p>
 <figcaption><strong>FIGURE PLACEHOLDER B</strong></figcaption>
 </figure>
 </div>
@@ -743,14 +772,14 @@ Figure&nbsp;11.1: [Essential] Horizontal timeline with milestones and architectu
 </div>
 </div>
 <figcaption class="quarto-float-caption-bottom quarto-float-caption quarto-float-fig" id="fig-long-context-revolution-caption-0ceaefa1-69ba-4598-a22c-09a6ac19f8ca">
-Figure&nbsp;11.2: [Essential] Two-panel comparison. Panel A (Computational Complexity): Log-log plot showing sequence length (x) vs.&nbsp;compute/memory (y); standard attention O(L²) steep curve; Hyena/<em>Mamba</em> O(L) or O(L log L) much flatter; annotated points at 1kb, 10kb, 100kb, 1Mb showing tractability. Panel B (Biological Context Coverage): Same x-axis; biological features overlaid as ranges (TF binding ~10-20bp, promoter ~1kb, gene body ~10-50kb, enhancer-promoter ~20-200kb, TAD ~100kb-1Mb); vertical lines showing model context limits.
+Figure&nbsp;11.2: [Essential] Two-panel comparison. Panel A (Computational Complexity): Log-log plot showing sequence length (x) vs.&nbsp;compute/memory (y); standard attention <span class="math inline">\(O(L^2)\)</span> steep curve; Hyena/<em>Mamba</em> <span class="math inline">\(O(L)\)</span> or <span class="math inline">\(O(L \log L)\)</span> much flatter; annotated points at <span class="math inline">\(1\ \mathrm{kb}\)</span>, <span class="math inline">\(10\ \mathrm{kb}\)</span>, <span class="math inline">\(100\ \mathrm{kb}\)</span>, <span class="math inline">\(1\ \mathrm{Mb}\)</span> showing tractability. Panel B (Biological Context Coverage): Same x-axis; biological features overlaid as ranges (TF binding <span class="math inline">\(\sim 10\)</span>–<span class="math inline">\(20\ \mathrm{bp}\)</span>, promoter <span class="math inline">\(\sim 1\ \mathrm{kb}\)</span>, gene body <span class="math inline">\(\sim 10\)</span>–<span class="math inline">\(50\ \mathrm{kb}\)</span>, enhancer-promoter <span class="math inline">\(\sim 20\)</span>–<span class="math inline">\(200\ \mathrm{kb}\)</span>, TAD <span class="math inline">\(\sim 100\ \mathrm{kb}\)</span>–<span class="math inline">\(1\ \mathrm{Mb}\)</span>); vertical lines showing model context limits.
 </figcaption>
 </figure>
 </div>
 <section id="sec-ch11-hyenadna" class="level3" data-number="11.5.1">
 <h3 data-number="11.5.1" class="anchored" data-anchor-id="sec-ch11-hyenadna"><span class="header-section-number">11.5.1</span> <em>HyenaDNA</em>: Megabase Context via Implicit Convolutions</h3>
-<p><em>HyenaDNA</em> addressed this limitation by replacing attention with implicit convolutions that scale sub-quadratically <span class="citation" data-cites="nguyen_hyenadna_2023">(<a href="../bib/references.html#ref-nguyen_hyenadna_2023" role="doc-biblioref">Nguyen et al. 2023</a>)</span>. The Hyena architecture parameterizes long convolutional filters through neural networks rather than storing explicit filter weights, achieving O(L log L) complexity through efficient FFT-based convolution compared to O(L^2) for standard attention. The result was a 500-fold increase in context length: <em>HyenaDNA</em> processes sequences up to 1 Mb while maintaining single-nucleotide resolution.</p>
-<p>Processing megabase-scale windows allows the model to capture entire gene bodies plus flanking regulatory regions, long-range enhancer-promoter interactions, and topologically associating domain structure. Despite the long context, single-nucleotide tokens preserve maximum resolution for variant effect prediction. Each nucleotide is independently represented without the ambiguity introduced by <em>k</em>-mer tokenization.</p>
+<p><em>HyenaDNA</em> addressed this limitation by replacing attention with implicit convolutions that scale sub-quadratically <span class="citation" data-cites="nguyen_hyenadna_2023">(<a href="../bib/references.html#ref-nguyen_hyenadna_2023" role="doc-biblioref">Nguyen et al. 2023</a>)</span>. The Hyena architecture parameterizes long convolutional filters through neural networks rather than storing explicit filter weights, achieving <span class="math inline">\(O(L \log L)\)</span> complexity through efficient FFT-based convolution compared to <span class="math inline">\(O(L^2)\)</span> for standard attention. The result was a 500-fold increase in context length: <em>HyenaDNA</em> processes sequences up to 1 Mb while maintaining single-nucleotide resolution.</p>
+<p>Processing megabase-scale windows allows the model to capture entire gene bodies plus flanking regulatory regions, long-range enhancer-promoter interactions, and topologically associating domain structure. Despite the long context, single-nucleotide tokens preserve maximum resolution for variant effect prediction. Each nucleotide is independently represented without the ambiguity introduced by <span class="math inline">\(k\)</span>-mer tokenization.</p>
 <p>On <em>Nucleotide Transformer</em> benchmarks, <em>HyenaDNA</em> achieved state-of-the-art results on the majority of tasks with orders of magnitude fewer parameters. On GenomicBenchmarks, it surpassed prior state-of-the-art on seven of eight datasets <span class="citation" data-cites="nguyen_hyenadna_2023">(<a href="../bib/references.html#ref-nguyen_hyenadna_2023" role="doc-biblioref">Nguyen et al. 2023</a>)</span>. Perhaps most notably, <em>HyenaDNA</em> demonstrated <strong>in-context learning</strong> in genomics: performance improved when examples were included in the input context without updating model weights. This capability, familiar from large language models, had not previously been observed for genomic sequences and suggests that sufficient context length combined with appropriate architecture enables qualitatively new forms of biological reasoning.</p>
 </section>
 <section id="sec-ch11-caduceus" class="level3" data-number="11.5.2">
@@ -761,7 +790,8 @@ Figure&nbsp;11.2: [Essential] Two-panel comparison. Panel A (Computational Compl
 </section>
 <section id="sec-ch11-evo2" class="level3" data-number="11.5.3">
 <h3 data-number="11.5.3" class="anchored" data-anchor-id="sec-ch11-evo2"><span class="header-section-number">11.5.3</span> <em>Evo 2</em>: Genome-Scale Modeling Across the Tree of Life</h3>
-<p><em>Evo 2</em> represents the current frontier: training at genome scale across all domains of life <span class="citation" data-cites="brixi_evo_2025">(<a href="../bib/references.html#ref-brixi_evo_2025" role="doc-biblioref">Brixi et al. 2025</a>)</span>. While previous models focused on specific organisms (<em>DNABERT</em> on human, <em>GPN</em> on plants) or trained on multi-species corpora at limited scale (<em>Nucleotide Transformer</em>), <em>Evo 2</em> aims to learn universal genomic patterns spanning bacteria, archaea, eukaryotes, and phages.</p>
+<p>The original <em>Evo</em> model demonstrated that DNA language models could operate at unprecedented scale <span class="citation" data-cites="nguyen_sequence_2024">(<a href="../bib/references.html#ref-nguyen_sequence_2024" role="doc-biblioref">Nguyen et al. 2024</a>)</span>. Trained on 2.7 million prokaryotic and phage genomes comprising 300 billion nucleotides, <em>Evo</em> processed sequences up to 131 kilobases using the StripedHyena architecture, a hybrid design combining state-space models with attention mechanisms. The 7 billion parameter model exhibited emergent biological understanding: predicting gene essentiality, identifying functional elements, and generating synthetic sequences with plausible biological properties. Crucially, <em>Evo</em> demonstrated that training on raw DNA sequence alone, without annotation, could yield models that captured fundamental aspects of genome organization.</p>
+<p><em>Evo 2</em> extends this foundation to the entire tree of life <span class="citation" data-cites="brixi_evo_2025">(<a href="../bib/references.html#ref-brixi_evo_2025" role="doc-biblioref">Brixi et al. 2025</a>)</span>. Where <em>Evo</em> focused primarily on prokaryotes and phages, <em>Evo 2</em> incorporates eukaryotic genomes with their dramatically different organization: extensive noncoding regions, complex regulatory architectures, and intronic sequences that comprise the majority of gene length in many species. This expansion required both larger models and longer context windows to capture the sprawling regulatory landscapes characteristic of eukaryotic genomes.</p>
 <div id="fig-caduceus-equivariance" class="quarto-layout-panel">
 <figure class="quarto-float quarto-float-fig figure">
 <div aria-describedby="fig-caduceus-equivariance-caption-0ceaefa1-69ba-4598-a22c-09a6ac19f8ca">
@@ -769,7 +799,7 @@ Figure&nbsp;11.2: [Essential] Two-panel comparison. Panel A (Computational Compl
 <div class="quarto-layout-cell" style="flex-basis: 33.3%;justify-content: flex-start;">
 <div class="quarto-figure quarto-figure-center">
 <figure class="figure">
-<p><img src="https://placehold.co/300x200?text=FIGURE%20PLACEHOLDER%20A.png" class="img-fluid figure-img"></p>
+<p><img src="../figs/part_3/ch11/03-A-fig-caduceus-equivariance.png" class="img-fluid figure-img"></p>
 <figcaption><strong>FIGURE PLACEHOLDER A</strong></figcaption>
 </figure>
 </div>
@@ -777,7 +807,7 @@ Figure&nbsp;11.2: [Essential] Two-panel comparison. Panel A (Computational Compl
 <div class="quarto-layout-cell" style="flex-basis: 33.3%;justify-content: flex-start;">
 <div class="quarto-figure quarto-figure-center">
 <figure class="figure">
-<p><img src="https://placehold.co/300x200?text=FIGURE%20PLACEHOLDER%20B.png" class="img-fluid figure-img"></p>
+<p><img src="../figs/part_3/ch11/03-B-fig-caduceus-equivariance.png" class="img-fluid figure-img"></p>
 <figcaption><strong>FIGURE PLACEHOLDER B</strong></figcaption>
 </figure>
 </div>
@@ -785,7 +815,7 @@ Figure&nbsp;11.2: [Essential] Two-panel comparison. Panel A (Computational Compl
 <div class="quarto-layout-cell" style="flex-basis: 33.3%;justify-content: flex-start;">
 <div class="quarto-figure quarto-figure-center">
 <figure class="figure">
-<p><img src="https://placehold.co/300x200?text=FIGURE%20PLACEHOLDER%20C.png" class="img-fluid figure-img"></p>
+<p><img src="../figs/part_3/ch11/03-C-fig-caduceus-equivariance.png" class="img-fluid figure-img"></p>
 <figcaption><strong>FIGURE PLACEHOLDER C</strong></figcaption>
 </figure>
 </div>
@@ -797,11 +827,11 @@ Figure&nbsp;11.3: [High] Three-panel diagram. Panel A (The Problem): Input seque
 </figcaption>
 </figure>
 </div>
-<p>The training corpus draws from the OpenGenome2 dataset comprising 9.3 trillion DNA tokens across all domains of life. This massive scale exposes the model to the full spectrum of genomic organization: compact prokaryotic gene arrangements, sprawling eukaryotic regulatory landscapes with extensive noncoding sequence, viral genomes with overlapping reading frames, and the diversity of regulatory architectures across evolution. The model comes in 7 billion and 40 billion parameter variants.</p>
-<p>The architecture builds on StripedHyena 2, a hybrid design combining convolutional operations with selective attention mechanisms. This enables processing of sequences up to 1 million nucleotides while maintaining computational tractability. The autoregressive training objective (predicting the next base given all previous bases) differs from the masked language modeling used in <em>DNABERT</em> and related models. Autoregressive training may provide complementary strengths for sequence generation and likelihood-based scoring, since the model learns to generate plausible sequences in addition to discriminating between them (<a href="../part_2/p2-ch08-pretraining.html" class="quarto-xref"><span>Chapter 8</span></a>).</p>
-<p><em>Evo 2</em> exhibits several forms of emergent biological knowledge despite training only on raw sequence. The model learns to identify exon-intron boundaries without explicit annotation, identifies transcription factor binding site patterns matching known motifs, captures aspects of protein secondary and tertiary structure when processing coding sequences, and identifies prophage insertion regions in bacterial genomes. These capabilities emerge from pure sequence statistics, demonstrating that genome-scale pretraining captures fundamental biological organization.</p>
+<p>The training corpus draws from the OpenGenome2 dataset comprising 9.3 trillion DNA tokens across all domains of life, a 30-fold increase over the original <em>Evo</em> training data. This massive scale exposes the model to the full spectrum of genomic organization: compact prokaryotic gene arrangements, sprawling eukaryotic regulatory landscapes with extensive noncoding sequence, viral genomes with overlapping reading frames, and the diversity of regulatory architectures across evolution. The model comes in 7 billion and 40 billion parameter variants, with the larger model extending well beyond the original <em>Evo</em>’s scale.</p>
+<p>The architecture builds on StripedHyena 2, refining the hybrid design that proved effective in the original <em>Evo</em>. The combination of convolutional operations with selective attention mechanisms enables processing of sequences up to 1 million nucleotides, nearly an order of magnitude beyond <em>Evo</em>’s 131 kilobase context. Like its predecessor, <em>Evo 2</em> uses an autoregressive training objective (predicting the next base given all previous bases), which differs from the masked language modeling used in <em>DNABERT</em> and related models. Autoregressive training may provide complementary strengths for sequence generation and likelihood-based scoring, since the model learns to generate plausible sequences in addition to discriminating between them (<a href="../part_2/p2-ch08-pretraining.html" class="quarto-xref"><span>Chapter 8</span></a>).</p>
+<p><em>Evo 2</em> exhibits several forms of emergent biological knowledge despite training only on raw sequence, extending the capabilities first observed in <em>Evo</em>. The model learns to identify exon-intron boundaries without explicit annotation, identifies transcription factor binding site patterns matching known motifs, captures aspects of protein secondary and tertiary structure when processing coding sequences, and identifies prophage insertion regions in bacterial genomes. Where <em>Evo</em> demonstrated these capabilities primarily in prokaryotic contexts, <em>Evo 2</em> generalizes them across eukaryotic genomes with their more complex gene structures.</p>
 <p>For variant effect prediction, <em>Evo 2</em> enables zero-shot scoring through likelihood ratios. Variants can be scored for consistency with learned genomic patterns by comparing model probabilities for reference versus alternate sequences. On benchmarks of pathogenic versus benign variants, zero-shot scores achieve competitive performance with specialized supervised methods, though calibration remains necessary before clinical application (<a href="p3-ch14-vep-fm.html#sec-ch14-dna-lm-vep" class="quarto-xref"><span>Section 14.3.3</span></a>). The calibration methods required for clinical deployment are examined in <a href="../part_5/p5-ch23-uncertainty.html#sec-ch23-calibration" class="quarto-xref"><span>Section 23.2</span></a>, and integration into diagnostic workflows in <a href="../part_6/p6-ch26-rare-disease.html#sec-ch26-fm-scoring" class="quarto-xref"><span>Section 26.1.4</span></a>. The model also supports classification of variants of uncertain significance through simple classifiers trained on its embeddings.</p>
-<p>The pan-species training enables cross-species applications. Variant interpretation extends naturally to non-model organisms, supporting conservation genomics and agricultural breeding where labeled training data is scarce. Model representations cluster sequences by phylogenetic relationships even without explicit evolutionary modeling. Beyond discriminative tasks, <em>Evo 2</em> demonstrates generative capabilities: synthesizing plausible mitochondrial genomes, prokaryotic operons, and eukaryotic regulatory regions with coherence across kilobase to megabase scales.</p>
+<p>The pan-species training enables cross-species applications that extend <em>Evo</em>’s prokaryotic focus to the full breadth of biology. Variant interpretation extends naturally to non-model organisms, supporting conservation genomics and agricultural breeding where labeled training data is scarce. Model representations cluster sequences by phylogenetic relationships even without explicit evolutionary modeling. Beyond discriminative tasks, <em>Evo 2</em> demonstrates generative capabilities building on <em>Evo</em>’s initial demonstrations: synthesizing plausible mitochondrial genomes, prokaryotic operons, and eukaryotic regulatory regions with coherence across kilobase to megabase scales.</p>
 </section>
 </section>
 <section id="sec-ch11-training-data" class="level2" data-number="11.6">
@@ -817,7 +847,7 @@ Figure&nbsp;11.3: [High] Three-panel diagram. Panel A (The Problem): Input seque
 <div class="quarto-layout-cell" style="flex-basis: 33.3%;justify-content: flex-start;">
 <div class="quarto-figure quarto-figure-center">
 <figure class="figure">
-<p><img src="https://placehold.co/300x200?text=FIGURE%20PLACEHOLDER%20A.png" class="img-fluid figure-img"></p>
+<p><img src="../figs/part_3/ch11/04-A-fig-evo2-training.png" class="img-fluid figure-img"></p>
 <figcaption><strong>FIGURE PLACEHOLDER A</strong></figcaption>
 </figure>
 </div>
@@ -825,7 +855,7 @@ Figure&nbsp;11.3: [High] Three-panel diagram. Panel A (The Problem): Input seque
 <div class="quarto-layout-cell" style="flex-basis: 33.3%;justify-content: flex-start;">
 <div class="quarto-figure quarto-figure-center">
 <figure class="figure">
-<p><img src="https://placehold.co/300x200?text=FIGURE%20PLACEHOLDER%20B.png" class="img-fluid figure-img"></p>
+<p><img src="../figs/part_3/ch11/04-B-fig-evo2-training.png" class="img-fluid figure-img"></p>
 <figcaption><strong>FIGURE PLACEHOLDER B</strong></figcaption>
 </figure>
 </div>
@@ -833,7 +863,7 @@ Figure&nbsp;11.3: [High] Three-panel diagram. Panel A (The Problem): Input seque
 <div class="quarto-layout-cell" style="flex-basis: 33.3%;justify-content: flex-start;">
 <div class="quarto-figure quarto-figure-center">
 <figure class="figure">
-<p><img src="https://placehold.co/300x200?text=FIGURE%20PLACEHOLDER%20C.png" class="img-fluid figure-img"></p>
+<p><img src="../figs/part_3/ch11/04-C-fig-evo2-training.png" class="img-fluid figure-img"></p>
 <figcaption><strong>FIGURE PLACEHOLDER C</strong></figcaption>
 </figure>
 </div>
@@ -850,7 +880,7 @@ Figure&nbsp;11.4: [High] Three-panel figure. Panel A (Training Corpus): Tree of 
 </section>
 <section id="sec-ch11-probing" class="level3" data-number="11.6.2">
 <h3 data-number="11.6.2" class="anchored" data-anchor-id="sec-ch11-probing"><span class="header-section-number">11.6.2</span> Probing What Models Learn</h3>
-<p><strong>Linear probing</strong> experiments reveal what information is encoded in model representations without task-specific fine-tuning. By training simple classifiers (logistic regression, single-layer perceptrons) on frozen embeddings to predict known annotations, researchers can assess whether models have learned biologically meaningful patterns. The methodology for such probing experiments is detailed in <a href="../part_2/p2-ch09-transfer.html#sec-ch09-probing-representations" class="quarto-xref"><span>Section 9.2.3</span></a>, with implications for interpretability examined in <a href="../part_5/p5-ch24-interpretability.html#sec-ch24-probing" class="quarto-xref"><span>Section 24.4</span></a>.</p>
+<p><strong>Linear probing</strong> experiments reveal what information is encoded in model representations without task-specific fine-tuning. By training simple classifiers (logistic regression, single-layer perceptrons) on frozen embeddings to predict known annotations, researchers can assess whether models have learned biologically meaningful patterns. The methodology for such probing experiments is detailed in <a href="../part_2/p2-ch09-transfer.html#sec-ch09-probing-representations" class="quarto-xref"><span>Section 9.3.3</span></a>, with implications for interpretability examined in <a href="../part_5/p5-ch24-interpretability.html#sec-ch24-probing" class="quarto-xref"><span>Section 24.4</span></a>.</p>
 <p>DNA language models consistently learn to recognize several categories of genomic features. Models learn patterns corresponding to known transcription factor binding sites, splice signals, and other sequence motifs without explicit supervision; probing for specific motif presence shows that model embeddings can distinguish sequences containing binding sites from those lacking them. Representations also encode gene structure: models distinguish coding from noncoding regions, identify exon-intron boundaries, and recognize splice donor and acceptor sites. This knowledge emerges from sequence statistics alone, suggesting that the compositional and structural differences between genomic region types are learnable from DNA sequence.</p>
 <p>Evolutionary constraints are implicitly captured, particularly in models trained on multi-species data. Positions under purifying selection (constrained across evolution) show different embedding patterns than neutral positions. This provides a self-supervised analog to traditional conservation scoring, though the relationship between model-learned and alignment-based conservation measures varies across genomic contexts.</p>
 <p>More complex patterns like regulatory grammar (the syntax governing how transcription factors combine to specify expression) show mixed evidence. Models capture some aspects of regulatory logic, such as the spacing preferences between binding sites, but may not fully represent the combinatorial complexity of enhancer function. Similarly, long-range dependencies (enhancer-promoter interactions across tens of kilobases) are accessible to long-context models but require extensive probing to assess whether they are actually leveraged.</p>
@@ -867,7 +897,7 @@ Figure&nbsp;11.4: [High] Three-panel figure. Panel A (Training Corpus): Tree of 
 <div class="quarto-layout-cell" style="flex-basis: 50.0%;justify-content: flex-start;">
 <div class="quarto-figure quarto-figure-center">
 <figure class="figure">
-<p><img src="https://placehold.co/300x200?text=FIGURE%20PLACEHOLDER%20A.png" class="img-fluid figure-img"></p>
+<p><img src="../figs/part_3/ch11/05-A-fig-dna-lm-probing.png" class="img-fluid figure-img"></p>
 <figcaption><strong>FIGURE PLACEHOLDER A</strong></figcaption>
 </figure>
 </div>
@@ -875,7 +905,7 @@ Figure&nbsp;11.4: [High] Three-panel figure. Panel A (Training Corpus): Tree of 
 <div class="quarto-layout-cell" style="flex-basis: 50.0%;justify-content: flex-start;">
 <div class="quarto-figure quarto-figure-center">
 <figure class="figure">
-<p><img src="https://placehold.co/300x200?text=FIGURE%20PLACEHOLDER%20B.png" class="img-fluid figure-img"></p>
+<p><img src="../figs/part_3/ch11/05-B-fig-dna-lm-probing.png" class="img-fluid figure-img"></p>
 <figcaption><strong>FIGURE PLACEHOLDER B</strong></figcaption>
 </figure>
 </div>
@@ -885,7 +915,7 @@ Figure&nbsp;11.4: [High] Three-panel figure. Panel A (Training Corpus): Tree of 
 <div class="quarto-layout-cell" style="flex-basis: 50.0%;justify-content: flex-start;">
 <div class="quarto-figure quarto-figure-center">
 <figure class="figure">
-<p><img src="https://placehold.co/300x200?text=FIGURE%20PLACEHOLDER%20C.png" class="img-fluid figure-img"></p>
+<p><img src="../figs/part_3/ch11/05-C-fig-dna-lm-probing.png" class="img-fluid figure-img"></p>
 <figcaption><strong>FIGURE PLACEHOLDER C</strong></figcaption>
 </figure>
 </div>
@@ -893,7 +923,7 @@ Figure&nbsp;11.4: [High] Three-panel figure. Panel A (Training Corpus): Tree of 
 <div class="quarto-layout-cell" style="flex-basis: 50.0%;justify-content: flex-start;">
 <div class="quarto-figure quarto-figure-center">
 <figure class="figure">
-<p><img src="https://placehold.co/300x200?text=FIGURE%20PLACEHOLDER%20D.png" class="img-fluid figure-img"></p>
+<p><img src="../figs/part_3/ch11/05-D-fig-dna-lm-probing.png" class="img-fluid figure-img"></p>
 <figcaption><strong>FIGURE PLACEHOLDER D</strong></figcaption>
 </figure>
 </div>
@@ -901,7 +931,7 @@ Figure&nbsp;11.4: [High] Three-panel figure. Panel A (Training Corpus): Tree of 
 </div>
 </div>
 <figcaption class="quarto-float-caption-bottom quarto-float-caption quarto-float-fig" id="fig-dna-lm-probing-caption-0ceaefa1-69ba-4598-a22c-09a6ac19f8ca">
-Figure&nbsp;11.5: [High] Multi-panel figure. Panel A (Motif Recognition): First-layer attention patterns aligned with JASPAR motifs; model learns CTCF pattern from sequence statistics alone. Panel B (Gene Structure): t-SNE/UMAP of embeddings color-coded by region type (exon, intron, UTR, intergenic); clear clustering without region labels during training. Panel C (Evolutionary Constraint): Scatter plot of model uncertainty vs.&nbsp;phyloP conservation score; strong correlation. Panel D (What Models Don’t Learn): Icons with X marks for epigenetic state, 3D structure, cell-type specificity, complex variants.
+Figure&nbsp;11.5: [High] Multi-panel figure. Panel A (Motif Recognition): First-layer attention patterns aligned with JASPAR motifs; model learns CTCF pattern from sequence statistics alone. Panel B (Gene Structure): t-SNE/UMAP of embeddings color-coded by region type (exon, intron, UTR, intergenic); clear clustering without region labels during training. Panel C (Evolutionary Constraint): Scatter plot of model uncertainty vs.&nbsp;phyloP conservation score; strong correlation. Panel D (What Models do not Learn): Icons with X marks for epigenetic state, 3D structure, cell-type specificity, complex variants.
 </figcaption>
 </figure>
 </div>
@@ -927,7 +957,7 @@ Figure&nbsp;11.5: [High] Multi-panel figure. Panel A (Motif Recognition): First-
 <div aria-describedby="fig-dna-lm-benchmarks-caption-0ceaefa1-69ba-4598-a22c-09a6ac19f8ca">
 <div class="quarto-figure quarto-figure-center">
 <figure class="figure">
-<p><img src="https://placehold.co/300x200?text=FIGURE%20PLACEHOLDER.png" class="img-fluid figure-img"></p>
+<p><img src="../figs/part_3/ch11/06-fig-dna-lm-benchmarks.png" class="img-fluid figure-img"></p>
 <figcaption><strong>FIGURE PLACEHOLDER</strong></figcaption>
 </figure>
 </div>
@@ -1012,6 +1042,9 @@ Marin, Frederikke Isa, Felix Teufel, Marc Horlacher, Dennis Madsen, Dennis Pultz
 </div>
 <div id="ref-medvedev_biotoken_2025" class="csl-entry" role="listitem">
 Medvedev, Aleksandr, Karthik Viswanathan, Praveenkumar Kanithi, Kirill Vishniakov, Prateek Munjal, Clément Christophe, Marco AF Pimentel, Ronnie Rajan, and Shadab Khan. 2025. <span>“<span>BioToken</span> and <span>BioFM</span> – <span>Biologically</span>-<span>Informed</span> <span>Tokenization</span> <span>Enables</span> <span>Accurate</span> and <span>Efficient</span> <span>Genomic</span> <span>Foundation</span> <span>Models</span>.”</span> bioRxiv. <a href="https://doi.org/10.1101/2025.03.27.645711">https://doi.org/10.1101/2025.03.27.645711</a>.
+</div>
+<div id="ref-nguyen_sequence_2024" class="csl-entry" role="listitem">
+Nguyen, Eric, Michael Poli, Matthew G. Durrant, Brian Kang, Dhruva Katrekar, David B. Li, Liam J. Bartie, et al. 2024. <span>“Sequence Modeling and Design from Molecular to Genome Scale with <span>Evo</span>.”</span> <em>Science</em> 386 (6723): eado9336. <a href="https://doi.org/10.1126/science.ado9336">https://doi.org/10.1126/science.ado9336</a>.
 </div>
 <div id="ref-nguyen_hyenadna_2023" class="csl-entry" role="listitem">
 Nguyen, Eric, Michael Poli, Marjan Faizi, Armin Thomas, Callum Birch-Sykes, Michael Wornow, Aman Patel, et al. 2023. <span>“<span>HyenaDNA</span>: <span>Long</span>-<span>Range</span> <span>Genomic</span> <span>Sequence</span> <span>Modeling</span> at <span>Single</span> <span>Nucleotide</span> <span>Resolution</span>.”</span> arXiv. <a href="https://doi.org/10.48550/arXiv.2306.15794">https://doi.org/10.48550/arXiv.2306.15794</a>.
