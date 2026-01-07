@@ -225,6 +225,89 @@ The following citations are used in Chapter 11 but exist in other chapter bib fi
 
 ---
 
+## Chapter 25: Causal Inference with Foundation Models
+
+### Core Causal Framework
+
+| Status | Expected Citation Key | Full Reference | Target Bib |
+|--------|----------------------|----------------|------------|
+| [ ] | `pearl_book_2018` | Pearl J, Mackenzie D. **The Book of Why: The New Science of Cause and Effect.** *Basic Books.* 2018. ISBN:978-0465097616 | `bib/p5/p5-ch25.bib` |
+
+### Mendelian Randomization
+
+| Status | Expected Citation Key | Full Reference | Target Bib |
+|--------|----------------------|----------------|------------|
+| [ ] | `davey_smith_mendelian_2003` | Davey Smith G, Ebrahim S. **'Mendelian randomization': can genetic epidemiology contribute to understanding environmental determinants of disease?** *Int J Epidemiol.* 2003;32(1):1-22. doi:10.1093/ije/dyg070 | `bib/p5/p5-ch25.bib` |
+| [ ] | `lawlor_mendelian_2008` | Lawlor DA, Harbord RM, Sterne JAC, Timpson N, Davey Smith G. **Mendelian randomization: Using genes as instruments for making causal inferences in epidemiology.** *Stat Med.* 2008;27(8):1133-1163. doi:10.1002/sim.3034 | `bib/p5/p5-ch25.bib` |
+| [ ] | `bowden_mendelian_2015` | Bowden J, Davey Smith G, Burgess S. **Mendelian randomization with invalid instruments: effect estimation and bias detection through Egger regression.** *Int J Epidemiol.* 2015;44(2):512-525. doi:10.1093/ije/dyv080 | `bib/p5/p5-ch25.bib` |
+| [ ] | `hartwig_robust_2017` | Hartwig FP, Davey Smith G, Bowden J. **Robust inference in summary data Mendelian randomization via the zero modal pleiotropy assumption.** *Int J Epidemiol.* 2017;46(6):1985-1998. doi:10.1093/ije/dyx102 | `bib/p5/p5-ch25.bib` |
+
+### Fine-Mapping and Colocalization
+
+| Status | Expected Citation Key | Full Reference | Target Bib |
+|--------|----------------------|----------------|------------|
+| [ ] | `maller_bayesian_2012` | Maller JB, McVean G, Byrnes J, et al. **Bayesian refinement of association signals for 14 loci in 3 common diseases.** *Nat Genet.* 2012;44(12):1294-1301. doi:10.1038/ng.2435 | `bib/p5/p5-ch25.bib` |
+| [ ] | `benner_finemap_2016` | Benner C, Spencer CCA, Havulinna AS, et al. **FINEMAP: efficient variable selection using summary data from genome-wide association studies.** *Bioinformatics.* 2016;32(10):1493-1501. doi:10.1093/bioinformatics/btw018 | `bib/p5/p5-ch25.bib` |
+| [ ] | `giambartolomei_bayesian_2014` | Giambartolomei C, Vukcevic D, Schadt EE, et al. **Bayesian test for colocalisation between pairs of genetic association studies using summary statistics.** *PLoS Genet.* 2014;10(5):e1004383. doi:10.1371/journal.pgen.1004383 | `bib/p5/p5-ch25.bib` |
+
+### Foundation Models and Causality
+
+| Status | Expected Citation Key | Full Reference | Target Bib |
+|--------|----------------------|----------------|------------|
+| [ ] | `kiciman_causal_2023` | Kiciman E, Ness R, Sharma A, Tan C. **Causal Reasoning and Large Language Models: Opening a New Frontier for Causality.** *arXiv.* 2023. arXiv:2305.00050 | `bib/p5/p5-ch25.bib` |
+| [ ] | `theodoris_transfer_2023` | Theodoris CV, Xiao L, Chopra A, et al. **Transfer learning enables predictions in network biology.** *Nature.* 2023;618(7965):616-624. doi:10.1038/s41586-023-06139-9 | `bib/p5/p5-ch25.bib` |
+
+### Perturbation Screens
+
+| Status | Expected Citation Key | Full Reference | Target Bib |
+|--------|----------------------|----------------|------------|
+| [ ] | `shalem_genome-scale_2014` | Shalem O, Sanjana NE, Hartenian E, et al. **Genome-scale CRISPR-Cas9 knockout screening in human cells.** *Science.* 2014;343(6166):84-87. doi:10.1126/science.1247005 | `bib/p5/p5-ch25.bib` |
+| [ ] | `adamson_multiplexed_2016` | Adamson B, Norman TM, Jost M, et al. **A multiplexed single-cell CRISPR screening platform enables systematic dissection of the unfolded protein response.** *Cell.* 2016;167(7):1867-1882.e21. doi:10.1016/j.cell.2016.11.048 | `bib/p5/p5-ch25.bib` |
+
+### Drug Response and Network Analysis
+
+| Status | Expected Citation Key | Full Reference | Target Bib |
+|--------|----------------------|----------------|------------|
+| [ ] | `zitnik_modeling_2018` | Zitnik M, Agrawal M, Leskovec J. **Modeling polypharmacy side effects with graph convolutional networks.** *Bioinformatics.* 2018;34(13):i457-i466. doi:10.1093/bioinformatics/bty294 | `bib/p5/p5-ch25.bib` |
+| [ ] | `huynh-thu_inferring_2010` | Huynh-Thu VA, Irrthum A, Wehenkel L, Geurts P. **Inferring regulatory networks from expression data using tree-based methods.** *PLoS ONE.* 2010;5(9):e12776. doi:10.1371/journal.pone.0012776 | `bib/p5/p5-ch25.bib` |
+
+### Attention and Interpretability
+
+| Status | Expected Citation Key | Full Reference | Target Bib |
+|--------|----------------------|----------------|------------|
+| [ ] | `jain_attention_2019` | Jain S, Wallace BC. **Attention is not Explanation.** *Proceedings of NAACL-HLT.* 2019:3543-3556. doi:10.18653/v1/N19-1357 | `bib/p5/p5-ch25.bib` |
+
+### Temporal Causality
+
+| Status | Expected Citation Key | Full Reference | Target Bib |
+|--------|----------------------|----------------|------------|
+| [ ] | `granger_investigating_1969` | Granger CWJ. **Investigating causal relations by econometric models and cross-spectral methods.** *Econometrica.* 1969;37(3):424-438. doi:10.2307/1912791 | `bib/p5/p5-ch25.bib` |
+| [ ] | `la_manno_rna_2018` | La Manno G, Soldatov R, Zeisel A, et al. **RNA velocity of single cells.** *Nature.* 2018;560(7719):494-498. doi:10.1038/s41586-018-0414-6 | `bib/p5/p5-ch25.bib` |
+
+---
+
+## Chapter 17: Variant Effect Prediction with Foundation Models
+
+### Long-Read Sequencing Section (new)
+
+| Status | Expected Citation Key | Full Reference | Target Bib |
+|--------|----------------------|----------------|------------|
+| [ ] | `logsdon_long-read_2020` | Logsdon GA, Vollger MR, Eichler EE. **Long-read human genome sequencing and its applications.** *Nat Rev Genet.* 2020;21(10):597-614. doi:10.1038/s41576-020-0236-x | `bib/p3/p3-ch17.bib` |
+| [ ] | `smolka_detection_2024` | Smolka M, Paulin LF, Grochowski CM, et al. **Detection of mosaic and population-level structural variants with Sniffles2.** *Nat Biotechnol.* 2024;42:1571-1580. doi:10.1038/s41587-023-02024-y | `bib/p3/p3-ch17.bib` |
+| [ ] | `zheng_symphonizing_2022` | Zheng Z, Li S, Su J, et al. **Symphonizing pileup and full-alignment for deep learning-based long-read variant calling.** *Nat Comput Sci.* 2022;2:797-803. doi:10.1038/s43588-022-00387-x | `bib/p3/p3-ch17.bib` |
+
+---
+
+## Chapter 30: Sequence Design
+
+### Generative Evaluation Section (new)
+
+| Status | Expected Citation Key | Full Reference | Target Bib |
+|--------|----------------------|----------------|------------|
+| [ ] | `huang_coming_2016` | Huang PS, Boyken SE, Baker D. **The coming of age of de novo protein design.** *Nature.* 2016;537(7620):320-327. doi:10.1038/nature19946 | `bib/p6/p6-ch30.bib` |
+
+---
+
 ## Notes
 
 - Citation keys shown are the expected format based on typical Zotero exports (author_firstword_year)
