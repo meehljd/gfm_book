@@ -25,6 +25,7 @@ Agents are more complex tools in `.claude/agents/` that run with isolated contex
 | `review-chapter` | Deep chapter review (36 checks) | `.claude/agents/review-chapter/` |
 | `pre-commit` | Pre-commit content/style review | `.claude/agents/pre-commit/` |
 | `pedagogy-review` | Learning science optimization | `.claude/agents/pedagogy-review/` |
+| `figure-design` | Figure opportunities, design, captions, AI prompts | `.claude/agents/figure-design/` |
 
 ## Output Location
 
@@ -81,6 +82,7 @@ Each agent is defined in an `AGENT.md` file in `.claude/agents/<agent-name>/`:
 - `review-chapter/AGENT.md` - Deep chapter review with 36 checks
 - `pre-commit/AGENT.md` - Pre-commit content loss and style review
 - `pedagogy-review/AGENT.md` - Learning science optimization (12 evidence-based principles)
+- `figure-design/AGENT.md` - Figure opportunities, visual design, captions, AI image prompts
 
 ## Customization
 
