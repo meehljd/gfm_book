@@ -272,22 +272,34 @@ When reviewing chapters for elaboration, ask:
 
 ### Estimated Grade Improvement
 
-| Category | Pre-Implementation | Post-Implementation |
-|----------|-------------------|---------------------|
-| Ch01 (NGS) | B+ | A- |
-| Ch05 (Representations) | B+ | A- |
-| Ch06 (CNNs) | B+ | A- |
-| Ch08 (Pretraining) | B+ | A- |
-| Ch12 (Confounding) | B | B+ |
-| Ch15 (Protein LMs) | B+ | A- |
-| Ch19 (Single-Cell) | B+ | A- |
-| Ch20 (3D Genome) | B | B+ |
-| Ch22 (Multi-Omics) | B | B+ |
-| Ch23 (Uncertainty) | B+ | A- |
-| Ch27 (Clinical Risk) | B+ | A- |
-| Ch29 (Drug Discovery) | B+ | A- |
-| Ch31 (Frontiers) | B+ | A- |
-| Book-wide average | B+ | A- |
+| Category | Pre-Implementation | Post-Phase-3 | Post-Upgrade |
+|----------|-------------------|--------------|--------------|
+| Ch01 (NGS) | B+ | A- | A- |
+| Ch05 (Representations) | B+ | A- | A- |
+| Ch06 (CNNs) | B+ | A- | A- |
+| Ch08 (Pretraining) | B+ | A- | A- |
+| Ch12 (Confounding) | B | B+ | A- |
+| Ch15 (Protein LMs) | B+ | A- | A- |
+| Ch19 (Single-Cell) | B+ | A- | A- |
+| Ch20 (3D Genome) | B | B+ | A- |
+| Ch22 (Multi-Omics) | B | B+ | A- |
+| Ch23 (Uncertainty) | B+ | A- | A- |
+| Ch27 (Clinical Risk) | B+ | A- | A- |
+| Ch29 (Drug Discovery) | B+ | A- | A- |
+| Ch31 (Frontiers) | B+ | A- | A- |
+| Book-wide average | B+ | A- | A- |
+
+### Final Upgrade Pass (B+ → A-)
+
+Added targeted WHY explanations to the three chapters that remained at B+:
+
+| Chapter | Additions | Key WHY Explanations |
+|---------|-----------|---------------------|
+| Ch12 | 2 | WHY batch-phenotype correlation arises (practical constraints); WHY circularity inflates validation (statistical mechanism) |
+| Ch20 | 2 | WHY polymer effect dominates (thermal fluctuations, power law); WHY single-cell Hi-C is sparse (physical constraints) |
+| Ch22 | 1 | WHY high dimensionality causes overfitting (geometric perspective on p >> n) |
+
+**All chapters now at A- or above.**
 
 ---
 
@@ -296,3 +308,4 @@ When reviewing chapters for elaboration, ask:
 *Phase 1 implementation completed 2026-01-07.*
 *Phase 2 implementation completed 2026-01-07.*
 *Phase 3 implementation completed 2026-01-07.*
+*Final upgrade pass completed 2026-01-07.*
