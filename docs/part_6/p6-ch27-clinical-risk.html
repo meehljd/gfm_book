@@ -310,8 +310,8 @@ window.Quarto = {
   </li>
         <li class="sidebar-item sidebar-item-section">
       <div class="sidebar-item-container"> 
-            <a href="../part_4/p4--multi-modal.html" class="sidebar-item-text sidebar-link">
- <span class="menu-text">Part IV: Systems and Scale</span></a>
+            <a href="../part_4/p4--cellular-context.html" class="sidebar-item-text sidebar-link">
+ <span class="menu-text">Part IV: Cellular Context</span></a>
           <a class="sidebar-item-toggle text-start" data-bs-toggle="collapse" data-bs-target="#quarto-sidebar-section-4" role="navigation" aria-expanded="true" aria-label="Toggle section">
             <i class="bi bi-chevron-right ms-2"></i>
           </a> 
@@ -548,6 +548,9 @@ window.Quarto = {
 </header>
 
 
+<blockquote class="blockquote">
+<p>A risk prediction has clinical value only if it changes what happens next.</p>
+</blockquote>
 <div class="callout callout-style-default callout-note callout-titled">
 <div class="callout-header d-flex align-content-center">
 <div class="callout-icon-container">
@@ -570,7 +573,8 @@ Chapter Overview
 </ol>
 </div>
 </div>
-<p>A risk prediction has clinical value only if it changes what happens next. A cardiologist who receives a <strong>polygenic risk score</strong> for coronary artery disease faces a simple question: does this information alter the treatment recommendation? If a patient with a high score receives the same statin prescription, lifestyle counseling, and follow-up schedule as a patient without genetic testing, the score added nothing to care regardless of its statistical validity. The fundamental challenge is not generating genomic predictions but translating them into actions that improve outcomes. This translation requires more than <strong>discrimination</strong> between who will and will not develop disease; it requires that the prediction reach clinicians in a usable form, at a decision point where alternatives exist, for a patient population where the prediction performs equitably.</p>
+<p>Maria is 52, with moderately elevated cholesterol and a family history that keeps her cardiologist alert: her father’s heart attack at 49, her brother’s stent at 54. Her physician orders a polygenic risk score and receives a number: 0.84, placing Maria in the top 5% of genetic risk for coronary artery disease. The cardiologist pauses. What should she <em>do</em> differently because of this score? Prescribe the statin she was already considering? Recommend earlier imaging she would have suggested anyway? Counsel Maria about lifestyle modifications she’s heard a hundred times before?</p>
+<p>A risk prediction has clinical value only if it changes what happens next. If Maria with her high polygenic risk score receives the same statin prescription, lifestyle counseling, and follow-up schedule as a patient without genetic testing, the score added nothing to her care regardless of its statistical validity. The fundamental challenge is not generating genomic predictions but translating them into actions that improve outcomes. This translation requires more than <strong>discrimination</strong> between who will and will not develop disease; it requires that the prediction reach clinicians in a usable form, at a decision point where alternatives exist, for a patient population where the prediction performs equitably.</p>
 <p>Traditional polygenic scores, despite their scientific validity, often fail this translation test. They reduce entire genomes to single numbers that provide little mechanistic insight. They transfer poorly across ancestries because training data overrepresent European populations. They exist outside the electronic health records where clinical decisions actually happen, requiring manual lookup that busy clinicians rarely perform. Most fundamentally, the clinical actions available in response to a polygenic risk score (PRS), such as lifestyle modification, earlier screening, or preventive medication, are often the same actions recommended for patients with conventional risk factors, leaving unclear what the genetic information specifically enables.</p>
 <p>Genomic foundation models offer capabilities that may address some of these limitations. Rather than collapsing genetic information into scalar risk scores, foundation models produce <strong>embeddings</strong> that capture sequence context, regulatory grammar, and functional consequences. These representations can integrate with clinical data through fusion architectures (<a href="../part_4/p4-ch22-multi-omics.html" class="quarto-xref"><span>Chapter 22</span></a>), adapt to diverse prediction tasks through <strong>transfer learning</strong> (<a href="../part_2/p2-ch09-transfer.html" class="quarto-xref"><span>Chapter 9</span></a>), and provide feature attributions that connect predictions to biological mechanisms (<a href="../part_5/p5-ch24-interpretability.html" class="quarto-xref"><span>Chapter 24</span></a>). Whether these capabilities translate into tools that change practice remains the open question. The path from these capabilities to tools that change practice runs through electronic health record integration, evidence standards for clinical deployment, fairness considerations that determine whether genomic AI reduces or amplifies health disparities, and the practical realities of care delivery.</p>
 <section id="sec-ch27-pgs-to-fm" class="level2" data-number="27.1">
@@ -841,7 +845,8 @@ Figure&nbsp;27.1: Feature integration for clinical risk prediction. (A) DNA foun
 <p>The architectural question is how to combine these heterogeneous inputs. Three fusion strategies offer different tradeoffs.</p>
 <p><strong>Early fusion</strong> concatenates all features into a single input vector and trains a unified model (neural network, gradient boosting, survival regression) on the combined representation. This approach allows the model to learn arbitrary interactions between genomic and clinical features but requires all inputs to be present for every patient, handles scale differences between modalities poorly, and can be dominated by whichever input provides the most features or strongest signal.</p>
 <p><strong>Intermediate fusion</strong> trains separate encoders for each modality, producing genomic embeddings, clinical embeddings, and multi-omic embeddings that a fusion module then combines. The fusion module might use attention mechanisms to weight modality contributions dynamically, cross-modal transformers that allow features from one modality to attend to features from another, or simpler concatenation with learned combination weights. This approach offers modularity (foundation model encoders can be swapped as new versions become available) while still enabling learned cross-modal interactions.</p>
-<p><strong>Late fusion</strong> trains independent models for each modality and combines their predictions through ensemble methods or meta-learning. A polygenic score model, an electronic health record model, and a multi-omic model each produce risk estimates that a final layer integrates. This approach handles missing modalities gracefully (each submodel operates independently) and allows modality-specific architectures but may underutilize cross-modal structure since interactions can only be captured at the final combination stage.</p>
+<p><strong>Late fusion</strong> trains independent models for each modality and combines their predictions through ensemble methods or meta-learning. A polygenic score model, an electronic health record model, and a multi-omic model each produce risk estimates that a final layer integrates. This approach handles missing modalities gracefully and allows modality-specific architectures but may underutilize cross-modal structure since interactions can only be captured at the final combination stage.</p>
+<p>Why does late fusion handle missing data so effectively while intermediate fusion struggles? In late fusion, each modality-specific model is trained independently and produces valid predictions whether or not other modalities are available. The genomic model outputs a valid risk score using only genomic data; the EHR model outputs a valid risk score using only clinical data. The combination layer learns optimal weighting when all modalities are present but can fall back to available inputs without architectural modification—if EHR data is missing, the combination layer simply uses the genomic and multi-omic scores. In contrast, intermediate fusion architectures learn cross-modal interactions during training that assume all data streams are present. When a patient lacks methylation data, for example, the fusion layer’s learned weights encode expectations about relationships between methylation features and other modalities that cannot be satisfied, potentially producing undefined or degraded outputs.</p>
 <div id="tbl-fusion-strategies" class="quarto-float quarto-figure quarto-figure-center anchored">
 <figure class="quarto-float quarto-float-tbl figure">
 <figcaption class="quarto-float-caption-top quarto-float-caption quarto-float-tbl" id="tbl-fusion-strategies-caption-0ceaefa1-69ba-4598-a22c-09a6ac19f8ca">
@@ -1243,13 +1248,13 @@ Figure&nbsp;27.5: Fairness assessment in clinical genomic AI. (A) Ancestry-strat
 <div aria-describedby="fig-clinical-workflow-caption-0ceaefa1-69ba-4598-a22c-09a6ac19f8ca">
 <div class="quarto-figure quarto-figure-center">
 <figure class="figure">
-<p><img src="../figs/part_6/ch25/06-fig-clinical-workflow.png" class="img-fluid figure-img"></p>
-<figcaption><strong>FIGURE PLACEHOLDER</strong></figcaption>
+<p><img src="../figs/part_6/ch27/06-fig-clinical-workflow.svg" class="img-fluid figure-img"></p>
+<figcaption>Clinical workflow integration for genomic risk prediction</figcaption>
 </figure>
 </div>
 </div>
 <figcaption class="quarto-float-caption-bottom quarto-float-caption quarto-float-fig" id="fig-clinical-workflow-caption-0ceaefa1-69ba-4598-a22c-09a6ac19f8ca">
-Figure&nbsp;27.6: [High] Workflow diagram. Clinical workflow: Patient presents → Assessment → Decision point → Action. Integration patterns: (1) Laboratory Interpretation Augmentation (FM scores in variant report; human geneticist reviews; variant classification); (2) Risk Embedded in electronic health record (EHR) (precomputed scores in structured fields; dashboard at point of care; clinical decision support); (3) Pharmacogenomic Alert (synchronous alert at prescription entry; drug-gene interaction flagged; medication ordering). For each: When computation happens, who sees output, what action triggered. System architecture: Model serving, adapters, logging, version control.
+Figure&nbsp;27.6: Clinical workflow integration for genomic risk prediction. From data collection through processing, result generation, clinical review, and action. Foundation models contribute during processing and result generation. Human oversight checkpoints ensure clinician review before action. Adoption barriers include compute infrastructure, reimbursement, liability concerns, and clinician trust. Effective integration requires attention to timing, display, and action triggers at each stage.
 </figcaption>
 </figure>
 </div>
@@ -1319,13 +1324,13 @@ Stop and Think
 <div aria-describedby="fig-cardio-case-study-caption-0ceaefa1-69ba-4598-a22c-09a6ac19f8ca">
 <div class="quarto-figure quarto-figure-center">
 <figure class="figure">
-<p><img src="../figs/part_6/ch25/07-fig-cardio-case-study.png" class="img-fluid figure-img"></p>
-<figcaption><strong>FIGURE PLACEHOLDER</strong></figcaption>
+<p><img src="../figs/part_6/ch27/07-fig-cardio-case-study.svg" class="img-fluid figure-img"></p>
+<figcaption>FM-enhanced cardiovascular risk prediction case study</figcaption>
 </figure>
 </div>
 </div>
 <figcaption class="quarto-float-caption-bottom quarto-float-caption quarto-float-fig" id="fig-cardio-case-study-caption-0ceaefa1-69ba-4598-a22c-09a6ac19f8ca">
-Figure&nbsp;27.7: [Enhancing] Patient journey diagram. Patient profile: 52yo man, LDL 145, BP 138/88, HbA1c 5.9%; family history (father MI at 58); traditional risk 8.2% (below statin threshold). FM integration: DNA FMs annotate variants; polygenic embedding (Delphi/G2PT) captures nonlinear risk; fusion with EHR; updated estimate 11.4% (above threshold). Clinical decision impact: Threshold crossed → statin indicated; pathway attribution → LDL metabolism (supports mechanism); attention attribution → regions for counseling. Validation requirements: External validation, equity analysis. Key insight: Value depends on whether refined estimate enables different action.
+Figure&nbsp;27.7: Case study: FM-enhanced cardiovascular risk prediction. A 45-year-old male with family history integrates genetic PRS (enhanced by regulatory variant effects), LDLR coding variant (scored by AlphaMissense), inflammatory expression signature, and clinical features. FM-integrated prediction (28% 10-year risk) exceeds both traditional Framingham (18%) and PRS-only (24%) approaches. Clinical action: statin therapy with annual monitoring. Caveat: model validated primarily in European populations; additional caution warranted for other ancestries.
 </figcaption>
 </figure>
 </div>

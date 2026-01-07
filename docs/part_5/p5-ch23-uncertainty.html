@@ -310,8 +310,8 @@ window.Quarto = {
   </li>
         <li class="sidebar-item sidebar-item-section">
       <div class="sidebar-item-container"> 
-            <a href="../part_4/p4--multi-modal.html" class="sidebar-item-text sidebar-link">
- <span class="menu-text">Part IV: Systems and Scale</span></a>
+            <a href="../part_4/p4--cellular-context.html" class="sidebar-item-text sidebar-link">
+ <span class="menu-text">Part IV: Cellular Context</span></a>
           <a class="sidebar-item-toggle text-start" data-bs-toggle="collapse" data-bs-target="#quarto-sidebar-section-4" role="navigation" aria-expanded="true" aria-label="Toggle section">
             <i class="bi bi-chevron-right ms-2"></i>
           </a> 
@@ -576,6 +576,9 @@ window.Quarto = {
 </header>
 
 
+<blockquote class="blockquote">
+<p>A pathogenicity score of 0.73 means nothing unless we know what 0.73 means.</p>
+</blockquote>
 <div class="callout callout-style-default callout-note callout-titled">
 <div class="callout-header d-flex align-content-center">
 <div class="callout-icon-container">
@@ -600,7 +603,7 @@ Chapter Overview
 <p><strong>Estimated Reading Time:</strong> 45-60 minutes</p>
 </div>
 </div>
-<p>A pathogenicity score of 0.73 means nothing unless we know what 0.73 means. If the model is well-calibrated, approximately 73% of variants receiving this score are truly pathogenic, and a clinician can weigh this probability against the costs of further testing. If the model is miscalibrated, the true pathogenicity rate among variants scored at 0.73 could be 40% or 95%, and the nominal probability provides no reliable basis for decision-making. The distinction is not between accurate and inaccurate models but between models that know what they know and models that do not. A miscalibrated model with high average accuracy can be more dangerous than a calibrated model with lower accuracy, because the miscalibrated model provides false confidence that leads to systematically wrong decisions.</p>
+<p>This is not a philosophical riddle. If the model is well-calibrated, approximately 73% of variants receiving this score are truly pathogenic, and a clinician can weigh this probability against the costs of further testing. If the model is miscalibrated, the true pathogenicity rate among variants scored at 0.73 could be 40% or 95%, and the nominal probability provides no reliable basis for decision-making. The distinction is not between accurate and inaccurate models but between models that know what they know and models that do not. A miscalibrated model with high average accuracy can be more dangerous than a calibrated model with lower accuracy, because the miscalibrated model provides false confidence that leads to systematically wrong decisions.</p>
 <p>Foundation models produce continuous scores, but clinical decisions require categorical actions: test or do not test, treat or do not treat, report to the family or continue monitoring. This translation from probability to action only works when probabilities are trustworthy. A model that systematically overstates confidence will trigger unnecessary interventions. A model that understates confidence will miss actionable findings. A model that reports high confidence on inputs it has never seen before fails at a fundamental level regardless of its average performance on familiar data. Uncertainty quantification provides the tools to assess when model predictions deserve trust.</p>
 <section id="sec-ch23-types" class="level2" data-number="23.1">
 <h2 data-number="23.1" class="anchored" data-anchor-id="sec-ch23-types"><span class="header-section-number">23.1</span> Types of Uncertainty in Genomic Prediction</h2>
@@ -973,7 +976,7 @@ Key Insight: Hidden Calibration Disparities
 <p>Aggregate calibration metrics (ECE, Brier score) can appear excellent while masking severe disparities across subgroups. A model that is overconfident for one population and underconfident for another may achieve near-zero aggregate ECE if errors cancel. <strong>Always compute calibration metrics stratified by ancestry, gene family, and variant class.</strong> This is not just a technical concern; it directly impacts health equity.</p>
 </div>
 </div>
-<p>Ancestry-stratified calibration reveals systematic patterns in current foundation models. Training data for protein language models and variant effect predictors derive predominantly from European-ancestry cohorts, creating differential epistemic uncertainty across populations. Calibration curves stratified by ancestry often show that models are better calibrated for populations well-represented in training data and overconfident or underconfident for underrepresented populations. This differential calibration has direct fairness implications: clinical decisions based on miscalibrated predictions will be systematically worse for patients from underrepresented backgrounds. The broader challenges of fairness and health equity are addressed in <a href="../part_1/p1-ch03-gwas.html#sec-ch03-fairness" class="quarto-xref"><span>Section 3.7.2</span></a> and <a href="p5-ch26-regulatory.html#sec-ch26-regulatory" class="quarto-xref"><span>Section 27.1</span></a>.</p>
+<p>Ancestry-stratified calibration reveals systematic patterns in current foundation models. Training data for protein language models and variant effect predictors derive predominantly from European-ancestry cohorts, creating differential epistemic uncertainty across populations. Calibration curves stratified by ancestry often show that models are better calibrated for populations well-represented in training data and overconfident or underconfident for underrepresented populations. This differential calibration has direct fairness implications: clinical decisions based on miscalibrated predictions will be systematically worse for patients from underrepresented backgrounds. The broader challenges of fairness and health equity are addressed in <a href="../part_1/p1-ch03-gwas.html#sec-ch03-fairness" class="quarto-xref"><span>Section 3.7.2</span></a> and <a href="p5-ch26-regulatory.html#sec-ch26-regulatory" class="quarto-xref"><span>Section 26.1</span></a>.</p>
 <p>Calibration may also vary by variant class, gene constraint level, protein family, or disease category. Missense variants in highly constrained genes may show different calibration patterns than those in tolerant genes. Variants in well-studied protein families with abundant training examples may be better calibrated than variants in orphan proteins. Stratified reliability diagrams across these categories reveal whether a single calibration correction suffices or whether subgroup-specific approaches are necessary.</p>
 </section>
 </section>
@@ -1030,7 +1033,7 @@ Stop and Think
 <section id="sec-ch23-temperature-scaling" class="level3" data-number="23.3.1">
 <h3 data-number="23.3.1" class="anchored" data-anchor-id="sec-ch23-temperature-scaling"><span class="header-section-number">23.3.1</span> Temperature Scaling</h3>
 <p>The simplest calibration fix is often the most effective. <strong>Temperature scaling</strong> applies a single learned parameter to adjust model confidence, dramatically improving calibration with minimal computational overhead and no change to model predictions’ ranking.</p>
-<p>The method modifies the softmax function by dividing logits by a temperature parameter <em>T</em> before applying softmax:</p>
+<p>The method modifies the softmax function by dividing logits by a temperature parameter <em>T</em> before applying softmax. The intuition is straightforward: overconfident models produce logits that are too large in magnitude, causing softmax probabilities to concentrate near 0 or 1 rather than reflecting true uncertainty. Dividing by <em>T</em> &gt; 1 shrinks these logits toward zero, which “softens” the probability distribution and reduces spurious confidence:</p>
 <p><span class="math display">\[\hat{p}_i = \frac{\exp(z_i / T)}{\sum_j \exp(z_j / T)}\]</span></p>
 <p>where <em>z_i</em> are the logits (pre-softmax outputs) and *p̂_i* are the calibrated probabilities. When <em>T</em> &gt; 1, the distribution becomes softer (more uniform), reducing overconfidence. When <em>T</em> &lt; 1, the distribution becomes sharper, increasing confidence. The optimal temperature is learned by minimizing negative log-likelihood on a held-out calibration set, typically yielding <em>T</em> between 1.5 and 3 for overconfident deep networks.</p>
 <p>Temperature scaling preserves the model’s ranking because dividing all logits by the same constant does not change their relative ordering. A variant ranked as more likely pathogenic than another remains more likely after temperature scaling; only the magnitudes of probability estimates change. This preservation of discrimination while improving calibration makes temperature scaling particularly attractive: calibration improves without sacrificing the model’s hard-won ability to distinguish pathogenic from benign variants.</p>
@@ -1157,7 +1160,7 @@ Figure&nbsp;23.4: Uncertainty quantification methods for deep learning. Ensemble
 <h3 data-number="23.4.1" class="anchored" data-anchor-id="sec-ch23-deep-ensembles"><span class="header-section-number">23.4.1</span> Deep Ensembles</h3>
 <p>If one model expresses uncertainty about a prediction, querying multiple models reveals whether that uncertainty reflects genuine ambiguity in the data or an artifact of a particular training run. When five independently trained models agree on a prediction, confidence is warranted; when they disagree, the disagreement itself signals uncertainty. Ensemble disagreement provides one of the most reliable uncertainty estimates available in deep learning, at the cost of training and maintaining multiple models.</p>
 <p><strong>Deep ensembles</strong> train <em>M</em> models (typically 5 to 10) with different random initializations, data orderings, or minor architectural variations. At inference time, all members produce predictions, and uncertainty is estimated from the variance or entropy of the ensemble distribution. For classification, epistemic uncertainty appears as disagreement in predicted class probabilities across members. For regression, epistemic uncertainty appears as variance in predicted values.</p>
-<p>The theoretical basis for ensemble uncertainty estimation rests on the observation that disagreement between models reflects regions of input space where the training data provides insufficient constraint. Where training examples are dense, gradient descent from different initializations converges to similar solutions, producing agreement. Where training examples are sparse or conflicting, different initializations find different local optima, producing disagreement. This interpretation connects ensembles to Bayesian model averaging, where predictions are averaged over the posterior distribution of model parameters.</p>
+<p>Why do ensembles work for uncertainty estimation? The key insight is that ensemble disagreement reveals where the data underdetermines the model. The theoretical basis for ensemble uncertainty estimation rests on the observation that disagreement between models reflects regions of input space where the training data provides insufficient constraint. Where training examples are dense, gradient descent from different initializations converges to similar solutions, producing agreement. Where training examples are sparse or conflicting, different initializations find different local optima, producing disagreement. This interpretation connects ensembles to Bayesian model averaging, where predictions are averaged over the posterior distribution of model parameters.</p>
 <p>For foundation models with billions of parameters, training full ensembles becomes prohibitively expensive. Training five copies of <em>ESM-2</em> requires approximately five times the compute of a single model, potentially millions of dollars in cloud computing costs. Several practical alternatives reduce this burden. Last-layer ensembles freeze the pretrained backbone and train only an ensemble of prediction heads, reducing cost by orders of magnitude while still capturing uncertainty from the fine-tuning process. Snapshot ensembles save model checkpoints at various points during optimization and use these snapshots as ensemble members, requiring only single-model training time. Multi-seed fine-tuning trains the same architecture from multiple random seeds on the fine-tuning task, which is far cheaper than multi-seed pretraining. The broader considerations of fine-tuning and adaptation strategies are discussed in <a href="../part_2/p2-ch09-transfer.html" class="quarto-xref"><span>Chapter 9</span></a>.</p>
 </section>
 <section id="sec-ch23-mc-dropout" class="level3" data-number="23.4.2">
@@ -1185,7 +1188,7 @@ Stop and Think
 <p>Standard regression models predict a single output value, implicitly assuming constant noise variance across all inputs. <strong>Heteroscedastic models</strong> instead predict both a mean and a variance for each input, capturing the intuition that prediction uncertainty varies depending on the input. For genomic applications, this approach naturally handles the observation that some prediction tasks are inherently noisier than others: coding variant effects may be more predictable than regulatory variant effects, constrained genes more predictable than tolerant genes.</p>
 <p>Architecture modifications are minimal. Instead of outputting a single value, the model outputs two values interpreted as the mean <span class="math inline">\(\mu(x)\)</span> and variance <span class="math inline">\(\sigma^2(x)\)</span> of a Gaussian distribution over outputs. Training uses negative log-likelihood loss under this Gaussian, which penalizes both prediction errors and miscalibrated variance estimates:</p>
 <p><span class="math display">\[\mathcal{L} = \frac{1}{2\sigma^2(x)}(y - \mu(x))^2 + \frac{1}{2}\log \sigma^2(x)\]</span></p>
-<p>The first term penalizes prediction errors, weighted by inverse variance so that high-variance predictions are penalized less for the same absolute error. The second term prevents the model from simply predicting infinite variance to avoid all penalties. The result is a model that learns to predict larger variance for inputs where training labels are noisy or inconsistent, capturing aleatoric uncertainty in an input-dependent manner.</p>
+<p>Why does this loss function take this particular form? It derives from the negative log-likelihood of a Gaussian distribution: if the model predicts that the output follows a Gaussian with mean <span class="math inline">\(\mu(x)\)</span> and variance <span class="math inline">\(\sigma^2(x)\)</span>, then the probability of observing the true value <span class="math inline">\(y\)</span> is higher when <span class="math inline">\(y\)</span> is close to <span class="math inline">\(\mu\)</span> and when variance is well-matched to actual prediction error. The first term penalizes prediction errors, weighted by inverse variance so that high-variance predictions are penalized less for the same absolute error—this is mathematically necessary because a Gaussian with larger variance assigns non-negligible probability to a wider range of values. The second term prevents the model from simply predicting infinite variance to avoid all penalties; without it, the optimal strategy would be to always predict <span class="math inline">\(\sigma^2 \to \infty\)</span>, making any prediction equally likely. The balance between these terms forces the model to predict variance that actually matches the empirical noise level. The result is a model that learns to predict larger variance for inputs where training labels are noisy or inconsistent, capturing aleatoric uncertainty in an input-dependent manner.</p>
 <p>Heteroscedastic models capture aleatoric uncertainty but not epistemic uncertainty. The predicted variance reflects noise inherent in the labels, not uncertainty about model parameters. Combining heteroscedastic outputs with ensemble methods provides estimates of both uncertainty types: ensemble disagreement captures epistemic uncertainty while the predicted variance captures aleatoric uncertainty.</p>
 </section>
 <section id="sec-ch23-evidential" class="level3" data-number="23.4.4">
@@ -1351,36 +1354,34 @@ Difficulty Warning
 <figure class="quarto-float quarto-float-fig figure">
 <div aria-describedby="fig-ood-detection-caption-0ceaefa1-69ba-4598-a22c-09a6ac19f8ca">
 <div class="quarto-layout-row">
-<div class="quarto-layout-cell" style="flex-basis: 50.0%;justify-content: flex-start;">
+<div class="quarto-layout-cell" style="flex-basis: 33.3%;justify-content: flex-start;">
 <div class="quarto-figure quarto-figure-center">
 <figure class="figure">
-<p><img src="../figs/part_5/ch23/06-A-fig-ood-detection.png" class="img-fluid figure-img"></p>
-<figcaption><strong>FIGURE PLACEHOLDER A</strong></figcaption>
+<p><img src="../figs/part_5/ch23/06-A-fig-ood-detection.svg" class="img-fluid figure-img"></p>
+<figcaption>The OOD problem: models extrapolate confidently into unreliable regions</figcaption>
 </figure>
 </div>
 </div>
-<div class="quarto-layout-cell" style="flex-basis: 50.0%;justify-content: flex-start;">
+<div class="quarto-layout-cell" style="flex-basis: 33.3%;justify-content: flex-start;">
 <div class="quarto-figure quarto-figure-center">
 <figure class="figure">
-<p><img src="../figs/part_5/ch23/06-B-fig-ood-detection.png" class="img-fluid figure-img"></p>
-<figcaption><strong>FIGURE PLACEHOLDER B</strong></figcaption>
+<p><img src="../figs/part_5/ch23/06-B-fig-ood-detection.svg" class="img-fluid figure-img"></p>
+<figcaption>Detection methods: from softmax thresholds to embedding approaches</figcaption>
 </figure>
 </div>
 </div>
-</div>
-<div class="quarto-layout-row">
-<div class="quarto-layout-cell" style="flex-basis: 50.0%;justify-content: flex-start;">
+<div class="quarto-layout-cell" style="flex-basis: 33.3%;justify-content: flex-start;">
 <div class="quarto-figure quarto-figure-center">
 <figure class="figure">
-<p><img src="../figs/part_5/ch23/06-C-fig-ood-detection.png" class="img-fluid figure-img"></p>
-<figcaption><strong>FIGURE PLACEHOLDER C</strong></figcaption>
+<p><img src="../figs/part_5/ch23/06-C-fig-ood-detection.svg" class="img-fluid figure-img"></p>
+<figcaption>Genomic OOD scenarios requiring detection before clinical use</figcaption>
 </figure>
 </div>
 </div>
 </div>
 </div>
 <figcaption class="quarto-float-caption-bottom quarto-float-caption quarto-float-fig" id="fig-ood-detection-caption-0ceaefa1-69ba-4598-a22c-09a6ac19f8ca">
-Figure&nbsp;23.6: [High] Embedding space visualization. Main panel: UMAP/t-SNE; dense training clusters (blue); isolated OOD points (red); examples (novel archaeal sequence, synthetic protein, variant in poorly characterized gene). Detection methods (side panels): Mahalanobis distance (histogram ID vs OOD, threshold), nearest neighbor distance, ensemble disagreement. Key insight: Flag for manual review rather than automate.
+Figure&nbsp;23.6: Out-of-distribution detection for safe deployment. (A) The OOD problem: models extrapolate confidently into regions where predictions are unreliable. (B) Detection methods: from simple softmax thresholds to sophisticated embedding-space approaches. (C) Genomic OOD scenarios: novel genes, underrepresented populations, unusual variant types, mismatched tissues, and technical batch effects—all require detection before clinical use.
 </figcaption>
 </figure>
 </div>
@@ -1413,6 +1414,7 @@ Knowledge Check
 <h3 data-number="23.6.3" class="anchored" data-anchor-id="sec-ch23-embedding-ood"><span class="header-section-number">23.6.3</span> Embedding-Based Detection</h3>
 <p>Learned representations provide more reliable OOD detection than raw likelihood. The key insight is that embeddings encode semantic structure: similar sequences cluster together in embedding space, and OOD sequences land in sparse regions distant from training clusters.</p>
 <p><strong>Mahalanobis distance</strong> measures how far a test embedding lies from training data, accounting for the covariance structure of the embedding space. For each class, compute the mean embedding and covariance matrix from training examples. For a test input, compute its distance to each class centroid in units of standard deviations, accounting for correlations between embedding dimensions. Large Mahalanobis distance indicates OOD inputs.</p>
+<p>Why Mahalanobis rather than simple Euclidean distance? Euclidean distance treats all embedding dimensions equally, but learned representations often have highly correlated dimensions and vary substantially in scale. A test point that appears close in Euclidean terms might actually be unusual because it deviates along a low-variance direction where training examples are tightly clustered. Mahalanobis distance normalizes by the covariance structure, detecting such deviations by asking “how many standard deviations away is this point along each principal axis of variation?”</p>
 <p>Nearest-neighbor methods provide a non-parametric alternative. For a test embedding, find the <span class="math inline">\(k\)</span> nearest neighbors among training embeddings and compute the average distance. Large average distance to neighbors indicates the test input lies in a sparse region of embedding space, suggesting it is OOD. This approach makes no distributional assumptions and scales well with modern approximate nearest-neighbor algorithms.</p>
 <p>For genomic foundation models, embedding-based OOD detection enables practical deployment safeguards. <em>ESM</em> embeddings place novel protein folds in regions distant from characterized folds, allowing detection of sequences outside the model’s training experience. <em>DNABERT</em> embeddings reveal unusual sequence composition or repeat structures that may confound predictions. Flagging these cases for expert review prevents confident but unreliable predictions from reaching clinical decisions. The properties of DNA and protein language model embeddings are discussed in <a href="../part_3/p3-ch14-dna-lm.html" class="quarto-xref"><span>Chapter 14</span></a> and <a href="../part_3/p3-ch15-protein-lm.html" class="quarto-xref"><span>Chapter 15</span></a>.</p>
 </section>
@@ -1451,13 +1453,13 @@ Practical Guidance: OOD Detection Pipeline
 <div aria-describedby="fig-selective-prediction-caption-0ceaefa1-69ba-4598-a22c-09a6ac19f8ca">
 <div class="quarto-figure quarto-figure-center">
 <figure class="figure">
-<p><img src="../figs/part_5/ch23/07-fig-selective-prediction.png" class="img-fluid figure-img"></p>
-<figcaption><strong>FIGURE PLACEHOLDER</strong></figcaption>
+<p><img src="../figs/part_5/ch23/07-fig-selective-prediction.svg" class="img-fluid figure-img"></p>
+<figcaption>Selective prediction enables tiered clinical workflows</figcaption>
 </figure>
 </div>
 </div>
 <figcaption class="quarto-float-caption-bottom quarto-float-caption quarto-float-fig" id="fig-selective-prediction-caption-0ceaefa1-69ba-4598-a22c-09a6ac19f8ca">
-Figure&nbsp;23.7: [Enhancing] Accuracy-coverage tradeoff. Main plot: Coverage (x) vs Accuracy (y); curve rising as coverage decreases (more selective = more accurate). Operating point selection: Clinical applications need different tradeoffs. Reject option: High uncertainty → abstain. Example: 90% coverage with 85% accuracy vs 70% coverage with 95% accuracy. Connection to clinical workflow: Rejected variants → expert review.
+Figure&nbsp;23.7: Selective prediction for clinical deployment. Rather than forcing predictions on all cases, models abstain when uncertainty exceeds a threshold, routing uncertain cases to human review. The coverage-accuracy tradeoff determines what fraction of cases are automated: higher accuracy requires accepting fewer cases. This enables tiered clinical workflows where confident predictions proceed automatically while uncertain cases receive expert attention.
 </figcaption>
 </figure>
 </div>
@@ -1488,7 +1490,7 @@ Figure&nbsp;23.7: [Enhancing] Accuracy-coverage tradeoff. Main plot: Coverage (x
 <h3 data-number="23.8.1" class="anchored" data-anchor-id="sec-ch23-vep-uncertainty"><span class="header-section-number">23.8.1</span> Variant Effect Prediction Uncertainty</h3>
 <p>Variant effect prediction concentrates the challenges of uncertainty quantification. Epistemic uncertainty arises from poorly characterized genes, novel protein folds, and under-represented populations in training data. Aleatoric uncertainty stems from incomplete penetrance, variable expressivity, and noise in functional assay labels. Both types of uncertainty must be estimated and communicated for variant predictions to inform clinical decisions appropriately. The technical details of variant effect prediction models are covered in <a href="../part_3/p3-ch17-vep-fm.html" class="quarto-xref"><span>Chapter 17</span></a>.</p>
 <p>Calibration challenges for VEP include the evolving nature of ground truth labels. ClinVar annotations change as new evidence emerges; variants classified as VUS may be reclassified as pathogenic or benign, and even confident classifications occasionally reverse. A model calibrated against a historical version of ClinVar may appear miscalibrated against current annotations, not because the model changed but because the labels did. Periodic recalibration against current databases maintains alignment between model outputs and contemporary clinical understanding.</p>
-<p>Population-specific calibration addresses the reality that training data predominantly derive from European-ancestry cohorts. For patients from other ancestral backgrounds, both epistemic uncertainty (fewer training examples) and calibration (different baseline pathogenicity rates, different patterns of variation) may differ from the aggregate. Stratified reliability diagrams by ancestry reveal these differences; ancestry-conditional calibration may be necessary for equitable performance across populations. The governance and policy dimensions of ensuring equitable uncertainty communication are addressed in <a href="p5-ch26-regulatory.html#sec-ch26-regulatory" class="quarto-xref"><span>Section 27.1</span></a>.</p>
+<p>Population-specific calibration addresses the reality that training data predominantly derive from European-ancestry cohorts. For patients from other ancestral backgrounds, both epistemic uncertainty (fewer training examples) and calibration (different baseline pathogenicity rates, different patterns of variation) may differ from the aggregate. Stratified reliability diagrams by ancestry reveal these differences; ancestry-conditional calibration may be necessary for equitable performance across populations. The governance and policy dimensions of ensuring equitable uncertainty communication are addressed in <a href="p5-ch26-regulatory.html#sec-ch26-regulatory" class="quarto-xref"><span>Section 26.1</span></a>.</p>
 </section>
 <section id="sec-ch23-regulatory-uncertainty" class="level3" data-number="23.8.2">
 <h3 data-number="23.8.2" class="anchored" data-anchor-id="sec-ch23-regulatory-uncertainty"><span class="header-section-number">23.8.2</span> Regulatory Variant Uncertainty</h3>
@@ -1534,7 +1536,7 @@ Figure&nbsp;23.7: [Enhancing] Accuracy-coverage tradeoff. Main plot: Coverage (x
 <h2 data-number="23.10" class="anchored" data-anchor-id="sec-ch23-conclusion"><span class="header-section-number">23.10</span> Necessary but Insufficient</h2>
 <p>Uncertainty quantification transforms foundation model outputs from opaque scores into components of rational decision processes. A well-calibrated pathogenicity prediction that honestly communicates its limitations enables appropriate clinical reasoning: high confidence warrants action, low confidence warrants additional testing or expert review. An overconfident score that claims false precision causes harm through both false positives (unnecessary interventions) and false negatives (missed diagnoses). Temperature scaling, conformal prediction, and out-of-distribution detection together provide the technical foundation for trustworthy genomic AI.</p>
 <p>The path from uncertainty quantification to clinical impact requires integrating these methods into operational workflows. Selective prediction enables triage between automated handling and expert review based on model confidence. Conformal prediction sets provide coverage guarantees that support risk-aware decision-making. Out-of-distribution detection prevents confident predictions on inputs that fall outside the training distribution, a particularly important capability given the confounding issues examined in <a href="../part_2/p2-ch12-confounding.html" class="quarto-xref"><span>Chapter 12</span></a>. Calibration ensures that numerical probabilities mean what they claim to mean. Together, these tools enable foundation models to participate in clinical decisions without overstating their reliability. Clinical risk prediction frameworks (<a href="../part_6/p6-ch27-clinical-risk.html" class="quarto-xref"><span>Chapter 27</span></a>) develop these tools further for deployment contexts, while rare disease workflows (<a href="../part_6/p6-ch28-rare-disease.html" class="quarto-xref"><span>Chapter 28</span></a>) apply them to diagnostic interpretation.</p>
-<p>Yet uncertainty quantification alone is insufficient. A perfectly calibrated black box remains a black box. The clinician who receives an uncertain prediction wants to understand why the model is uncertain: Is it because the variant falls in a poorly characterized gene? Because the model has never encountered this protein fold? Because the underlying biology is genuinely ambiguous? Interpretability, examined in <a href="p5-ch24-interpretability.html" class="quarto-xref"><span>Chapter 25</span></a>, complements uncertainty by revealing the basis for predictions and their associated confidence. Attribution methods (<a href="p5-ch24-interpretability.html#sec-ch24-attribution" class="quarto-xref"><span>Section 25.1</span></a>) identify which input features drive predictions; probing classifiers (<a href="p5-ch24-interpretability.html#sec-ch24-probing" class="quarto-xref"><span>Section 25.4</span></a>) reveal what information representations encode. The conjunction of calibrated uncertainty and mechanistic understanding approaches what trustworthy clinical AI requires. Neither alone suffices; together they provide the foundation for models that clinicians can reason with rather than merely defer to.</p>
+<p>Yet uncertainty quantification alone is insufficient. A perfectly calibrated black box remains a black box. The clinician who receives an uncertain prediction wants to understand why the model is uncertain: Is it because the variant falls in a poorly characterized gene? Because the model has never encountered this protein fold? Because the underlying biology is genuinely ambiguous? Interpretability, examined in <a href="p5-ch24-interpretability.html" class="quarto-xref"><span>Chapter 24</span></a>, complements uncertainty by revealing the basis for predictions and their associated confidence. Attribution methods (<a href="p5-ch24-interpretability.html#sec-ch24-attribution" class="quarto-xref"><span>Section 24.1</span></a>) identify which input features drive predictions; probing classifiers (<a href="p5-ch24-interpretability.html#sec-ch24-probing" class="quarto-xref"><span>Section 24.4</span></a>) reveal what information representations encode. The conjunction of calibrated uncertainty and mechanistic understanding approaches what trustworthy clinical AI requires. Neither alone suffices; together they provide the foundation for models that clinicians can reason with rather than merely defer to.</p>
 <div class="callout callout-style-default callout-note callout-titled">
 <div class="callout-header d-flex align-content-center">
 <div class="callout-icon-container">
@@ -1565,9 +1567,9 @@ Chapter Summary
 <p><strong>Connections to Other Chapters:</strong></p>
 <ul>
 <li>Builds on evaluation principles (<a href="../part_2/p2-ch11-benchmarks.html" class="quarto-xref"><span>Chapter 12</span></a>) and pretraining objectives (<a href="../part_2/p2-ch08-pretraining.html" class="quarto-xref"><span>Chapter 8</span></a>)</li>
-<li>Precedes interpretability (<a href="p5-ch24-interpretability.html" class="quarto-xref"><span>Chapter 25</span></a>) which explains why models are uncertain</li>
+<li>Precedes interpretability (<a href="p5-ch24-interpretability.html" class="quarto-xref"><span>Chapter 24</span></a>) which explains why models are uncertain</li>
 <li>Applies to clinical risk prediction (<a href="../part_6/p6-ch27-clinical-risk.html" class="quarto-xref"><span>Chapter 27</span></a>) and rare disease diagnosis (<a href="../part_6/p6-ch28-rare-disease.html" class="quarto-xref"><span>Chapter 28</span></a>)</li>
-<li>Intersects with fairness concerns (<a href="../part_1/p1-ch03-gwas.html#sec-ch03-fairness" class="quarto-xref"><span>Section 3.7.2</span></a>, <a href="p5-ch26-regulatory.html#sec-ch26-regulatory" class="quarto-xref"><span>Section 27.1</span></a>)</li>
+<li>Intersects with fairness concerns (<a href="../part_1/p1-ch03-gwas.html#sec-ch03-fairness" class="quarto-xref"><span>Section 3.7.2</span></a>, <a href="p5-ch26-regulatory.html#sec-ch26-regulatory" class="quarto-xref"><span>Section 26.1</span></a>)</li>
 </ul>
 </div>
 </div>
