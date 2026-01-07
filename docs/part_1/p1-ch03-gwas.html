@@ -562,6 +562,29 @@ window.Quarto = {
 </header>
 
 
+<div class="callout callout-style-default callout-note callout-titled" title="Chapter Overview">
+<div class="callout-header d-flex align-content-center">
+<div class="callout-icon-container">
+<i class="callout-icon"></i>
+</div>
+<div class="callout-title-container flex-fill">
+Chapter Overview
+</div>
+</div>
+<div class="callout-body-container callout-body">
+<p><strong>Prerequisites:</strong> Basic understanding of genetic variants (SNPs, alleles) from <a href="p1-ch01-ngs.html" class="quarto-xref"><span>Chapter 1</span></a> and familiarity with population genetics concepts. No prior statistics beyond introductory probability required.</p>
+<p><strong>You will learn:</strong></p>
+<ul>
+<li>How genome-wide association studies identify genetic variants linked to traits and diseases</li>
+<li>Why GWAS signals represent associations with genomic regions, not identifications of causal variants</li>
+<li>How heritability partitions phenotypic variance into genetic and environmental components</li>
+<li>How linkage disequilibrium creates the fundamental gap between statistical association and biological causation</li>
+<li>How polygenic scores aggregate thousands of small effects into clinically meaningful risk predictions</li>
+<li>Why polygenic scores perform differently across ancestral populations and what this means for equity</li>
+</ul>
+<p><strong>Key insight:</strong> GWAS identify signposts, not causes. The path from associated variant to biological mechanism requires additional methods, and the path from statistical association to equitable clinical utility requires attention to who was included in discovery cohorts.</p>
+</div>
+</div>
 <p><strong>Genome-wide association studies (GWAS)</strong> do not identify causal variants; they identify signposts. When a GWAS reports that a particular <strong>single nucleotide polymorphism (SNP)</strong> associates with coronary artery disease, that SNP is almost certainly not the variant that alters cardiac biology. It is correlated with the causal variant through linkage disequilibrium, the non-random association of nearby alleles that persists across generations. The statistical machinery of GWAS is exquisitely sensitive to these correlations but fundamentally agnostic about mechanism. It can identify a region of the genome that harbors trait-relevant variation without distinguishing the causal variant from its correlated neighbors, without explaining which genes or pathways are affected, and without revealing whether the same associations hold in populations with different linkage patterns.</p>
 <p>This distinction between association and causation defines the central intellectual challenge of statistical genetics. GWAS have identified thousands of genomic regions associated with hundreds of complex traits, from height and blood pressure to schizophrenia and type 2 diabetes. These associations replicate across studies with remarkable consistency, confirming that the signals are real. Yet the path from associated region to biological mechanism remains obscure for most loci. The majority of GWAS signals fall in non-coding regions where there is no obvious gene to implicate. Even when a signal overlaps a gene, whether it affects expression, splicing, or protein function is rarely apparent from the association alone.</p>
 <p>Polygenic scores aggregate these associations into predictions, summing risk alleles across thousands of loci to estimate an individual’s genetic predisposition. For some traits, these scores achieve clinically meaningful discrimination: individuals in the top percentile of coronary artery disease risk have odds ratios comparable to monogenic familial hypercholesterolemia. Yet polygenic scores inherit all the limitations of the associations they aggregate. They predict without explaining, correlate without identifying mechanism, and transfer poorly across populations with different allele frequencies and linkage patterns. Understanding both their power and their limitations is essential for mechanistic approaches where regulatory sequence models (<a href="../part_3/p3-ch16-regulatory.html" class="quarto-xref"><span>Chapter 16</span></a>) and variant effect predictors (<a href="../part_3/p3-ch17-vep-fm.html" class="quarto-xref"><span>Chapter 17</span></a>) attempt to move from statistical association to biological explanation <span class="citation" data-cites="khera_genome-wide_2017">(<a href="../bib/references.html#ref-khera_genome-wide_2017" role="doc-biblioref">Khera and Kathiresan 2017</a>)</span>. The portability challenges of polygenic scores across populations motivate the fairness and equity considerations examined in <span class="quarto-unresolved-ref">?sec-ch22-ancestry-confounding</span> and <a href="../part_6/p6-ch27-clinical-risk.html#sec-ch27-fairness" class="quarto-xref"><span>Section 27.8</span></a>.</p>
@@ -574,12 +597,47 @@ window.Quarto = {
 <section id="sec-ch03-linear-models" class="level3" data-number="3.1.1">
 <h3 data-number="3.1.1" class="anchored" data-anchor-id="sec-ch03-linear-models"><span class="header-section-number">3.1.1</span> Association Models for Quantitative Traits</h3>
 <p>Choosing the wrong statistical model for a GWAS does not merely introduce imprecision; it distorts effect size estimates in ways that propagate through every downstream analysis, from fine-mapping to polygenic scores to drug target prioritization. A height GWAS and a schizophrenia GWAS require fundamentally different approaches because one outcome is continuous and the other binary. Applying linear regression to a binary outcome produces fitted values outside the 0-1 probability range and residuals that violate normality assumptions.</p>
+<div class="callout callout-style-default callout-warning callout-titled" title="Mathematical Detail">
+<div class="callout-header d-flex align-content-center">
+<div class="callout-icon-container">
+<i class="callout-icon"></i>
+</div>
+<div class="callout-title-container flex-fill">
+Mathematical Detail
+</div>
+</div>
+<div class="callout-body-container callout-body">
+<p>The following sections introduce statistical models using mathematical notation. Readers unfamiliar with regression can focus on the conceptual intuition: for each variant, we ask whether people with more copies of one allele tend to have higher or lower values of the trait, after accounting for confounding factors like age, sex, and ancestry.</p>
+</div>
+</div>
 <p>For continuous phenotypes such as height, LDL cholesterol, or blood pressure, the standard approach is linear regression. Let <span class="math inline">\(y_i\)</span> denote the phenotype for individual <span class="math inline">\(i\)</span>, and let <span class="math inline">\(g_{ij}\)</span> denote the genotype dosage at variant <span class="math inline">\(j\)</span>, encoded as <span class="math inline">\(0\)</span>, <span class="math inline">\(1\)</span>, or <span class="math inline">\(2\)</span> copies of the alternative allele (or as a fractional value for imputed genotypes). The model is:</p>
 <p><span class="math display">\[
 y_i = \alpha + \beta_j g_{ij} + \gamma^\top c_i + \varepsilon_i
 \]</span></p>
 <p>The coefficient <span class="math inline">\(\beta_j\)</span> represents the expected change in phenotype per additional copy of the alternative allele, holding covariates <span class="math inline">\(c_i\)</span> fixed. When phenotypes are standardized to zero mean and unit variance, <span class="math inline">\(\beta_j\)</span> is expressed in standard deviation units per allele. The vector <span class="math inline">\(c_i\)</span> typically includes age, sex, genotyping batch, and principal components capturing ancestry (discussed below). The residual <span class="math inline">\(\varepsilon_i\)</span> captures unexplained variation, assumed to be independent and identically distributed across individuals.</p>
 <p>For each variant, a test statistic is computed for the null hypothesis <span class="math inline">\(H_0: \beta_j = 0\)</span>. In large samples, the t-statistic follows approximately a standard normal distribution under the null, yielding a two-sided p-value. With <span class="math inline">\(M\)</span> variants tested (typically <span class="math inline">\(10^6\)</span> to <span class="math inline">\(10^7\)</span> after imputation), multiple comparison correction is essential. The conventional <strong>genome-wide significance threshold</strong> of <span class="math inline">\(5 \times 10^{-8}\)</span> approximates a Bonferroni correction for roughly one million effectively independent tests, accounting for correlation among variants due to linkage disequilibrium <span class="citation" data-cites="risch_future_1996 peer_estimation_2008">(<a href="../bib/references.html#ref-risch_future_1996" role="doc-biblioref">Risch and Merikangas 1996</a>; <a href="../bib/references.html#ref-peer_estimation_2008" role="doc-biblioref">Pe’er et al. 2008</a>)</span>.</p>
+<div class="callout callout-style-default callout-note callout-titled" title="Deep Dive: Multiple Testing Correction">
+<div class="callout-header d-flex align-content-center">
+<div class="callout-icon-container">
+<i class="callout-icon"></i>
+</div>
+<div class="callout-title-container flex-fill">
+Deep Dive: Multiple Testing Correction
+</div>
+</div>
+<div class="callout-body-container callout-body">
+<p><strong>For ML readers:</strong> Testing millions of variants creates a massive multiple testing problem:</p>
+<p><strong>The problem:</strong> If you test 1 million variants at <span class="math inline">\(\alpha = 0.05\)</span>, you expect 50,000 false positives by chance alone. GWAS must distinguish true signals from this noise.</p>
+<p><strong>Bonferroni correction:</strong> Divide <span class="math inline">\(\alpha\)</span> by the number of tests. For 1 million tests: <span class="math inline">\(0.05 / 1{,}000{,}000 = 5 \times 10^{-8}\)</span>. This threshold has become the conventional genome-wide significance cutoff.</p>
+<p><strong>Why it works:</strong> Variants in linkage disequilibrium are correlated, so there are roughly 1 million <em>effectively independent</em> tests even when testing 10 million variants. The <span class="math inline">\(5 \times 10^{-8}\)</span> threshold controls the family-wise error rate (FWER)—the probability of any false positive.</p>
+<p><strong>Consequences for ML:</strong></p>
+<ul>
+<li>GWAS hits represent extremely strong statistical signals (typically hundreds or thousands of samples carry each risk allele)</li>
+<li>Marginal effects (variants that contribute but don’t reach significance) are systematically excluded</li>
+<li>Polygenic scores must handle the millions of “sub-threshold” variants that collectively explain substantial heritability</li>
+</ul>
+</div>
+</div>
 </section>
 <section id="sec-ch03-logistic-models" class="level3" data-number="3.1.2">
 <h3 data-number="3.1.2" class="anchored" data-anchor-id="sec-ch03-logistic-models"><span class="header-section-number">3.1.2</span> Association Models for Disease Outcomes</h3>
@@ -590,6 +648,19 @@ y_i = \alpha + \beta_j g_{ij} + \gamma^\top c_i + \varepsilon_i
 \]</span></p>
 <p>Here <span class="math inline">\(\beta_j\)</span> is the log-odds ratio per allele, and <span class="math inline">\(\exp(\beta_j)\)</span> gives the <strong>odds ratio (OR)</strong>. An odds ratio of <span class="math inline">\(1.2\)</span> means that each additional copy of the alternative allele increases the odds of disease by <span class="math inline">\(20\%\)</span>. For rare diseases (prevalence below approximately <span class="math inline">\(10\%\)</span>), odds ratios approximate relative risks, but the distinction matters for common conditions and when communicating absolute risk to patients.</p>
 <p>Case-control sampling, in which cases are enriched relative to their population frequency, distorts absolute risk estimates but preserves the validity of odds ratio estimation. This mathematical property explains why GWAS conducted in case-control designs can still produce effect sizes useful for polygenic scores, provided downstream applications account for baseline disease incidence. The likelihood function conditions on disease status, making the odds ratio identifiable regardless of sampling scheme.</p>
+<div class="callout callout-style-default callout-tip callout-titled" title="Stop and Think">
+<div class="callout-header d-flex align-content-center">
+<div class="callout-icon-container">
+<i class="callout-icon"></i>
+</div>
+<div class="callout-title-container flex-fill">
+Stop and Think
+</div>
+</div>
+<div class="callout-body-container callout-body">
+<p>Consider a GWAS for type 2 diabetes with 10,000 cases and 10,000 controls, when the true population prevalence is only 8%. If you compute the raw proportion of cases in the study (50%), this clearly misrepresents population risk. Why does the odds ratio remain valid despite this artificial enrichment of cases? What would happen if you tried to convert this odds ratio to absolute risk without accounting for the sampling design?</p>
+</div>
+</div>
 </section>
 <section id="sec-ch03-visualization" class="level3" data-number="3.1.3">
 <h3 data-number="3.1.3" class="anchored" data-anchor-id="sec-ch03-visualization"><span class="header-section-number">3.1.3</span> Manhattan Plots and Q-Q Plots</h3>
@@ -601,13 +672,13 @@ y_i = \alpha + \beta_j g_{ij} + \gamma^\top c_i + \varepsilon_i
 <div aria-describedby="fig-manhattan-anatomy-caption-0ceaefa1-69ba-4598-a22c-09a6ac19f8ca">
 <div class="quarto-figure quarto-figure-center">
 <figure class="figure">
-<p><img src="../figs/part_1/ch03/01-fig-manhattan-anatomy.png" class="img-fluid figure-img"></p>
-<figcaption>FIGURE PLACEHOLDER</figcaption>
+<p><img src="../figs/part_1/ch03/01-fig-manhattan-anatomy.svg" class="img-fluid figure-img"></p>
+<figcaption>Annotated Manhattan plot from genome-wide association study</figcaption>
 </figure>
 </div>
 </div>
 <figcaption class="quarto-float-caption-bottom quarto-float-caption quarto-float-fig" id="fig-manhattan-anatomy-caption-0ceaefa1-69ba-4598-a22c-09a6ac19f8ca">
-Figure&nbsp;3.1: [Essential] Annotated Manhattan plot from a real or realistic GWAS (e.g., height or CAD). Key annotations: (1) Genome-wide significance threshold at <span class="math inline">\(-\log_{10}(5 \times 10^{-8}) \approx 7.3\)</span>; (2) Example peak with lead SNP labeled; (3) Width of peak showing LD extent (many correlated variants, not just one); (4) Chromosomes color-alternated along x-axis; (5) Inset zoom on one peak showing how multiple variants exceed threshold, illustrating that GWAS identifies loci, not causal variants. Include Q-Q plot inset showing expected vs observed p-value distribution with genomic inflation factor <span class="math inline">\(\lambda\)</span> annotated.
+Figure&nbsp;3.1: Anatomy of a Manhattan plot from genome-wide association study. Each point represents a tested genetic variant, with genomic position along the x-axis (chromosomes color-alternated) and statistical significance (-log10 p-value) on the y-axis. The horizontal dashed line marks the genome-wide significance threshold (P = 5 x 10<sup>-8</sup>). Prominent peaks identify associated loci, but each peak typically contains dozens to hundreds of correlated variants in linkage disequilibrium (LD) rather than a single causal nucleotide. The width of peaks reflects local LD structure. Inset: quantile-quantile (Q-Q) plot comparing observed to expected p-value distributions, with genomic inflation factor (lambda) indicating adequate control of population stratification when near 1.0.
 </figcaption>
 </figure>
 </div>
@@ -617,6 +688,19 @@ Figure&nbsp;3.1: [Essential] Annotated Manhattan plot from a real or realistic G
 <p>Population structure poses a fundamental challenge to GWAS interpretation because it can generate association signals indistinguishable from true biological effects. If allele frequencies differ systematically across subpopulations and the phenotype also varies across these groups for non-genetic reasons (differences in environment, diet, healthcare access, socioeconomic status), naive association testing will detect variants that mark ancestry rather than causal biology. A variant that is simply more common in one population will appear associated with any trait that differs between populations, regardless of biological mechanism. The resulting false positives waste resources on follow-up studies and, more insidiously, can embed ancestry-related confounding into polygenic scores that are then deployed as if they measured pure genetic risk.</p>
 <p><strong>Principal component analysis (PCA)</strong> on the genotype matrix captures the major axes of genetic variation across individuals <span class="citation" data-cites="price_pca_2006 patterson_population_2006">(<a href="../bib/references.html#ref-price_pca_2006" role="doc-biblioref">Price et al. 2006</a>; <a href="../bib/references.html#ref-patterson_population_2006" role="doc-biblioref">Patterson, Price, and Reich 2006</a>)</span>. The leading principal components often correspond to continental ancestry gradients or finer-scale population structure within a study. Including these PCs as covariates in the regression model attenuates spurious associations driven by ancestry stratification.</p>
 <p>This correction is imperfect. Subtle structure not captured by the included PCs, cryptic relatedness among individuals, and the interweaving of genetic ancestry with environmental exposures all complicate interpretation. The challenges extend far beyond technical statistical adjustment: ancestry is entangled with healthcare access, environmental exposures, and socioeconomic factors in ways that simple covariate correction cannot fully resolve. These issues become critical when translating GWAS results to clinical applications and when evaluating whether polygenic scores perform equitably across populations. The full complexity of ancestry as a confounder is addressed in <a href="../part_2/p2-ch12-confounding.html" class="quarto-xref"><span>Chapter 12</span></a>.</p>
+<div class="callout callout-style-default callout-important callout-titled" title="Key Insight">
+<div class="callout-header d-flex align-content-center">
+<div class="callout-icon-container">
+<i class="callout-icon"></i>
+</div>
+<div class="callout-title-container flex-fill">
+Key Insight
+</div>
+</div>
+<div class="callout-body-container callout-body">
+<p>Population structure control is a statistical partial fix for a deeper problem. PCA covariates remove associations driven purely by ancestry, but they cannot disentangle genetic effects from environmental factors that correlate with ancestry. A variant associated with a trait after PCA adjustment may still reflect gene-environment correlation rather than direct biological causation.</p>
+</div>
+</div>
 </section>
 </section>
 <section id="sec-ch03-heritability" class="level2" data-number="3.2">
@@ -627,13 +711,13 @@ Figure&nbsp;3.1: [Essential] Annotated Manhattan plot from a real or realistic G
 <div aria-describedby="fig-heritability-decomposition-caption-0ceaefa1-69ba-4598-a22c-09a6ac19f8ca">
 <div class="quarto-figure quarto-figure-center">
 <figure class="figure">
-<p><img src="../figs/part_1/ch03/02-fig-heritability-decomposition.png" class="img-fluid figure-img"></p>
-<figcaption>FIGURE PLACEHOLDER</figcaption>
+<p><img src="../figs/part_1/ch03/02-fig-heritability-decomposition.svg" class="img-fluid figure-img"></p>
+<figcaption>Decomposition of phenotypic variance showing heritability components</figcaption>
 </figure>
 </div>
 </div>
 <figcaption class="quarto-float-caption-bottom quarto-float-caption quarto-float-fig" id="fig-heritability-decomposition-caption-0ceaefa1-69ba-4598-a22c-09a6ac19f8ca">
-Figure&nbsp;3.2: [High] Conceptual diagram showing nested components of phenotypic variance. Outer ring: Total phenotypic variance (<span class="math inline">\(100\%\)</span>). First partition: Genetic vs Environmental components (e.g., <span class="math inline">\(80/20\)</span> for height). Within genetic: Additive (narrow-sense <span class="math inline">\(h^2\)</span>) vs non-additive (dominance, epistasis). Within additive: SNP-heritability (what GWAS can capture) vs “missing heritability” (rare variants, structural variants, imperfect tagging). Annotate with approximate values for a well-studied trait like height.
+Figure&nbsp;3.2: Decomposition of phenotypic variance for a highly heritable trait (height). The outermost ring represents total phenotypic variance. The first partition separates genetic (blue, ~80%) from environmental (green, ~20%) contributions. Within the genetic component, additive effects (narrow-sense heritability) dominate over non-additive effects (dominance, epistasis). Within additive heritability, SNP-heritability (~50-60% for height) represents variance captured by common variants on genotyping arrays, while the remainder reflects ‘missing heritability’: rare variants, structural variants, and imperfect tagging of causal alleles. This nested structure explains why GWAS-significant hits explain only a fraction of trait heritability and why polygenic scores built on common variants face a performance ceiling.
 </figcaption>
 </figure>
 </div>
@@ -642,6 +726,19 @@ Figure&nbsp;3.2: [High] Conceptual diagram showing nested components of phenotyp
 <p>Classical genetics estimated heritability by comparing phenotypic similarity among relatives. Identical twins share all their genetic variation; fraternal twins share on average half; full siblings also share half; parents and offspring share half; cousins share one-eighth. If genetic variation influences a trait, closer relatives should be more similar. The correlation structure across relationship types allows partitioning of phenotypic variance into genetic and environmental components.</p>
 <p><strong>Narrow-sense heritability</strong> (<span class="math inline">\(h^2\)</span>) represents the proportion of phenotypic variance attributable to additive genetic effects. For height, pedigree studies consistently estimate <span class="math inline">\(h^2\)</span> around <span class="math inline">\(0.80\)</span>, meaning that <span class="math inline">\(80\%\)</span> of the variation in height across individuals in the studied population can be attributed to genetic differences <span class="citation" data-cites="visscher_heritability_2008">(<a href="../bib/references.html#ref-visscher_heritability_2008" role="doc-biblioref">Visscher, Hill, and Wray 2008</a>)</span>. For schizophrenia, twin studies estimate <span class="math inline">\(h^2\)</span> around <span class="math inline">\(0.80\)</span> as well <span class="citation" data-cites="hilker_heritability_2018">(<a href="../bib/references.html#ref-hilker_heritability_2018" role="doc-biblioref">Hilker et al. 2018</a>)</span>. For body mass index, estimates cluster around <span class="math inline">\(0.50\)</span> to <span class="math inline">\(0.80\)</span> depending on the population, age group, and study design <span class="citation" data-cites="elks_variability_2012">(<a href="../bib/references.html#ref-elks_variability_2012" role="doc-biblioref">Elks et al. 2012</a>)</span>.</p>
 <p>These high heritability estimates established that genetics substantially influences most traits of biomedical interest, motivating the search for specific causal variants. If 80% of height variation is genetic, then genetic variants collectively must explain most of that variation. Finding those variants became the goal of GWAS.</p>
+<div class="callout callout-style-default callout-tip callout-titled" title="Knowledge Check">
+<div class="callout-header d-flex align-content-center">
+<div class="callout-icon-container">
+<i class="callout-icon"></i>
+</div>
+<div class="callout-title-container flex-fill">
+Knowledge Check
+</div>
+</div>
+<div class="callout-body-container callout-body">
+<p>A twin study finds that identical twins have a correlation of 0.90 for height, while fraternal twins have a correlation of 0.45. Using the classical formula <span class="math inline">\(h^2 = 2 \times (r_{MZ} - r_{DZ})\)</span>, what is the estimated heritability? Does this match the published estimates mentioned above? What assumptions does this calculation make about shared versus non-shared environmental influences?</p>
+</div>
+</div>
 </section>
 <section id="sec-ch03-snp-heritability" class="level3" data-number="3.2.2">
 <h3 data-number="3.2.2" class="anchored" data-anchor-id="sec-ch03-snp-heritability"><span class="header-section-number">3.2.2</span> SNP-Heritability and the Missing Heritability Problem</h3>
@@ -650,6 +747,64 @@ Figure&nbsp;3.2: [High] Conceptual diagram showing nested components of phenotyp
 <p>This intermediate value revealed that missing heritability actually comprises two distinct gaps. The first gap separates SNP-heritability from variance explained by GWAS-significant variants. This <strong>polygenic gap</strong> reflects the architecture of complex traits: thousands of variants each contribute effects too small to reach genome-wide significance individually, yet they collectively explain substantial variance when modeled together. As sample sizes grow and more variants cross the significance threshold, this gap narrows. The polygenic gap is not truly “missing” heritability; the variance is captured by common SNPs, just distributed across too many variants to detect individually.</p>
 <p>The second gap separates pedigree heritability from SNP-heritability. This <strong>hidden heritability</strong> reflects genetic variation genuinely absent from common SNP arrays: rare variants below minor allele frequency thresholds, structural variants poorly tagged by single nucleotide polymorphisms, copy number variations, and variants not in linkage disequilibrium with array content. Unlike the polygenic gap, this component cannot be recovered by increasing GWAS sample size; it requires different data types entirely, such as whole-genome sequencing that captures rare variation directly.</p>
 <p>The distinction matters for how foundation models might contribute. Models trained on common variant data inherit the SNP-heritability ceiling; they cannot learn patterns from variation they never observe. Integrating rare variant data, structural variant calls, or multi-omic measurements represents not merely incremental improvement but access to a fundamentally different component of genetic architecture.</p>
+<p>The following table summarizes how different heritability concepts relate to each other and to GWAS capabilities:</p>
+<div id="tbl-heritability-components" class="quarto-float quarto-figure quarto-figure-center anchored">
+<figure class="quarto-float quarto-float-tbl figure">
+<figcaption class="quarto-float-caption-top quarto-float-caption quarto-float-tbl" id="tbl-heritability-components-caption-0ceaefa1-69ba-4598-a22c-09a6ac19f8ca">
+Table&nbsp;3.1: Heritability decomposition for height, illustrating the nested structure of genetic variance.
+</figcaption>
+<div aria-describedby="tbl-heritability-components-caption-0ceaefa1-69ba-4598-a22c-09a6ac19f8ca">
+<table class="caption-top table">
+<colgroup>
+<col style="width: 28%">
+<col style="width: 16%">
+<col style="width: 30%">
+<col style="width: 24%">
+</colgroup>
+<thead>
+<tr class="header">
+<th>Heritability Concept</th>
+<th>Definition</th>
+<th>Typical Value (Height)</th>
+<th>What It Captures</th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<td>Pedigree (<span class="math inline">\(h^2\)</span>)</td>
+<td>Phenotypic variance explained by all genetic factors</td>
+<td>~0.80</td>
+<td>Upper bound from family resemblance</td>
+</tr>
+<tr class="even">
+<td>SNP-heritability (<span class="math inline">\(h^2_{SNP}\)</span>)</td>
+<td>Variance explained by common array SNPs</td>
+<td>~0.50-0.60</td>
+<td>What GWAS can potentially capture</td>
+</tr>
+<tr class="odd">
+<td>Explained by GWAS hits</td>
+<td>Variance from genome-wide significant variants</td>
+<td>~0.25 (and rising)</td>
+<td>What GWAS has actually found</td>
+</tr>
+<tr class="even">
+<td>Polygenic gap</td>
+<td><span class="math inline">\(h^2_{SNP}\)</span> minus GWAS-explained</td>
+<td>~0.25-0.35</td>
+<td>Discoverable with larger samples</td>
+</tr>
+<tr class="odd">
+<td>Hidden heritability</td>
+<td><span class="math inline">\(h^2\)</span> minus <span class="math inline">\(h^2_{SNP}\)</span></td>
+<td>~0.20-0.30</td>
+<td>Requires new data types (rare variants, SVs)</td>
+</tr>
+</tbody>
+</table>
+</div>
+</figure>
+</div>
 </section>
 <section id="sec-ch03-heritability-implications" class="level3" data-number="3.2.3">
 <h3 data-number="3.2.3" class="anchored" data-anchor-id="sec-ch03-heritability-implications"><span class="header-section-number">3.2.3</span> Implications for GWAS and Polygenic Scores</h3>
@@ -660,7 +815,47 @@ Figure&nbsp;3.2: [High] Conceptual diagram showing nested components of phenotyp
 </section>
 <section id="sec-ch03-ld" class="level2" data-number="3.3">
 <h2 data-number="3.3" class="anchored" data-anchor-id="sec-ch03-ld"><span class="header-section-number">3.3</span> Linkage Disequilibrium and the Association-Causation Gap</h2>
+<div class="callout callout-style-default callout-tip callout-titled" title="Stop and Think">
+<div class="callout-header d-flex align-content-center">
+<div class="callout-icon-container">
+<i class="callout-icon"></i>
+</div>
+<div class="callout-title-container flex-fill">
+Stop and Think
+</div>
+</div>
+<div class="callout-body-container callout-body">
+<p>Imagine you are conducting a GWAS and find that variant A shows a strong association with heart disease (p &lt; 10<sup>-20</sup>). You check and find that variant A is in strong linkage disequilibrium (r<sup>2</sup> = 0.95) with nearby variant B. Based on the GWAS result alone, can you determine which variant, if either, is causal? What additional information would you need?</p>
+</div>
+</div>
 <p>GWAS test variants one at a time, but the genome is not inherited one variant at a time. Nearby variants travel together on haplotypes and are co-inherited across generations except when recombination separates them. This correlation structure, known as <strong>linkage disequilibrium (LD)</strong>, is both essential to GWAS power and the source of their fundamental interpretive limitation. Without LD, GWAS would need to genotype every variant in the genome directly; with LD, statistical association cannot distinguish cause from correlation.</p>
+<div class="callout callout-style-default callout-note callout-titled" title="Deep Dive: Linkage Disequilibrium">
+<div class="callout-header d-flex align-content-center">
+<div class="callout-icon-container">
+<i class="callout-icon"></i>
+</div>
+<div class="callout-title-container flex-fill">
+Deep Dive: Linkage Disequilibrium
+</div>
+</div>
+<div class="callout-body-container callout-body">
+<p><strong>For ML readers:</strong> Linkage disequilibrium (LD) is the non-random association of alleles at different genomic positions:</p>
+<p><strong>Why it exists:</strong> During meiosis, chromosomes are inherited in large blocks. Variants that are physically close tend to be inherited together because recombination events between them are rare. Over many generations, recombination gradually breaks down these correlations.</p>
+<p><strong>Measuring LD:</strong> The most common metric is <span class="math inline">\(r^2\)</span>, the squared correlation between allele counts at two positions:</p>
+<ul>
+<li><span class="math inline">\(r^2 = 1.0\)</span>: Perfect correlation (variants always inherited together)</li>
+<li><span class="math inline">\(r^2 = 0.5\)</span>: Moderate correlation</li>
+<li><span class="math inline">\(r^2 = 0\)</span>: No correlation (variants segregate independently)</li>
+</ul>
+<p><strong>LD decay:</strong> Correlation decreases with physical distance. In European populations, LD typically extends 10-100 kb; in African populations, LD decays faster due to older population history and more accumulated recombination events.</p>
+<p><strong>Implications for genomics:</strong></p>
+<ul>
+<li><em>GWAS power</em>: A genotyping array with 1 million variants can “tag” most common variation because ungenotyped variants are correlated with genotyped ones</li>
+<li><em>Causal ambiguity</em>: When variant A associates with disease, any variant B in high LD with A will also show association—GWAS cannot distinguish which is causal</li>
+<li><em>Population specificity</em>: LD patterns differ across populations, causing polygenic scores to transfer poorly</li>
+</ul>
+</div>
+</div>
 <p>When a GWAS identifies a significant association at variant <em>j</em>, three possibilities exist. The variant itself may be causal, directly influencing the phenotype through some molecular mechanism. Alternatively, variant <em>j</em> may simply be correlated with a nearby causal variant <span class="math inline">\(k\)</span> due to LD, with the association signal reflecting this correlation rather than direct causation. In complex regions, multiple causal variants may exist, and the observed association pattern reflects their joint effects filtered through the local LD structure. Distinguishing these scenarios from GWAS summary statistics alone is often impossible. The causal variant and its tag look identical in the association data, yet only the causal variant represents a valid drug target or mechanistic insight.</p>
 <p>Fine-mapping methods attempt to resolve this ambiguity by modeling LD structure explicitly. Reference panels from the 1000 Genomes Project (<a href="p1-ch02-data.html#sec-ch02-1000genomes" class="quarto-xref"><span>Section 2.2.2</span></a>) and gnomAD (<a href="p1-ch02-data.html#sec-ch02-gnomad" class="quarto-xref"><span>Section 2.2.3</span></a>) enable LD calculation across diverse populations, providing the correlation matrices these methods require. Statistical fine-mapping narrows the set of plausible causal variants but often cannot identify a single culprit. Incorporating functional priors from regulatory models and variant effect predictors can further prioritize candidates; this integration of foundation model representations into fine-mapping is examined in <span class="quarto-unresolved-ref">?sec-ch14-fm-paradigm</span>.</p>
 <div id="fig-ld-tag-causal" class="quarto-layout-panel">
@@ -670,31 +865,31 @@ Figure&nbsp;3.2: [High] Conceptual diagram showing nested components of phenotyp
 <div class="quarto-layout-cell" style="flex-basis: 33.3%;justify-content: flex-start;">
 <div class="quarto-figure quarto-figure-center">
 <figure class="figure">
-<p><img src="../figs/part_1/ch03/03-A-fig-ld-tag-causal.png" class="img-fluid figure-img"></p>
-<figcaption>FIGURE PLACEHOLDER A</figcaption>
+<p><img src="../figs/part_1/ch03/03-A-fig-ld-tag-causal.svg" class="img-fluid figure-img"></p>
+<figcaption>Haplotype structure showing how nearby variants co-segregate</figcaption>
 </figure>
 </div>
 </div>
 <div class="quarto-layout-cell" style="flex-basis: 33.3%;justify-content: flex-start;">
 <div class="quarto-figure quarto-figure-center">
 <figure class="figure">
-<p><img src="../figs/part_1/ch03/03-B-fig-ld-tag-causal.png" class="img-fluid figure-img"></p>
-<figcaption>FIGURE PLACEHOLDER B</figcaption>
+<p><img src="../figs/part_1/ch03/03-B-fig-ld-tag-causal.svg" class="img-fluid figure-img"></p>
+<figcaption>LD matrix displaying pairwise correlations across a genomic region</figcaption>
 </figure>
 </div>
 </div>
 <div class="quarto-layout-cell" style="flex-basis: 33.3%;justify-content: flex-start;">
 <div class="quarto-figure quarto-figure-center">
 <figure class="figure">
-<p><img src="../figs/part_1/ch03/03-C-fig-ld-tag-causal.png" class="img-fluid figure-img"></p>
-<figcaption>FIGURE PLACEHOLDER C</figcaption>
+<p><img src="../figs/part_1/ch03/03-C-fig-ld-tag-causal.svg" class="img-fluid figure-img"></p>
+<figcaption>Population-specific LD patterns affecting PGS portability</figcaption>
 </figure>
 </div>
 </div>
 </div>
 </div>
 <figcaption class="quarto-float-caption-bottom quarto-float-caption quarto-float-fig" id="fig-ld-tag-causal-caption-0ceaefa1-69ba-4598-a22c-09a6ac19f8ca">
-Figure&nbsp;3.3: [Essential] Three-panel figure. Panel A: Haplotype diagram showing how LD creates correlation between variants on the same chromosome segment; show example haplotypes with causal variant (star) and tag variants traveling together. Panel B: <span class="math inline">\(r^2\)</span> matrix (triangular heatmap) for a genomic region showing block structure of LD. Panel C: Same causal variant shown in two populations with different LD structure: in one population, tags are highly correlated with causal variant; in another, the correlation is weaker, illustrating why portability fails.
+Figure&nbsp;3.3: Linkage disequilibrium and the distinction between causal and tag variants. (A) Haplotype structure showing how nearby variants co-segregate on ancestral chromosome segments. The causal variant (star) is statistically correlated with neighboring tag variants, making them indistinguishable in GWAS. (B) LD matrix displaying pairwise correlations (r<sup>2</sup>) across a genomic region, revealing block structure where many variants within blocks show high correlation. (C) Population-specific LD patterns: the same causal variant shows different correlation structures in populations with different demographic histories, explaining why polygenic scores derived in one population transfer poorly to others with different LD patterns.
 </figcaption>
 </figure>
 </div>
@@ -704,6 +899,19 @@ Figure&nbsp;3.3: [Essential] Three-panel figure. Panel A: Haplotype diagram show
 <p>Recombination does not occur uniformly across the genome. Crossover hotspots, typically spanning 1 to 2 kilobases, concentrate the majority of recombination events into a small fraction of genomic sequence. These hotspots are enriched for specific sequence motifs recognized by the zinc finger protein PRDM9, which directs the recombination machinery to particular locations. The consequence is that haplotype blocks can extend for hundreds of kilobases across regions lacking hotspots, while adjacent blocks may be separated by sharp boundaries where recombination has effectively randomized allelic associations.</p>
 <p>The squared correlation coefficient <span class="math inline">\(r^2\)</span> quantifies LD between pairs of variants. Unlike Pearson correlation, which measures linear relationships between continuous variables, <span class="math inline">\(r^2\)</span> for LD is computed from allele frequencies and haplotype counts in a <span class="math inline">\(2\times 2\)</span> contingency table. The metric equals <span class="math inline">\((p_{AB} - p_A p_B)^2 / (p_A p_a p_B p_b)\)</span>, where <span class="math inline">\(p_{AB}\)</span> is the frequency of the AB haplotype and <span class="math inline">\(p_A\)</span>, <span class="math inline">\(p_a\)</span>, <span class="math inline">\(p_B\)</span>, <span class="math inline">\(p_b\)</span> are the individual allele frequencies. This formulation captures the deviation from random association expected under linkage equilibrium. The notation unfortunately overlaps with the coefficient of determination from linear regression, but the quantities measure different phenomena: regression <span class="math inline">\(R^2\)</span> captures variance explained by a fitted model, while LD <span class="math inline">\(r^2\)</span> captures non-random association between alleles at two loci. When <span class="math inline">\(r^2\)</span> approaches <span class="math inline">\(1\)</span>, the two variants are nearly always observed together on the same haplotypes; when <span class="math inline">\(r^2\)</span> approaches <span class="math inline">\(0\)</span>, they segregate independently. From a GWAS perspective, if a causal variant <span class="math inline">\(k\)</span> has strong association with the phenotype and variant <span class="math inline">\(j\)</span> is in high LD with <span class="math inline">\(k\)</span> (high <span class="math inline">\(r^2\)</span>), then variant <span class="math inline">\(j\)</span> will also show strong association even if it has no direct causal role. The statistical signal propagates through LD, creating ambiguity about which variant is actually functional.</p>
 <p>LD patterns vary across populations because demographic history shapes which haplotypes persist and at what frequencies. Founder effects occur when a small number of individuals establish a new population, carrying only a subset of the ancestral haplotype diversity. The Finnish population, descended from a small founder group roughly 4,000 years ago, exhibits extended LD blocks and elevated frequencies of otherwise rare disease alleles. Bottlenecks produce similar effects: dramatic population contractions eliminate rare haplotypes and reduce diversity, leaving survivors with correlated genetic backgrounds. In contrast, large stable populations accumulate recombination events over many generations, breaking down LD more completely. A variant that tags a causal allele effectively in one population may be a poor proxy in another where different recombination history has decoupled the correlation. This population-specificity of LD structure is one reason polygenic scores fail to transfer across ancestries, a problem examined in detail in <a href="#sec-ch03-portability" class="quarto-xref"><span>Section 3.7</span></a>.</p>
+<div class="callout callout-style-default callout-important callout-titled" title="Key Insight">
+<div class="callout-header d-flex align-content-center">
+<div class="callout-icon-container">
+<i class="callout-icon"></i>
+</div>
+<div class="callout-title-container flex-fill">
+Key Insight
+</div>
+</div>
+<div class="callout-body-container callout-body">
+<p>LD is both the foundation and the limitation of GWAS. It enables discovery by allowing a limited set of genotyped variants to capture signals from ungenotyped causal variants. But it prevents identification of specific causal variants because the statistical signal cannot distinguish cause from correlation. This tension is fundamental and cannot be resolved by larger sample sizes alone.</p>
+</div>
+</div>
 </section>
 <section id="sec-ch03-causal-vs-tag" class="level3" data-number="3.3.2">
 <h3 data-number="3.3.2" class="anchored" data-anchor-id="sec-ch03-causal-vs-tag"><span class="header-section-number">3.3.2</span> Causal Variants, Tag Variants, and GWAS Catalogs</h3>
@@ -718,6 +926,19 @@ Figure&nbsp;3.3: [Essential] Three-panel figure. Panel A: Haplotype diagram show
 <section id="sec-ch03-fine-mapping-stats" class="level3" data-number="3.4.1">
 <h3 data-number="3.4.1" class="anchored" data-anchor-id="sec-ch03-fine-mapping-stats"><span class="header-section-number">3.4.1</span> Statistical Framework</h3>
 <p>The core insight of fine-mapping is that while multiple variants may show similar marginal association statistics, their joint behavior under a model that accounts for LD can discriminate among them. A causal variant should show association beyond what can be explained by LD with its neighbors; a tag variant should not. This distinction, invisible when variants are tested one at a time, becomes apparent when their correlations are modeled jointly.</p>
+<div class="callout callout-style-default callout-warning callout-titled" title="Mathematical Detail">
+<div class="callout-header d-flex align-content-center">
+<div class="callout-icon-container">
+<i class="callout-icon"></i>
+</div>
+<div class="callout-title-container flex-fill">
+Mathematical Detail
+</div>
+</div>
+<div class="callout-body-container callout-body">
+<p>The following section presents the Bayesian framework for fine-mapping. The key intuition is that we compare how well different “causal configurations” (which variants are assumed causal) explain the observed data. Variants that consistently appear in high-probability configurations are more likely to be causal.</p>
+</div>
+</div>
 <p>Bayesian fine-mapping methods approach the problem by specifying a prior distribution over which variants in a region might be causal, then computing posterior probabilities given the observed association statistics and local LD structure <span class="citation" data-cites="maller_bayesian_2012 hormozdiari_identifying_2014">(<a href="../bib/references.html#ref-maller_bayesian_2012" role="doc-biblioref">Maller et al. 2012</a>; <a href="../bib/references.html#ref-hormozdiari_identifying_2014" role="doc-biblioref">Hormozdiari et al. 2014</a>)</span>. The key outputs are <strong>posterior inclusion probabilities (PIPs)</strong>, which estimate the probability that each variant is among the causal set, and <strong>credible sets</strong>, which are minimal sets of variants that contain the true causal variant(s) with specified probability (commonly 95%).</p>
 <p>The mathematical foundation rests on comparing models that differ in which variants are causal. Consider a region containing <span class="math inline">\(m\)</span> variants, and let <span class="math inline">\(\gamma\)</span> denote a configuration specifying which variants are causal (a binary vector of length <span class="math inline">\(m\)</span>). Under a linear model, the observed GWAS summary statistics (effect estimates <span class="math inline">\(\hat{\beta}\)</span> and their standard errors) follow a multivariate normal distribution whose mean depends on the true causal effects and whose covariance depends on the LD matrix <span class="math inline">\(\Sigma\)</span>. The likelihood of observing the data under configuration <span class="math inline">\(\gamma\)</span> can be written as:</p>
 <p><span class="math display">\[P(\hat{\beta} \mid \gamma, \Sigma) = \int P(\hat{\beta} \mid \beta_\gamma, \Sigma) \, P(\beta_\gamma) \, d\beta_\gamma\]</span></p>
@@ -730,6 +951,19 @@ Figure&nbsp;3.3: [Essential] Three-panel figure. Panel A: Haplotype diagram show
 <p>This quantity answers the question: given everything we observed, what is the probability that variant <span class="math inline">\(j\)</span> is among the causal variants? Methods like <em>FINEMAP</em>, <em>CAVIAR</em>, and <em>SuSiE</em> differ primarily in how they approximate the intractable sum over configurations and in their prior specifications, but all produce PIPs as their primary output <span class="citation" data-cites="benner_finemap_2016 hormozdiari_identifying_2014 wang_simple_2020">(<a href="../bib/references.html#ref-benner_finemap_2016" role="doc-biblioref">Benner et al. 2016</a>; <a href="../bib/references.html#ref-hormozdiari_identifying_2014" role="doc-biblioref">Hormozdiari et al. 2014</a>; <a href="../bib/references.html#ref-wang_simple_2020" role="doc-biblioref">Wang et al. 2020</a>)</span>.</p>
 <p>Credible sets provide a complementary summary. A 95% credible set is the smallest set of variants whose cumulative PIP exceeds 0.95. When a single variant dominates (PIP above 0.95), the credible set contains only that variant. When LD distributes probability across many variants, credible sets expand accordingly. The <em>SuSiE</em> method produces one credible set per inferred causal signal, enabling regions with multiple independent associations to be decomposed into distinct sets <span class="citation" data-cites="wang_simple_2020">(<a href="../bib/references.html#ref-wang_simple_2020" role="doc-biblioref">Wang et al. 2020</a>)</span>.</p>
 <p>Variants with high PIPs (above 0.5 or 0.9) are strong candidates for functional follow-up. Credible sets that contain few variants are more actionable than those containing dozens. The width of credible sets reflects both the strength of the association signal and the local LD structure: tight LD means many variants remain plausible even with strong statistical evidence. In some regions, fine-mapping narrows thousands of candidates to a handful; in others, the ambiguity remains irreducible given available data.</p>
+<div class="callout callout-style-default callout-tip callout-titled" title="Knowledge Check">
+<div class="callout-header d-flex align-content-center">
+<div class="callout-icon-container">
+<i class="callout-icon"></i>
+</div>
+<div class="callout-title-container flex-fill">
+Knowledge Check
+</div>
+</div>
+<div class="callout-body-container callout-body">
+<p>A fine-mapping analysis reports that variant X has PIP = 0.35 and variant Y has PIP = 0.30, with X and Y in strong LD (r<sup>2</sup> = 0.92). The 95% credible set contains 5 variants including both X and Y. What can you conclude about whether X or Y is causal? What would make you more confident in one over the other?</p>
+</div>
+</div>
 </section>
 <section id="sec-ch03-functional-priors" class="level3" data-number="3.4.2">
 <h3 data-number="3.4.2" class="anchored" data-anchor-id="sec-ch03-functional-priors"><span class="header-section-number">3.4.2</span> Functional Annotation Priors</h3>
@@ -760,23 +994,23 @@ Figure&nbsp;3.3: [Essential] Three-panel figure. Panel A: Haplotype diagram show
 <div class="quarto-layout-cell" style="flex-basis: 50.0%;justify-content: flex-start;">
 <div class="quarto-figure quarto-figure-center">
 <figure class="figure">
-<p><img src="../figs/part_1/ch03/04-A-fig-pgs-construction.png" class="img-fluid figure-img"></p>
-<figcaption>FIGURE PLACEHOLDER A</figcaption>
+<p><img src="../figs/part_1/ch03/04-A-fig-pgs-construction.svg" class="img-fluid figure-img"></p>
+<figcaption>Clumping and thresholding discards most variants</figcaption>
 </figure>
 </div>
 </div>
 <div class="quarto-layout-cell" style="flex-basis: 50.0%;justify-content: flex-start;">
 <div class="quarto-figure quarto-figure-center">
 <figure class="figure">
-<p><img src="../figs/part_1/ch03/04-B-fig-pgs-construction.png" class="img-fluid figure-img"></p>
-<figcaption>FIGURE PLACEHOLDER B</figcaption>
+<p><img src="../figs/part_1/ch03/04-B-fig-pgs-construction.svg" class="img-fluid figure-img"></p>
+<figcaption>LD-aware Bayesian methods retain all variants with modulated weights</figcaption>
 </figure>
 </div>
 </div>
 </div>
 </div>
 <figcaption class="quarto-float-caption-bottom quarto-float-caption quarto-float-fig" id="fig-pgs-construction-caption-0ceaefa1-69ba-4598-a22c-09a6ac19f8ca">
-Figure&nbsp;3.4: [High] Side-by-side comparison of C+T vs LD-aware Bayesian methods. Left panel (C+T): Start with GWAS summary statistics → apply p-value threshold → clump by LD → retain independent lead SNPs → weight by effect size. Show visually how most variants are discarded. Right panel (LDpred/PRS-CS): Same summary statistics → model LD structure jointly → shrink effects toward zero based on prior → retain all variants with modulated weights. Highlight that C+T discards information while Bayesian methods model it.
+Figure&nbsp;3.4: Comparison of polygenic score construction approaches. (A) Clumping and thresholding (C+T) applies successive filters to GWAS summary statistics, discarding variants below a p-value threshold and pruning correlated variants to retain only independent lead SNPs. While computationally simple, this approach discards substantial genetic signal. (B) LD-aware Bayesian methods (LDpred, PRS-CS) model the correlation structure explicitly, applying shrinkage priors that modulate effect sizes based on local LD patterns while retaining contributions from all variants. The Bayesian approach preserves information distributed across correlated variants, typically improving prediction accuracy for highly polygenic traits where many variants each contribute small effects.
 </figcaption>
 </figure>
 </div>
@@ -807,6 +1041,64 @@ Terminology: PGS versus PRS
 <p><em>LDpred</em> assumes that a fraction <span class="math inline">\(p\)</span> of variants have nonzero effects drawn from a Gaussian distribution, while the remainder have zero effect <span class="citation" data-cites="vilhjalmsson_modeling_2015">(<a href="../bib/references.html#ref-vilhjalmsson_modeling_2015" role="doc-biblioref">Vilhjálmsson et al. 2015</a>)</span>. The method uses GWAS summary statistics and LD from a reference panel (computed from a subset of individuals or external dataset matching the target ancestry) to compute approximate posterior effect sizes. These posteriors shrink noisy estimates toward zero, borrow strength across correlated variants, and generally outperform C+T when properly tuned.</p>
 <p><em>PRS-CS</em> extends this framework by placing a continuous shrinkage prior on effect sizes, which better accommodates the highly polygenic architecture of complex traits and reduces sensitivity to the sparsity hyperparameter <span class="citation" data-cites="ge_polygenic_2019">(<a href="../bib/references.html#ref-ge_polygenic_2019" role="doc-biblioref">Ge et al. 2019</a>)</span>. The continuous prior assigns most variants small but nonzero effects rather than forcing a binary causal/non-causal distinction. The method has shown strong performance across a range of traits and ancestries, though like all methods it requires an LD reference that reasonably matches the target population.</p>
 <p>Related approaches (<em>lassosum</em>, <em>SBayesR</em>, and others) use different priors or optimization strategies but share the core insight: jointly modeling effect sizes under LD yields better predictions than pruning LD away. Performance differences among methods are often modest when each is well-tuned, and the choice may depend on computational resources, availability of validation data, and specific trait architecture.</p>
+<p>The following table compares the major PGS construction approaches:</p>
+<div id="tbl-pgs-methods" class="quarto-float quarto-figure quarto-figure-center anchored">
+<figure class="quarto-float quarto-float-tbl figure">
+<figcaption class="quarto-float-caption-top quarto-float-caption quarto-float-tbl" id="tbl-pgs-methods-caption-0ceaefa1-69ba-4598-a22c-09a6ac19f8ca">
+Table&nbsp;3.2: Comparison of polygenic score construction methods. All methods use GWAS summary statistics as input.
+</figcaption>
+<div aria-describedby="tbl-pgs-methods-caption-0ceaefa1-69ba-4598-a22c-09a6ac19f8ca">
+<table class="caption-top table">
+<colgroup>
+<col style="width: 11%">
+<col style="width: 18%">
+<col style="width: 26%">
+<col style="width: 29%">
+<col style="width: 14%">
+</colgroup>
+<thead>
+<tr class="header">
+<th>Method</th>
+<th>LD Handling</th>
+<th>Computational Cost</th>
+<th>Key Hyperparameters</th>
+<th>Best For</th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<td>C+T</td>
+<td>Prune away</td>
+<td>Low</td>
+<td>Window size, r<sup>2</sup> threshold, p-value threshold</td>
+<td>Quick baseline, sparse architectures</td>
+</tr>
+<tr class="even">
+<td>LDpred</td>
+<td>Joint model</td>
+<td>Medium</td>
+<td>Fraction causal (p), LD radius</td>
+<td>Moderately polygenic traits</td>
+</tr>
+<tr class="odd">
+<td>PRS-CS</td>
+<td>Continuous shrinkage</td>
+<td>Medium-High</td>
+<td>Global shrinkage, LD reference</td>
+<td>Highly polygenic traits</td>
+</tr>
+<tr class="even">
+<td>SBayesR</td>
+<td>Mixture prior</td>
+<td>High</td>
+<td>Mixture components, LD reference</td>
+<td>When architecture unknown</td>
+</tr>
+</tbody>
+</table>
+</div>
+</figure>
+</div>
 </section>
 <section id="sec-ch03-fine-mapping-informed-pgs" class="level3" data-number="3.5.3">
 <h3 data-number="3.5.3" class="anchored" data-anchor-id="sec-ch03-fine-mapping-informed-pgs"><span class="header-section-number">3.5.3</span> Fine-Mapping-Informed Scores</h3>
@@ -827,6 +1119,19 @@ Terminology: PGS versus PRS
 <p>where <span class="math inline">\(z_i\)</span> contains covariates and <span class="math inline">\(\theta\)</span> captures the effect of the PGS. After standardizing the score to unit variance, <span class="math inline">\(\exp(\theta)\)</span> gives the odds ratio per standard deviation of the PGS. This metric allows statements such as “individuals one standard deviation above the mean have 1.5-fold higher odds of disease.”</p>
 <p>Percentile-based communication is common in clinical contexts. The risk for individuals in the top 1% or 5% of the PGS distribution can be compared to those near the median or in the bottom percentiles. For some conditions, individuals in the top percentiles have risk comparable to or exceeding that conferred by single high-penetrance mutations: the top 8% of the coronary artery disease PGS distribution has risk equivalent to familial hypercholesterolemia carriers, and the top 1% of the breast cancer PGS distribution has lifetime risk approaching that of <em>BRCA2</em> mutation carriers <span class="citation" data-cites="khera_genome-wide_2017 mavaddat_polygenic_2019">(<a href="../bib/references.html#ref-khera_genome-wide_2017" role="doc-biblioref">Khera and Kathiresan 2017</a>; <a href="../bib/references.html#ref-mavaddat_polygenic_2019" role="doc-biblioref">Mavaddat et al. 2019</a>)</span>. This finding makes polygenic scores potentially relevant for clinical risk stratification, though the appropriate thresholds and clinical actions remain subjects of ongoing research and debate.</p>
 <p>Translation of PGS into clinical decision-making requires careful attention to calibration and uncertainty quantification. Clinical risk prediction frameworks that integrate multiple evidence types are detailed in <a href="../part_6/p6-ch27-clinical-risk.html#sec-ch27-defining-risk" class="quarto-xref"><span>Section 27.2</span></a>. Calibration requirements for clinical deployment appear in <a href="../part_5/p5-ch23-uncertainty.html#sec-ch23-calibration" class="quarto-xref"><span>Section 23.2</span></a> for general principles and <a href="../part_6/p6-ch27-clinical-risk.html#sec-ch27-calibration" class="quarto-xref"><span>Section 27.6.2</span></a> for clinical-specific considerations.</p>
+<div class="callout callout-style-default callout-tip callout-titled" title="Stop and Think">
+<div class="callout-header d-flex align-content-center">
+<div class="callout-icon-container">
+<i class="callout-icon"></i>
+</div>
+<div class="callout-title-container flex-fill">
+Stop and Think
+</div>
+</div>
+<div class="callout-body-container callout-body">
+<p>A direct-to-consumer genetics company reports that you are in the 90th percentile for coronary artery disease genetic risk. Before panicking (or celebrating if you were in the 10th percentile), what additional information would you need to interpret this result? Consider: What population was the percentile calculated from? What is your baseline risk given age, sex, and other factors? How does genetic risk interact with modifiable risk factors?</p>
+</div>
+</div>
 </section>
 <section id="sec-ch03-absolute-risk" class="level3" data-number="3.6.2">
 <h3 data-number="3.6.2" class="anchored" data-anchor-id="sec-ch03-absolute-risk"><span class="header-section-number">3.6.2</span> Absolute Risk</h3>
@@ -838,6 +1143,19 @@ Terminology: PGS versus PRS
 <p>Population-level performance metrics determine whether a polygenic score has any utility, but they can mask the substantial uncertainty that remains for any individual patient. For quantitative traits, the coefficient of determination (<span class="math inline">\(R^2\)</span>) between PGS and phenotype provides a direct measure of explanatory power. Height PGS now explain roughly <span class="math inline">\(25\%\)</span> of phenotypic variance in European-ancestry populations, approaching the theoretical maximum given current sample sizes and the heritability of the trait <span class="citation" data-cites="yengo_meta-analysis_2022">(<a href="../bib/references.html#ref-yengo_meta-analysis_2022" role="doc-biblioref">Yengo et al. 2022</a>)</span>. For binary traits, the <span class="math inline">\(R^2\)</span> on the <strong>liability scale</strong> (the underlying continuous risk) is more interpretable than the observed-scale <span class="math inline">\(R^2\)</span>, which depends on disease prevalence.</p>
 <p>Area under the receiver operating characteristic curve (auROC) measures discrimination: the probability that a randomly selected case has a higher PGS than a randomly selected control. auROC values of 0.5 indicate no discrimination (random guessing); values approaching 1.0 indicate near-perfect separation. For most complex diseases, PGS achieve auROC values in the 0.55 to 0.70 range when used alone, with incremental gains when combined with traditional risk factors <span class="citation" data-cites="torkamani_personal_2018 lambert_polygenic_2019">(<a href="../bib/references.html#ref-torkamani_personal_2018" role="doc-biblioref">Torkamani, Wineinger, and Topol 2018</a>; <a href="../bib/references.html#ref-lambert_polygenic_2019" role="doc-biblioref">Lambert, Abraham, and Inouye 2019</a>)</span>. These values reflect meaningful stratification at the population level but limited utility for individual prediction.</p>
 <p>Even a PGS that explains 10% of trait variance leaves 90% unexplained by factors genetic and environmental. High-risk individuals by PGS may never develop disease; low-risk individuals may be affected. Polygenic scores provide probabilistic risk stratification, not deterministic prediction. This distinction is critical for clinical communication and for setting appropriate expectations about what genomic risk information can and cannot offer.</p>
+<div class="callout callout-style-default callout-important callout-titled" title="Key Insight">
+<div class="callout-header d-flex align-content-center">
+<div class="callout-icon-container">
+<i class="callout-icon"></i>
+</div>
+<div class="callout-title-container flex-fill">
+Key Insight
+</div>
+</div>
+<div class="callout-body-container callout-body">
+<p>A PGS with auROC of 0.65 correctly ranks a random case above a random control only 65% of the time. At the individual level, this means substantial overlap between cases and controls in their score distributions. Polygenic scores are population stratification tools, not individual diagnostic tests. Their value lies in identifying subgroups warranting different management, not in predicting individual outcomes with certainty.</p>
+</div>
+</div>
 </section>
 </section>
 <section id="sec-ch03-portability" class="level2" data-number="3.7">
@@ -849,13 +1167,13 @@ Terminology: PGS versus PRS
 <div aria-describedby="fig-pgs-portability-caption-0ceaefa1-69ba-4598-a22c-09a6ac19f8ca">
 <div class="quarto-figure quarto-figure-center">
 <figure class="figure">
-<p><img src="../figs/part_1/ch03/05-fig-pgs-portability.png" class="img-fluid figure-img"></p>
-<figcaption>FIGURE PLACEHOLDER</figcaption>
+<p><img src="../figs/part_1/ch03/05-fig-pgs-portability.svg" class="img-fluid figure-img"></p>
+<figcaption>Polygenic score portability across ancestry groups</figcaption>
 </figure>
 </div>
 </div>
 <figcaption class="quarto-float-caption-bottom quarto-float-caption quarto-float-fig" id="fig-pgs-portability-caption-0ceaefa1-69ba-4598-a22c-09a6ac19f8ca">
-Figure&nbsp;3.5: [High] Bar chart showing relative prediction accuracy (<span class="math inline">\(R^2\)</span> or auROC ratio) of European-derived PGS when applied to different ancestry groups. European as reference (<span class="math inline">\(100\%\)</span>), then decreasing accuracy for East Asian, South Asian, Hispanic/Latino, and African-ancestry populations (often <span class="math inline">\(25\%\)</span>–<span class="math inline">\(60\%\)</span> of European performance). Include error bars. Overlay or annotate factors contributing to the gap: LD differences, allele frequency differences, potential effect heterogeneity, training sample size disparities.
+Figure&nbsp;3.5: Portability of polygenic scores across ancestry groups. Bar heights show relative prediction accuracy when European-derived polygenic scores are applied to individuals of different ancestries, with European performance as the reference (100%). Accuracy declines substantially for non-European populations, with African-ancestry individuals experiencing 40-75% reductions in predictive power. Multiple factors contribute to this portability gap: differences in linkage disequilibrium structure between populations, divergent allele frequencies that alter variant informativeness, potential heterogeneity in effect sizes across genetic backgrounds, and the overwhelming European composition of GWAS training data. These disparities raise fundamental questions about equitable deployment of polygenic risk prediction in diverse clinical populations.
 </figcaption>
 </figure>
 </div>
@@ -864,12 +1182,32 @@ Figure&nbsp;3.5: [High] Bar chart showing relative prediction accuracy (<span cl
 <p>Polygenic scores derived from European-ancestry GWAS show markedly reduced performance in other populations. African-ancestry individuals typically experience 40% to 75% reductions in prediction accuracy compared to European-ancestry individuals, even for the same trait measured in the same study <span class="citation" data-cites="duncan_analysis_2019 martin_clinical_2019">(<a href="../bib/references.html#ref-duncan_analysis_2019" role="doc-biblioref">Duncan et al. 2019</a>; <a href="../bib/references.html#ref-martin_clinical_2019" role="doc-biblioref">Martin et al. 2019</a>)</span>. The pattern holds across traits and across methods, though the magnitude varies with genetic architecture and the degree of shared causal variants.</p>
 <p>Several factors contribute to this portability failure. LD structure differs across populations: tag SNPs that effectively proxy causal variants in Europeans may be poor proxies in populations with different recombination history. Allele frequencies differ: variants common in one population may be rare or absent in another. Effect sizes may genuinely differ across populations due to gene-environment interactions or genetic background effects. And GWAS in smaller non-European samples have less power to detect associations, yielding noisier effect estimates that further degrade prediction.</p>
 <p>Multi-ancestry GWAS and methods designed to leverage diverse training data offer partial solutions. Including multiple ancestries in discovery improves transferability, and methods that explicitly model ancestry-specific LD or effect sizes can enhance performance <span class="citation" data-cites="marquez-luna_multiethnic_2017">(<a href="../bib/references.html#ref-marquez-luna_multiethnic_2017" role="doc-biblioref">Márquez-Luna et al. 2017</a>)</span>. Yet even state-of-the-art approaches do not fully close the gap, and substantial research is needed before PGS perform equitably across populations.</p>
+<div class="callout callout-style-default callout-tip callout-titled" title="Practical Guidance: Evaluating PGS Across Populations">
+<div class="callout-header d-flex align-content-center">
+<div class="callout-icon-container">
+<i class="callout-icon"></i>
+</div>
+<div class="callout-title-container flex-fill">
+Practical Guidance: Evaluating PGS Across Populations
+</div>
+</div>
+<div class="callout-body-container callout-body">
+<p>When assessing whether a polygenic score is appropriate for a given patient or population:</p>
+<ol type="1">
+<li><strong>Check training ancestry</strong>: Was the discovery GWAS conducted in a population matching the patient’s ancestry?</li>
+<li><strong>Look for validation data</strong>: Has the score been validated in diverse populations? What was the performance gap?</li>
+<li><strong>Consider clinical context</strong>: Would reduced accuracy change clinical utility? A score with 50% reduced accuracy may still provide useful stratification for some applications.</li>
+<li><strong>Avoid false precision</strong>: Do not report exact percentile rankings in populations where the score was not validated.</li>
+<li><strong>Document limitations</strong>: Explicitly note when scores are applied outside their validated populations.</li>
+</ol>
+</div>
+</div>
 </section>
 <section id="sec-ch03-fairness" class="level3" data-number="3.7.2">
 <h3 data-number="3.7.2" class="anchored" data-anchor-id="sec-ch03-fairness"><span class="header-section-number">3.7.2</span> Fairness and Health Equity</h3>
 <p>The performance gap across ancestries is not merely a technical nuisance; it raises fundamental questions about fairness in precision medicine. If genomic models work primarily for individuals of European ancestry, deploying these models in diverse clinical populations risks exacerbating existing health disparities rather than ameliorating them. The communities historically excluded from genetic research would continue to receive inferior genomic medicine, now encoded in algorithmic form.</p>
 <p>Consider a scenario where PGS are used for risk-stratified screening. If the score identifies high-risk individuals more accurately in Europeans than in other groups, Europeans receive more targeted and efficient screening while others receive either under-screening (if falsely classified as low risk) or over-screening (if falsely classified as high risk). The benefits of precision medicine accrue disproportionately to those already overrepresented in research, while the costs of miscalibration fall on those historically excluded.</p>
-<p>These challenges extend beyond PGS to every genomic model. Foundation models can learn to exploit ancestry signals as shortcuts, achieving high benchmark performance while performing poorly on underrepresented groups. Aggregate performance metrics mask inequities across populations. Deployment in diverse clinical settings requires explicit evaluation of performance stratified by ancestry, along with transparent reporting of limitations and appropriate caution in populations where validation is limited. These issues receive comprehensive treatment in <a href="../part_2/p2-ch12-confounding.html" class="quarto-xref"><span>Chapter 12</span></a>, with governance and policy responses addressed in <a href="../part_5/p5-ch26-regulatory.html#sec-ch26-regulatory" class="quarto-xref"><span>Section 26.1</span></a>.</p>
+<p>These challenges extend beyond PGS to every genomic model. Foundation models can learn to exploit ancestry signals as shortcuts, achieving high benchmark performance while performing poorly on underrepresented groups. Aggregate performance metrics mask inequities across populations. Deployment in diverse clinical settings requires explicit evaluation of performance stratified by ancestry, along with transparent reporting of limitations and appropriate caution in populations where validation is limited. These issues receive comprehensive treatment in <a href="../part_2/p2-ch12-confounding.html" class="quarto-xref"><span>Chapter 12</span></a>, with governance and policy responses addressed in <a href="../part_5/p5-ch26-regulatory.html#sec-ch26-regulatory" class="quarto-xref"><span>Section 27.1</span></a>.</p>
 <div class="callout callout-style-default callout-note callout-titled" title="The 78 Percent Problem">
 <div class="callout-header d-flex align-content-center">
 <div class="callout-icon-container">
@@ -882,7 +1220,7 @@ The 78 Percent Problem
 <div class="callout-body-container callout-body">
 <p>As of 2019, approximately 78% of GWAS participants were of European ancestry despite Europeans comprising roughly 16% of the global population <span class="citation" data-cites="martin_clinical_2019">(<a href="../bib/references.html#ref-martin_clinical_2019" role="doc-biblioref">Martin et al. 2019</a>)</span>. This disparity propagates through every layer of genomic medicine. Polygenic scores derived from European-ancestry GWAS show 40-75% reductions in prediction accuracy for African-ancestry individuals, even for the same trait measured in the same study. Variant databases like ClinVar contain far more pathogenic classifications for European-ancestry variants, leaving variants from underrepresented populations more likely to remain classified as VUS due to insufficient evidence. Foundation models inherit these biases at the root: a model trained on skewed data cannot be corrected <em>post hoc</em> to achieve the performance it would have achieved with representative training data.</p>
 <p>The disparity is not merely statistical. If genomic risk scores are used for screening decisions, Europeans receive more accurate risk stratification while other populations receive either under-screening (if falsely classified as low risk) or over-screening (if falsely classified as high risk). The benefits of precision medicine accrue disproportionately to those already overrepresented in research.</p>
-<p>This problem recurs throughout the book: in variant effect prediction (<a href="../part_3/p3-ch17-vep-fm.html" class="quarto-xref"><span>Chapter 17</span></a>), model confounding (<a href="../part_2/p2-ch12-confounding.html" class="quarto-xref"><span>Chapter 12</span></a>), clinical risk prediction (<a href="../part_6/p6-ch27-clinical-risk.html" class="quarto-xref"><span>Chapter 27</span></a>), and the governance frameworks needed to address it (<a href="../part_5/p5-ch26-regulatory.html#sec-ch26-regulatory" class="quarto-xref"><span>Section 26.1</span></a>) <span class="citation" data-cites="chen_rates_2023">(<a href="../bib/references.html#ref-chen_rates_2023" role="doc-biblioref"><strong>chen_rates_2023?</strong></a>)</span>.</p>
+<p>This problem recurs throughout the book: in variant effect prediction (<a href="../part_3/p3-ch17-vep-fm.html" class="quarto-xref"><span>Chapter 17</span></a>), model confounding (<a href="../part_2/p2-ch12-confounding.html" class="quarto-xref"><span>Chapter 12</span></a>), clinical risk prediction (<a href="../part_6/p6-ch27-clinical-risk.html" class="quarto-xref"><span>Chapter 27</span></a>), and the governance frameworks needed to address it (<a href="../part_5/p5-ch26-regulatory.html#sec-ch26-regulatory" class="quarto-xref"><span>Section 27.1</span></a>) <span class="citation" data-cites="chen_rates_2023">(<a href="../bib/references.html#ref-chen_rates_2023" role="doc-biblioref"><strong>chen_rates_2023?</strong></a>)</span>.</p>
 </div>
 </div>
 </section>
@@ -924,6 +1262,38 @@ The 78 Percent Problem
 <p>GWAS and polygenic scores have delivered thousands of robust trait associations, clinically useful risk stratification for some conditions, and fundamental insights into the polygenic architecture of complex phenotypes. They have also exposed a persistent gap between statistical association and biological understanding. Most GWAS hits lie in noncoding regions, often within enhancers, promoters, or other regulatory elements. The variant is associated; the mechanism is obscure. Fine-mapping narrows the list of candidates but rarely identifies a single causal nucleotide with confidence. Even when a variant is prioritized, the path from sequence change to molecular consequence to cellular phenotype to disease remains opaque.</p>
 <p>This mechanistic gap limits translation in concrete ways. Drug development requires actionable targets, not associated regions. Clinical variant interpretation needs to explain why a variant matters, not just that it correlates with disease. Polygenic scores stratify population risk but offer little guidance on individual intervention. Multiple complementary strategies address this gap: regulatory sequence models predict how variants alter transcription factor binding and chromatin accessibility (<a href="../part_3/p3-ch16-regulatory.html" class="quarto-xref"><span>Chapter 16</span></a>), variant effect predictors assess functional impact at nucleotide resolution (<a href="../part_3/p3-ch17-vep-fm.html" class="quarto-xref"><span>Chapter 17</span></a>), and multi-omics integration approaches connect genetic variation to intermediate molecular phenotypes (<a href="../part_4/p4-ch22-multi-omics.html" class="quarto-xref"><span>Chapter 22</span></a>). Network-based approaches that integrate GWAS results with protein interaction networks and pathway information are examined in <span class="quarto-unresolved-ref">?sec-ch18-disease-gene</span> for gene prioritization and <span class="quarto-unresolved-ref">?sec-ch18-drug-target</span> for therapeutic target identification.</p>
 <p>The goal is not to replace statistical genetics but to build on it. Association provides the map of where trait-relevant variation resides; mechanistic modeling attempts to explain how that variation produces its effects. The combination of statistical association and mechanistic interpretation offers the most promising path toward genomic medicine that is both predictive and understood.</p>
+<div class="callout callout-style-default callout-note callout-titled" title="Chapter Summary">
+<div class="callout-header d-flex align-content-center">
+<div class="callout-icon-container">
+<i class="callout-icon"></i>
+</div>
+<div class="callout-title-container flex-fill">
+Chapter Summary
+</div>
+</div>
+<div class="callout-body-container callout-body">
+<p><strong>Key concepts covered:</strong></p>
+<ul>
+<li>Genome-wide association studies (GWAS), SNPs, effect sizes, odds ratios</li>
+<li>Population structure and PCA-based correction</li>
+<li>Heritability (pedigree, SNP-heritability, missing heritability)</li>
+<li>Linkage disequilibrium (LD), r<sup>2</sup>, tag vs.&nbsp;causal variants</li>
+<li>Fine-mapping, posterior inclusion probabilities, credible sets</li>
+<li>Polygenic scores (PGS/PRS), C+T, LDpred, PRS-CS</li>
+<li>Portability, ancestry bias, the 78% problem</li>
+<li>PheWAS and phenome-wide characterization</li>
+</ul>
+<p><strong>Main takeaways:</strong></p>
+<ol type="1">
+<li><p><strong>GWAS identify signposts, not causes.</strong> Association signals point to genomic regions harboring trait-relevant variation, but linkage disequilibrium prevents identification of specific causal variants from statistics alone.</p></li>
+<li><p><strong>Heritability has layers.</strong> Pedigree heritability sets the upper bound on genetic prediction; SNP-heritability sets the ceiling for common-variant polygenic scores; the gap between them represents genetic variation (rare variants, structural variants) that GWAS cannot capture.</p></li>
+<li><p><strong>Polygenic scores aggregate risk across thousands of variants.</strong> For some conditions, individuals in the top percentiles have risk comparable to carriers of high-penetrance monogenic mutations, making PGS potentially clinically relevant.</p></li>
+<li><p><strong>Portability is a fundamental challenge.</strong> European-derived PGS perform substantially worse in other populations due to LD differences, allele frequency differences, and training data bias. This creates equity concerns for clinical deployment.</p></li>
+<li><p><strong>The path to mechanism requires additional tools.</strong> Foundation models for regulatory sequence and variant effect prediction (<a href="../part_3/p3-ch16-regulatory.html" class="quarto-xref"><span>Chapter 16</span></a>, <a href="../part_3/p3-ch17-vep-fm.html" class="quarto-xref"><span>Chapter 17</span></a>) attempt to bridge the gap between statistical association and biological understanding.</p></li>
+</ol>
+<p><strong>Looking ahead:</strong> The statistical framework presented here provides the foundation for understanding how deep learning models can contribute to genetic analysis. <a href="p1-ch04-vep-classical.html" class="quarto-xref"><span>Chapter 4</span></a> examines how classical approaches predict variant effects, setting the stage for foundation model approaches in later chapters.</p>
+</div>
+</div>
 
 
 <div id="refs" class="references csl-bib-body hanging-indent" data-entry-spacing="0" role="list" style="display: none">

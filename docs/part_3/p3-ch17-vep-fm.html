@@ -572,6 +572,36 @@ window.Quarto = {
 </header>
 
 
+<div class="callout callout-style-default callout-note callout-titled" title="Chapter Overview">
+<div class="callout-header d-flex align-content-center">
+<div class="callout-icon-container">
+<i class="callout-icon"></i>
+</div>
+<div class="callout-title-container flex-fill">
+Chapter Overview
+</div>
+</div>
+<div class="callout-body-container callout-body">
+<p><strong>Prerequisites:</strong> Before reading this chapter, you should be familiar with:</p>
+<ul>
+<li>Classical variant effect prediction approaches (<a href="../part_1/p1-ch04-vep-classical.html" class="quarto-xref"><span>Chapter 4</span></a>)</li>
+<li>Protein language model architectures and training objectives (<a href="p3-ch15-protein-lm.html" class="quarto-xref"><span>Chapter 15</span></a>)</li>
+<li>DNA language models and their representations (<a href="p3-ch14-dna-lm.html" class="quarto-xref"><span>Chapter 14</span></a>)</li>
+<li>Regulatory genomics models like <em>Enformer</em> (<a href="p3-ch16-regulatory.html" class="quarto-xref"><span>Chapter 16</span></a>)</li>
+<li>Basic understanding of the ACMG variant classification framework</li>
+</ul>
+<p><strong>Learning Objectives:</strong> After completing this chapter, you will be able to:</p>
+<ol type="1">
+<li>Explain how foundation models enable zero-shot variant effect prediction without pathogenicity labels</li>
+<li>Compare protein-based approaches (<em>ESM-1v</em>, <em>EVE</em>, <em>AlphaMissense</em>) with DNA-based approaches (<em>SpliceAI</em>, <em>Enformer</em>, <em>GPN-MSA</em>)</li>
+<li>Compute variant effect scores from language model likelihoods using masked marginal and pseudo-likelihood methods</li>
+<li>Assess model calibration using reliability diagrams and apply appropriate thresholds for ACMG classification</li>
+<li>Design multi-model VEP workflows that combine evidence across variant types while avoiding double-counting</li>
+<li>Identify when foundation model predictions warrant high confidence versus when additional evidence is essential</li>
+</ol>
+<p><strong>Chapter roadmap:</strong> We begin with the paradigm shift from feature engineering to representation learning, then explore protein-based and DNA-based approaches in detail. The second half addresses practical deployment: combining evidence, calibration, uncertainty quantification, and the persistent limitations that require clinical judgment.</p>
+</div>
+</div>
 <p>Classical variant effect prediction required labels: pathogenic variants to define one class, benign variants to define another, and enough examples of each to train a classifier. This requirement created a fundamental bottleneck. The variants most important to classify, those that are rare, never before observed, and located in poorly characterized genes, were precisely those for which labels did not exist. Foundation models offer a different paradigm: score variants using patterns learned from unlabeled sequences, without ever seeing a pathogenic/benign label during pretraining. A protein language model trained only to predict masked amino acids can distinguish damaging substitutions from benign polymorphisms because evolution has already encoded this distinction in the sequences that survived. A DNA language model can identify regulatory disruptions because it learned the grammar of functional elements from billions of nucleotides. The variants that violate learned patterns are the variants that disrupt function.</p>
 <p>This zero-shot capability does not eliminate the need for labeled data but changes its role. Rather than training classifiers from scratch, practitioners fine-tune foundation models on modest variant datasets, leveraging pretrained knowledge to achieve performance impossible for models that start from random initialization. The combination of self-supervised pretraining and supervised fine-tuning produces variant effect predictors that outperform classical methods across most benchmarks while requiring far less task-specific data. <em>AlphaMissense</em>, <em>ESM-1v</em>, and similar systems demonstrate that foundation model representations capture variant effects across protein families, including families with no labeled variants in training data.</p>
 <p>Yet significant challenges remain. Foundation models predict that variants are damaging without explaining why. Calibration varies across variant types, protein families, and populations, creating uncertainty about when predictions can be trusted. The distinction between “evolutionarily unusual” and “clinically pathogenic” is real: not every rare substitution causes disease, and not every disease-causing variant appears evolutionarily constrained.</p>
@@ -579,8 +609,84 @@ window.Quarto = {
 <h2 data-number="17.1" class="anchored" data-anchor-id="sec-ch17-fm-paradigm"><span class="header-section-number">17.1</span> Foundation Model Paradigm for Variant Interpretation</h2>
 <p>Classical variant effect predictors operate by aggregating hand-crafted features: conservation scores computed from multiple sequence alignments, amino acid property changes, protein domain annotations, and regulatory marks at genomic loci (<a href="../part_1/p1-ch04-vep-classical.html" class="quarto-xref"><span>Chapter 4</span></a>). Methods like <em>CADD</em> train machine learning models to distinguish pathogenic from benign variants using these features, achieving useful discrimination but ultimately limited by what features the developers chose to include. When a variant falls in a region poorly covered by existing annotations, classical methods have little to offer.</p>
 <p>Foundation models invert this relationship. Rather than engineering features, they learn representations from raw sequence data during pretraining, then apply those representations to variant interpretation. A protein language model trained to predict masked amino acids implicitly learns which substitutions violate evolutionary constraints. A DNA language model trained to predict nucleotides in genomic context learns which changes disrupt sequence grammar. The representations encode information about structure, function, and constraint that was never explicitly labeled during training.</p>
-<p>This paradigm shift has practical consequences. Coverage extends to any variant in any gene, not just those with extensive prior annotation. Representations capture subtle patterns (co-evolution between distant residues, context-dependent motif strength) that resist manual feature engineering. <strong>Transfer learning</strong> enables rapid adaptation to new tasks and variant classes, with the specific strategies detailed in <a href="../part_2/p2-ch09-transfer.html" class="quarto-xref"><span>Chapter 9</span></a>. The cost is interpretability: understanding why a foundation model assigns a particular score requires specialized analysis techniques rather than simple inspection of feature weights (<a href="../part_5/p5-ch24-interpretability.html" class="quarto-xref"><span>Chapter 24</span></a>).</p>
+<div class="callout callout-style-default callout-tip callout-titled" title="Key Insight: Evolution as a Massive Experiment">
+<div class="callout-header d-flex align-content-center">
+<div class="callout-icon-container">
+<i class="callout-icon"></i>
+</div>
+<div class="callout-title-container flex-fill">
+Key Insight: Evolution as a Massive Experiment
+</div>
+</div>
+<div class="callout-body-container callout-body">
+<p>Foundation models exploit a profound insight: evolution has already conducted billions of “experiments” testing which sequence variants are compatible with life. Protein sequences that survived natural selection represent the “passing” experiments; variants never observed in homologous proteins failed these tests. By learning to predict which amino acids or nucleotides are probable at each position, foundation models implicitly learn what evolution has permitted and, by contrast, what it has rejected. This is why a model trained only on masked token prediction can score variant pathogenicity without ever seeing disease labels.</p>
+</div>
+</div>
+<p>This paradigm shift has practical consequences. Coverage extends to any variant in any gene, not just those with extensive prior annotation. Representations capture subtle patterns (co-evolution between distant residues, context-dependent motif strength) that resist manual feature engineering. <strong>Transfer learning</strong> enables rapid adaptation to new tasks and variant classes, with the specific strategies detailed in <a href="../part_2/p2-ch09-transfer.html" class="quarto-xref"><span>Chapter 9</span></a>. The cost is interpretability: understanding why a foundation model assigns a particular score requires specialized analysis techniques rather than simple inspection of feature weights (<a href="../part_5/p5-ch24-interpretability.html" class="quarto-xref"><span>Chapter 25</span></a>).</p>
 <p>Three architectural families dominate current VEP applications. Protein language models (<a href="p3-ch15-protein-lm.html" class="quarto-xref"><span>Chapter 15</span></a>) encode amino acid sequences and score missense variants by measuring likelihood changes. DNA language models (<a href="p3-ch14-dna-lm.html" class="quarto-xref"><span>Chapter 14</span></a>) operate on nucleotide sequences and can score variants of any type. Regulatory models (<a href="p3-ch16-regulatory.html" class="quarto-xref"><span>Chapter 16</span></a>) predict molecular phenotypes (chromatin accessibility, gene expression, splicing) and score variants by their predicted impact on these phenotypes. The strongest-performing systems combine elements from multiple families.</p>
+<div id="tbl-vep-approaches" class="quarto-float quarto-figure quarto-figure-center anchored">
+<figure class="quarto-float quarto-float-tbl figure">
+<figcaption class="quarto-float-caption-top quarto-float-caption quarto-float-tbl" id="tbl-vep-approaches-caption-0ceaefa1-69ba-4598-a22c-09a6ac19f8ca">
+Table&nbsp;17.1: Comparison of foundation model approaches for variant effect prediction. Each approach offers distinct advantages depending on the variant type and desired output.
+</figcaption>
+<div aria-describedby="tbl-vep-approaches-caption-0ceaefa1-69ba-4598-a22c-09a6ac19f8ca">
+<table class="caption-top table">
+<colgroup>
+<col style="width: 14%">
+<col style="width: 10%">
+<col style="width: 21%">
+<col style="width: 18%">
+<col style="width: 15%">
+<col style="width: 18%">
+</colgroup>
+<thead>
+<tr class="header">
+<th>Approach</th>
+<th>Input</th>
+<th>Variant Types</th>
+<th>Key Methods</th>
+<th>Strengths</th>
+<th>Limitations</th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<td>Protein LM</td>
+<td>Amino acid sequence</td>
+<td>Missense</td>
+<td><em>ESM-1v</em>, <em>EVE</em>, <em>AlphaMissense</em></td>
+<td>Captures evolutionary constraint, structural context</td>
+<td>Coding only, requires translation</td>
+</tr>
+<tr class="even">
+<td>DNA LM</td>
+<td>Nucleotide sequence</td>
+<td>All (SNV, indel, noncoding)</td>
+<td><em>GPN-MSA</em>, <em>Evo 2</em></td>
+<td>Genome-wide coverage</td>
+<td>Less protein-specific information</td>
+</tr>
+<tr class="odd">
+<td>Regulatory</td>
+<td>DNA + epigenomic context</td>
+<td>Noncoding, regulatory</td>
+<td><em>Enformer</em>, <em>Sei</em>, <em>AlphaGenome</em></td>
+<td>Mechanistic predictions</td>
+<td>Cell-type specificity, calibration</td>
+</tr>
+<tr class="even">
+<td>Structure-aware</td>
+<td>Sequence + 3D structure</td>
+<td>Missense</td>
+<td><em>AlphaMissense</em></td>
+<td>Explains why constraint exists</td>
+<td>Requires structure prediction</td>
+</tr>
+</tbody>
+</table>
+</div>
+</figure>
+</div>
 <div id="fig-fm-vep-paradigm" class="quarto-layout-panel">
 <figure class="quarto-float quarto-float-fig figure">
 <div aria-describedby="fig-fm-vep-paradigm-caption-0ceaefa1-69ba-4598-a22c-09a6ac19f8ca">
@@ -588,16 +694,16 @@ window.Quarto = {
 <div class="quarto-layout-cell" style="flex-basis: 50.0%;justify-content: flex-start;">
 <div class="quarto-figure quarto-figure-center">
 <figure class="figure">
-<p><img src="../figs/part_3/ch14/01-A-fig-fm-vep-paradigm.png" class="img-fluid figure-img"></p>
-<figcaption><strong>FIGURE PLACEHOLDER A</strong></figcaption>
+<p><img src="../figs/part_3/ch17/01-A-fig-fm-vep-paradigm.svg" class="img-fluid figure-img"></p>
+<figcaption>Zero-shot scoring from PLM likelihoods</figcaption>
 </figure>
 </div>
 </div>
 <div class="quarto-layout-cell" style="flex-basis: 50.0%;justify-content: flex-start;">
 <div class="quarto-figure quarto-figure-center">
 <figure class="figure">
-<p><img src="../figs/part_3/ch14/01-B-fig-fm-vep-paradigm.png" class="img-fluid figure-img"></p>
-<figcaption><strong>FIGURE PLACEHOLDER B</strong></figcaption>
+<p><img src="../figs/part_3/ch17/01-B-fig-fm-vep-paradigm.svg" class="img-fluid figure-img"></p>
+<figcaption>Linear probing with frozen embeddings</figcaption>
 </figure>
 </div>
 </div>
@@ -606,29 +712,42 @@ window.Quarto = {
 <div class="quarto-layout-cell" style="flex-basis: 50.0%;justify-content: flex-start;">
 <div class="quarto-figure quarto-figure-center">
 <figure class="figure">
-<p><img src="../figs/part_3/ch14/01-C-fig-fm-vep-paradigm.png" class="img-fluid figure-img"></p>
-<figcaption><strong>FIGURE PLACEHOLDER C</strong></figcaption>
+<p><img src="../figs/part_3/ch17/01-C-fig-fm-vep-paradigm.svg" class="img-fluid figure-img"></p>
+<figcaption>Full fine-tuning for maximum performance</figcaption>
 </figure>
 </div>
 </div>
 <div class="quarto-layout-cell" style="flex-basis: 50.0%;justify-content: flex-start;">
 <div class="quarto-figure quarto-figure-center">
 <figure class="figure">
-<p><img src="../figs/part_3/ch14/01-D-fig-fm-vep-paradigm.png" class="img-fluid figure-img"></p>
-<figcaption><strong>FIGURE PLACEHOLDER D</strong></figcaption>
+<p><img src="../figs/part_3/ch17/01-D-fig-fm-vep-paradigm.svg" class="img-fluid figure-img"></p>
+<figcaption>Multi-modal integration of sequence and structure</figcaption>
 </figure>
 </div>
 </div>
 </div>
 </div>
 <figcaption class="quarto-float-caption-bottom quarto-float-caption quarto-float-fig" id="fig-fm-vep-paradigm-caption-0ceaefa1-69ba-4598-a22c-09a6ac19f8ca">
-Figure&nbsp;17.1: [Essential] Paradigm comparison. Panel A (Classical Approach): Variant → hand-crafted features (conservation, Grantham, domains, regulatory marks) → feature vector → classifier → score; limitation: coverage limited by annotations. Panel B (Foundation Model Approach): Same variant → pretrained model → learned representations → adaptation → score; strength: extends to any position. Panel C (What Changes): Classical features explicit/interpretable/manual; foundation features learned/opaque/automatic; trade-off arrow. Panel D (Three Families): Protein LMs → missense; DNA LMs → all variants; Regulatory models → noncoding mechanism; arrow: “Combined approaches.”
+Figure&nbsp;17.1: Foundation model paradigms for variant effect prediction. (A) Zero-shot scoring uses pretrained likelihoods directly, requiring no task-specific data but limited to what pretraining captured. (B) Linear probing adds a simple classifier on frozen embeddings, requiring minimal labeled data. (C) Full fine-tuning updates all parameters, achieving best performance but requiring substantial labeled data. (D) Multi-modal integration combines sequence (evolutionary) and structure information for comprehensive variant assessment. The appropriate paradigm depends on available labeled data and whether structure contributes to the variant’s effect mechanism.
 </figcaption>
 </figure>
 </div>
 <section id="sec-ch17-zeroshot-supervised" class="level3" data-number="17.1.1">
 <h3 data-number="17.1.1" class="anchored" data-anchor-id="sec-ch17-zeroshot-supervised"><span class="header-section-number">17.1.1</span> Zero-Shot and Supervised Approaches</h3>
 <p>Foundation model VEP methods divide into two paradigms. Zero-shot approaches apply pretrained models directly without task-specific training: <em>ESM-1v</em> scores variants by comparing amino acid likelihoods, requiring no pathogenicity labels. The model’s pretraining objective (masked token prediction) implicitly teaches which substitutions violate evolutionary constraints. Supervised approaches like <em>AlphaMissense</em> add task-specific training layers and optimize explicitly for pathogenicity prediction using labeled examples.</p>
+<div class="callout callout-style-default callout-note callout-titled" title="Stop and Think: Zero-Shot vs. Supervised Trade-offs">
+<div class="callout-header d-flex align-content-center">
+<div class="callout-icon-container">
+<i class="callout-icon"></i>
+</div>
+<div class="callout-title-container flex-fill">
+Stop and Think: Zero-Shot vs.&nbsp;Supervised Trade-offs
+</div>
+</div>
+<div class="callout-body-container callout-body">
+<p>Before reading further, consider: If zero-shot methods avoid the biases present in labeled training data, why would anyone use supervised approaches at all? What advantages might supervised fine-tuning provide, and when might those advantages outweigh the risk of inheriting label biases?</p>
+</div>
+</div>
 <p>The choice involves tradeoffs. Zero-shot methods avoid label bias entirely; they cannot learn to recapitulate existing predictor scores because they never see those scores during training. Supervised methods achieve stronger discrimination when high-quality labels exist but risk inheriting biases from training data. Zero-shot approaches generalize more reliably to novel proteins outside training distributions; supervised methods may overfit to well-studied gene families. In practice, the strongest current systems (<em>AlphaMissense</em>, <em>popEVE</em>) combine foundation model representations with some supervised adaptation, attempting to capture benefits of both paradigms.</p>
 </section>
 </section>
@@ -680,12 +799,43 @@ Computing Variant Likelihoods from Language Models
 <p>The <em>EVE</em> architecture consists of an encoder that maps sequences to a latent space and a decoder that reconstructs sequences from latent representations. Training maximizes a lower bound on sequence likelihood across the MSA. For variant scoring, <em>EVE</em> computes the log-likelihood ratio between mutant and wild-type sequences, capturing how surprising the substitution appears given the evolutionary record for that specific protein.</p>
 <p><em>popEVE</em> extends this framework with improved training procedures and explicit modeling of population allele frequencies <span class="citation" data-cites="orenbuch_popeve_2025">(<a href="../bib/references.html#ref-orenbuch_popeve_2025" role="doc-biblioref">Orenbuch et al. 2025</a>)</span>. By incorporating frequency information, <em>popEVE</em> better separates rare deleterious variants from common benign polymorphisms. The model achieves strong performance on ClinVar classification while providing uncertainty estimates through ensemble disagreement.</p>
 <p>The tradeoff between single-sequence and MSA-based approaches involves coverage versus depth. <em>ESM-1v</em> scores any protein sequence without requiring alignment construction. <em>EVE</em> provides stronger performance when high-quality MSAs are available but cannot score proteins lacking sufficient homologs. For well-studied protein families with deep evolutionary sampling, MSA-based methods remain competitive; for orphan proteins or rapidly evolving sequences, single-sequence models offer the only foundation model option.</p>
+<div class="callout callout-style-default callout-note callout-titled" title="Knowledge Check: Single-Sequence vs. MSA-Based Models">
+<div class="callout-header d-flex align-content-center">
+<div class="callout-icon-container">
+<i class="callout-icon"></i>
+</div>
+<div class="callout-title-container flex-fill">
+Knowledge Check: Single-Sequence vs.&nbsp;MSA-Based Models
+</div>
+</div>
+<div class="callout-body-container callout-body">
+<p>A patient carries a missense variant in <em>OBSCN</em>, an extremely large gene encoding a protein with few characterized homologs. The gene has only 12 sequences in its MSA, most from closely related mammals.</p>
+<ol type="1">
+<li>Would <em>ESM-1v</em> or <em>EVE</em> be more appropriate for scoring this variant? Why?</li>
+<li>What fundamental limitation does this example illustrate about alignment-based approaches?</li>
+<li>If the variant were in <em>BRCA1</em> instead (which has hundreds of homologs), would your answer change?</li>
+</ol>
+</div>
+</div>
 </section>
 <section id="sec-ch17-alphamissense" class="level3" data-number="17.2.3">
 <h3 data-number="17.2.3" class="anchored" data-anchor-id="sec-ch17-alphamissense"><span class="header-section-number">17.2.3</span> AlphaMissense: Structure-Informed Pathogenicity Prediction</h3>
 <p><em>AlphaMissense</em> represents the current state of the art for proteome-wide missense pathogenicity prediction, combining protein language model representations with structural information from <em>AlphaFold2</em> <span class="citation" data-cites="cheng_alphamissense_2023">(<a href="../bib/references.html#ref-cheng_alphamissense_2023" role="doc-biblioref">Cheng et al. 2023</a>)</span>. The system provides precomputed scores for 71 million possible missense variants across the human proteome, enabling instant lookup for any variant in any protein-coding gene.</p>
 <p>The architecture integrates multiple information sources. Sequence representations come from a protein language model encoding the wild-type sequence and mutation position. Structural representations derive from <em>AlphaFold2</em> predictions, capturing local geometry (secondary structure, solvent accessibility, packing density) and longer-range contacts. A neural network combines these representations to produce a pathogenicity probability between 0 and 1.</p>
 <p>Training uses a carefully constructed dataset that avoids the circularity plaguing earlier predictors. Rather than training on ClinVar labels (which themselves derive from computational predictions), <em>AlphaMissense</em> uses population frequency as a proxy for pathogenicity: variants common in gnomAD are likely benign, while variants absent from large population samples and observed in disease contexts are likely pathogenic. This approach reduces the risk of learning features that simply recapitulate existing predictor scores.</p>
+<div class="callout callout-style-default callout-tip callout-titled" title="Key Insight: Why Structure Matters for Variant Interpretation">
+<div class="callout-header d-flex align-content-center">
+<div class="callout-icon-container">
+<i class="callout-icon"></i>
+</div>
+<div class="callout-title-container flex-fill">
+Key Insight: Why Structure Matters for Variant Interpretation
+</div>
+</div>
+<div class="callout-body-container callout-body">
+<p>Protein language models capture that a position is evolutionarily constrained, but structural information explains <em>why</em>. A buried hydrophobic residue is constrained because substituting a charged amino acid would destabilize the fold. An active site residue is constrained because even subtle changes disrupt catalysis. An interface residue is constrained because substitutions abolish protein-protein interactions. By incorporating <em>AlphaFold2</em> structural features, <em>AlphaMissense</em> can distinguish variants at constrained positions where the constraint arises from different mechanisms, improving prediction for cases where sequence constraint alone is ambiguous.</p>
+</div>
+</div>
 <p>Calibration receives explicit attention. Raw model outputs undergo isotonic regression calibration against held-out ClinVar variants, ensuring that predicted probabilities correspond to observed pathogenic proportions (<a href="../part_5/p5-ch23-uncertainty.html#sec-ch23-calibration" class="quarto-xref"><span>Section 23.2</span></a>). A score of 0.8 should mean that 80% of variants with similar scores are pathogenic, enabling meaningful clinical interpretation. <em>AlphaMissense</em> reports calibrated scores along with discrete classifications (likely pathogenic, likely benign, uncertain) at thresholds chosen to achieve specific precision targets.</p>
 <p>Performance on independent benchmarks substantially exceeds classical predictors. On deep mutational scanning datasets (where experimental fitness measurements provide ground truth independent of clinical labels), <em>AlphaMissense</em> achieves correlations of 0.5 to 0.7 depending on the assay, compared to 0.3 to 0.5 for <em>CADD</em> or <em>PolyPhen-2</em> <em>[Citation Needed]</em>. On ClinVar expert-reviewed variants held out from training, <em>AlphaMissense</em> achieves auROC values above 0.9, representing a meaningful improvement over the 0.85 to 0.88 typical of classical methods <em>[Citation Needed]</em>.</p>
 <p>The structural component proves essential for this performance. Ablation experiments removing <em>AlphaFold2</em> features degrade performance substantially, particularly for variants at protein-protein interfaces and buried core positions where local geometry determines functional impact. The protein language model captures evolutionary constraint; structural information explains why that constraint exists.</p>
@@ -696,16 +846,16 @@ Computing Variant Likelihoods from Language Models
 <div class="quarto-layout-cell" style="flex-basis: 50.0%;justify-content: flex-start;">
 <div class="quarto-figure quarto-figure-center">
 <figure class="figure">
-<p><img src="../figs/part_3/ch14/02-A-fig-alphamissense.png" class="img-fluid figure-img"></p>
-<figcaption><strong>FIGURE PLACEHOLDER A</strong></figcaption>
+<p><img src="../figs/part_3/ch17/02-A-fig-alphamissense.svg" class="img-fluid figure-img"></p>
+<figcaption>AlphaMissense integrates evolution and structure</figcaption>
 </figure>
 </div>
 </div>
 <div class="quarto-layout-cell" style="flex-basis: 50.0%;justify-content: flex-start;">
 <div class="quarto-figure quarto-figure-center">
 <figure class="figure">
-<p><img src="../figs/part_3/ch14/02-B-fig-alphamissense.png" class="img-fluid figure-img"></p>
-<figcaption><strong>FIGURE PLACEHOLDER B</strong></figcaption>
+<p><img src="../figs/part_3/ch17/02-B-fig-alphamissense.svg" class="img-fluid figure-img"></p>
+<figcaption>Training strategy avoids circularity</figcaption>
 </figure>
 </div>
 </div>
@@ -714,23 +864,23 @@ Computing Variant Likelihoods from Language Models
 <div class="quarto-layout-cell" style="flex-basis: 50.0%;justify-content: flex-start;">
 <div class="quarto-figure quarto-figure-center">
 <figure class="figure">
-<p><img src="../figs/part_3/ch14/02-C-fig-alphamissense.png" class="img-fluid figure-img"></p>
-<figcaption><strong>FIGURE PLACEHOLDER C</strong></figcaption>
+<p><img src="../figs/part_3/ch17/02-C-fig-alphamissense.svg" class="img-fluid figure-img"></p>
+<figcaption>Structural context determines pathogenicity</figcaption>
 </figure>
 </div>
 </div>
 <div class="quarto-layout-cell" style="flex-basis: 50.0%;justify-content: flex-start;">
 <div class="quarto-figure quarto-figure-center">
 <figure class="figure">
-<p><img src="../figs/part_3/ch14/02-D-fig-alphamissense.png" class="img-fluid figure-img"></p>
-<figcaption><strong>FIGURE PLACEHOLDER D</strong></figcaption>
+<p><img src="../figs/part_3/ch17/02-D-fig-alphamissense.svg" class="img-fluid figure-img"></p>
+<figcaption>Proteome-wide classification of 71 million variants</figcaption>
 </figure>
 </div>
 </div>
 </div>
 </div>
 <figcaption class="quarto-float-caption-bottom quarto-float-caption quarto-float-fig" id="fig-alphamissense-caption-0ceaefa1-69ba-4598-a22c-09a6ac19f8ca">
-Figure&nbsp;17.2: [Essential] Four-panel figure. Panel A (Input Integration): Protein sequence <span class="math inline">\(\rightarrow\)</span> <em>ESM</em>-like embeddings; mutation position <span class="math inline">\(\rightarrow\)</span> <em>AlphaFold2</em> structural context (secondary structure, solvent accessibility, contact density); combined features. Panel B (Training Strategy): NOT trained on ClinVar; instead population frequency as pathogenicity proxy; common in gnomAD <span class="math inline">\(\rightarrow\)</span> likely benign; absent + disease context <span class="math inline">\(\rightarrow\)</span> likely pathogenic; reduces circularity risk. Panel C (Calibration): Raw outputs <span class="math inline">\(\rightarrow\)</span> isotonic regression <span class="math inline">\(\rightarrow\)</span> calibrated probabilities; reliability diagram; score <span class="math inline">\(0.8 = 80\%\)</span> pathogenic; thresholds annotated. Panel D (Performance): Deep mutational scanning benchmarks (<span class="math inline">\(\rho = 0.5\)</span>–<span class="math inline">\(0.7\)</span> vs <em>CADD</em> <span class="math inline">\(0.3\)</span>–<span class="math inline">\(0.5\)</span>); ClinVar (<span class="math inline">\(\mathrm{auROC} &gt; 0.9\)</span> vs <span class="math inline">\(0.85\)</span>–<span class="math inline">\(0.88\)</span>); structural component essential.
+Figure&nbsp;17.2: AlphaMissense: integrating evolution and structure for variant pathogenicity. (A) Architecture combines ESM evolutionary embeddings with AlphaFold2 structural features. (B) Training avoids ClinVar circularity by using population frequency as a pathogenicity proxy—common gnomAD variants are presumed benign, rare variants in disease-associated contexts are presumed pathogenic. (C) Pathogenicity scores vary appropriately by structural context: core and active site variants score highest, surface variants score lowest. (D) Proteome-wide application classifies 71 million possible human missense variants, creating the largest pathogenicity prediction resource.
 </figcaption>
 </figure>
 </div>
@@ -753,6 +903,21 @@ Figure&nbsp;17.2: [Essential] Four-panel figure. Panel A (Input Integration): Pr
 <p>Variant effect prediction with <em>Enformer</em> compares predicted tracks between reference and alternate sequences. For a variant in an enhancer, the model might predict reduced H3K27ac signal and decreased CAGE expression at the target promoter. These molecular predictions can be aggregated into variant effect scores, with larger predicted changes indicating greater functional impact.</p>
 <p>Several challenges complicate <em>Enformer</em>-based VEP. The model predicts relative effects (fold changes in predicted signal) rather than absolute deleteriousness. Calibrating these predictions against pathogenicity labels requires additional supervised training. Cell-type specificity adds complexity: a variant might strongly affect predictions in cardiac tissue while showing no effect in liver, requiring prior knowledge of relevant tissues for clinical interpretation.</p>
 <p><em>Sei</em> extends this approach by learning a regulatory vocabulary: clusters of predicted effects that correspond to interpretable categories like “active promoter,” “strong enhancer,” or “CTCF binding site” <span class="citation" data-cites="chen_sei_2022">(<a href="../bib/references.html#ref-chen_sei_2022" role="doc-biblioref">Chen et al. 2022</a>)</span>. Variant scores reflect shifts between these categories, providing more interpretable outputs than raw track changes. A variant that converts an enhancer prediction to a quiescent state has clearer implications than one that reduces H3K27ac by 0.3 log-fold.</p>
+<div class="callout callout-style-default callout-note callout-titled" title="Stop and Think: Mechanism vs. Pathogenicity">
+<div class="callout-header d-flex align-content-center">
+<div class="callout-icon-container">
+<i class="callout-icon"></i>
+</div>
+<div class="callout-title-container flex-fill">
+Stop and Think: Mechanism vs.&nbsp;Pathogenicity
+</div>
+</div>
+<div class="callout-body-container callout-body">
+<p><em>Enformer</em> can predict that a variant reduces enhancer activity, and <em>SpliceAI</em> can predict that a variant creates a cryptic splice site. But neither model directly predicts whether these molecular changes cause disease.</p>
+<p>Consider: A variant in an enhancer might reduce expression of the target gene by 30%. Under what circumstances would this reduction be: - Clearly pathogenic? - Clearly benign? - Uncertain in its clinical significance?</p>
+<p>This exercise illustrates a fundamental gap between mechanistic prediction (what the variant does molecularly) and clinical prediction (whether it causes disease).</p>
+</div>
+</div>
 </section>
 <section id="sec-ch17-dna-lm-vep" class="level3" data-number="17.3.3">
 <h3 data-number="17.3.3" class="anchored" data-anchor-id="sec-ch17-dna-lm-vep"><span class="header-section-number">17.3.3</span> DNA Language Models: GPN-MSA and Evo 2</h3>
@@ -775,6 +940,75 @@ Figure&nbsp;17.2: [Essential] Four-panel figure. Panel A (Input Integration): Pr
 <section id="sec-ch17-integration-strategies" class="level3" data-number="17.4.1">
 <h3 data-number="17.4.1" class="anchored" data-anchor-id="sec-ch17-integration-strategies"><span class="header-section-number">17.4.1</span> Integration Strategies</h3>
 <p>The simplest integration approach applies different models to different variant classes. Missense variants receive <em>AlphaMissense</em> scores; synonymous and intronic variants near splice sites receive <em>SpliceAI</em> scores; promoter and enhancer variants receive <em>Enformer</em> or <em>AlphaGenome</em> predictions. This modular strategy ensures that each variant type receives predictions from an appropriate model.</p>
+<div id="tbl-model-selection" class="quarto-float quarto-figure quarto-figure-center anchored">
+<figure class="quarto-float quarto-float-tbl figure">
+<figcaption class="quarto-float-caption-top quarto-float-caption quarto-float-tbl" id="tbl-model-selection-caption-0ceaefa1-69ba-4598-a22c-09a6ac19f8ca">
+Table&nbsp;17.2: Model selection guidance by variant type. The choice depends on variant location and suspected mechanism.
+</figcaption>
+<div aria-describedby="tbl-model-selection-caption-0ceaefa1-69ba-4598-a22c-09a6ac19f8ca">
+<table class="caption-top table">
+<colgroup>
+<col style="width: 19%">
+<col style="width: 25%">
+<col style="width: 29%">
+<col style="width: 26%">
+</colgroup>
+<thead>
+<tr class="header">
+<th>Variant Type</th>
+<th>Primary Model(s)</th>
+<th>Secondary/Supporting</th>
+<th>Key Considerations</th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<td>Missense</td>
+<td><em>AlphaMissense</em></td>
+<td><em>ESM-1v</em>, <em>EVE</em></td>
+<td>Check for splicing effects if near exon boundary</td>
+</tr>
+<tr class="even">
+<td>Synonymous</td>
+<td><em>SpliceAI</em></td>
+<td><em>Enformer</em> (regulatory)</td>
+<td>Often dismissed but can affect splicing</td>
+</tr>
+<tr class="odd">
+<td>Splice site (canonical)</td>
+<td><em>SpliceAI</em></td>
+<td></td>
+<td>Very high pathogenicity for loss of function genes</td>
+</tr>
+<tr class="even">
+<td>Deep intronic</td>
+<td><em>SpliceAI</em></td>
+<td><em>Enformer</em>, <em>GPN-MSA</em></td>
+<td>Look for cryptic splice site activation</td>
+</tr>
+<tr class="odd">
+<td>Promoter/5’UTR</td>
+<td><em>Enformer</em>, <em>AlphaGenome</em></td>
+<td><em>GPN-MSA</em></td>
+<td>Consider tissue specificity</td>
+</tr>
+<tr class="even">
+<td>Enhancer</td>
+<td><em>Enformer</em>, <em>Sei</em></td>
+<td><em>AlphaGenome</em></td>
+<td>Need prior knowledge of target genes</td>
+</tr>
+<tr class="odd">
+<td>Structural variants</td>
+<td>Limited coverage</td>
+<td></td>
+<td>Gap in current foundation model capabilities</td>
+</tr>
+</tbody>
+</table>
+</div>
+</figure>
+</div>
 <p>More sophisticated integration aggregates scores across models for the same variant. A missense variant might receive both <em>AlphaMissense</em> (protein impact) and <em>Enformer</em> (regulatory impact, relevant if the codon overlaps a regulatory element) predictions. Combining these requires decisions about weighting and potential double-counting of shared information.</p>
 <p>Bayesian approaches offer principled integration. Priors encode beliefs about variant mechanism proportions; likelihoods incorporate model predictions given mechanism; posteriors combine evidence across models while respecting uncertainty. <em>REVEL</em> (Rare Exome Variant Ensemble Learner) demonstrated this approach for classical predictors <em>[Citation Needed]</em>; extending it to foundation model outputs requires careful calibration of each component score.</p>
 </section>
@@ -782,7 +1016,21 @@ Figure&nbsp;17.2: [Essential] Four-panel figure. Panel A (Input Integration): Pr
 <h3 data-number="17.4.2" class="anchored" data-anchor-id="sec-ch17-double-counting"><span class="header-section-number">17.4.2</span> Avoiding Double-Counting</h3>
 <p>Foundation models trained on overlapping data risk capturing correlated rather than independent information. <em>AlphaMissense</em> and <em>ESM-1v</em> both encode evolutionary constraint; combining their scores as independent evidence overweights evolutionary signal. Similarly, conservation-based DNA models like <em>GPN-MSA</em> share information with phyloP scores already incorporated in classical predictors.</p>
 <p>Correlation analysis helps quantify redundancy. If two model scores correlate above 0.8 across a benchmark dataset, they likely provide similar information and should not be counted as independent evidence. Residual analysis can identify what unique signal each model contributes beyond shared components.</p>
-<p>For ACMG classification, guidelines specifically address computational evidence weighting. The PP3 (computational evidence supporting pathogenicity) and BP4 (computational evidence supporting benignity) criteria apply when multiple tools agree. Using five correlated predictors that all derive from evolutionary conservation should not count as five independent pieces of evidence. Clinical laboratories develop local policies for which tools to consult and how to weight their outputs, ideally based on validation against known variants in their patient population.</p>
+<div class="callout callout-style-default callout-warning callout-titled" title="Practical Guidance: Evidence Independence in ACMG Classification">
+<div class="callout-header d-flex align-content-center">
+<div class="callout-icon-container">
+<i class="callout-icon"></i>
+</div>
+<div class="callout-title-container flex-fill">
+Practical Guidance: Evidence Independence in ACMG Classification
+</div>
+</div>
+<div class="callout-body-container callout-body">
+<p>For ACMG classification, guidelines specifically address computational evidence weighting. The PP3 (computational evidence supporting pathogenicity) and BP4 (computational evidence supporting benignity) criteria apply when multiple tools agree. However, using five correlated predictors that all derive from evolutionary conservation should not count as five independent pieces of evidence.</p>
+<p><strong>Recommended practice:</strong> 1. Group predictors by primary information source (evolutionary constraint, structural features, regulatory marks) 2. Select one representative tool from each group for ACMG evidence 3. Document tool correlations in your laboratory’s validation records 4. Update tool selection as new methods emerge and correlations are characterized</p>
+<p>Clinical laboratories should develop local policies for which tools to consult and how to weight their outputs, ideally based on validation against known variants in their patient population.</p>
+</div>
+</div>
 </section>
 <section id="sec-ch17-workflow-design" class="level3" data-number="17.4.3">
 <h3 data-number="17.4.3" class="anchored" data-anchor-id="sec-ch17-workflow-design"><span class="header-section-number">17.4.3</span> Practical Workflow Design</h3>
@@ -795,16 +1043,16 @@ Figure&nbsp;17.2: [Essential] Four-panel figure. Panel A (Input Integration): Pr
 <div class="quarto-layout-cell" style="flex-basis: 50.0%;justify-content: flex-start;">
 <div class="quarto-figure quarto-figure-center">
 <figure class="figure">
-<p><img src="../figs/part_3/ch14/03-A-fig-multimodel-integration.png" class="img-fluid figure-img"></p>
-<figcaption><strong>FIGURE PLACEHOLDER A</strong></figcaption>
+<p><img src="../figs/part_3/ch17/03-A-fig-multimodel-integration.svg" class="img-fluid figure-img"></p>
+<figcaption>Model selection by variant type</figcaption>
 </figure>
 </div>
 </div>
 <div class="quarto-layout-cell" style="flex-basis: 50.0%;justify-content: flex-start;">
 <div class="quarto-figure quarto-figure-center">
 <figure class="figure">
-<p><img src="../figs/part_3/ch14/03-B-fig-multimodel-integration.png" class="img-fluid figure-img"></p>
-<figcaption><strong>FIGURE PLACEHOLDER B</strong></figcaption>
+<p><img src="../figs/part_3/ch17/03-B-fig-multimodel-integration.svg" class="img-fluid figure-img"></p>
+<figcaption>Non-coding variant integration pipeline</figcaption>
 </figure>
 </div>
 </div>
@@ -813,23 +1061,23 @@ Figure&nbsp;17.2: [Essential] Four-panel figure. Panel A (Input Integration): Pr
 <div class="quarto-layout-cell" style="flex-basis: 50.0%;justify-content: flex-start;">
 <div class="quarto-figure quarto-figure-center">
 <figure class="figure">
-<p><img src="../figs/part_3/ch14/03-C-fig-multimodel-integration.png" class="img-fluid figure-img"></p>
-<figcaption><strong>FIGURE PLACEHOLDER C</strong></figcaption>
+<p><img src="../figs/part_3/ch17/03-C-fig-multimodel-integration.svg" class="img-fluid figure-img"></p>
+<figcaption>Ensemble scoring combines predictions</figcaption>
 </figure>
 </div>
 </div>
 <div class="quarto-layout-cell" style="flex-basis: 50.0%;justify-content: flex-start;">
 <div class="quarto-figure quarto-figure-center">
 <figure class="figure">
-<p><img src="../figs/part_3/ch14/03-D-fig-multimodel-integration.png" class="img-fluid figure-img"></p>
-<figcaption><strong>FIGURE PLACEHOLDER D</strong></figcaption>
+<p><img src="../figs/part_3/ch17/03-D-fig-multimodel-integration.svg" class="img-fluid figure-img"></p>
+<figcaption>Uncertainty aggregation across models</figcaption>
 </figure>
 </div>
 </div>
 </div>
 </div>
 <figcaption class="quarto-float-caption-bottom quarto-float-caption quarto-float-fig" id="fig-multimodel-integration-caption-0ceaefa1-69ba-4598-a22c-09a6ac19f8ca">
-Figure&nbsp;17.3: [Essential] Practical integration workflow. Panel A (Model Selection by Variant Type): Missense → <em>AlphaMissense</em>, <em>ESM-1v</em>; splice-proximal → <em>SpliceAI</em>; deep intronic → <em>Enformer</em>, cryptic splice; promoter/enhancer → <em>Enformer</em>, <em>AlphaGenome</em>; synonymous → splicing + regulatory; structural → limited coverage flag. Panel B (Evidence Integration): Same variant scored by multiple models; example missense near exon boundary; <em>AlphaMissense</em> 0.85, <em>SpliceAI</em> 0.45, <em>Enformer</em> regulatory effect; combining without double-counting. Panel C (Correlation and Redundancy): Correlation matrix between scores; high correlation = shared info (do not count twice); residual analysis. Panel D (Practical Workflow): Tier 1 fast screening (DNA-LM likelihood); Tier 2 detailed (<em>AlphaMissense</em>, <em>SpliceAI</em>); Tier 3 mechanistic (<em>AlphaGenome</em>); cost/time at each tier.
+Figure&nbsp;17.3: Multi-model integration for comprehensive variant assessment. (A) Coding variants are routed to appropriate models based on consequence type: missense to AlphaMissense/ESM, splice-proximal to SpliceAI, synonymous requiring both splicing and regulatory assessment. (B) Non-coding variants use specialized models for each region: promoters and enhancers use Enformer, splice regions use SpliceAI, deep intronic variants combine conservation with regulatory predictions. (C) Ensemble methods combine individual model scores through learned weights, typically outperforming any single model. (D) Uncertainty aggregation identifies variants where models disagree, flagging them for review. When models agree, predictions are confident; when models disagree, elevated uncertainty triggers manual review.
 </figcaption>
 </figure>
 </div>
@@ -837,6 +1085,19 @@ Figure&nbsp;17.3: [Essential] Practical integration workflow. Panel A (Model Sel
 </section>
 <section id="sec-ch17-calibration" class="level2" data-number="17.5">
 <h2 data-number="17.5" class="anchored" data-anchor-id="sec-ch17-calibration"><span class="header-section-number">17.5</span> Calibration and Clinical Categories</h2>
+<div class="callout callout-style-default callout-caution callout-titled" title="Difficulty Warning: Statistical Foundations Required">
+<div class="callout-header d-flex align-content-center">
+<div class="callout-icon-container">
+<i class="callout-icon"></i>
+</div>
+<div class="callout-title-container flex-fill">
+Difficulty Warning: Statistical Foundations Required
+</div>
+</div>
+<div class="callout-body-container callout-body">
+<p>This section introduces calibration concepts that require familiarity with probability, Bayesian reasoning, and classification metrics. If terms like “reliability diagram,” “isotonic regression,” or “odds ratio” are unfamiliar, consider first reviewing the technical foundations in <a href="../part_5/p5-ch23-uncertainty.html#sec-ch23-calibration" class="quarto-xref"><span>Section 23.2</span></a>. The practical implications are accessible without deep statistical background, but understanding <em>why</em> these methods work requires the full treatment in Chapter 23.</p>
+</div>
+</div>
 <p>A pathogenicity score of 0.73 means nothing in isolation. If that score reflects a well-calibrated model, approximately 73% of variants receiving similar scores are truly pathogenic, and clinical decisions can proceed accordingly. If the model is miscalibrated, the true pathogenic rate could be 40% or 95%, rendering the score unreliable for clinical interpretation. Model scores become clinically useful only when they map to actionable categories through calibration, the process of ensuring that predicted probabilities match observed frequencies.</p>
 <section id="sec-ch17-assessing-calibration" class="level3" data-number="17.5.1">
 <h3 data-number="17.5.1" class="anchored" data-anchor-id="sec-ch17-assessing-calibration"><span class="header-section-number">17.5.1</span> Assessing Calibration</h3>
@@ -855,16 +1116,16 @@ Figure&nbsp;17.3: [Essential] Practical integration workflow. Panel A (Model Sel
 <div class="quarto-layout-cell" style="flex-basis: 50.0%;justify-content: flex-start;">
 <div class="quarto-figure quarto-figure-center">
 <figure class="figure">
-<p><img src="../figs/part_3/ch14/04-A-fig-calibration-clinical.png" class="img-fluid figure-img"></p>
-<figcaption><strong>FIGURE PLACEHOLDER A</strong></figcaption>
+<p><img src="../figs/part_3/ch17/04-A-fig-calibration-clinical.svg" class="img-fluid figure-img"></p>
+<figcaption>Raw model outputs require calibration</figcaption>
 </figure>
 </div>
 </div>
 <div class="quarto-layout-cell" style="flex-basis: 50.0%;justify-content: flex-start;">
 <div class="quarto-figure quarto-figure-center">
 <figure class="figure">
-<p><img src="../figs/part_3/ch14/04-B-fig-calibration-clinical.png" class="img-fluid figure-img"></p>
-<figcaption><strong>FIGURE PLACEHOLDER B</strong></figcaption>
+<p><img src="../figs/part_3/ch17/04-B-fig-calibration-clinical.svg" class="img-fluid figure-img"></p>
+<figcaption>Calibration methods correct systematic bias</figcaption>
 </figure>
 </div>
 </div>
@@ -873,23 +1134,23 @@ Figure&nbsp;17.3: [Essential] Practical integration workflow. Panel A (Model Sel
 <div class="quarto-layout-cell" style="flex-basis: 50.0%;justify-content: flex-start;">
 <div class="quarto-figure quarto-figure-center">
 <figure class="figure">
-<p><img src="../figs/part_3/ch14/04-C-fig-calibration-clinical.png" class="img-fluid figure-img"></p>
-<figcaption><strong>FIGURE PLACEHOLDER C</strong></figcaption>
+<p><img src="../figs/part_3/ch17/04-C-fig-calibration-clinical.svg" class="img-fluid figure-img"></p>
+<figcaption>Threshold selection for clinical use</figcaption>
 </figure>
 </div>
 </div>
 <div class="quarto-layout-cell" style="flex-basis: 50.0%;justify-content: flex-start;">
 <div class="quarto-figure quarto-figure-center">
 <figure class="figure">
-<p><img src="../figs/part_3/ch14/04-D-fig-calibration-clinical.png" class="img-fluid figure-img"></p>
-<figcaption><strong>FIGURE PLACEHOLDER D</strong></figcaption>
+<p><img src="../figs/part_3/ch17/04-D-fig-calibration-clinical.svg" class="img-fluid figure-img"></p>
+<figcaption>Prevalence affects score interpretation</figcaption>
 </figure>
 </div>
 </div>
 </div>
 </div>
 <figcaption class="quarto-float-caption-bottom quarto-float-caption quarto-float-fig" id="fig-calibration-clinical-caption-0ceaefa1-69ba-4598-a22c-09a6ac19f8ca">
-Figure&nbsp;17.4: [High] Four-panel figure. Panel A (The Calibration Problem): Raw model score distribution showing neural network overconfidence (clustering near 0/1); reliability diagram demonstrating miscalibration. Panel B (Calibration Methods): Conceptual overview of temperature scaling, isotonic regression, Platt scaling; before/after reliability diagrams showing improvement. Panel C (Mapping to ACMG Categories): Continuous score from 0 to 1; thresholds defining PP3, VUS, BP4 regions; visualization of threshold selection trade-offs between precision and recall. Panel D (What Uncertainty Looks Like): Intermediate scores reflecting genuine uncertainty; example variants at different score levels with clinical interpretation; annotation emphasizing that “A score of 0.73 means nothing without calibration context.”
+Figure&nbsp;17.4: Calibration for clinical variant interpretation. (A) Raw model scores are not calibrated probabilities—neural networks exhibit systematic overconfidence, clustering predictions near 0 and 1. (B) Calibration curves reveal and correct probability bias; post-calibration predictions track the diagonal, providing accurate probability estimates. (C) Threshold selection depends on clinical context: screening applications favor high sensitivity, diagnostic applications balance sensitivity and specificity, confirmation applications favor high specificity. (D) Clinical prevalence dramatically affects interpretation—the same score means different things in healthy populations versus rare disease clinics. Proper clinical deployment requires calibration and prevalence-adjusted interpretation.
 </figcaption>
 </figure>
 </div>
@@ -1005,6 +1266,26 @@ ACMG-AMP Variant Classification Framework
 <p><strong>Epistemic uncertainty</strong> reflects gaps in the model’s knowledge: regions of input space with sparse training data, variant types rarely observed during training, or proteins from understudied families. This uncertainty is reducible in principle by collecting more data and can be estimated by measuring model disagreement across training variations.</p>
 <p><strong>Aleatoric uncertainty</strong> reflects inherent noise in the prediction target: variants whose pathogenicity genuinely varies across individuals or contexts, or cases where the same score corresponds to both pathogenic and benign variants for biological rather than modeling reasons. This uncertainty is irreducible by additional training and represents fundamental limits on predictability.</p>
 <p>Distinguishing these uncertainty types matters for interpretation. High epistemic uncertainty suggests caution: the model has not seen similar variants and may be extrapolating unreliably. High aleatoric uncertainty suggests that the variant’s effect genuinely depends on factors not captured by sequence alone.</p>
+<div class="callout callout-style-default callout-note callout-titled" title="Knowledge Check: Epistemic vs. Aleatoric Uncertainty">
+<div class="callout-header d-flex align-content-center">
+<div class="callout-icon-container">
+<i class="callout-icon"></i>
+</div>
+<div class="callout-title-container flex-fill">
+Knowledge Check: Epistemic vs.&nbsp;Aleatoric Uncertainty
+</div>
+</div>
+<div class="callout-body-container callout-body">
+<p>Consider two variants with identical <em>AlphaMissense</em> scores of 0.65:</p>
+<p><strong>Variant A:</strong> A missense change in <em>BRCA1</em>, a gene with thousands of characterized variants in ClinVar and extensive deep mutational scanning data.</p>
+<p><strong>Variant B:</strong> A missense change in a recently discovered orphan gene with no characterized variants and only 8 homologous sequences in databases.</p>
+<ol type="1">
+<li>Which variant likely has higher epistemic uncertainty? Why?</li>
+<li>For which variant might the intermediate score more likely reflect aleatoric uncertainty (genuine biological ambiguity)?</li>
+<li>How would you communicate the different confidence levels to a clinician?</li>
+</ol>
+</div>
+</div>
 </section>
 <section id="sec-ch17-uncertainty-methods" class="level3" data-number="17.6.2">
 <h3 data-number="17.6.2" class="anchored" data-anchor-id="sec-ch17-uncertainty-methods"><span class="header-section-number">17.6.2</span> Uncertainty Estimation Methods</h3>
@@ -1024,16 +1305,16 @@ ACMG-AMP Variant Classification Framework
 <div class="quarto-layout-cell" style="flex-basis: 50.0%;justify-content: flex-start;">
 <div class="quarto-figure quarto-figure-center">
 <figure class="figure">
-<p><img src="../figs/part_3/ch14/05-A-fig-vep-uncertainty.png" class="img-fluid figure-img"></p>
-<figcaption><strong>FIGURE PLACEHOLDER A</strong></figcaption>
+<p><img src="../figs/part_3/ch17/05-A-fig-vep-uncertainty.svg" class="img-fluid figure-img"></p>
+<figcaption>Aleatoric vs.&nbsp;epistemic uncertainty sources</figcaption>
 </figure>
 </div>
 </div>
 <div class="quarto-layout-cell" style="flex-basis: 50.0%;justify-content: flex-start;">
 <div class="quarto-figure quarto-figure-center">
 <figure class="figure">
-<p><img src="../figs/part_3/ch14/05-B-fig-vep-uncertainty.png" class="img-fluid figure-img"></p>
-<figcaption><strong>FIGURE PLACEHOLDER B</strong></figcaption>
+<p><img src="../figs/part_3/ch17/05-B-fig-vep-uncertainty.svg" class="img-fluid figure-img"></p>
+<figcaption>Ensemble disagreement quantifies uncertainty</figcaption>
 </figure>
 </div>
 </div>
@@ -1042,23 +1323,23 @@ ACMG-AMP Variant Classification Framework
 <div class="quarto-layout-cell" style="flex-basis: 50.0%;justify-content: flex-start;">
 <div class="quarto-figure quarto-figure-center">
 <figure class="figure">
-<p><img src="../figs/part_3/ch14/05-C-fig-vep-uncertainty.png" class="img-fluid figure-img"></p>
-<figcaption><strong>FIGURE PLACEHOLDER C</strong></figcaption>
+<p><img src="../figs/part_3/ch17/05-C-fig-vep-uncertainty.svg" class="img-fluid figure-img"></p>
+<figcaption>Distance-based out-of-distribution detection</figcaption>
 </figure>
 </div>
 </div>
 <div class="quarto-layout-cell" style="flex-basis: 50.0%;justify-content: flex-start;">
 <div class="quarto-figure quarto-figure-center">
 <figure class="figure">
-<p><img src="../figs/part_3/ch14/05-D-fig-vep-uncertainty.png" class="img-fluid figure-img"></p>
-<figcaption><strong>FIGURE PLACEHOLDER D</strong></figcaption>
+<p><img src="../figs/part_3/ch17/05-D-fig-vep-uncertainty.svg" class="img-fluid figure-img"></p>
+<figcaption>Selective prediction improves reliability</figcaption>
 </figure>
 </div>
 </div>
 </div>
 </div>
 <figcaption class="quarto-float-caption-bottom quarto-float-caption quarto-float-fig" id="fig-vep-uncertainty-caption-0ceaefa1-69ba-4598-a22c-09a6ac19f8ca">
-Figure&nbsp;17.5: [High] Four-panel figure. Panel A (Sources of Uncertainty): Epistemic (model has not seen similar, reducible) vs aleatoric (inherent noise, irreducible); training distribution vs query position. Panel B (Ensemble Methods): Multiple models trained differently; prediction variance; high disagreement = high epistemic uncertainty. Panel C (Conformal Prediction): Calibration set → conformal scores; prediction sets with coverage guarantee; confident {Benign} vs uncertain {P, VUS, B}. Panel D (OOD Detection): Embedding space; training examples dense region; query variant isolated = OOD; flag for manual review.
+Figure&nbsp;17.5: Uncertainty quantification for variant effect prediction. (A) Aleatoric uncertainty (inherent data ambiguity) reflects context-dependent effects that cannot be reduced. Epistemic uncertainty (model limitations) can be reduced with more training data. (B) Ensemble disagreement provides empirical uncertainty estimates—variance across model runs indicates prediction reliability. (C) Distance from training distribution flags out-of-distribution variants requiring caution. (D) Selective prediction uses uncertainty to abstain on difficult cases, achieving higher accuracy by routing uncertain variants to expert review rather than providing unreliable predictions.
 </figcaption>
 </figure>
 </div>
@@ -1080,13 +1361,33 @@ Figure&nbsp;17.5: [High] Four-panel figure. Panel A (Sources of Uncertainty): Ep
 </section>
 <section id="sec-ch17-mechanistic-interpretability" class="level3" data-number="17.7.3">
 <h3 data-number="17.7.3" class="anchored" data-anchor-id="sec-ch17-mechanistic-interpretability"><span class="header-section-number">17.7.3</span> Mechanistic Interpretability</h3>
-<p><em>AlphaGenome</em> and similar multi-output models provide predictions about mechanism rather than bare pathogenicity scores. A variant flagged as deleterious might also show predicted effects on chromatin accessibility, contact frequency, and downstream gene expression. These mechanistic predictions enable hypothesis generation and targeted experimental validation (<a href="../part_5/p5-ch24-interpretability.html" class="quarto-xref"><span>Chapter 24</span></a>).</p>
+<p><em>AlphaGenome</em> and similar multi-output models provide predictions about mechanism rather than bare pathogenicity scores. A variant flagged as deleterious might also show predicted effects on chromatin accessibility, contact frequency, and downstream gene expression. These mechanistic predictions enable hypothesis generation and targeted experimental validation (<a href="../part_5/p5-ch24-interpretability.html" class="quarto-xref"><span>Chapter 25</span></a>).</p>
 <p>Classical methods offer limited mechanistic insight. <em>CADD</em> provides a single score without indicating whether it derives from conservation, protein impact, regulatory disruption, or other features. Decomposing the score into component contributions requires separate analysis. Foundation models that predict molecular phenotypes naturally provide this decomposition.</p>
 </section>
 <section id="sec-ch17-persistent-limitations" class="level3" data-number="17.7.4">
 <h3 data-number="17.7.4" class="anchored" data-anchor-id="sec-ch17-persistent-limitations"><span class="header-section-number">17.7.4</span> Persistent Limitations</h3>
 <p>Foundation models have not solved several fundamental challenges. Ancestry bias persists because training data remain skewed toward European populations; performance degrades for variants common in African or Asian populations but rare in training sets. The systematic analysis of ancestry-related confounding appears in <span class="quarto-unresolved-ref">?sec-ch22-ancestry-confounding</span>, with broader confounding detection methods in <span class="quarto-unresolved-ref">?sec-ch22-detection</span>. Calibration requires substantial labeled data that inherit existing biases. Rare variant classes (structural variants, complex indels, repeat expansions) lack sufficient training examples for reliable prediction.</p>
 <p>The comparison to classical methods reveals diminishing returns on certain axes. For well-conserved active site variants in thoroughly studied proteins, <em>PolyPhen-2</em> already achieves near-optimal performance; <em>AlphaMissense</em> improves marginally. The largest foundation model gains appear for difficult cases where classical features are uninformative or misleading.</p>
+<div class="callout callout-style-default callout-tip callout-titled" title="Key Insight: Where Foundation Models Help Most">
+<div class="callout-header d-flex align-content-center">
+<div class="callout-icon-container">
+<i class="callout-icon"></i>
+</div>
+<div class="callout-title-container flex-fill">
+Key Insight: Where Foundation Models Help Most
+</div>
+</div>
+<div class="callout-body-container callout-body">
+<p>Foundation models provide the largest improvements over classical methods in precisely the situations where clinical need is greatest:</p>
+<ol type="1">
+<li><strong>Novel genes:</strong> Orphan proteins lacking homologs where alignment-based methods fail</li>
+<li><strong>Rare variants:</strong> Never-before-seen substitutions where population frequency provides no information</li>
+<li><strong>Noncoding regions:</strong> Regulatory variants where classical annotation is sparse</li>
+<li><strong>Context-dependent effects:</strong> Buried core variants, cryptic splice sites, motif-chromatin interactions</li>
+</ol>
+<p>For common variants in well-studied genes with extensive clinical annotation, the marginal improvement may be modest. But these are not the variants causing diagnostic uncertainty. The value of foundation models lies in extending reliable prediction to the long tail of rare variants in less-characterized genes, exactly where clinical interpretation struggles most.</p>
+</div>
+</div>
 <div id="fig-vep-gains-gaps" class="quarto-layout-panel">
 <figure class="quarto-float quarto-float-fig figure">
 <div aria-describedby="fig-vep-gains-gaps-caption-0ceaefa1-69ba-4598-a22c-09a6ac19f8ca">
@@ -1094,16 +1395,16 @@ Figure&nbsp;17.5: [High] Four-panel figure. Panel A (Sources of Uncertainty): Ep
 <div class="quarto-layout-cell" style="flex-basis: 50.0%;justify-content: flex-start;">
 <div class="quarto-figure quarto-figure-center">
 <figure class="figure">
-<p><img src="../figs/part_3/ch14/06-A-fig-vep-gains-gaps.png" class="img-fluid figure-img"></p>
-<figcaption><strong>FIGURE PLACEHOLDER A</strong></figcaption>
+<p><img src="../figs/part_3/ch17/06-A-fig-vep-gains-gaps.svg" class="img-fluid figure-img"></p>
+<figcaption>Performance varies by protein family</figcaption>
 </figure>
 </div>
 </div>
 <div class="quarto-layout-cell" style="flex-basis: 50.0%;justify-content: flex-start;">
 <div class="quarto-figure quarto-figure-center">
 <figure class="figure">
-<p><img src="../figs/part_3/ch14/06-B-fig-vep-gains-gaps.png" class="img-fluid figure-img"></p>
-<figcaption><strong>FIGURE PLACEHOLDER B</strong></figcaption>
+<p><img src="../figs/part_3/ch17/06-B-fig-vep-gains-gaps.svg" class="img-fluid figure-img"></p>
+<figcaption>Rare variants remain challenging</figcaption>
 </figure>
 </div>
 </div>
@@ -1112,23 +1413,23 @@ Figure&nbsp;17.5: [High] Four-panel figure. Panel A (Sources of Uncertainty): Ep
 <div class="quarto-layout-cell" style="flex-basis: 50.0%;justify-content: flex-start;">
 <div class="quarto-figure quarto-figure-center">
 <figure class="figure">
-<p><img src="../figs/part_3/ch14/06-C-fig-vep-gains-gaps.png" class="img-fluid figure-img"></p>
-<figcaption><strong>FIGURE PLACEHOLDER C</strong></figcaption>
+<p><img src="../figs/part_3/ch17/06-C-fig-vep-gains-gaps.svg" class="img-fluid figure-img"></p>
+<figcaption>Clinical impact assessment</figcaption>
 </figure>
 </div>
 </div>
 <div class="quarto-layout-cell" style="flex-basis: 50.0%;justify-content: flex-start;">
 <div class="quarto-figure quarto-figure-center">
 <figure class="figure">
-<p><img src="../figs/part_3/ch14/06-D-fig-vep-gains-gaps.png" class="img-fluid figure-img"></p>
-<figcaption><strong>FIGURE PLACEHOLDER D</strong></figcaption>
+<p><img src="../figs/part_3/ch17/06-D-fig-vep-gains-gaps.svg" class="img-fluid figure-img"></p>
+<figcaption>Remaining gaps require new approaches</figcaption>
 </figure>
 </div>
 </div>
 </div>
 </div>
 <figcaption class="quarto-float-caption-bottom quarto-float-caption quarto-float-fig" id="fig-vep-gains-gaps-caption-0ceaefa1-69ba-4598-a22c-09a6ac19f8ca">
-Figure&nbsp;17.6: [Enhancing] Balanced assessment. Panel A (Performance Improvements): Benchmark comparison table (Method | ClinVar auROC | DMS Correlation | Coverage). Panel B (Where Improvements Largest): Difficult cases (sparse annotations, orphan genes), context-dependent effects, novel genes. Panel C (Persistent Gaps): Population bias, complex variants (SVs, repeats, phase), combinatorial effects (epistasis, compound het), tissue specificity. Panel D (The Bottom Line): Foundation models = tools for interpretation, not oracles; best use = combined with population data, functional evidence, clinical judgment.
+Figure&nbsp;17.6: Foundation model VEP: gains and remaining gaps. (A) Performance varies by protein family—well-characterized families achieve high accuracy while poorly-studied families show degraded performance. (B) Rare variants are harder to predict, particularly for recently evolved or population-specific variants. (C) Clinical impact assessment: FM predictions could reclassify significant fractions of VUS, but require appropriate validation. (D) Remaining gaps include complex variants (multi-allelic, structural), modifier effects, and tissue-specific pathogenicity. Foundation models have advanced VEP substantially but do not eliminate the need for functional validation.
 </figcaption>
 </figure>
 </div>
@@ -1141,6 +1442,30 @@ Figure&nbsp;17.6: [Enhancing] Balanced assessment. Panel A (Performance Improvem
 <h3 data-number="17.8.1" class="anchored" data-anchor-id="sec-ch17-lab-validation"><span class="header-section-number">17.8.1</span> Laboratory Validation</h3>
 <p>Before clinical use, laboratories should validate foundation model tools against local truth sets representing their patient population. Published benchmark performance on ClinVar may not generalize to a laboratory’s specific case mix. Validation should assess discrimination (can the tool distinguish pathogenic from benign?), calibration (do probability estimates match observed frequencies?), and utility (does incorporating the tool improve variant classification compared to existing workflows?).</p>
 <p>Validation requires variants with known pathogenicity independent of the computational predictions being tested. Using ClinVar variants whose classifications already incorporated <em>CADD</em> scores to validate <em>CADD</em> creates circular reasoning, a form of label circularity examined in <span class="quarto-unresolved-ref">?sec-ch22-label-circularity</span>. Gold-standard variants from functional studies, segregation data, or expert review provide cleaner validation targets, with detailed evaluation methodology in <a href="../part_2/p2-ch11-benchmarks.html" class="quarto-xref"><span>Chapter 12</span></a>.</p>
+<div class="callout callout-style-default callout-warning callout-titled" title="Practical Guidance: Laboratory Validation Checklist">
+<div class="callout-header d-flex align-content-center">
+<div class="callout-icon-container">
+<i class="callout-icon"></i>
+</div>
+<div class="callout-title-container flex-fill">
+Practical Guidance: Laboratory Validation Checklist
+</div>
+</div>
+<div class="callout-body-container callout-body">
+<p>Before deploying a foundation model VEP tool clinically, ensure you have:</p>
+<ul class="task-list">
+<li><label><input type="checkbox">Identified an appropriate validation set independent of tool training data</label></li>
+<li><label><input type="checkbox">Assessed discrimination metrics (auROC, auPRC) on your patient population</label></li>
+<li><label><input type="checkbox">Generated calibration plots and calculated expected calibration error</label></li>
+<li><label><input type="checkbox">Compared performance to your current workflow (utility analysis)</label></li>
+<li><label><input type="checkbox">Established thresholds for PP3/BP4 evidence based on local calibration</label></li>
+<li><label><input type="checkbox">Documented ancestry composition of validation set and any stratified analyses</label></li>
+<li><label><input type="checkbox">Trained analysts on appropriate interpretation and known limitations</label></li>
+<li><label><input type="checkbox">Established a process for monitoring ongoing performance and updating thresholds</label></li>
+</ul>
+<p>This validation should be repeated when model versions change or when significant shifts in your patient population occur.</p>
+</div>
+</div>
 </section>
 <section id="sec-ch17-workflow-integration" class="level3" data-number="17.8.2">
 <h3 data-number="17.8.2" class="anchored" data-anchor-id="sec-ch17-workflow-integration"><span class="header-section-number">17.8.2</span> Workflow Integration</h3>
@@ -1173,13 +1498,13 @@ Figure&nbsp;17.6: [Enhancing] Balanced assessment. Panel A (Performance Improvem
 <div aria-describedby="fig-long-read-vep-caption-0ceaefa1-69ba-4598-a22c-09a6ac19f8ca">
 <div class="quarto-figure quarto-figure-center">
 <figure class="figure">
-<p><img src="../figs/part_3/ch14/07-fig-long-read-vep.png" class="img-fluid figure-img"></p>
-<figcaption><strong>FIGURE PLACEHOLDER</strong></figcaption>
+<p><img src="../figs/part_3/ch17/07-fig-long-read-vep.svg" class="img-fluid figure-img"></p>
+<figcaption>Long-read sequencing expands variant detection scope</figcaption>
 </figure>
 </div>
 </div>
 <figcaption class="quarto-float-caption-bottom quarto-float-caption quarto-float-fig" id="fig-long-read-vep-caption-0ceaefa1-69ba-4598-a22c-09a6ac19f8ca">
-Figure&nbsp;17.7: [High] Long-read contributions to VEP. Panel A (Read Length Comparison): Short reads (150 bp) vs HiFi (15-20 kb) vs ultra-long ONT (&gt;100 kb); structural variant spanning; breakpoint resolution. Panel B (Structural Variant Detection): Deletion example: short reads show coverage drop, long reads span breakpoint; translocation: chimeric long reads reveal junction. Panel C (Phasing): Two variants in a gene; cis configuration (same haplotype, one functional copy) vs trans (opposite haplotypes, no functional copy); long read spanning both variants resolves. Panel D (Foundation Model Gaps): Current models: single sequence, point mutations, fixed context; needed: diploid representation, SV encoding, haplotype-aware scoring.
+Figure&nbsp;17.7: Long-read sequencing expands the scope of variant effect prediction. Short-read sequencing (top) detects primarily SNVs and small indels for which current FM-VEP approaches are well-suited. Long-read sequencing (bottom) reveals structural variants, repeat expansions, and complex haplotypes that current models cannot process. Realizing the clinical potential of long-read sequencing requires developing FM-VEP approaches for these new variant classes—a major open challenge.
 </figcaption>
 </figure>
 </div>
@@ -1205,14 +1530,64 @@ Figure&nbsp;17.7: [High] Long-read contributions to VEP. Panel A (Read Length Co
 <h3 data-number="17.9.6" class="anchored" data-anchor-id="sec-ch17-equity"><span class="header-section-number">17.9.6</span> Equity and Access</h3>
 <p>State-of-the-art foundation models require substantial computational resources for training and sometimes for inference. Laboratories in resource-limited settings may lack access to cutting-edge tools, creating a two-tiered system where well-funded institutions deploy sophisticated variant interpretation while others rely on simpler methods. Precomputed scores (like <em>AlphaMissense’s</em> proteome-wide release) partially address computational barriers, but equity concerns extend far beyond compute access.</p>
 <p>Training data composition determines which patients foundation models serve well. ClinVar contains many more pathogenic variant classifications for European-ancestry individuals than for other populations <span class="citation" data-cites="landrum_clinvar_2018">(<a href="../bib/references.html#ref-landrum_clinvar_2018" role="doc-biblioref">Landrum et al. 2018</a>)</span>. Protein language models trained predominantly on sequences from well-studied organisms may capture evolutionary constraints less accurately for proteins divergent from training distributions. The consequence is systematic: variant interpretation performs best for patients who already benefit most from biomedical research, and worst for those historically excluded. A diagnostic laboratory serving a diverse urban population will encounter variants where foundation model predictions are less reliable precisely because those variants come from underrepresented ancestries.</p>
-<p>Validation cohorts exhibit similar biases. When foundation models are evaluated on ClinVar or gnomAD-derived benchmarks, performance metrics reflect accuracy for the populations overrepresented in those resources. A model achieving 0.95 auROC on standard benchmarks may achieve substantially lower discrimination for African-ancestry variants simply because the benchmark itself undersamples that population. Equitable deployment requires ancestry-stratified evaluation that explicitly reports performance gaps, not aggregate metrics that obscure disparities (<a href="../part_2/p2-ch11-benchmarks.html" class="quarto-xref"><span>Chapter 12</span></a>). The broader implications of these biases, and governance frameworks for addressing them, receive comprehensive treatment in <a href="../part_5/p5-ch26-regulatory.html#sec-ch26-regulatory" class="quarto-xref"><span>Section 26.1</span></a>.</p>
+<p>Validation cohorts exhibit similar biases. When foundation models are evaluated on ClinVar or gnomAD-derived benchmarks, performance metrics reflect accuracy for the populations overrepresented in those resources. A model achieving 0.95 auROC on standard benchmarks may achieve substantially lower discrimination for African-ancestry variants simply because the benchmark itself undersamples that population. Equitable deployment requires ancestry-stratified evaluation that explicitly reports performance gaps, not aggregate metrics that obscure disparities (<a href="../part_2/p2-ch11-benchmarks.html" class="quarto-xref"><span>Chapter 12</span></a>). The broader implications of these biases, and governance frameworks for addressing them, receive comprehensive treatment in <a href="../part_5/p5-ch26-regulatory.html#sec-ch26-regulatory" class="quarto-xref"><span>Section 27.1</span></a>.</p>
+<div class="callout callout-style-default callout-note callout-titled" title="Stop and Think: Equity in Model Development">
+<div class="callout-header d-flex align-content-center">
+<div class="callout-icon-container">
+<i class="callout-icon"></i>
+</div>
+<div class="callout-title-container flex-fill">
+Stop and Think: Equity in Model Development
+</div>
+</div>
+<div class="callout-body-container callout-body">
+<p>Consider a clinical genetics laboratory that serves a diverse patient population where 40% of patients have non-European ancestry. The laboratory is evaluating <em>AlphaMissense</em> for clinical use.</p>
+<ol type="1">
+<li>What specific validation analyses should the laboratory conduct before deployment?</li>
+<li>If the model performs well overall (auROC = 0.92) but substantially worse for African-ancestry variants (auROC = 0.81), what are the ethical implications of deploying it?</li>
+<li>How might the laboratory communicate differential performance to ordering clinicians?</li>
+</ol>
+<p>There are no simple answers to these questions, but responsible deployment requires explicitly grappling with them.</p>
+</div>
+</div>
 </section>
 </section>
 <section id="sec-ch17-conclusion" class="level2" data-number="17.10">
 <h2 data-number="17.10" class="anchored" data-anchor-id="sec-ch17-conclusion"><span class="header-section-number">17.10</span> Tools for Interpretation, Not Oracles</h2>
 <p>Foundation models have transformed variant effect prediction from feature engineering to <strong>representation learning</strong>. Protein language models capture evolutionary constraint at resolution that multiple sequence alignments cannot match. DNA language models and regulatory models extend coverage to noncoding variants across the genome. Multi-omic architectures provide mechanistic predictions enabling hypothesis generation beyond bare deleteriousness scores. The best current methods substantially outperform classical approaches on established benchmarks, particularly for rare variants and novel genes where training data are sparse.</p>
 <p>Yet benchmark performance does not automatically translate to clinical utility. Calibration requires careful attention: a model may discriminate pathogenic from benign variants while systematically overestimating or underestimating probabilities. Uncertainty quantification remains immature; models often produce confident predictions for inputs that fall outside their training distribution. Population bias persists despite foundation model advances; improvements over classical methods are smallest for ancestry groups underrepresented in training data. Complex variant types, combinatorial effects, and tissue-specific consequences remain beyond current capabilities.</p>
-<p>Clinical deployment demands humility alongside enthusiasm. Foundation model VEP tools are aids to human interpretation, not autonomous classifiers. Their predictions inform rather than determine variant classification, complementing population frequency data, functional assay evidence, segregation analysis, and clinical judgment. Used appropriately, they accelerate diagnosis and reduce missed findings. Used as oracles, they create false confidence and may perpetuate existing inequities in genomic medicine. Clinical workflows (<a href="../part_6/p6-ch28-rare-disease.html" class="quarto-xref"><span>Chapter 28</span></a>, <a href="../part_6/p6-ch27-clinical-risk.html" class="quarto-xref"><span>Chapter 27</span></a>) integrate these predictions alongside uncertainty quantification (<a href="../part_5/p5-ch23-uncertainty.html" class="quarto-xref"><span>Chapter 23</span></a>) and interpretability methods that probe what foundation models have learned (<a href="../part_5/p5-ch24-interpretability.html" class="quarto-xref"><span>Chapter 24</span></a>). Variant effect prediction sits at the center of genomic medicine; foundation models have raised its ceiling while the work of achieving its potential continues.</p>
+<p>Clinical deployment demands humility alongside enthusiasm. Foundation model VEP tools are aids to human interpretation, not autonomous classifiers. Their predictions inform rather than determine variant classification, complementing population frequency data, functional assay evidence, segregation analysis, and clinical judgment. Used appropriately, they accelerate diagnosis and reduce missed findings. Used as oracles, they create false confidence and may perpetuate existing inequities in genomic medicine. Clinical workflows (<a href="../part_6/p6-ch28-rare-disease.html" class="quarto-xref"><span>Chapter 28</span></a>, <a href="../part_6/p6-ch27-clinical-risk.html" class="quarto-xref"><span>Chapter 27</span></a>) integrate these predictions alongside uncertainty quantification (<a href="../part_5/p5-ch23-uncertainty.html" class="quarto-xref"><span>Chapter 23</span></a>) and interpretability methods that probe what foundation models have learned (<a href="../part_5/p5-ch24-interpretability.html" class="quarto-xref"><span>Chapter 25</span></a>). Variant effect prediction sits at the center of genomic medicine; foundation models have raised its ceiling while the work of achieving its potential continues.</p>
+<div class="callout callout-style-default callout-note callout-titled" title="Chapter Summary">
+<div class="callout-header d-flex align-content-center">
+<div class="callout-icon-container">
+<i class="callout-icon"></i>
+</div>
+<div class="callout-title-container flex-fill">
+Chapter Summary
+</div>
+</div>
+<div class="callout-body-container callout-body">
+<p><strong>Core concepts covered:</strong></p>
+<ul>
+<li><p><strong>Paradigm shift:</strong> Foundation models learn representations from unlabeled sequences, enabling variant scoring without pathogenicity labels. Evolution has already encoded functional constraints; models learn to detect when variants violate these patterns.</p></li>
+<li><p><strong>Protein-based methods:</strong> Zero-shot scoring with protein language models (<em>ESM-1v</em>) compares amino acid likelihoods. Alignment-based models (<em>EVE</em>, <em>popEVE</em>) explicitly capture evolutionary constraints from MSAs. <em>AlphaMissense</em> combines sequence and structural information for state-of-the-art missense prediction.</p></li>
+<li><p><strong>DNA-based methods:</strong> <em>SpliceAI</em> predicts splicing changes using dilated convolutions over 10kb context. <em>Enformer</em> and <em>Sei</em> predict regulatory effects. <em>GPN-MSA</em> and <em>Evo 2</em> provide DNA language model scoring for all variant types.</p></li>
+<li><p><strong>Integration strategies:</strong> Different models address different variant types. Combining evidence requires avoiding double-counting from correlated predictors. Practical workflows tier models by computational cost.</p></li>
+<li><p><strong>Calibration:</strong> Raw model outputs require calibration before clinical use. Reliability diagrams assess calibration quality. ACMG criteria (PP3/BP4) map continuous scores to evidence levels through calibrated thresholds.</p></li>
+<li><p><strong>Uncertainty:</strong> Epistemic uncertainty (model knowledge gaps) differs from aleatoric uncertainty (inherent unpredictability). Ensemble methods, conformal prediction, and out-of-distribution detection provide complementary approaches.</p></li>
+<li><p><strong>Persistent challenges:</strong> Structural variants, combinatorial effects, phenotype specificity, and population bias remain unsolved. Foundation models are tools for interpretation, not oracles.</p></li>
+</ul>
+<p><strong>Key connections:</strong></p>
+<ul>
+<li>Chapter 4 provides the classical VEP baseline that foundation models improve upon</li>
+<li>Chapter 15 develops the protein language model architectures underlying <em>ESM-1v</em> and <em>AlphaMissense</em></li>
+<li>Chapter 16 covers the regulatory models (<em>Enformer</em>, <em>Sei</em>) used for noncoding VEP</li>
+<li>Chapter 23 presents the full technical treatment of calibration and uncertainty quantification</li>
+<li>Chapters 27-28 show how VEP tools integrate into clinical workflows</li>
+</ul>
+<p><strong>Looking ahead:</strong> Having established how foundation models predict variant effects, <a href="../part_4/p4-ch18-rna.html" class="quarto-xref"><span>Chapter 19</span></a> extends these concepts to RNA-level predictions, while <a href="../part_5/p5-ch23-uncertainty.html" class="quarto-xref"><span>Chapter 23</span></a> provides the complete framework for responsible uncertainty quantification in clinical deployment.</p>
+</div>
+</div>
 
 
 <div id="refs" class="references csl-bib-body hanging-indent" data-entry-spacing="0" role="list" style="display: none">

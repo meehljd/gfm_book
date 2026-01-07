@@ -531,8 +531,45 @@ div.csl-indent {
 </header>
 
 
+<div class="callout callout-style-default callout-note callout-titled">
+<div class="callout-header d-flex align-content-center">
+<div class="callout-icon-container">
+<i class="callout-icon"></i>
+</div>
+<div class="callout-title-container flex-fill">
+Chapter Overview
+</div>
+</div>
+<div class="callout-body-container callout-body">
+<p><strong>Prerequisites:</strong> This chapter builds on variant effect prediction (<a href="../part_3/p3-ch17-vep-fm.html" class="quarto-xref"><span>Chapter 17</span></a>), protein language models (<a href="../part_3/p3-ch15-protein-lm.html#sec-ch15-esm-family" class="quarto-xref"><span>Section 15.1</span></a>), regulatory foundation models (<a href="../part_3/p3-ch16-regulatory.html#sec-ch16-enformer" class="quarto-xref"><span>Section 16.2</span></a>), and network analysis (<a href="../part_4/p4-ch21-networks.html" class="quarto-xref"><span>Chapter 21</span></a>). Familiarity with GWAS concepts (<a href="../part_1/p1-ch03-gwas.html" class="quarto-xref"><span>Chapter 3</span></a>) and fine-mapping (<a href="../part_1/p1-ch03-gwas.html#sec-ch03-fine-mapping" class="quarto-xref"><span>Section 3.4</span></a>) is essential. The confounding concepts from <a href="../part_2/p2-ch12-confounding.html" class="quarto-xref"><span>Chapter 12</span></a> are particularly relevant for understanding validation challenges.</p>
+<p><strong>Learning Objectives:</strong> After completing this chapter, you should be able to:</p>
+<ol type="1">
+<li>Explain why genetically supported targets succeed at higher rates in clinical trials</li>
+<li>Describe pipelines for aggregating variant-level predictions into gene-level target evidence</li>
+<li>Contrast network-aware and single-gene approaches to target discovery</li>
+<li>Evaluate drug-target interaction predictions using protein and chemical embeddings</li>
+<li>Design foundation model-guided functional genomics screens</li>
+<li>Apply foundation model features to biomarker development and patient stratification</li>
+<li>Navigate strategic choices for foundation model deployment in industry settings</li>
+</ol>
+<p><strong>Estimated time:</strong> 45-60 minutes</p>
+</div>
+</div>
 <p>More than 90% of drug candidates that enter clinical trials fail. They fail because they targeted the wrong gene. They fail because the patient population was too heterogeneous for a single mechanism to succeed. They fail because preclinical models predicted efficacy that did not translate to humans. They fail because safety signals emerged only at scale. The pharmaceutical industry spends billions of dollars on programs that will not produce approved therapies, and the cost of this attrition propagates to the drugs that do succeed: higher prices, longer development timelines, and reduced investment in diseases with smaller markets. The fundamental bottleneck is not generating drug candidates but identifying, early in the process, which targets and which patients offer the highest probability of success.</p>
 <p>Human genetics provides one of the strongest predictors of clinical success. Targets with genetic support succeed in trials at roughly twice the rate of targets without such support <em>[Citation Needed]</em>; human mutations that cause phenotypes resembling the therapeutic goal provide direct evidence that modulating the target affects the disease. Yet exploiting this signal is harder than it sounds. Genome-wide association studies have identified thousands of disease-associated loci, but most point to noncoding regions where the causal gene is unclear. Even when a gene is implicated, the direction of effect often remains ambiguous. Translating a statistical association into a validated therapeutic target typically requires a decade of work and hundreds of millions of dollars in follow-up studies.</p>
+<div class="callout callout-style-default callout-tip callout-titled">
+<div class="callout-header d-flex align-content-center">
+<div class="callout-icon-container">
+<i class="callout-icon"></i>
+</div>
+<div class="callout-title-container flex-fill">
+Key Insight: The Genetic Validation Advantage
+</div>
+</div>
+<div class="callout-body-container callout-body">
+<p>The two-fold improvement in clinical trial success rates for genetically supported targets represents one of the most robust findings in drug development. This effect persists across therapeutic areas and development phases. Foundation models amplify this advantage by providing mechanistic context that explains <em>why</em> a genetic association matters, not just <em>that</em> it exists.</p>
+</div>
+</div>
 <p>Genomic foundation models offer a path through this translational bottleneck. Rather than treating each target identification program as a <em>de novo</em> effort, foundation models encode biological knowledge learned across millions of sequences into reusable representations. A <strong>variant effect predictor</strong> can score any missense mutation’s functional impact without task-specific retraining. A regulatory model can predict expression consequences of noncoding variants across tissues. Network models can propagate genetic signals to identify pathway relationships invisible in single-gene analyses. These capabilities connect to drug discovery through target prioritization and genetic validation, network-aware approaches that identify modules and repurposing opportunities, foundation model-guided functional genomics screens, and biomarker development for patient stratification.</p>
 <section id="sec-ch29-genetic-foundation" class="level2" data-number="29.1">
 <h2 data-number="29.1" class="anchored" data-anchor-id="sec-ch29-genetic-foundation"><span class="header-section-number">29.1</span> Genetic Foundation of Target Selection</h2>
@@ -542,13 +579,13 @@ div.csl-indent {
 <div aria-describedby="fig-target-prioritization-caption-0ceaefa1-69ba-4598-a22c-09a6ac19f8ca">
 <div class="quarto-figure quarto-figure-center">
 <figure class="figure">
-<p><img src="../figs/part_6/ch27/01-fig-target-prioritization.png" class="img-fluid figure-img"></p>
-<figcaption><strong>FIGURE PLACEHOLDER</strong></figcaption>
+<p><img src="../figs/part_6/ch29/01-fig-target-prioritization.svg" class="img-fluid figure-img"></p>
+<figcaption>Drug target prioritization pipeline</figcaption>
 </figure>
 </div>
 </div>
 <figcaption class="quarto-float-caption-bottom quarto-float-caption quarto-float-fig" id="fig-target-prioritization-caption-0ceaefa1-69ba-4598-a22c-09a6ac19f8ca">
-Figure&nbsp;29.1: [Essential] Pipeline diagram. Steps: (1) GWAS summary statistics (Manhattan plot); (2) Fine-mapping (credible sets, posteriors); (3) FM scoring (coding: <em>AlphaMissense</em>, <em>GPN-MSA</em>; regulatory: <em>Enformer</em>, <em>Borzoi</em>); (4) Variant-to-gene mapping (coding direct; noncoding via Hi-C, eQTL, enhancer-gene); (5) Target ranking (genetic evidence, druggability, safety, mechanism clarity). Output: Ranked target list with evidence, effect sizes, fine-mapping probabilities, predicted mechanism, constraint/druggability. Key insight: FMs enrich genetic evidence with mechanistic context.
+Figure&nbsp;29.1: Drug target prioritization pipeline. Starting from disease understanding (GWAS, expression signatures), targets progress through causal inference (Mendelian randomization confirms causation), target property assessment (druggability, safety), and experimental validation (CRISPR, animal models). Foundation models contribute at each stage: integrating multi-omic associations, prioritizing causal variants, predicting druggability, and interpreting validation data. Critical context: only ~5% of targets entering clinical development succeed.
 </figcaption>
 </figure>
 </div>
@@ -556,8 +593,86 @@ Figure&nbsp;29.1: [Essential] Pipeline diagram. Steps: (1) GWAS summary statisti
 <section id="sec-ch29-variant-to-gene" class="level3" data-number="29.1.1">
 <h3 data-number="29.1.1" class="anchored" data-anchor-id="sec-ch29-variant-to-gene"><span class="header-section-number">29.1.1</span> From Variant-Level Predictions to Gene-Level Evidence</h3>
 <p>Drug discovery teams rarely care about individual variants per se; they care about genes and pathways. The fundamental challenge in target identification is therefore aggregating variant-level information into gene-level evidence that can guide target selection.</p>
+<div class="callout callout-style-default callout-note callout-titled">
+<div class="callout-header d-flex align-content-center">
+<div class="callout-icon-container">
+<i class="callout-icon"></i>
+</div>
+<div class="callout-title-container flex-fill">
+Stop and Think
+</div>
+</div>
+<div class="callout-body-container callout-body">
+<p>Before reading about the workflow below, consider: if you have thousands of GWAS-significant variants across hundreds of loci, what information would you need to convert these statistical signals into a ranked list of drug targets? What makes this problem difficult?</p>
+</div>
+</div>
 <p>Consider a typical workflow. Starting from GWAS summary statistics (see <a href="../part_1/p1-ch02-data.html#sec-ch02-gwas-summary" class="quarto-xref"><span>Section 2.3.2</span></a>), statistical <strong>fine-mapping</strong> methods identify credible sets of potentially causal variants at each locus (see <a href="../part_1/p1-ch03-gwas.html#sec-ch03-fine-mapping" class="quarto-xref"><span>Section 3.4</span></a>). Sequence-based foundation models then score each candidate variant for regulatory or coding impact. Protein-centric variant effect predictors such as <em>AlphaMissense</em>, <em>GPN-MSA</em>, and the missense components of <em>AlphaGenome</em> combine <strong>protein language models</strong>, structural information, and evolutionary conservation to assess coding variants (<a href="../part_3/p3-ch15-protein-lm.html#sec-ch15-esm-family" class="quarto-xref"><span>Section 15.1</span></a>; <span class="quarto-unresolved-ref">?sec-ch14-protein-vep</span>) <span class="citation" data-cites="cheng_alphamissense_2023 benegas_gpn-msa_2024 avsec_alphagenome_2025 brandes_genome-wide_2023">(<a href="../bib/references.html#ref-cheng_alphamissense_2023" role="doc-biblioref">Cheng et al. 2023</a>; <a href="../bib/references.html#ref-benegas_gpn-msa_2024" role="doc-biblioref">Benegas et al. 2024</a>; <a href="../bib/references.html#ref-avsec_alphagenome_2025" role="doc-biblioref">Avsec, Latysheva, and Cheng 2025</a>; <a href="../bib/references.html#ref-brandes_genome-wide_2023" role="doc-biblioref">Brandes et al. 2023</a>)</span>. Regulatory foundation models including <em>Enformer</em>, <em>Borzoi</em>, and long-context DNA language models predict the consequences of noncoding variants on chromatin accessibility, transcription factor binding, and gene expression (<a href="../part_3/p3-ch16-regulatory.html#sec-ch16-enformer" class="quarto-xref"><span>Section 16.2</span></a>; <span class="quarto-unresolved-ref">?sec-ch14-enformer-vep</span>).</p>
 <p>The critical step is connecting variants to genes. For coding variants, this mapping is straightforward: the variant lies within a gene’s coding sequence, and protein-level scores directly inform that gene’s candidacy. For noncoding variants, the mapping requires integrating chromatin conformation data (Hi-C, promoter-capture Hi-C), enhancer-gene predictions from models like <em>Enformer</em>, and <strong>expression quantitative trait locus (eQTL)</strong> data that empirically links variants to gene expression changes (see <a href="../part_1/p1-ch02-data.html#sec-ch02-expression" class="quarto-xref"><span>Section 2.5</span></a>). Fine-mapping approaches such as <em>MIFM</em> can help distinguish truly causal regulatory variants from correlated passengers, tightening the map from GWAS locus to variant to target gene (<a href="../part_1/p1-ch03-gwas.html#sec-ch03-fine-mapping" class="quarto-xref"><span>Section 3.4</span></a>) <span class="citation" data-cites="wu_genome-wide_2024 rakowski_mifm_2025">(<a href="../bib/references.html#ref-wu_genome-wide_2024" role="doc-biblioref">Wu et al. 2024</a>; <a href="../bib/references.html#ref-rakowski_mifm_2025" role="doc-biblioref">Rakowski and Lippert 2025</a>)</span>.</p>
+<p>The following table summarizes the key evidence types for connecting variants to target genes:</p>
+<div id="tbl-variant-to-gene-evidence" class="quarto-float quarto-figure quarto-figure-center anchored">
+<figure class="quarto-float quarto-float-tbl figure">
+<figcaption class="quarto-float-caption-top quarto-float-caption quarto-float-tbl" id="tbl-variant-to-gene-evidence-caption-0ceaefa1-69ba-4598-a22c-09a6ac19f8ca">
+Table&nbsp;29.1: Evidence types for variant-to-gene mapping in drug target prioritization. Coding variants provide direct gene mappings, while noncoding variants require integration of multiple data sources.
+</figcaption>
+<div aria-describedby="tbl-variant-to-gene-evidence-caption-0ceaefa1-69ba-4598-a22c-09a6ac19f8ca">
+<table class="caption-top table">
+<colgroup>
+<col style="width: 23%">
+<col style="width: 23%">
+<col style="width: 20%">
+<col style="width: 15%">
+<col style="width: 18%">
+</colgroup>
+<thead>
+<tr class="header">
+<th>Evidence Type</th>
+<th>Variant Class</th>
+<th>Data Source</th>
+<th>Strength</th>
+<th>Limitation</th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<td>Direct coding</td>
+<td>Missense, LoF</td>
+<td>Sequence annotation</td>
+<td>Unambiguous gene link</td>
+<td>Rare variants, small effect sizes</td>
+</tr>
+<tr class="even">
+<td>eQTL colocalization</td>
+<td>Regulatory</td>
+<td>GTEx, tissue-specific cohorts</td>
+<td>Empirical gene expression link</td>
+<td>Tissue-specific, LD confounding</td>
+</tr>
+<tr class="odd">
+<td>Chromatin contact</td>
+<td>Regulatory</td>
+<td>Hi-C, pcHi-C</td>
+<td>Physical enhancer-gene link</td>
+<td>Resolution limits, cell-type specific</td>
+</tr>
+<tr class="even">
+<td>FM enhancer prediction</td>
+<td>Regulatory</td>
+<td><em>Enformer</em>, <em>Borzoi</em></td>
+<td>Functional prediction</td>
+<td>Validation required</td>
+</tr>
+<tr class="odd">
+<td>Network proximity</td>
+<td>Both</td>
+<td>PPI, pathway databases</td>
+<td>Pathway context</td>
+<td>Indirect evidence</td>
+</tr>
+</tbody>
+</table>
+</div>
+</figure>
+</div>
 <p>Gene-level aggregation proceeds by summarizing variant effects across all variants linked to each gene. For a given gene, this summary might include the burden of predicted loss-of-function variants in cases versus controls, the strongest regulatory variant effect sizes predicted by foundation models, constraint metrics indicating the gene’s intolerance to damaging variation (see <a href="../part_1/p1-ch02-data.html#sec-ch02-gnomad" class="quarto-xref"><span>Section 2.2.3</span></a>), and pleiotropy scores reflecting associations with other traits that might indicate safety liabilities or broader biological importance. From a foundation model perspective, the core idea is to treat gene-level evidence as an aggregation problem over high-dimensional variant embeddings. Rather than manually defining a handful of summary statistics, variant embeddings and predicted functional profiles can feed into downstream models that learn which patterns matter most for disease.</p>
 </section>
 <section id="sec-ch29-safety-efficacy" class="level3" data-number="29.1.2">
@@ -565,6 +680,19 @@ Figure&nbsp;29.1: [Essential] Pipeline diagram. Steps: (1) GWAS summary statisti
 <p>Classical human genetics has established several heuristics for target selection that foundation models can reinforce and extend. Human knockout individuals, people carrying biallelic loss-of-function variants, provide natural experiments on the consequences of gene inactivation. Protective variants that reduce disease risk suggest the directionality of therapeutic intervention: partial inhibition of a protein may be beneficial rather than harmful. <strong>Pleiotropy</strong>, meaning associations with many unrelated traits, may signal safety liabilities if modulating a target affects multiple physiological systems (see <a href="../part_1/p1-ch03-gwas.html#sec-ch03-phewas" class="quarto-xref"><span>Section 3.8</span></a>).</p>
 <p>Foundation models sharpen these assessments. Fine-mapping methods combined with regulatory foundation models can distinguish causal variants from those merely in <strong>linkage disequilibrium</strong> with causal variants (see <a href="../part_1/p1-ch03-gwas.html#sec-ch03-ld" class="quarto-xref"><span>Section 3.3</span></a>). Variant effect scores from protein and regulatory models approximate effect sizes, helping differentiate subtle modulators from catastrophic loss-of-function mutations. Multi-task predictions across chromatin marks, transcription factor binding, expression, and splicing provide mechanistic hypotheses for how risk loci affect biology, moving beyond statistical association toward functional understanding.</p>
 <p>The output of this workflow is a ranked list of candidate targets with structured evidence that can be compared across diseases and programs. Each target comes annotated with the strength of genetic evidence (effect sizes, fine-mapping probabilities), predicted mechanisms (coding versus regulatory, affected tissues), constraint information (tolerance to loss-of-function, essentiality), and druggability features (protein family, structural information, existing ligands).</p>
+<div class="callout callout-style-default callout-note callout-titled">
+<div class="callout-header d-flex align-content-center">
+<div class="callout-icon-container">
+<i class="callout-icon"></i>
+</div>
+<div class="callout-title-container flex-fill">
+Knowledge Check
+</div>
+</div>
+<div class="callout-body-container callout-body">
+<p>A target gene has strong GWAS support (p &lt; 5e-8) but high pleiotropy (associated with 50+ traits in PheWAS) and high constraint (pLI &gt; 0.99). Should this gene be prioritized or deprioritized as a drug target? What additional information would help decide?</p>
+</div>
+</div>
 </section>
 </section>
 <section id="sec-ch29-network-discovery" class="level2" data-number="29.2">
@@ -574,19 +702,32 @@ Figure&nbsp;29.1: [Essential] Pipeline diagram. Steps: (1) GWAS summary statisti
 <h3 data-number="29.2.1" class="anchored" data-anchor-id="sec-ch29-network-propagation"><span class="header-section-number">29.2.1</span> Propagating Genetic Signals Through Networks</h3>
 <p>The basic intuition is that GWAS signals concentrated in a pathway or protein interaction module provide stronger evidence than isolated hits. A single gene with modest genetic support but tight functional connections to several strongly implicated genes may be a more attractive target than an isolated hit with stronger statistics but unclear biology.</p>
 <p>Network-based methods integrate noncoding GWAS loci, regulatory annotations, and protein-protein interactomes to identify disease genes and evaluate drug repurposing opportunities in complex diseases. <strong>Graph neural network</strong> architectures (<span class="quarto-unresolved-ref">?sec-ch18-canonical-architectures</span>) can learn to propagate genetic evidence through interaction networks, scoring each gene not just by its direct genetic association but by its network context. The key methodological insight is that genes can be embedded jointly with their network neighbors, allowing the model to capture how genetic perturbations in one gene might affect functionally related genes.</p>
+<div class="callout callout-style-default callout-tip callout-titled">
+<div class="callout-header d-flex align-content-center">
+<div class="callout-icon-container">
+<i class="callout-icon"></i>
+</div>
+<div class="callout-title-container flex-fill">
+Key Insight: Single-Gene vs.&nbsp;Network Evidence
+</div>
+</div>
+<div class="callout-body-container callout-body">
+<p>Single-gene approaches treat each target independently based on its direct genetic association. Network-aware approaches recognize that an isolated GWAS hit with unclear mechanism may be less actionable than a gene with modest direct evidence but strong connections to well-validated disease biology. The value of network propagation lies in recovering “near-miss” targets that lack genome-wide significance individually but sit at the center of disease-relevant pathways.</p>
+</div>
+</div>
 <p>Foundation model representations enhance these network approaches. Instead of representing each gene by a sparse vector of annotations, genes can be embedded using features derived from protein language models (<a href="../part_3/p3-ch15-protein-lm.html#sec-ch15-esm2" class="quarto-xref"><span>Section 15.1.3</span></a>), regulatory foundation models (<a href="../part_3/p3-ch16-regulatory.html#sec-ch16-enformer" class="quarto-xref"><span>Section 16.2</span></a>), and expression-based cell state encoders (<span class="quarto-unresolved-ref">?sec-ch16-clm</span>). These embeddings can then be used as node features in graph neural networks, enabling network-aware target prioritization (<span class="quarto-unresolved-ref">?sec-ch18-fm-embeddings</span>). These rich representations capture functional similarity beyond what interaction databases alone can provide. Two genes with similar protein language model embeddings likely share functional properties even if no direct interaction has been catalogued.</p>
 <div id="fig-network-target-discovery" class="quarto-float quarto-figure quarto-figure-center anchored">
 <figure class="quarto-float quarto-float-fig figure">
 <div aria-describedby="fig-network-target-discovery-caption-0ceaefa1-69ba-4598-a22c-09a6ac19f8ca">
 <div class="quarto-figure quarto-figure-center">
 <figure class="figure">
-<p><img src="../figs/part_6/ch27/02-fig-network-target-discovery.png" class="img-fluid figure-img"></p>
-<figcaption><strong>FIGURE PLACEHOLDER</strong></figcaption>
+<p><img src="../figs/part_6/ch29/02-fig-network-target-discovery.svg" class="img-fluid figure-img"></p>
+<figcaption>Network-based drug target discovery</figcaption>
 </figure>
 </div>
 </div>
 <figcaption class="quarto-float-caption-bottom quarto-float-caption quarto-float-fig" id="fig-network-target-discovery-caption-0ceaefa1-69ba-4598-a22c-09a6ac19f8ca">
-Figure&nbsp;29.2: [High] Network visualization. Nodes: Genes/proteins; colors: GWAS signal strength; sizes: FM embedding similarity to disease genes. Key concepts: (1) Direct GWAS hits (strong statistical evidence); (2) Network neighborhood (connected to hits, may be better targets); (3) Pathway enrichment (multiple signals converge); (4) Bottleneck nodes (druggable connecting disease modules). Repurposing application: Drug targets marked; drugs near disease genes in embedding space → repurposing candidates. Caution: Proximity ≠ causation; MR needed.
+Figure&nbsp;29.2: Network-based drug target discovery. Known disease genes (red) seed network propagation through protein-protein interactions. Candidate targets (orange) accumulate high scores based on network proximity. Foundation model embeddings (ESM) provide node features that encode functional similarity, improving propagation beyond topology alone. Network context reveals targets missed by GWAS: genes may not harbor risk variants themselves but are functionally connected to disease mechanisms.
 </figcaption>
 </figure>
 </div>
@@ -595,7 +736,19 @@ Figure&nbsp;29.2: [High] Network visualization. Nodes: Genes/proteins; colors: G
 <h3 data-number="29.2.2" class="anchored" data-anchor-id="sec-ch29-repurposing"><span class="header-section-number">29.2.2</span> Drug Repurposing Through Shared Representations</h3>
 <p>The same framework enables systematic drug repurposing. By representing drugs via their targets, gene expression signatures, and phenotypic effects, and representing diseases via their genetic architecture and molecular signatures, models can score drug-disease pairs based on representation similarity. If a drug’s target sits near genetically implicated genes in representation space, or if the drug’s expression signature opposes the disease signature, that drug becomes a repurposing candidate.</p>
 <p>Network proximity provides one concrete operationalization: drugs whose targets are enriched near disease-risk genes, as measured by network diffusion or embedding similarity, may have therapeutic potential for that disease <em>[Citation Needed]</em>. Several retrospective analyses have found that such proximity predicts reduced disease incidence among users of particular drugs, though prospective validation remains limited.</p>
-<p>The caution here is fundamental: representation similarity is not causation. A drug that appears near disease genes in embedding space might act through that mechanism, or the association might reflect confounding by indication, survivorship bias, or other artifacts of observational data (see <a href="../part_2/p2-ch12-confounding.html" class="quarto-xref"><span>Chapter 12</span></a>). Network-based repurposing generates hypotheses; <strong>Mendelian randomization</strong>, natural experiments, and prospective trials must test them.</p>
+<div class="callout callout-style-default callout-warning callout-titled">
+<div class="callout-header d-flex align-content-center">
+<div class="callout-icon-container">
+<i class="callout-icon"></i>
+</div>
+<div class="callout-title-container flex-fill">
+Correlation vs.&nbsp;Causation in Repurposing
+</div>
+</div>
+<div class="callout-body-container callout-body">
+<p>The caution here is fundamental: representation similarity is not causation. A drug that appears near disease genes in embedding space might act through that mechanism, or the association might reflect confounding by indication, survivorship bias, or other artifacts of observational data (see <a href="../part_2/p2-ch12-confounding.html" class="quarto-xref"><span>Chapter 12</span></a>). Network-based repurposing generates hypotheses; <strong>Mendelian randomization</strong>, natural experiments, and prospective trials must test them. Retrospective analyses claiming repurposing success should be viewed skeptically without prospective validation.</p>
+</div>
+</div>
 </section>
 </section>
 <section id="sec-ch29-dti-prediction" class="level2" data-number="29.3">
@@ -606,19 +759,32 @@ Figure&nbsp;29.2: [High] Network visualization. Nodes: Genes/proteins; colors: G
 <div aria-describedby="fig-drug-target-prediction-caption-0ceaefa1-69ba-4598-a22c-09a6ac19f8ca">
 <div class="quarto-figure quarto-figure-center">
 <figure class="figure">
-<p><img src="../figs/part_6/ch27/03-fig-drug-target-prediction.png" class="img-fluid figure-img"></p>
-<figcaption><strong>FIGURE PLACEHOLDER</strong></figcaption>
+<p><img src="../figs/part_6/ch29/03-fig-drug-target-prediction.svg" class="img-fluid figure-img"></p>
+<figcaption>Drug-target interaction prediction with foundation models</figcaption>
 </figure>
 </div>
 </div>
 <figcaption class="quarto-float-caption-bottom quarto-float-caption quarto-float-fig" id="fig-drug-target-prediction-caption-0ceaefa1-69ba-4598-a22c-09a6ac19f8ca">
-Figure&nbsp;29.3: [High] Dual-encoder architecture. Components: (1) Target Encoder (protein sequence → <em>ESM-2</em> → protein embedding capturing structure, function, binding); (2) Molecule Encoder (SMILES/graph → chemical FM → molecule embedding); (3) Interaction Predictor (combine embeddings → predict binding affinity). Applications: Novel target screening, off-target prediction, selectivity profiling. Proteome-scale visualization: 2D protein embeddings; drug binding profile heatmap overlay; intended target and off-targets. Safety integration: Off-targets with CV expression flagged. Key insight: FM embeddings enable binding prediction without experimental structures.
+Figure&nbsp;29.3: Drug-target interaction prediction with foundation models. Drug structures are encoded by chemical language models (ChemBERTa) while protein targets are encoded by protein foundation models (ESM-2). Combined embeddings predict binding probability and affinity. Applications span virtual screening (score targets for new drugs), drug repurposing (score known drugs for new targets), and off-target prediction (identify safety liabilities). Experimental validation remains essential: computational predictions prioritize but cannot substitute for binding assays.
 </figcaption>
 </figure>
 </div>
 <section id="sec-ch29-binding-prediction" class="level3" data-number="29.3.1">
 <h3 data-number="29.3.1" class="anchored" data-anchor-id="sec-ch29-binding-prediction"><span class="header-section-number">29.3.1</span> Representing Targets for Binding Prediction</h3>
 <p>Traditional drug-target interaction methods rely on sequence similarity, structural docking, or chemical fingerprint matching. Foundation model approaches replace these hand-crafted features with learned representations. Protein language model embeddings from <em>ESM-2</em> or similar architectures capture evolutionary and structural information that correlates with binding site properties (<a href="../part_3/p3-ch15-protein-lm.html#sec-ch15-esm2" class="quarto-xref"><span>Section 15.1.3</span></a>; <a href="../part_3/p3-ch15-protein-lm.html#sec-ch15-esm-family" class="quarto-xref"><span>Section 15.1</span></a>) <span class="citation" data-cites="lin_esm-2_2022">(<a href="../bib/references.html#ref-lin_esm-2_2022" role="doc-biblioref">Lin et al. 2022</a>)</span>. Ligand representations from chemical foundation models encode molecular properties relevant to binding affinity and selectivity.</p>
+<div class="callout callout-style-default callout-note callout-titled">
+<div class="callout-header d-flex align-content-center">
+<div class="callout-icon-container">
+<i class="callout-icon"></i>
+</div>
+<div class="callout-title-container flex-fill">
+Stop and Think
+</div>
+</div>
+<div class="callout-body-container callout-body">
+<p>Traditional drug-target interaction prediction requires experimental protein structures for docking. Why might protein language model embeddings enable binding prediction for targets without solved structures? What information do these embeddings capture that might correlate with binding behavior?</p>
+</div>
+</div>
 <p>The prediction task becomes: given a protein embedding (derived from a protein language model) and a molecule embedding (derived from a chemical language model or graph neural network), predict binding affinity or interaction probability. These models can be trained on large databases of known drug-target interactions and binding affinities, then applied to predict interactions for novel targets or molecules <em>[Citation Needed]</em>.</p>
 <p>For genomics-focused applications, the protein representation is the critical contribution. A target identified through genetic validation can be immediately embedded using protein foundation models, enabling binding prediction without waiting for experimental structures or extensive biochemical characterization. This acceleration is particularly valuable for understudied targets where structural data is sparse.</p>
 </section>
@@ -635,6 +801,27 @@ Figure&nbsp;29.3: [High] Dual-encoder architecture. Components: (1) Target Encod
 <h3 data-number="29.4.1" class="anchored" data-anchor-id="sec-ch29-genetic-liabilities"><span class="header-section-number">29.4.1</span> Genetic Evidence of Target Liabilities</h3>
 <p>Human genetic data offers direct evidence of target-related toxicity. If loss-of-function variants in a target gene associate with adverse phenotypes in biobank populations, those phenotypes may emerge as on-target toxicities during therapeutic inhibition. Phenome-wide association studies across biobanks link genes to thousands of traits, from laboratory values to disease diagnoses to imaging features (see <a href="../part_1/p1-ch03-gwas.html#sec-ch03-phewas" class="quarto-xref"><span>Section 3.8</span></a>). A target strongly associated with QT prolongation, hepatotoxicity markers, or nephrotoxicity phenotypes warrants careful safety evaluation.</p>
 <p>Foundation models enhance this analysis by providing more accurate variant effect predictions (distinguishing true loss-of-function from benign variants) and by integrating across evidence types (see <a href="../part_3/p3-ch17-vep-fm.html" class="quarto-xref"><span>Chapter 17</span></a>). A gene might show modest individual associations with several safety-relevant traits that, when aggregated using foundation model representations, reveal a concerning pattern.</p>
+<div class="callout callout-style-default callout-important callout-titled">
+<div class="callout-header d-flex align-content-center">
+<div class="callout-icon-container">
+<i class="callout-icon"></i>
+</div>
+<div class="callout-title-container flex-fill">
+Practical Guidance: Genetic Safety Signals
+</div>
+</div>
+<div class="callout-body-container callout-body">
+<p>When evaluating genetic safety evidence for a target:</p>
+<ol type="1">
+<li><strong>Check PheWAS associations</strong> for the target gene, focusing on cardiac, hepatic, renal, and hematologic phenotypes</li>
+<li><strong>Examine human knockouts</strong> in gnomAD and biobank cohorts for homozygous loss-of-function carriers</li>
+<li><strong>Assess constraint</strong> (pLI, LOEUF) as a proxy for essential function that may indicate safety risk</li>
+<li><strong>Evaluate pleiotropy</strong> breadth and whether off-target associations could become on-target toxicities</li>
+<li><strong>Consider expression patterns</strong> in safety-relevant tissues using GTEx or single-cell atlases</li>
+</ol>
+<p>Remember: genetic evidence predicts <em>on-target</em> toxicity from the mechanism itself. Off-target toxicity requires separate assessment through binding prediction and selectivity profiling.</p>
+</div>
+</div>
 </section>
 <section id="sec-ch29-expression-toxicity" class="level3" data-number="29.4.2">
 <h3 data-number="29.4.2" class="anchored" data-anchor-id="sec-ch29-expression-toxicity"><span class="header-section-number">29.4.2</span> Expression-Based Toxicity Prediction</h3>
@@ -655,13 +842,13 @@ Figure&nbsp;29.3: [High] Dual-encoder architecture. Components: (1) Target Encod
 <div aria-describedby="fig-perturb-seq-caption-0ceaefa1-69ba-4598-a22c-09a6ac19f8ca">
 <div class="quarto-figure quarto-figure-center">
 <figure class="figure">
-<p><img src="../figs/part_6/ch27/04-fig-perturb-seq.png" class="img-fluid figure-img"></p>
-<figcaption><strong>FIGURE PLACEHOLDER</strong></figcaption>
+<p><img src="../figs/part_6/ch29/04-fig-perturb-seq.svg" class="img-fluid figure-img"></p>
+<figcaption>Perturb-seq for mechanism discovery</figcaption>
 </figure>
 </div>
 </div>
 <figcaption class="quarto-float-caption-bottom quarto-float-caption quarto-float-fig" id="fig-perturb-seq-caption-0ceaefa1-69ba-4598-a22c-09a6ac19f8ca">
-Figure&nbsp;29.4: [High] Perturbation-response workflow. Components: (1) Perturb-seq experiment (pooled CRISPR + scRNA-seq; each cell has perturbation + transcriptome); (2) Perturbation signatures (knockdown → expression profile change; FM learns mapping); (3) Disease signature (patient samples characteristic changes); (4) Perturbation matching (find perturbations reversing disease signature; knockdown X reverses disease → X is candidate; drug Y similar to knockdown X → Y targets X mechanism). Visualization: Expression heatmap (genes × perturbations); disease signature overlay. Lab-in-the-loop: Screen → update model → design next screen; active learning.
+Figure&nbsp;29.4: Perturb-seq for mechanism discovery. Pooled CRISPR libraries target hundreds to thousands of genes; single-cell capture identifies both the perturbation (guide barcode) and its effect (expression profile). The resulting matrix directly measures gene-gene regulatory relationships—interventional data that foundation models cannot learn from observation alone. FM integration: predict perturbation effects for virtual screening, interpret expression signatures for mechanism discovery, and identify informative perturbations for active learning.
 </figcaption>
 </figure>
 </div>
@@ -670,6 +857,19 @@ Figure&nbsp;29.4: [High] Perturbation-response workflow. Components: (1) Perturb
 <p>Traditional pooled screens use simple design rules: one guide RNA per exon, or tiling a regulatory region at fixed spacing. Foundation models enable smarter library design by providing priors over which perturbations are likely to be informative.</p>
 <p>Variant effect scores from protein foundation models can prioritize which amino acid positions are most likely to reveal functional differences when mutated. Positions predicted to be highly constrained and structurally important warrant more thorough coverage than positions predicted to be mutationally tolerant (<span class="quarto-unresolved-ref">?sec-ch14-protein-vep</span>). Regulatory foundation models can highlight which enhancer or promoter regions are predicted to have the largest expression effects in the cell type of interest, focusing screening effort on high-impact regions (<a href="../part_3/p3-ch16-regulatory.html#sec-ch16-enformer" class="quarto-xref"><span>Section 16.2</span></a>; <span class="quarto-unresolved-ref">?sec-ch14-enformer-vep</span>).</p>
 <p>Beyond prioritization, foundation models can guide combinatorial design. <strong>Model uncertainty</strong>, the degree to which a model is confident in its predictions, identifies regions where experimental data would be most informative (<a href="../part_5/p5-ch23-uncertainty.html#sec-ch23-epistemic" class="quarto-xref"><span>Section 23.1.2</span></a>; <a href="../part_5/p5-ch23-uncertainty.html#sec-ch23-selective-prediction" class="quarto-xref"><span>Section 23.7</span></a>). Positions where the model makes uncertain predictions are precisely those where experimental measurement adds the most value. <strong>Active learning</strong> strategies that select perturbations to maximize expected information gain can dramatically improve the efficiency of screening campaigns.</p>
+<div class="callout callout-style-default callout-note callout-titled">
+<div class="callout-header d-flex align-content-center">
+<div class="callout-icon-container">
+<i class="callout-icon"></i>
+</div>
+<div class="callout-title-container flex-fill">
+Knowledge Check
+</div>
+</div>
+<div class="callout-body-container callout-body">
+<p>A foundation model predicts that positions 45-60 in a protein domain are highly constrained, while positions 120-135 have high uncertainty in their functional predictions. Which region should receive more variants in a saturation mutagenesis library, and why?</p>
+</div>
+</div>
 </section>
 <section id="sec-ch29-perturb-seq" class="level3" data-number="29.5.2">
 <h3 data-number="29.5.2" class="anchored" data-anchor-id="sec-ch29-perturb-seq"><span class="header-section-number">29.5.2</span> Perturb-seq and Transcriptomic Readouts</h3>
@@ -679,8 +879,34 @@ Figure&nbsp;29.4: [High] Perturbation-response workflow. Components: (1) Perturb
 </section>
 <section id="sec-ch29-lab-in-loop" class="level3" data-number="29.5.3">
 <h3 data-number="29.5.3" class="anchored" data-anchor-id="sec-ch29-lab-in-loop"><span class="header-section-number">29.5.3</span> Closing the Loop: Lab-in-the-Loop Refinement</h3>
+<div class="callout callout-style-default callout-warning callout-titled">
+<div class="callout-header d-flex align-content-center">
+<div class="callout-icon-container">
+<i class="callout-icon"></i>
+</div>
+<div class="callout-title-container flex-fill">
+Advanced Topic
+</div>
+</div>
+<div class="callout-body-container callout-body">
+<p>The following section covers active learning and iterative experimental design. These concepts require familiarity with uncertainty quantification (<a href="../part_5/p5-ch23-uncertainty.html#sec-ch23-epistemic" class="quarto-xref"><span>Section 23.1.2</span></a>) and transfer learning (<span class="quarto-unresolved-ref">?sec-ch09-full-finetuning</span>). Readers may wish to review these topics before proceeding.</p>
+</div>
+</div>
 <p>Iterative refinement represents a particularly valuable application of foundation models in functional genomics. Screen outcomes provide labeled examples that can <strong>fine-tune</strong> sequence-to-function models for the specific biological context of interest (<span class="quarto-unresolved-ref">?sec-ch09-full-finetuning</span> for transfer learning strategies).</p>
 <p>Consider an MPRA that assays thousands of enhancer variants for their effects on reporter gene expression in a disease-relevant cell type. These sequence-activity pairs directly supervise expression-prediction foundation models, dramatically improving their accuracy for that locus and tissue. The refined model then makes better predictions for the next round of experiments, suggesting which additional variants would be most informative to test.</p>
+<div class="callout callout-style-default callout-tip callout-titled">
+<div class="callout-header d-flex align-content-center">
+<div class="callout-icon-container">
+<i class="callout-icon"></i>
+</div>
+<div class="callout-title-container flex-fill">
+Key Insight: The Bayesian Interpretation of Lab-in-the-Loop
+</div>
+</div>
+<div class="callout-body-container callout-body">
+<p>This lab-in-the-loop cycle follows a Bayesian logic: foundation models provide the <em>prior</em> (general knowledge about sequence-function relationships learned from millions of sequences); experiments provide the <em>likelihood</em> (specific measurements in the system of interest); and the <em>posterior</em> (fine-tuned model) makes better predictions by combining both. The more informative the experiments (high uncertainty positions), the more the posterior improves over the prior.</p>
+</div>
+</div>
 <p>This lab-in-the-loop cycle accelerates discovery while improving model accuracy in disease-relevant regions of sequence space. Foundation models provide the prior (general knowledge about sequence-function relationships); experiments provide the likelihood (specific measurements in the system of interest); and the posterior (updated model) makes better predictions for subsequent experiments.</p>
 </section>
 </section>
@@ -707,6 +933,19 @@ Figure&nbsp;29.5: [Enhancing] Pipeline from features to trial. Stages: (1) FM fe
 <p>Classical <strong>polygenic scores</strong> summarize additive effects of common variants on disease risk (see <a href="../part_1/p1-ch03-gwas.html#sec-ch03-pgs-construction" class="quarto-xref"><span>Section 3.5</span></a>). These scores have proven useful for patient enrichment in cardiovascular and metabolic disease trials, selecting patients at highest genetic risk who might benefit most from intervention <em>[Citation Needed]</em>. Deep learning methods extend this approach by learning nonlinear genotype-phenotype mappings that capture interactions and nonadditive effects.</p>
 <p>Foundation models enhance polygenic prediction in several ways. Instead of using raw genotypes as inputs, models can use variant effect scores, regulatory predictions, or gene-level embeddings derived from foundation models. This captures biological context that simple genotypes miss. Models trained on variant embeddings rather than binary genotype calls can capture subtle differences between variants at the same position, distinguishing a mildly damaging missense from a severely damaging one even when both are heterozygous.</p>
 <p>Transfer across populations represents a particular strength (see <a href="../part_1/p1-ch03-gwas.html#sec-ch03-portability" class="quarto-xref"><span>Section 3.7</span></a>). Foundation models trained on diverse genomes provide representations that may generalize more robustly across ancestries than models trained on individual cohorts. Fine-mapping-aware approaches that use foundation model features can reduce dependence on linkage disequilibrium patterns that vary across populations, potentially improving the portability of genetic risk predictors.</p>
+<div class="callout callout-style-default callout-note callout-titled">
+<div class="callout-header d-flex align-content-center">
+<div class="callout-icon-container">
+<i class="callout-icon"></i>
+</div>
+<div class="callout-title-container flex-fill">
+Stop and Think
+</div>
+</div>
+<div class="callout-body-container callout-body">
+<p>Traditional polygenic scores use the same weight for all heterozygous carriers of a given variant. How might foundation model embeddings allow more nuanced scoring? What information could distinguish two patients who are both heterozygous for a missense variant in the same gene?</p>
+</div>
+</div>
 </section>
 <section id="sec-ch29-multi-omic-biomarkers" class="level3" data-number="29.6.2">
 <h3 data-number="29.6.2" class="anchored" data-anchor-id="sec-ch29-multi-omic-biomarkers"><span class="header-section-number">29.6.2</span> Multi-Omic Biomarker Discovery</h3>
@@ -731,7 +970,53 @@ Figure&nbsp;29.5: [Enhancing] Pipeline from features to trial. Stages: (1) FM fe
 </section>
 <section id="sec-ch29-build-buy-finetune" class="level3" data-number="29.7.2">
 <h3 data-number="29.7.2" class="anchored" data-anchor-id="sec-ch29-build-buy-finetune"><span class="header-section-number">29.7.2</span> Strategic Choices: Build, Buy, or Fine-Tune</h3>
-<p>Organizations face three strategic options when adopting foundation models. Using external models as-is offers low upfront cost and benefits from community benchmarking, but may not capture organization-specific populations, assays, or therapeutic areas. A model trained primarily on European ancestry populations may perform poorly on a company’s Asian-focused programs; a model trained on common cell lines may miss biology relevant to rare disease indications.</p>
+<p>Organizations face three strategic options when adopting foundation models.</p>
+<div id="tbl-build-buy-finetune" class="quarto-float quarto-figure quarto-figure-center anchored">
+<figure class="quarto-float quarto-float-tbl figure">
+<figcaption class="quarto-float-caption-top quarto-float-caption quarto-float-tbl" id="tbl-build-buy-finetune-caption-0ceaefa1-69ba-4598-a22c-09a6ac19f8ca">
+Table&nbsp;29.2: Strategic options for foundation model adoption in drug discovery organizations. The optimal choice depends on internal data assets, computational resources, and use case specificity.
+</figcaption>
+<div aria-describedby="tbl-build-buy-finetune-caption-0ceaefa1-69ba-4598-a22c-09a6ac19f8ca">
+<table class="caption-top table">
+<colgroup>
+<col style="width: 21%">
+<col style="width: 25%">
+<col style="width: 31%">
+<col style="width: 21%">
+</colgroup>
+<thead>
+<tr class="header">
+<th>Strategy</th>
+<th>Advantages</th>
+<th>Disadvantages</th>
+<th>Best For</th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<td><strong>Use external models as-is</strong></td>
+<td>Low cost, community benchmarked, fast deployment</td>
+<td>May not fit internal populations or assays</td>
+<td>Early exploration, non-differentiated applications</td>
+</tr>
+<tr class="even">
+<td><strong>Fine-tune open-source FMs</strong></td>
+<td>Retains general knowledge, adapts to internal data</td>
+<td>Requires compute and ML expertise, privacy controls</td>
+<td>Companies with internal biobanks, proprietary phenotypes</td>
+</tr>
+<tr class="odd">
+<td><strong>Train bespoke internal models</strong></td>
+<td>Maximum control, aligned with specific use cases</td>
+<td>Highest cost, risk of overfitting, long timelines</td>
+<td>Unique data assets, differentiated therapeutic areas</td>
+</tr>
+</tbody>
+</table>
+</div>
+</figure>
+</div>
+<p>Using external models as-is offers low upfront cost and benefits from community benchmarking, but may not capture organization-specific populations, assays, or therapeutic areas. A model trained primarily on European ancestry populations may perform poorly on a company’s Asian-focused programs; a model trained on common cell lines may miss biology relevant to rare disease indications.</p>
 <p>Fine-tuning open-source foundation models on internal data retains general representations while adapting to local data distributions (see <a href="../part_2/p2-ch09-transfer.html" class="quarto-xref"><span>Chapter 9</span></a> for fine-tuning approaches). This approach requires computational investment and careful privacy controls, but often provides the best balance of generality and specificity. A company with large internal biobank data can fine-tune a general variant effect predictor on that cohort, improving predictions for its patient populations without sacrificing the broad knowledge captured during pretraining.</p>
 <p>Training bespoke internal models from scratch offers maximum control and allows alignment of pretraining objectives with specific use cases (see <a href="../part_2/p2-ch08-pretraining.html" class="quarto-xref"><span>Chapter 8</span></a>). A company focused on rare diseases might pretrain on sequences and phenotypes particularly relevant to that space. The cost is substantial: pretraining requires significant compute, data engineering, and machine learning expertise (see <a href="../appendix/app-b-compute.html" class="quarto-xref"><span>Appendix B</span></a>). There is also risk of overfitting to narrow internal datasets if the pretraining corpus is not sufficiently diverse.</p>
 <p>In practice, most organizations adopt hybrid strategies. They start with public foundation models for early exploration and non-sensitive applications, gradually fine-tune on internal data as value becomes clear, and reserve from-scratch training for cases where unique data assets justify the investment. Lightweight model-serving infrastructure handles latency-sensitive applications such as clinical decision support, while heavier offline systems support large-scale research workloads.</p>
@@ -740,6 +1025,60 @@ Figure&nbsp;29.5: [Enhancing] Pipeline from features to trial. Stages: (1) FM fe
 <h3 data-number="29.7.3" class="anchored" data-anchor-id="sec-ch29-timelines"><span class="header-section-number">29.7.3</span> Industry Context: Timelines and Decision Gates</h3>
 <p>Academic machine learning research optimizes benchmark performance; drug discovery optimizes probability of clinical and commercial success under time and resource constraints. Understanding industry context helps foundation model practitioners contribute effectively.</p>
 <p>Drug discovery programs progress through gates: target validation, candidate selection, investigational new drug filing, and clinical trial phases. Each gate requires specific evidence: biological rationale, efficacy data, safety data, manufacturing feasibility. Foundation model contributions must align with gate requirements. A beautiful embedding space is valueless if it cannot be translated into evidence that advances a program through its next gate.</p>
+<div class="callout callout-style-default callout-important callout-titled">
+<div class="callout-header d-flex align-content-center">
+<div class="callout-icon-container">
+<i class="callout-icon"></i>
+</div>
+<div class="callout-title-container flex-fill">
+Practical Guidance: Aligning FM Work with Drug Development Gates
+</div>
+</div>
+<div class="callout-body-container callout-body">
+<table class="caption-top table">
+<colgroup>
+<col style="width: 15%">
+<col style="width: 39%">
+<col style="width: 44%">
+</colgroup>
+<thead>
+<tr class="header">
+<th>Gate</th>
+<th>Key Questions</th>
+<th>FM Contribution</th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<td>Target validation</td>
+<td>Is the target disease-relevant and modifiable?</td>
+<td>Genetic evidence aggregation, VEP scoring, network context</td>
+</tr>
+<tr class="even">
+<td>Lead selection</td>
+<td>Which molecules have best target engagement?</td>
+<td>DTI prediction, selectivity profiling</td>
+</tr>
+<tr class="odd">
+<td>Preclinical</td>
+<td>What are safety liabilities?</td>
+<td>PheWAS-informed toxicity prediction, off-target flags</td>
+</tr>
+<tr class="even">
+<td>Clinical Phase I</td>
+<td>Is target engaged at tolerable doses?</td>
+<td>Pharmacodynamic biomarkers</td>
+</tr>
+<tr class="odd">
+<td>Clinical Phase II/III</td>
+<td>Which patients respond?</td>
+<td>Stratification biomarkers, enrichment scores</td>
+</tr>
+</tbody>
+</table>
+<p>For each application, ask: “What decision does this enable, and when must that decision be made?”</p>
+</div>
+</div>
 <p>Timelines matter. A prediction that takes six months to validate experimentally may be worthless if the program decision must be made in three months. Foundation models that enable faster experiments (through better library design, prioritization, or interpretation) create more value than models that provide incrementally better predictions but require the same experimental timeline to validate.</p>
 <p>Biotechnology companies and pharmaceutical companies operate differently. Biotechs often focus on single programs with limited resources, prioritizing speed and risk-taking. Pharma companies manage portfolios across therapeutic areas, prioritizing consistency and scalability. Foundation model infrastructure that serves one context may not serve the other. A boutique biotech might prefer lightweight, single-purpose models; a large pharma might invest in comprehensive infrastructure serving dozens of programs.</p>
 </section>
@@ -777,6 +1116,38 @@ Figure&nbsp;29.5: [Enhancing] Pipeline from features to trial. Stages: (1) FM fe
 <p>Foundation models connect to drug discovery not as replacements for experimental validation but as tools that reduce risk and focus resources. Target discovery workflows aggregate variant-level predictions into gene-level evidence, integrating fine-mapping, variant effect prediction, and regulatory modeling to prioritize candidates with strong genetic and mechanistic support. Network-aware approaches propagate genetic signals through protein and regulatory networks to identify druggable nodes and repurposing opportunities. Drug-target interaction prediction uses foundation model representations to assess binding, selectivity, and safety liabilities before synthesis. Functional genomics screens leverage foundation models for library design and iterative refinement. Biomarker development uses foundation model features for patient stratification and trial enrichment.</p>
 <p>Throughout these applications, the value proposition is acceleration and prioritization, not automation of discovery. Foundation models help identify the most promising targets, design the most informative experiments, and select the patients most likely to benefit. Programs that would have required years of hypothesis testing can reach the right target faster. Screens that would have required exhaustive enumeration can focus on high-priority candidates. The fundamental uncertainties of drug development remain: targets validated genetically may still fail in trials, predictions of binding may not translate to efficacy, and patients selected by biomarkers may still not respond. Foundation models reduce risk without eliminating it.</p>
 <p>Sequence design (<a href="p6-ch30-design.html" class="quarto-xref"><span>Chapter 30</span></a>) extends these ideas from analysis to generation, where foundation models not only evaluate existing sequences but propose new ones optimized for therapeutic function. The transition from interpretation to design represents the frontier where foundation models become engines for creating biology, not just understanding it.</p>
+<div class="callout callout-style-default callout-note callout-titled">
+<div class="callout-header d-flex align-content-center">
+<div class="callout-icon-container">
+<i class="callout-icon"></i>
+</div>
+<div class="callout-title-container flex-fill">
+Chapter Summary
+</div>
+</div>
+<div class="callout-body-container callout-body">
+<p><strong>Core Concepts:</strong></p>
+<ul>
+<li><strong>Genetic target validation</strong>: Targets with genetic support succeed at ~2x the rate of unsupported targets; foundation models provide mechanistic context for genetic associations</li>
+<li><strong>Variant-to-gene aggregation</strong>: Pipelines integrate fine-mapping, VEP scoring, and regulatory predictions to rank candidate targets</li>
+<li><strong>Network-aware discovery</strong>: Graph neural networks propagate genetic signals through interaction networks, recovering targets missed by single-gene analysis</li>
+<li><strong>Drug-target interaction</strong>: Protein and chemical embeddings enable binding prediction without experimental structures</li>
+<li><strong>Toxicity prediction</strong>: PheWAS associations, expression patterns, and off-target predictions inform safety assessment</li>
+<li><strong>Functional genomics</strong>: Foundation models guide library design and enable perturbation matching for target validation</li>
+<li><strong>Biomarker development</strong>: Foundation model features enhance polygenic prediction and enable multi-omic stratification</li>
+<li><strong>Industry infrastructure</strong>: Strategic choices between external models, fine-tuning, and bespoke training depend on data assets and use cases</li>
+</ul>
+<p><strong>Key Themes:</strong></p>
+<ol type="1">
+<li>Foundation models provide <em>prioritization</em>, not <em>automation</em>—they identify what to test, not replace testing</li>
+<li>Genetic evidence is necessary but not sufficient; experimental validation remains essential</li>
+<li>Confounding pervades drug discovery data; causal inference requires careful epidemiologic design</li>
+<li>Value is measured by advancing programs through gates, not benchmark performance</li>
+<li>The lab-in-the-loop cycle connects foundation model predictions to experimental refinement</li>
+</ol>
+<p><strong>Connections:</strong> This chapter bridges variant effect prediction (<a href="../part_3/p3-ch17-vep-fm.html" class="quarto-xref"><span>Chapter 17</span></a>), network analysis (<a href="../part_4/p4-ch21-networks.html" class="quarto-xref"><span>Chapter 21</span></a>), and confounding (<a href="../part_2/p2-ch12-confounding.html" class="quarto-xref"><span>Chapter 12</span></a>) to practical drug discovery applications. The concepts connect forward to molecular design (<a href="p6-ch30-design.html" class="quarto-xref"><span>Chapter 30</span></a>).</p>
+</div>
+</div>
 
 
 <div id="refs" class="references csl-bib-body hanging-indent" data-entry-spacing="0" role="list" style="display: none">

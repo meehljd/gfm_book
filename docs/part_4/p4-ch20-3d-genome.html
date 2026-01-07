@@ -91,6 +91,35 @@ div.csl-indent {
   }
 }</script>
 
+  <script src="https://cdnjs.cloudflare.com/polyfill/v3/polyfill.min.js?features=es6"></script>
+  <script src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-chtml-full.js" type="text/javascript"></script>
+
+<script type="text/javascript">
+const typesetMath = (el) => {
+  if (window.MathJax) {
+    // MathJax Typeset
+    window.MathJax.typeset([el]);
+  } else if (window.katex) {
+    // KaTeX Render
+    var mathElements = el.getElementsByClassName("math");
+    var macros = [];
+    for (var i = 0; i < mathElements.length; i++) {
+      var texText = mathElements[i].firstChild;
+      if (mathElements[i].tagName == "SPAN") {
+        window.katex.render(texText.data, mathElements[i], {
+          displayMode: mathElements[i].classList.contains('display'),
+          throwOnError: false,
+          macros: macros,
+          fleqn: false
+        });
+      }
+    }
+  }
+}
+window.Quarto = {
+  typesetMath
+};
+</script>
 
 <link rel="stylesheet" href="../styles.css">
 </head>
@@ -517,6 +546,29 @@ div.csl-indent {
 </header>
 
 
+<div class="callout callout-style-default callout-note callout-titled" title="Chapter Overview">
+<div class="callout-header d-flex align-content-center">
+<div class="callout-icon-container">
+<i class="callout-icon"></i>
+</div>
+<div class="callout-title-container flex-fill">
+Chapter Overview
+</div>
+</div>
+<div class="callout-body-container callout-body">
+<p><strong>Prerequisites:</strong> This chapter builds on the regulatory models introduced in <a href="../part_3/p3-ch16-regulatory.html" class="quarto-xref"><span>Chapter 16</span></a>, particularly <em>Enformer’s</em> approach to sequence-based prediction. Familiarity with convolutional architectures (<a href="../part_2/p2-ch06-cnn.html" class="quarto-xref"><span>Chapter 6</span></a>) and the concept of dilated convolutions is helpful. Understanding of chromatin accessibility and histone modifications (<a href="../part_1/p1-ch02-data.html#sec-ch02-functional" class="quarto-xref"><span>Section 2.4</span></a>) provides useful context for interpreting 3D genome features.</p>
+<p><strong>Learning Objectives:</strong> After completing this chapter, you should be able to:</p>
+<ul>
+<li>Explain the hierarchy of 3D genome organization from chromosome territories to fine-scale loops</li>
+<li>Describe the loop extrusion mechanism and predict which CTCF sites will anchor chromatin loops</li>
+<li>Compare and contrast <em>Akita</em>, <em>Orca</em>, and <em>C.Origami</em> for 3D structure prediction</li>
+<li>Interpret Hi-C contact matrices and understand their resolution limitations</li>
+<li>Explain why structural variant pathogenicity depends on 3D context, not just sequence</li>
+<li>Distinguish between correlational 3D structure predictions and causal regulatory effects</li>
+</ul>
+<p><strong>Key Insight:</strong> The 3D genome provides context that one-dimensional sequence models cannot capture—but 3D structure is permissive rather than deterministic. A predicted enhancer-promoter contact indicates that interaction <em>could</em> happen, not that it <em>does</em> happen or that it <em>matters</em> when it does.</p>
+</div>
+</div>
 <p>The human genome spans approximately two meters of linear DNA, yet it must fit within a nucleus roughly ten micrometers in diameter: a compaction ratio of nearly 200,000 to one. This folding is not random. Specific sequences contact each other across vast genomic distances while others remain isolated, and these contact patterns determine which enhancers can activate which genes. An enhancer 500 kilobases from its target can drive transcription only because intervening chromatin folds to bring them into physical proximity. The regulatory models covered in <a href="../part_3/p3-ch16-regulatory.html" class="quarto-xref"><span>Chapter 16</span></a> predict expression from sequence within a fixed window, building on the convolutional architectures introduced in <a href="../part_2/p2-ch06-cnn.html" class="quarto-xref"><span>Chapter 6</span></a> and treating the genome as a one-dimensional string. They cannot explain why an enhancer activates one gene and not another when multiple promoters lie within range.</p>
 <p>Disruptions to 3D genome architecture cause disease through mechanisms that sequence alone cannot predict. When structural variants delete a boundary between chromatin domains, enhancers can contact genes they normally never reach, a phenomenon called <strong>enhancer hijacking</strong> that underlies developmental disorders and cancer. The clinical consequences depend entirely on which contacts are disrupted. A deletion that removes a domain boundary may be pathogenic; an identical-sized deletion preserving boundaries may be benign. Current variant effect prediction tools (<a href="../part_3/p3-ch17-vep-fm.html" class="quarto-xref"><span>Chapter 17</span></a>) largely ignore this spatial dimension, creating systematic blind spots for structural variant interpretation.</p>
 <div id="fig-tad-disruption" class="quarto-layout-panel">
@@ -526,16 +578,16 @@ div.csl-indent {
 <div class="quarto-layout-cell" style="flex-basis: 50.0%;justify-content: flex-start;">
 <div class="quarto-figure quarto-figure-center">
 <figure class="figure">
-<p><img src="../figs/part_4/ch17/01-A-fig-tad-disruption.png" class="img-fluid figure-img"></p>
-<figcaption><strong>FIGURE PLACEHOLDER A</strong></figcaption>
+<p><img src="../figs/part_4/ch20/01-A-fig-tad-disruption.svg" class="img-fluid figure-img"></p>
+<figcaption>Normal: enhancers contact EPHA4 within their TAD</figcaption>
 </figure>
 </div>
 </div>
 <div class="quarto-layout-cell" style="flex-basis: 50.0%;justify-content: flex-start;">
 <div class="quarto-figure quarto-figure-center">
 <figure class="figure">
-<p><img src="../figs/part_4/ch17/01-B-fig-tad-disruption.png" class="img-fluid figure-img"></p>
-<figcaption><strong>FIGURE PLACEHOLDER B</strong></figcaption>
+<p><img src="../figs/part_4/ch20/01-B-fig-tad-disruption.svg" class="img-fluid figure-img"></p>
+<figcaption>Boundary deletion allows TAD merger</figcaption>
 </figure>
 </div>
 </div>
@@ -544,29 +596,87 @@ div.csl-indent {
 <div class="quarto-layout-cell" style="flex-basis: 50.0%;justify-content: flex-start;">
 <div class="quarto-figure quarto-figure-center">
 <figure class="figure">
-<p><img src="../figs/part_4/ch17/01-C-fig-tad-disruption.png" class="img-fluid figure-img"></p>
-<figcaption><strong>FIGURE PLACEHOLDER C</strong></figcaption>
+<p><img src="../figs/part_4/ch20/01-C-fig-tad-disruption.svg" class="img-fluid figure-img"></p>
+<figcaption>Ectopic WNT6 activation causes brachydactyly</figcaption>
 </figure>
 </div>
 </div>
 <div class="quarto-layout-cell" style="flex-basis: 50.0%;justify-content: flex-start;">
 <div class="quarto-figure quarto-figure-center">
 <figure class="figure">
-<p><img src="../figs/part_4/ch17/01-D-fig-tad-disruption.png" class="img-fluid figure-img"></p>
-<figcaption><strong>FIGURE PLACEHOLDER D</strong></figcaption>
+<p><img src="../figs/part_4/ch20/01-D-fig-tad-disruption.svg" class="img-fluid figure-img"></p>
+<figcaption>Same-sized deletions have different outcomes</figcaption>
 </figure>
 </div>
 </div>
 </div>
 </div>
 <figcaption class="quarto-float-caption-bottom quarto-float-caption quarto-float-fig" id="fig-tad-disruption-caption-0ceaefa1-69ba-4598-a22c-09a6ac19f8ca">
-Figure&nbsp;20.1: [High] Clinical example. Panel A (Normal Configuration): TAD with <em>EPHA4</em> and limb enhancers; adjacent TAD with <em>WNT6</em>/<em>PAX3</em>; boundary separating; “Enhancers contact <em>EPHA4</em>, not <em>WNT6</em>.” Panel B (Boundary Deletion): Boundary removed; TADs merge; enhancers can contact both genes. Panel C (Pathogenic Outcome): Limb enhancers activate <em>WNT6</em> ectopically; abnormal expression; brachydactyly. Panel D (Interpretation Implications): Same-size deletions, different outcomes; boundary-preserving may be benign; boundary-disrupting pathogenic; “Current VEP tools miss 3D effects.”
+Figure&nbsp;20.1: Clinical consequences of TAD boundary disruption. (A) Normal configuration: limb enhancers activate <em>EPHA4</em> within their TAD while the boundary insulates <em>WNT6</em> in the adjacent domain. (B) Boundary deletion allows TAD merger and new enhancer-gene contacts. (C) Pathogenic outcome: limb enhancers ectopically activate <em>WNT6</em>, causing brachydactyly. (D) Clinical interpretation: same-sized deletions may be pathogenic or benign depending on whether they disrupt domain boundaries—an effect current VEP tools cannot predict.
 </figcaption>
 </figure>
 </div>
 <section id="sec-ch20-chromatin-hierarchy" class="level2" data-number="20.1">
 <h2 data-number="20.1" class="anchored" data-anchor-id="sec-ch20-chromatin-hierarchy"><span class="header-section-number">20.1</span> Chromatin Organization Hierarchy</h2>
 <p>The genome folds through multiple organizational levels, each with distinct functional consequences and arising from different molecular mechanisms. Understanding this hierarchy is essential for interpreting both normal gene regulation and how structural variants cause disease. The levels are not independent; they interact in complex ways that computational models must capture to predict 3D structure accurately.</p>
+<p>The following table summarizes the key organizational levels, their scales, and the molecular mechanisms underlying each:</p>
+<div id="tbl-chromatin-levels" class="quarto-float quarto-figure quarto-figure-center anchored">
+<figure class="quarto-float quarto-float-tbl figure">
+<figcaption class="quarto-float-caption-top quarto-float-caption quarto-float-tbl" id="tbl-chromatin-levels-caption-0ceaefa1-69ba-4598-a22c-09a6ac19f8ca">
+Table&nbsp;20.1: Summary of chromatin organization hierarchy showing spatial scales, key features, and prediction difficulty.
+</figcaption>
+<div aria-describedby="tbl-chromatin-levels-caption-0ceaefa1-69ba-4598-a22c-09a6ac19f8ca">
+<table class="caption-top table">
+<colgroup>
+<col style="width: 9%">
+<col style="width: 9%">
+<col style="width: 18%">
+<col style="width: 27%">
+<col style="width: 35%">
+</colgroup>
+<thead>
+<tr class="header">
+<th>Level</th>
+<th>Scale</th>
+<th>Key Features</th>
+<th>Molecular Mechanism</th>
+<th>Computational Tractability</th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<td>Chromosome territories</td>
+<td>Nucleus-wide</td>
+<td>Gene-rich toward interior</td>
+<td>Nuclear organization</td>
+<td>Low (difficult to predict)</td>
+</tr>
+<tr class="even">
+<td>A/B compartments</td>
+<td>1–10 Mb</td>
+<td>Checkerboard pattern in Hi-C</td>
+<td>Phase separation</td>
+<td>Moderate (chromatin state)</td>
+</tr>
+<tr class="odd">
+<td>TADs</td>
+<td>200 kb–2 Mb</td>
+<td>Triangular domains, conserved boundaries</td>
+<td>Loop extrusion</td>
+<td>High (CTCF motifs)</td>
+</tr>
+<tr class="even">
+<td>Chromatin loops</td>
+<td>10–500 kb</td>
+<td>Focal Hi-C enrichments</td>
+<td>CTCF/cohesin</td>
+<td>High (convergent motifs)</td>
+</tr>
+</tbody>
+</table>
+</div>
+</figure>
+</div>
 <section id="sec-ch20-territories-compartments" class="level3" data-number="20.1.1">
 <h3 data-number="20.1.1" class="anchored" data-anchor-id="sec-ch20-territories-compartments"><span class="header-section-number">20.1.1</span> Chromosome Territories and Compartments</h3>
 <p>At the largest scale, chromosomes occupy distinct nuclear volumes called <strong>chromosome territories</strong>. Gene-rich chromosomes tend toward the nuclear interior while gene-poor chromosomes associate with the nuclear periphery. This territorial organization limits which chromosomes can exchange material during translocations: recurrent cancer-associated translocations occur preferentially between chromosomes that occupy neighboring territories <em>[Citation Needed]</em>. While chromosome territory organization has clear functional implications, most computational models focus on finer-scale structures where sequence determinants are more tractable.</p>
@@ -575,10 +685,36 @@ Figure&nbsp;20.1: [High] Clinical example. Panel A (Normal Configuration): TAD w
 <section id="sec-ch20-tads" class="level3" data-number="20.1.2">
 <h3 data-number="20.1.2" class="anchored" data-anchor-id="sec-ch20-tads"><span class="header-section-number">20.1.2</span> Topologically Associating Domains</h3>
 <p>Below the megabase scale of compartments, the genome organizes into <strong>topologically associating domains (TADs)</strong>: sub-megabase regions (median approximately 800 kilobases in mammals) within which sequences contact each other more frequently than with sequences outside the domain. TAD boundaries appear as sharp transitions in contact frequency, visible in Hi-C maps as triangular domains along the matrix diagonal. These boundaries show strong conservation across mammalian species and across cell types within a species, suggesting strong selective pressure to maintain domain organization <em>[Citation Needed]</em>. The prevailing model holds that TADs constrain enhancer-promoter interactions: regulatory elements within a TAD can contact genes in the same domain, but boundaries prevent crosstalk with genes in adjacent domains. This insulation function has clear clinical relevance. Deletions that remove TAD boundaries allow enhancers to contact genes they normally cannot reach. In a well-characterized example, deletions removing the boundary between the <em>EPHA4</em> locus and the <em>WNT6</em>/<em>PAX3</em> region allow limb enhancers to ectopically activate <em>WNT6</em>, causing brachydactyly and other limb malformations <span class="citation" data-cites="lupiañez_disruptions_2015">(<a href="../bib/references.html#ref-lupiañez_disruptions_2015" role="doc-biblioref">Lupiáñez et al. 2015</a>)</span>.</p>
+<div class="callout callout-style-default callout-tip callout-titled" title="Stop and Think">
+<div class="callout-header d-flex align-content-center">
+<div class="callout-icon-container">
+<i class="callout-icon"></i>
+</div>
+<div class="callout-title-container flex-fill">
+Stop and Think
+</div>
+</div>
+<div class="callout-body-container callout-body">
+<p>Consider an enhancer located exactly at the center of a TAD. If this TAD contains three genes—one near each boundary and one near the center—which genes would you expect the enhancer to regulate? How would your prediction change if the enhancer were located near one of the TAD boundaries instead?</p>
+</div>
+</div>
 </section>
 <section id="sec-ch20-loop-extrusion" class="level3" data-number="20.1.3">
 <h3 data-number="20.1.3" class="anchored" data-anchor-id="sec-ch20-loop-extrusion"><span class="header-section-number">20.1.3</span> Loop Extrusion Mechanism</h3>
 <p>The molecular basis of TAD formation is now well understood through the <strong>loop extrusion</strong> model. The cohesin protein complex loads onto chromatin and extrudes DNA bidirectionally, progressively enlarging the extruded loop until it encounters an obstacle. The key obstacle is CTCF protein bound to DNA in a specific orientation. When cohesin encounters CTCF sites oriented toward each other (convergent orientation), extrusion halts and a stable loop forms with the convergent CTCF sites at the loop anchors <em>[Citation Needed]</em>. This model explains several key observations: TAD boundaries are enriched for CTCF binding sites; CTCF motif orientation predicts which sites will anchor loops (convergent pairs form loops while divergent pairs do not); and acute degradation of cohesin eliminates TADs within hours while leaving compartments intact <em>[Citation Needed]</em>. The distinction between compartment and TAD formation mechanisms has important implications for prediction. Models that capture CTCF binding and orientation can predict TAD boundaries; predicting compartments requires learning different sequence features associated with chromatin state.</p>
+<div class="callout callout-style-default callout-important callout-titled" title="Key Insight">
+<div class="callout-header d-flex align-content-center">
+<div class="callout-icon-container">
+<i class="callout-icon"></i>
+</div>
+<div class="callout-title-container flex-fill">
+Key Insight
+</div>
+</div>
+<div class="callout-body-container callout-body">
+<p>The <strong>orientation rule</strong> for CTCF is a powerful predictor: convergent CTCF pairs (pointing toward each other: <span class="math inline">\(\rightarrow \leftarrow\)</span>) form stable loop anchors, while divergent pairs (<span class="math inline">\(\leftarrow \rightarrow\)</span>) and tandem pairs (<span class="math inline">\(\rightarrow \rightarrow\)</span>) do not. This simple rule, which arises from the loop extrusion mechanism, allows computational models to predict many TAD boundaries directly from sequence.</p>
+</div>
+</div>
 </section>
 <section id="sec-ch20-fine-scale-loops" class="level3" data-number="20.1.4">
 <h3 data-number="20.1.4" class="anchored" data-anchor-id="sec-ch20-fine-scale-loops"><span class="header-section-number">20.1.4</span> Fine-Scale Chromatin Loops</h3>
@@ -590,16 +726,16 @@ Figure&nbsp;20.1: [High] Clinical example. Panel A (Normal Configuration): TAD w
 <div class="quarto-layout-cell" style="flex-basis: 50.0%;justify-content: flex-start;">
 <div class="quarto-figure quarto-figure-center">
 <figure class="figure">
-<p><img src="../figs/part_4/ch17/02-A-fig-chromatin-hierarchy.png" class="img-fluid figure-img"></p>
-<figcaption><strong>FIGURE PLACEHOLDER A</strong></figcaption>
+<p><img src="../figs/part_4/ch20/02-A-fig-chromatin-hierarchy.svg" class="img-fluid figure-img"></p>
+<figcaption>Chromosome territories: gene-rich interior, gene-poor periphery</figcaption>
 </figure>
 </div>
 </div>
 <div class="quarto-layout-cell" style="flex-basis: 50.0%;justify-content: flex-start;">
 <div class="quarto-figure quarto-figure-center">
 <figure class="figure">
-<p><img src="../figs/part_4/ch17/02-B-fig-chromatin-hierarchy.png" class="img-fluid figure-img"></p>
-<figcaption><strong>FIGURE PLACEHOLDER B</strong></figcaption>
+<p><img src="../figs/part_4/ch20/02-B-fig-chromatin-hierarchy.svg" class="img-fluid figure-img"></p>
+<figcaption>A/B compartments form checkerboard in Hi-C</figcaption>
 </figure>
 </div>
 </div>
@@ -608,23 +744,23 @@ Figure&nbsp;20.1: [High] Clinical example. Panel A (Normal Configuration): TAD w
 <div class="quarto-layout-cell" style="flex-basis: 50.0%;justify-content: flex-start;">
 <div class="quarto-figure quarto-figure-center">
 <figure class="figure">
-<p><img src="../figs/part_4/ch17/02-C-fig-chromatin-hierarchy.png" class="img-fluid figure-img"></p>
-<figcaption><strong>FIGURE PLACEHOLDER C</strong></figcaption>
+<p><img src="../figs/part_4/ch20/02-C-fig-chromatin-hierarchy.svg" class="img-fluid figure-img"></p>
+<figcaption>TADs appear as triangular domains</figcaption>
 </figure>
 </div>
 </div>
 <div class="quarto-layout-cell" style="flex-basis: 50.0%;justify-content: flex-start;">
 <div class="quarto-figure quarto-figure-center">
 <figure class="figure">
-<p><img src="../figs/part_4/ch17/02-D-fig-chromatin-hierarchy.png" class="img-fluid figure-img"></p>
-<figcaption><strong>FIGURE PLACEHOLDER D</strong></figcaption>
+<p><img src="../figs/part_4/ch20/02-D-fig-chromatin-hierarchy.svg" class="img-fluid figure-img"></p>
+<figcaption>Chromatin loops connect enhancers to promoters</figcaption>
 </figure>
 </div>
 </div>
 </div>
 </div>
 <figcaption class="quarto-float-caption-bottom quarto-float-caption quarto-float-fig" id="fig-chromatin-hierarchy-caption-0ceaefa1-69ba-4598-a22c-09a6ac19f8ca">
-Figure&nbsp;20.2: [Essential] Four-level visualization. Panel A (Chromosome Territories, Nuclear Scale): Nucleus with distinct territories; gene-rich interior, gene-poor periphery. Panel B (A/B Compartments, Megabase Scale): Hi-C checkerboard pattern; A active interior, B inactive lamina-associated. Panel C (TADs, Sub-Megabase Scale): Triangular domains; sharp boundaries; median ~800 kb; CTCF at boundaries. Panel D (Loops, Kilobase Scale): Focal Hi-C enrichments; enhancer-promoter contacts; CTCF-CTCF structural loops.
+Figure&nbsp;20.2: Hierarchical organization of the 3D genome. (A) Chromosome territories: each chromosome occupies a distinct nuclear volume with gene-rich chromosomes toward the interior. (B) A/B compartments: active (A) and inactive (B) chromatin form a checkerboard pattern visible at megabase scale. (C) TADs: topologically associating domains appear as triangular enrichments in Hi-C with a median size of ~800 kb. (D) Chromatin loops: focal Hi-C enrichments represent enhancer-promoter contacts and CTCF-anchored structural loops.
 </figcaption>
 </figure>
 </div>
@@ -635,16 +771,16 @@ Figure&nbsp;20.2: [Essential] Four-level visualization. Panel A (Chromosome Terr
 <div class="quarto-layout-cell" style="flex-basis: 50.0%;justify-content: flex-start;">
 <div class="quarto-figure quarto-figure-center">
 <figure class="figure">
-<p><img src="../figs/part_4/ch17/03-A-fig-loop-extrusion.png" class="img-fluid figure-img"></p>
-<figcaption><strong>FIGURE PLACEHOLDER A</strong></figcaption>
+<p><img src="../figs/part_4/ch20/03-A-fig-loop-extrusion.svg" class="img-fluid figure-img"></p>
+<figcaption>Cohesin loads onto chromatin as a ring</figcaption>
 </figure>
 </div>
 </div>
 <div class="quarto-layout-cell" style="flex-basis: 50.0%;justify-content: flex-start;">
 <div class="quarto-figure quarto-figure-center">
 <figure class="figure">
-<p><img src="../figs/part_4/ch17/03-B-fig-loop-extrusion.png" class="img-fluid figure-img"></p>
-<figcaption><strong>FIGURE PLACEHOLDER B</strong></figcaption>
+<p><img src="../figs/part_4/ch20/03-B-fig-loop-extrusion.svg" class="img-fluid figure-img"></p>
+<figcaption>Bidirectional extrusion enlarges the loop</figcaption>
 </figure>
 </div>
 </div>
@@ -653,23 +789,23 @@ Figure&nbsp;20.2: [Essential] Four-level visualization. Panel A (Chromosome Terr
 <div class="quarto-layout-cell" style="flex-basis: 50.0%;justify-content: flex-start;">
 <div class="quarto-figure quarto-figure-center">
 <figure class="figure">
-<p><img src="../figs/part_4/ch17/03-C-fig-loop-extrusion.png" class="img-fluid figure-img"></p>
-<figcaption><strong>FIGURE PLACEHOLDER C</strong></figcaption>
+<p><img src="../figs/part_4/ch20/03-C-fig-loop-extrusion.svg" class="img-fluid figure-img"></p>
+<figcaption>Convergent CTCF sites halt extrusion</figcaption>
 </figure>
 </div>
 </div>
 <div class="quarto-layout-cell" style="flex-basis: 50.0%;justify-content: flex-start;">
 <div class="quarto-figure quarto-figure-center">
 <figure class="figure">
-<p><img src="../figs/part_4/ch17/03-D-fig-loop-extrusion.png" class="img-fluid figure-img"></p>
-<figcaption><strong>FIGURE PLACEHOLDER D</strong></figcaption>
+<p><img src="../figs/part_4/ch20/03-D-fig-loop-extrusion.svg" class="img-fluid figure-img"></p>
+<figcaption>Only convergent CTCF pairs form stable loops</figcaption>
 </figure>
 </div>
 </div>
 </div>
 </div>
 <figcaption class="quarto-float-caption-bottom quarto-float-caption quarto-float-fig" id="fig-loop-extrusion-caption-0ceaefa1-69ba-4598-a22c-09a6ac19f8ca">
-Figure&nbsp;20.3: [Essential] Loop extrusion mechanism. Panel A (Cohesin Loading): Ring loading onto chromatin; initial state no loop. Panel B (Bidirectional Extrusion): Cohesin extruding DNA; loop growing progressively; intermediate states. Panel C (CTCF Arrest): Cohesin encountering convergent CTCF; extrusion halted; stable loop. Panel D (The Orientation Rule): Convergent → ← (loop anchors ✓); divergent ← → (no stable loop ✗); tandem → → (extrusion continues ~). Inset: Acute cohesin degradation eliminates TADs but compartments remain.
+Figure&nbsp;20.3: The loop extrusion mechanism. (A) Cohesin loads onto chromatin as a ring complex. (B) Bidirectional extrusion progressively enlarges the DNA loop. (C) Extrusion halts when cohesin encounters convergent CTCF sites, forming stable loop anchors. (D) The orientation rule: only convergent CTCF pairs (→←) form stable loops; divergent (←→) and tandem (→→) orientations do not halt extrusion.
 </figcaption>
 </figure>
 </div>
@@ -680,14 +816,105 @@ Figure&nbsp;20.3: [Essential] Loop extrusion mechanism. Panel A (Cohesin Loading
 <p>Predicting 3D genome structure requires training data: measurements of which sequences contact which other sequences in real cells. <strong>Chromosome conformation capture</strong> methods provide these measurements through a common biochemical principle, though the technologies vary in resolution, throughput, and the aspects of 3D organization they reveal.</p>
 <section id="sec-ch20-hic-matrices" class="level3" data-number="20.2.1">
 <h3 data-number="20.2.1" class="anchored" data-anchor-id="sec-ch20-hic-matrices"><span class="header-section-number">20.2.1</span> Hi-C and Contact Matrices</h3>
+<div class="callout callout-style-default callout-warning callout-titled" title="Technical Detail">
+<div class="callout-header d-flex align-content-center">
+<div class="callout-icon-container">
+<i class="callout-icon"></i>
+</div>
+<div class="callout-title-container flex-fill">
+Technical Detail
+</div>
+</div>
+<div class="callout-body-container callout-body">
+<p>This section describes the biochemistry and normalization of Hi-C data. Understanding these technical details helps explain why training data resolution varies and why certain biases must be corrected. Readers primarily interested in computational prediction can focus on the key point: Hi-C produces a symmetric contact matrix where values represent how frequently two genomic regions were spatially close in the cell population.</p>
+</div>
+</div>
 <p>Cells are crosslinked with formaldehyde to freeze chromatin contacts in place; DNA is digested with restriction enzymes; free DNA ends are ligated, preferentially joining fragments that were spatially proximate; and the ligated junctions are identified through sequencing. The frequency of junction reads between two genomic regions reflects how often those regions were in physical contact across the cell population.</p>
 <p>Hi-C extends this principle genome-wide by incorporating biotinylated nucleotides at ligation junctions, enabling purification of chimeric fragments from the entire genome <em>[Citation Needed]</em>. The output is a <strong>contact matrix</strong> where rows and columns represent genomic bins (typically 1 to 50 kilobases depending on sequencing depth) and values represent contact frequencies between bin pairs. Resolution depends directly on sequencing depth: achieving 1 kilobase resolution requires billions of reads, while 10 kilobase resolution requires hundreds of millions. Raw contact frequencies require extensive normalization to correct for biases from GC content, restriction site density, and mappability. The ICE (iterative correction and eigenvector decomposition) method and related approaches remove these technical artifacts while preserving biological signal <em>[Citation Needed]</em>. The training strategies that enable models to learn from these normalized contact matrices follow the multi-task principles introduced in <a href="../part_2/p2-ch08-pretraining.html#sec-ch08-multitask" class="quarto-xref"><span>Section 8.6</span></a>.</p>
 <p>The contact matrix encodes all levels of chromatin organization. Compartments appear as the checkerboard pattern when viewing megabase-scale interactions; TADs appear as triangular domains of enriched contacts along the diagonal; and loops appear as focal enrichments at specific off-diagonal positions. The matrix is dominated by the polymer effect: sequences that are close in linear distance contact each other frequently regardless of specific 3D structure, creating strong signal along the diagonal that can obscure biologically meaningful contacts at greater distances.</p>
 </section>
 <section id="sec-ch20-3d-data-resources" class="level3" data-number="20.2.2">
 <h3 data-number="20.2.2" class="anchored" data-anchor-id="sec-ch20-3d-data-resources"><span class="header-section-number">20.2.2</span> Resolution and Data Resources</h3>
-<p>Beyond standard Hi-C, several technologies address specific limitations. Micro-C achieves nucleosome-level resolution by using micrococcal nuclease instead of restriction enzymes, revealing fine-scale contact patterns invisible at standard Hi-C resolution <em>[Citation Needed]</em>. Single-cell Hi-C measures contacts in individual cells, revealing that any two loci contact each other in only 5 to 15 percent of cells, but the resulting matrices are extremely sparse (most possible contacts are unmeasured in any single cell) <em>[Citation Needed]</em>. Imaging methods such as DNA FISH directly visualize genomic loci in the nucleus, providing ground truth for computational predictions but at much lower throughput than sequencing-based approaches.</p>
+<p>Beyond standard Hi-C, several technologies address specific limitations:</p>
+<div id="tbl-3d-technologies" class="quarto-float quarto-figure quarto-figure-center anchored">
+<figure class="quarto-float quarto-float-tbl figure">
+<figcaption class="quarto-float-caption-top quarto-float-caption quarto-float-tbl" id="tbl-3d-technologies-caption-0ceaefa1-69ba-4598-a22c-09a6ac19f8ca">
+Table&nbsp;20.2: Comparison of 3D genome measurement technologies. The choice of technology involves tradeoffs between resolution, cost, and genome coverage.
+</figcaption>
+<div aria-describedby="tbl-3d-technologies-caption-0ceaefa1-69ba-4598-a22c-09a6ac19f8ca">
+<table class="caption-top table">
+<colgroup>
+<col style="width: 17%">
+<col style="width: 17%">
+<col style="width: 17%">
+<col style="width: 22%">
+<col style="width: 23%">
+</colgroup>
+<thead>
+<tr class="header">
+<th>Technology</th>
+<th>Resolution</th>
+<th>Throughput</th>
+<th>Key Advantage</th>
+<th>Key Limitation</th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<td>Hi-C</td>
+<td>1–50 kb</td>
+<td>High</td>
+<td>Genome-wide, well-established</td>
+<td>Limited by restriction sites</td>
+</tr>
+<tr class="even">
+<td>Micro-C</td>
+<td>~100 bp</td>
+<td>Moderate</td>
+<td>Nucleosome-level resolution</td>
+<td>Higher cost, fewer datasets</td>
+</tr>
+<tr class="odd">
+<td>Single-cell Hi-C</td>
+<td>Variable</td>
+<td>Low</td>
+<td>Cell-to-cell variation</td>
+<td>Extremely sparse matrices</td>
+</tr>
+<tr class="even">
+<td>DNA FISH</td>
+<td>Single locus</td>
+<td>Low</td>
+<td>Direct visualization</td>
+<td>Low throughput</td>
+</tr>
+<tr class="odd">
+<td>Capture Hi-C</td>
+<td>1–5 kb</td>
+<td>Moderate</td>
+<td>High resolution at targets</td>
+<td>Limited to predetermined loci</td>
+</tr>
+</tbody>
+</table>
+</div>
+</figure>
+</div>
+<p>Micro-C achieves nucleosome-level resolution by using micrococcal nuclease instead of restriction enzymes, revealing fine-scale contact patterns invisible at standard Hi-C resolution <em>[Citation Needed]</em>. Single-cell Hi-C measures contacts in individual cells, revealing that any two loci contact each other in only 5 to 15 percent of cells, but the resulting matrices are extremely sparse (most possible contacts are unmeasured in any single cell) <em>[Citation Needed]</em>. Imaging methods such as DNA FISH directly visualize genomic loci in the nucleus, providing ground truth for computational predictions but at much lower throughput than sequencing-based approaches.</p>
 <p>Training data for 3D prediction models comes primarily from a small number of well-characterized cell lines. The lymphoblastoid cell line GM12878 and the leukemia cell line K562 have deep Hi-C coverage across multiple laboratories, making them the default training sets for most models. Primary tissues and rare cell types have sparse coverage, creating a significant gap between where models are trained and where clinical applications require predictions. The 4D Nucleome Data Portal and ENCODE provide the most comprehensive repositories of 3D genome data, though coverage remains heavily biased toward common cell lines and human samples. This data landscape parallels the challenges discussed for functional genomics data more broadly (<a href="../part_1/p1-ch02-data.html" class="quarto-xref"><span>Chapter 2</span></a>).</p>
+<div class="callout callout-style-default callout-tip callout-titled" title="Knowledge Check">
+<div class="callout-header d-flex align-content-center">
+<div class="callout-icon-container">
+<i class="callout-icon"></i>
+</div>
+<div class="callout-title-container flex-fill">
+Knowledge Check
+</div>
+</div>
+<div class="callout-body-container callout-body">
+<p>A researcher wants to study enhancer-promoter contacts at a specific gene locus implicated in a rare disease. The target region spans 500 kb. Given the technologies described above, which approach would you recommend, and why? What would be the key limitation of your recommended approach?</p>
+</div>
+</div>
 </section>
 </section>
 <section id="sec-ch20-3d-prediction" class="level2" data-number="20.3">
@@ -704,10 +931,93 @@ Figure&nbsp;20.3: [Essential] Loop extrusion mechanism. Panel A (Cohesin Loading
 <section id="sec-ch20-c-origami" class="level3" data-number="20.3.3">
 <h3 data-number="20.3.3" class="anchored" data-anchor-id="sec-ch20-c-origami"><span class="header-section-number">20.3.3</span> <em>C.Origami</em> and Cross-Cell-Type Transfer</h3>
 <p><em>C.Origami</em> addresses the cell-type specificity problem <span class="citation" data-cites="tan_corigami_2023">(<a href="../bib/references.html#ref-tan_corigami_2023" role="doc-biblioref">Tan et al. 2023</a>)</span>. While TAD boundaries are largely conserved across cell types, finer-scale contacts vary substantially. <em>C.Origami</em> incorporates CTCF ChIP-seq data alongside sequence, enabling the model to learn how cell-type-specific CTCF binding patterns shape cell-type-specific contact maps. This design enables transfer learning: train on cell types with both Hi-C and CTCF data, then predict contacts in new cell types using only CTCF ChIP-seq. The approach substantially expands the range of cell types where 3D predictions are possible, since CTCF ChIP-seq is available for many more cell types than deep Hi-C. This transfer strategy echoes the broader transfer learning principles discussed in <a href="../part_2/p2-ch09-transfer.html" class="quarto-xref"><span>Chapter 9</span></a>.</p>
+<p>The following table compares these three foundational 3D prediction models:</p>
+<div id="tbl-3d-models" class="quarto-float quarto-figure quarto-figure-center anchored">
+<figure class="quarto-float quarto-float-tbl figure">
+<figcaption class="quarto-float-caption-top quarto-float-caption quarto-float-tbl" id="tbl-3d-models-caption-0ceaefa1-69ba-4598-a22c-09a6ac19f8ca">
+Table&nbsp;20.3: Comparison of sequence-based 3D structure prediction models. Each addresses different aspects of the prediction challenge.
+</figcaption>
+<div aria-describedby="tbl-3d-models-caption-0ceaefa1-69ba-4598-a22c-09a6ac19f8ca">
+<table class="caption-top table">
+<colgroup>
+<col style="width: 23%">
+<col style="width: 23%">
+<col style="width: 20%">
+<col style="width: 33%">
+</colgroup>
+<thead>
+<tr class="header">
+<th>Feature</th>
+<th><em>Akita</em></th>
+<th><em>Orca</em></th>
+<th><em>C.Origami</em></th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<td>Input</td>
+<td>Sequence only</td>
+<td>Sequence only</td>
+<td>Sequence + CTCF ChIP-seq</td>
+</tr>
+<tr class="even">
+<td>Context length</td>
+<td>~1 Mb</td>
+<td>~1 Mb</td>
+<td>~1 Mb</td>
+</tr>
+<tr class="odd">
+<td>Output resolution</td>
+<td>2 kb</td>
+<td>4–256 kb (multiscale)</td>
+<td>Variable</td>
+</tr>
+<tr class="even">
+<td>Architecture</td>
+<td>Dilated CNN</td>
+<td>Multiscale CNN</td>
+<td>CNN with auxiliary input</td>
+</tr>
+<tr class="odd">
+<td>Cell-type transfer</td>
+<td>Limited</td>
+<td>Limited</td>
+<td>Enabled via CTCF data</td>
+</tr>
+<tr class="even">
+<td>Key strength</td>
+<td>Established paradigm</td>
+<td>Multiscale prediction</td>
+<td>Cross-cell-type transfer</td>
+</tr>
+<tr class="odd">
+<td>Key limitation</td>
+<td>Single cell type</td>
+<td>Requires Hi-C training</td>
+<td>Requires CTCF ChIP-seq</td>
+</tr>
+</tbody>
+</table>
+</div>
+</figure>
+</div>
+<div class="callout callout-style-default callout-tip callout-titled" title="Stop and Think">
+<div class="callout-header d-flex align-content-center">
+<div class="callout-icon-container">
+<i class="callout-icon"></i>
+</div>
+<div class="callout-title-container flex-fill">
+Stop and Think
+</div>
+</div>
+<div class="callout-body-container callout-body">
+<p>Consider the tradeoff between <em>Akita’s</em> sequence-only approach and <em>C.Origami’s</em> requirement for CTCF ChIP-seq data. In what scenarios would each approach be preferred? Think about (1) predicting structural variant effects, (2) predicting contacts in a novel cell type, and (3) understanding what sequence features determine 3D structure.</p>
+</div>
+</div>
 </section>
 <section id="sec-ch20-3d-interpretability" class="level3" data-number="20.3.4">
 <h3 data-number="20.3.4" class="anchored" data-anchor-id="sec-ch20-3d-interpretability"><span class="header-section-number">20.3.4</span> Learned Sequence Determinants</h3>
-<p>Interpretability analysis reveals what these models learn about sequence determinants of 3D structure. Attribution methods (discussed more fully in <a href="../part_5/p5-ch24-interpretability.html" class="quarto-xref"><span>Chapter 24</span></a>) consistently identify CTCF motifs as the strongest predictors of contact patterns, with convergent CTCF pairs (motifs oriented toward each other) most strongly associated with loop anchors. Transcription start sites contribute to boundary predictions, consistent with the observation that active promoters often coincide with domain edges. GC content correlates with compartment identity (GC-rich regions tend toward A compartment), and repetitive element composition shows systematic associations (LINE elements with B compartment; Alu elements with A compartment) <em>[Citation Needed]</em>. The orientation rule for CTCF emerges naturally from training: models learn that CTCF motif orientation, not just presence, predicts which sites will anchor loops. This learned relationship matches the mechanistic understanding from the loop extrusion model, providing validation that models capture biologically meaningful features.</p>
+<p>Interpretability analysis reveals what these models learn about sequence determinants of 3D structure. Attribution methods (discussed more fully in <a href="../part_5/p5-ch24-interpretability.html" class="quarto-xref"><span>Chapter 25</span></a>) consistently identify CTCF motifs as the strongest predictors of contact patterns, with convergent CTCF pairs (motifs oriented toward each other) most strongly associated with loop anchors. Transcription start sites contribute to boundary predictions, consistent with the observation that active promoters often coincide with domain edges. GC content correlates with compartment identity (GC-rich regions tend toward A compartment), and repetitive element composition shows systematic associations (LINE elements with B compartment; Alu elements with A compartment) <em>[Citation Needed]</em>. The orientation rule for CTCF emerges naturally from training: models learn that CTCF motif orientation, not just presence, predicts which sites will anchor loops. This learned relationship matches the mechanistic understanding from the loop extrusion model, providing validation that models capture biologically meaningful features.</p>
 <p>Despite these advances, significant limitations remain. Resolution is constrained by training data; predicting nucleosome-level contacts requires Micro-C training data that exists for few cell types. The single-cell variation problem is fundamental: models trained on bulk Hi-C predict population averages, but gene regulation may depend on the stochastic 3D configurations in individual cells. Causality cannot be established from prediction alone; a model may correctly predict that two regions contact each other without revealing whether that contact causes any functional consequence. Generalization to cell types distant from training data remains uncertain, and the computational cost of processing megabase sequences limits practical applications for genome-wide analysis.</p>
 <div id="fig-3d-models" class="quarto-layout-panel">
 <figure class="quarto-float quarto-float-fig figure">
@@ -716,16 +1026,16 @@ Figure&nbsp;20.3: [Essential] Loop extrusion mechanism. Panel A (Cohesin Loading
 <div class="quarto-layout-cell" style="flex-basis: 50.0%;justify-content: flex-start;">
 <div class="quarto-figure quarto-figure-center">
 <figure class="figure">
-<p><img src="../figs/part_4/ch17/04-A-fig-3d-models.png" class="img-fluid figure-img"></p>
-<figcaption><strong>FIGURE PLACEHOLDER A</strong></figcaption>
+<p><img src="../figs/part_4/ch20/04-A-fig-3d-models.svg" class="img-fluid figure-img"></p>
+<figcaption>Akita uses dilated convolutions for Hi-C prediction</figcaption>
 </figure>
 </div>
 </div>
 <div class="quarto-layout-cell" style="flex-basis: 50.0%;justify-content: flex-start;">
 <div class="quarto-figure quarto-figure-center">
 <figure class="figure">
-<p><img src="../figs/part_4/ch17/04-B-fig-3d-models.png" class="img-fluid figure-img"></p>
-<figcaption><strong>FIGURE PLACEHOLDER B</strong></figcaption>
+<p><img src="../figs/part_4/ch20/04-B-fig-3d-models.svg" class="img-fluid figure-img"></p>
+<figcaption>Orca provides multi-scale predictions</figcaption>
 </figure>
 </div>
 </div>
@@ -734,23 +1044,23 @@ Figure&nbsp;20.3: [Essential] Loop extrusion mechanism. Panel A (Cohesin Loading
 <div class="quarto-layout-cell" style="flex-basis: 50.0%;justify-content: flex-start;">
 <div class="quarto-figure quarto-figure-center">
 <figure class="figure">
-<p><img src="../figs/part_4/ch17/04-C-fig-3d-models.png" class="img-fluid figure-img"></p>
-<figcaption><strong>FIGURE PLACEHOLDER C</strong></figcaption>
+<p><img src="../figs/part_4/ch20/04-C-fig-3d-models.svg" class="img-fluid figure-img"></p>
+<figcaption>C.Origami incorporates CTCF for cell-type transfer</figcaption>
 </figure>
 </div>
 </div>
 <div class="quarto-layout-cell" style="flex-basis: 50.0%;justify-content: flex-start;">
 <div class="quarto-figure quarto-figure-center">
 <figure class="figure">
-<p><img src="../figs/part_4/ch17/04-D-fig-3d-models.png" class="img-fluid figure-img"></p>
-<figcaption><strong>FIGURE PLACEHOLDER D</strong></figcaption>
+<p><img src="../figs/part_4/ch20/04-D-fig-3d-models.svg" class="img-fluid figure-img"></p>
+<figcaption>Predictions capture TAD boundaries and loops</figcaption>
 </figure>
 </div>
 </div>
 </div>
 </div>
 <figcaption class="quarto-float-caption-bottom quarto-float-caption quarto-float-fig" id="fig-3d-models-caption-0ceaefa1-69ba-4598-a22c-09a6ac19f8ca">
-Figure&nbsp;20.4: [High] Model comparison. Panel A (<em>Akita</em> Architecture): 1 Mb DNA input → dilated convolutions → symmetric output → 2 kb Hi-C. Panel B (<em>Orca</em> Multi-Scale): Coarse Mb prediction → progressive refinement → multi-resolution loss. Panel C (<em>C.Origami</em> with CTCF): Sequence + CTCF ChIP-seq → cell-type-specific predictions; transfer from Hi-C-rich to CTCF-only cells. Panel D (Prediction vs.&nbsp;Ground Truth): Example region; TAD boundaries correctly positioned; loop anchors identified; “Sequence contains substantial 3D information.”
+Figure&nbsp;20.4: Sequence-based 3D structure prediction models. (A) <em>Akita</em> architecture: dilated convolutions expand the receptive field to process ~1 Mb sequences and predict Hi-C at 2 kb resolution. (B) <em>Orca</em> multi-scale approach: parallel pathways predict contacts from 4 kb to 256 kb resolution simultaneously. (C) <em>C.Origami</em> incorporates CTCF ChIP-seq alongside sequence, enabling cross-cell-type transfer. (D) Prediction versus ground truth comparison showing that sequence-based models capture TAD boundaries and major loop anchors with correlations of 0.6-0.8.
 </figcaption>
 </figure>
 </div>
@@ -763,15 +1073,62 @@ Figure&nbsp;20.4: [High] Model comparison. Panel A (<em>Akita</em> Architecture)
 <h3 data-number="20.4.1" class="anchored" data-anchor-id="sec-ch20-beyond-1d"><span class="header-section-number">20.4.1</span> Beyond One-Dimensional Models</h3>
 <p><em>Enformer</em> (<a href="../part_3/p3-ch16-regulatory.html#sec-ch16-enformer" class="quarto-xref"><span>Section 16.2</span></a>) predicts gene expression from sequence within a 200 kilobase window, sufficient to capture many enhancer-promoter relationships but fundamentally limited by its treatment of the genome as a one-dimensional string. This representation cannot distinguish an enhancer that loops to a distant gene from one blocked by a TAD boundary, nor can it explain cell-type-specific contacts that activate different genes from the same enhancer in different contexts. The 3D genome provides this missing context: physical proximity through chromatin loops determines which regulatory elements can communicate.</p>
 <p>Consider an enhancer located 300 kilobases from two genes, one upstream and one downstream. Linear models would predict similar regulatory influence on both genes based on comparable distances. But if a TAD boundary lies between the enhancer and the upstream gene, 3D structure predicts that only the downstream gene receives regulatory input. The boundary insulates the upstream gene from enhancer activity regardless of linear proximity. This insulation function explains why TAD boundaries show such strong evolutionary conservation: disrupting boundaries allows regulatory crosstalk that can dysregulate gene expression with pathogenic consequences.</p>
+<div class="callout callout-style-default callout-important callout-titled" title="Key Insight">
+<div class="callout-header d-flex align-content-center">
+<div class="callout-icon-container">
+<i class="callout-icon"></i>
+</div>
+<div class="callout-title-container flex-fill">
+Key Insight
+</div>
+</div>
+<div class="callout-body-container callout-body">
+<p><strong>Linear distance is not regulatory distance.</strong> An enhancer 500 kb away within the same TAD may have stronger regulatory influence than an enhancer 50 kb away across a TAD boundary. This principle explains why structural variants can be pathogenic even when they do not disrupt any coding sequence—they rewire the regulatory topology.</p>
+</div>
+</div>
 </section>
 <section id="sec-ch20-sv-interpretation" class="level3" data-number="20.4.2">
 <h3 data-number="20.4.2" class="anchored" data-anchor-id="sec-ch20-sv-interpretation"><span class="header-section-number">20.4.2</span> Structural Variant Interpretation</h3>
 <p>The clinical significance is clearest in structural variant interpretation. Deletions that remove TAD boundaries cause enhancer hijacking, where regulatory elements gain access to genes in adjacent domains. The <em>EPHA4</em> locus provides the canonical example: limb enhancers normally activate <em>EPHA4</em> expression in developing limbs. When deletions remove the TAD boundary separating <em>EPHA4</em> from the adjacent <em>WNT6</em>/<em>PAX3</em> domain, these enhancers ectopically activate <em>WNT6</em>, causing limb malformations including brachydactyly and polydactyly <span class="citation" data-cites="lupiañez_disruptions_2015">(<a href="../bib/references.html#ref-lupiañez_disruptions_2015" role="doc-biblioref">Lupiáñez et al. 2015</a>)</span>. Different deletion sizes produce different phenotypes depending on which boundaries are removed and which new enhancer-gene contacts form. Similar mechanisms operate in cancer, where structural variants create novel enhancer-oncogene contacts that drive tumor growth <em>[Citation Needed]</em>. The diagnostic challenge is substantial: predicting pathogenicity of structural variants requires understanding which 3D contacts will be disrupted and what new contacts will form, predictions that sequence-only models cannot provide. This challenge intersects with the variant prioritization pipelines discussed in <a href="../part_6/p6-ch28-rare-disease.html" class="quarto-xref"><span>Chapter 28</span></a>, where 3D genome effects represent a systematic blind spot in current foundation model approaches to variant effect prediction (<a href="../part_3/p3-ch17-vep-fm.html" class="quarto-xref"><span>Chapter 17</span></a>).</p>
-<p>Integrating 3D predictions with expression models remains technically challenging. Hybrid approaches use predicted contacts to weight enhancer contributions: rather than treating all enhancers within a window equally, weights reflect predicted contact frequency with the target promoter. This activity-by-contact framework (expression proportional to the sum of enhancer activities weighted by contact frequencies) captures some of the regulatory logic that 1D models miss <em>[Citation Needed]</em>. Graph-based representations (<a href="p4-ch21-networks.html" class="quarto-xref"><span>Chapter 21</span></a>) can encode genes and enhancers as nodes with contacts as edges, enabling graph neural networks to reason about regulatory relationships in 3D space. Attribution methods for understanding which contacts drive expression predictions are examined in <a href="../part_5/p5-ch24-interpretability.html#sec-ch24-attribution" class="quarto-xref"><span>Section 24.1</span></a>. End-to-end training of combined 3D and expression models remains difficult; most current approaches train the components separately and combine predictions <em>post hoc</em>.</p>
+<div class="callout callout-style-default callout-note callout-titled" title="Practical Guidance: Structural Variant Analysis">
+<div class="callout-header d-flex align-content-center">
+<div class="callout-icon-container">
+<i class="callout-icon"></i>
+</div>
+<div class="callout-title-container flex-fill">
+Practical Guidance: Structural Variant Analysis
+</div>
+</div>
+<div class="callout-body-container callout-body">
+<p>When analyzing structural variants for potential pathogenicity:</p>
+<ol type="1">
+<li><strong>Identify nearby TAD boundaries</strong> using available Hi-C data or boundary predictions from <em>Akita</em>/<em>Orca</em></li>
+<li><strong>Check for boundary disruption</strong>: Does the structural variant delete, invert, or translocate a boundary?</li>
+<li><strong>Inventory regulatory elements</strong>: What enhancers exist in the affected region? What genes lie in adjacent TADs?</li>
+<li><strong>Consider tissue specificity</strong>: The consequence depends on which cell types express the relevant enhancers and target genes</li>
+<li><strong>Compare to known cases</strong>: Databases of pathogenic structural variants with 3D mechanism provide precedent</li>
+</ol>
+<p>Structural variants that disrupt boundaries are more likely to be pathogenic than those preserving domain structure, even if the latter remove more sequence.</p>
+</div>
+</div>
+<p>Integrating 3D predictions with expression models remains technically challenging. Hybrid approaches use predicted contacts to weight enhancer contributions: rather than treating all enhancers within a window equally, weights reflect predicted contact frequency with the target promoter. This activity-by-contact framework (expression proportional to the sum of enhancer activities weighted by contact frequencies) captures some of the regulatory logic that 1D models miss <em>[Citation Needed]</em>. Graph-based representations (<a href="p4-ch21-networks.html" class="quarto-xref"><span>Chapter 22</span></a>) can encode genes and enhancers as nodes with contacts as edges, enabling graph neural networks to reason about regulatory relationships in 3D space. Attribution methods for understanding which contacts drive expression predictions are examined in <a href="../part_5/p5-ch24-interpretability.html#sec-ch24-attribution" class="quarto-xref"><span>Section 25.1</span></a>. End-to-end training of combined 3D and expression models remains difficult; most current approaches train the components separately and combine predictions <em>post hoc</em>.</p>
 </section>
 <section id="sec-ch20-3d-causality" class="level3" data-number="20.4.3">
 <h3 data-number="20.4.3" class="anchored" data-anchor-id="sec-ch20-3d-causality"><span class="header-section-number">20.4.3</span> Causality and Permissive Architecture</h3>
-<p>The causality question complicates interpretation. Do enhancer-promoter contacts cause gene activation, or does gene activation cause contacts? Transcription itself can influence chromatin organization: active transcription may stabilize enhancer-promoter contacts that would otherwise be transient <em>[Citation Needed]</em>. Perturbation experiments provide cleaner causal tests than correlational analysis. Acute degradation of cohesin eliminates TADs within hours, yet most genes show minimal expression changes, suggesting that many TAD structures are permissive rather than deterministic for gene regulation <em>[Citation Needed]</em>. CRISPR-based deletion of specific TAD boundaries similarly produces more modest effects than the structural disruption would suggest <em>[Citation Needed]</em>. The emerging view is nuanced: 3D structure constrains which enhancer-promoter interactions are possible, but whether those interactions occur depends on additional factors including transcription factor availability and chromatin state. This distinction between correlation and causation echoes the confounding challenges discussed in <a href="../part_2/p2-ch12-confounding.html" class="quarto-xref"><span>Chapter 12</span></a>.</p>
+<p>The causality question complicates interpretation. Do enhancer-promoter contacts cause gene activation, or does gene activation cause contacts? Transcription itself can influence chromatin organization: active transcription may stabilize enhancer-promoter contacts that would otherwise be transient <em>[Citation Needed]</em>. Perturbation experiments provide cleaner causal tests than correlational analysis. Acute degradation of cohesin eliminates TADs within hours, yet most genes show minimal expression changes, suggesting that many TAD structures are permissive rather than deterministic for gene regulation <em>[Citation Needed]</em>. CRISPR-based deletion of specific TAD boundaries similarly produces more modest effects than the structural disruption would suggest <em>[Citation Needed]</em>. The emerging view is nuanced: 3D structure constrains which enhancer-promoter interactions are possible, but whether those interactions occur depends on additional factors including transcription factor availability and chromatin state. This distinction between correlation and causation echoes the confounding challenges discussed in <a href="../part_2/p2-ch12-confounding.html" class="quarto-xref"><span>Chapter 12</span></a> and the causal inference principles explored in <a href="../part_5/p5-ch25-causal.html" class="quarto-xref"><span>Chapter 26</span></a>.</p>
+<div class="callout callout-style-default callout-tip callout-titled" title="Stop and Think">
+<div class="callout-header d-flex align-content-center">
+<div class="callout-icon-container">
+<i class="callout-icon"></i>
+</div>
+<div class="callout-title-container flex-fill">
+Stop and Think
+</div>
+</div>
+<div class="callout-body-container callout-body">
+<p>A recent paper reports that deleting a TAD boundary experimentally results in new chromatin contacts between an enhancer and a previously insulated gene, but the gene’s expression does not change. How would you interpret this result? What additional experiments would help distinguish between (a) the contact is non-functional, (b) the contact is functional but opposed by other regulatory mechanisms, and (c) the contact requires additional factors not present in this experimental system?</p>
+</div>
+</div>
 </section>
 </section>
 <section id="sec-ch20-spatial-transcriptomics" class="level2" data-number="20.5">
@@ -780,10 +1137,60 @@ Figure&nbsp;20.4: [High] Model comparison. Panel A (<em>Akita</em> Architecture)
 <section id="sec-ch20-spatial-technologies" class="level3" data-number="20.5.1">
 <h3 data-number="20.5.1" class="anchored" data-anchor-id="sec-ch20-spatial-technologies"><span class="header-section-number">20.5.1</span> Measurement Technologies</h3>
 <p>Spatial transcriptomics technologies fall into two broad categories with complementary strengths. Spot-based methods like Visium (10x Genomics) capture polyadenylated RNA at arrayed positions on a slide, providing transcriptome-wide measurement at approximately 55 micrometer resolution (typically 1 to 10 cells per spot). These methods offer comprehensive gene coverage but limited spatial resolution. Imaging-based methods like MERFISH use sequential rounds of fluorescent hybridization to identify RNA molecules <em>in situ</em>, achieving subcellular resolution but limited to pre-selected gene panels (hundreds to thousands of genes rather than transcriptome-wide) <em>[Citation Needed]</em>. Newer technologies like Stereo-seq achieve near-cellular resolution with transcriptome-wide coverage through spatial barcoding, though they remain less validated than established methods <em>[Citation Needed]</em>.</p>
+<div id="tbl-spatial-tech" class="quarto-float quarto-figure quarto-figure-center anchored">
+<figure class="quarto-float quarto-float-tbl figure">
+<figcaption class="quarto-float-caption-top quarto-float-caption quarto-float-tbl" id="tbl-spatial-tech-caption-0ceaefa1-69ba-4598-a22c-09a6ac19f8ca">
+Table&nbsp;20.4: Comparison of spatial transcriptomics platforms. The tradeoff between spatial resolution and gene coverage drives technology selection.
+</figcaption>
+<div aria-describedby="tbl-spatial-tech-caption-0ceaefa1-69ba-4598-a22c-09a6ac19f8ca">
+<table class="caption-top table">
+<colgroup>
+<col style="width: 14%">
+<col style="width: 17%">
+<col style="width: 22%">
+<col style="width: 30%">
+<col style="width: 14%">
+</colgroup>
+<thead>
+<tr class="header">
+<th>Approach</th>
+<th>Resolution</th>
+<th>Gene Coverage</th>
+<th>Example Technologies</th>
+<th>Best For</th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<td>Spot-based</td>
+<td>~55 um (multi-cell)</td>
+<td>Transcriptome-wide</td>
+<td>Visium, Slide-seq</td>
+<td>Discovery, whole-transcriptome</td>
+</tr>
+<tr class="even">
+<td>Imaging-based</td>
+<td>Subcellular</td>
+<td>100–10,000 genes</td>
+<td>MERFISH, Xenium</td>
+<td>Targeted, single-cell resolution</td>
+</tr>
+<tr class="odd">
+<td>Next-generation</td>
+<td>Near-cellular</td>
+<td>Transcriptome-wide</td>
+<td>Stereo-seq, Seq-Scope</td>
+<td>Emerging applications</td>
+</tr>
+</tbody>
+</table>
+</div>
+</figure>
+</div>
 </section>
 <section id="sec-ch20-spatial-computation" class="level3" data-number="20.5.2">
 <h3 data-number="20.5.2" class="anchored" data-anchor-id="sec-ch20-spatial-computation"><span class="header-section-number">20.5.2</span> Computational Challenges</h3>
-<p>Computational challenges in spatial transcriptomics mirror and extend those in single-cell analysis (<span class="quarto-unresolved-ref">?sec-ch16-technical</span>). Spot deconvolution addresses the multiple-cells-per-spot problem in Visium data: inferring the cell type composition within each spot by comparing spot expression profiles to reference single-cell atlases. Imputation methods predict expression of genes not measured in imaging-based assays, leveraging correlations learned from reference datasets. Integration aligns spatial data with single-cell references, mapping reference cell types onto spatial coordinates. Domain correction handles batch effects that manifest in spatial patterns as well as expression levels. The sparsity problem is even more severe than in standard single-cell RNA sequencing; gene detection rates in spatial methods often fall below 10 percent <em>[Citation Needed]</em>. The missing modality strategies developed for multi-omics integration (<span class="quarto-unresolved-ref">?sec-ch19-missing-modalities</span>) become essential when spatial methods fail to detect genes that single-cell RNA-seq measures reliably.</p>
+<p>Computational challenges in spatial transcriptomics mirror and extend those in single-cell analysis (<a href="p4-ch19-single-cell.html" class="quarto-xref"><span>Chapter 19</span></a>). Spot deconvolution addresses the multiple-cells-per-spot problem in Visium data: inferring the cell type composition within each spot by comparing spot expression profiles to reference single-cell atlases. Imputation methods predict expression of genes not measured in imaging-based assays, leveraging correlations learned from reference datasets. Integration aligns spatial data with single-cell references, mapping reference cell types onto spatial coordinates. Domain correction handles batch effects that manifest in spatial patterns as well as expression levels. The sparsity problem is even more severe than in standard single-cell RNA sequencing; gene detection rates in spatial methods often fall below 10 percent <em>[Citation Needed]</em>. The missing modality strategies developed for multi-omics integration (<a href="p4-ch22-multi-omics.html#sec-ch22-missing-modalities" class="quarto-xref"><span>Section 22.6</span></a>) become essential when spatial methods fail to detect genes that single-cell RNA-seq measures reliably.</p>
 </section>
 <section id="sec-ch20-spatial-models" class="level3" data-number="20.5.3">
 <h3 data-number="20.5.3" class="anchored" data-anchor-id="sec-ch20-spatial-models"><span class="header-section-number">20.5.3</span> Spatial Foundation Models</h3>
@@ -796,16 +1203,16 @@ Figure&nbsp;20.4: [High] Model comparison. Panel A (<em>Akita</em> Architecture)
 <div class="quarto-layout-cell" style="flex-basis: 50.0%;justify-content: flex-start;">
 <div class="quarto-figure quarto-figure-center">
 <figure class="figure">
-<p><img src="../figs/part_4/ch17/05-A-fig-spatial-transcriptomics.png" class="img-fluid figure-img"></p>
-<figcaption><strong>FIGURE PLACEHOLDER A</strong></figcaption>
+<p><img src="../figs/part_4/ch20/05-A-fig-spatial-transcriptomics.svg" class="img-fluid figure-img"></p>
+<figcaption>Visium spots capture 1-10 cells each</figcaption>
 </figure>
 </div>
 </div>
 <div class="quarto-layout-cell" style="flex-basis: 50.0%;justify-content: flex-start;">
 <div class="quarto-figure quarto-figure-center">
 <figure class="figure">
-<p><img src="../figs/part_4/ch17/05-B-fig-spatial-transcriptomics.png" class="img-fluid figure-img"></p>
-<figcaption><strong>FIGURE PLACEHOLDER B</strong></figcaption>
+<p><img src="../figs/part_4/ch20/05-B-fig-spatial-transcriptomics.svg" class="img-fluid figure-img"></p>
+<figcaption>Imaging methods achieve single-cell resolution</figcaption>
 </figure>
 </div>
 </div>
@@ -814,23 +1221,23 @@ Figure&nbsp;20.4: [High] Model comparison. Panel A (<em>Akita</em> Architecture)
 <div class="quarto-layout-cell" style="flex-basis: 50.0%;justify-content: flex-start;">
 <div class="quarto-figure quarto-figure-center">
 <figure class="figure">
-<p><img src="../figs/part_4/ch17/05-C-fig-spatial-transcriptomics.png" class="img-fluid figure-img"></p>
-<figcaption><strong>FIGURE PLACEHOLDER C</strong></figcaption>
+<p><img src="../figs/part_4/ch20/05-C-fig-spatial-transcriptomics.svg" class="img-fluid figure-img"></p>
+<figcaption>Deconvolution infers cell type composition</figcaption>
 </figure>
 </div>
 </div>
 <div class="quarto-layout-cell" style="flex-basis: 50.0%;justify-content: flex-start;">
 <div class="quarto-figure quarto-figure-center">
 <figure class="figure">
-<p><img src="../figs/part_4/ch17/05-D-fig-spatial-transcriptomics.png" class="img-fluid figure-img"></p>
-<figcaption><strong>FIGURE PLACEHOLDER D</strong></figcaption>
+<p><img src="../figs/part_4/ch20/05-D-fig-spatial-transcriptomics.svg" class="img-fluid figure-img"></p>
+<figcaption>Graph neural networks model spatial context</figcaption>
 </figure>
 </div>
 </div>
 </div>
 </div>
 <figcaption class="quarto-float-caption-bottom quarto-float-caption quarto-float-fig" id="fig-spatial-transcriptomics-caption-0ceaefa1-69ba-4598-a22c-09a6ac19f8ca">
-Figure&nbsp;20.5: [Enhancing] Spatial data and models. Panel A (Visium Spot-Based): Tissue section with spot overlay; 1-10 cells per spot; ~55 μm resolution. Panel B (Imaging-Based MERFISH/Xenium): Single-cell resolution; limited gene panel; subcellular localization. Panel C (Deconvolution Challenge): Multi-cell spot → infer composition; reference atlas required. Panel D (Spatial Foundation Models): Cell as node, proximity as edge; GNNs over spatial graphs; cell-cell communication; examples (<em>Nicheformer</em>, <em>SpaGCN</em>, <em>GraphST</em>).
+Figure&nbsp;20.5: Spatial transcriptomics technologies and computational approaches. (A) Spot-based methods (Visium): transcriptome-wide measurement at ~55 μm resolution, capturing 1-10 cells per spot. (B) Imaging-based methods (MERFISH, Xenium): subcellular resolution but limited to pre-selected gene panels. (C) The deconvolution challenge: inferring cell type composition within each spot using single-cell reference atlases. (D) Spatial foundation models: graph neural networks over spatial tissue graphs enable modeling of cell-cell communication and tissue microenvironment.
 </figcaption>
 </figure>
 </div>
@@ -842,13 +1249,75 @@ Figure&nbsp;20.5: [Enhancing] Spatial data and models. Panel A (Visium Spot-Base
 <p>Current 3D genome and spatial models face limitations that constrain their utility for clinical and research applications. Resolution remains a fundamental constraint: most Hi-C prediction models operate at 2 to 10 kilobase resolution, while functionally relevant enhancer-promoter contacts involve specific sequences within those bins. Predicting which specific kilobases within a TAD contact each other requires resolution that exceeds current training data in most cell types. The resolution needed for accurate prediction may exceed the resolution achievable from bulk Hi-C, creating a data ceiling that computational methods cannot overcome.</p>
 <p>The population averaging problem is more fundamental than a mere technical limitation. Bulk Hi-C measurements average over millions of cells, each with a different 3D configuration. Any two loci contact each other in only a minority of cells at any given time, yet the averaged contact frequency appears as a single value in the training data. Single-cell Hi-C reveals this heterogeneity but produces extremely sparse data (most possible contacts unmeasured in each cell). Models trained on population averages cannot predict single-cell behavior, yet gene regulation may depend on the stochastic dynamics of contact formation in individual cells. Whether the population average or the single-cell distribution matters more for predicting gene expression remains unclear.</p>
 <p>Causality represents the deepest conceptual challenge. Predicting that two regions contact each other does not establish that the contact causes any biological consequence. Many TAD disruptions produce minimal expression changes; many enhancer-promoter contacts may be bystanders rather than drivers of transcription. The loop extrusion machinery that creates TADs operates continuously, but the transcriptional machinery that reads out enhancer-promoter communication operates on different timescales and with different requirements. Computational predictions of 3D structure are correlational; establishing which predicted contacts matter functionally requires experimental validation that computational methods cannot replace.</p>
-<p>For clinical applications, the sparse training data creates systematic blind spots. Models trained on GM12878 and K562 may not transfer to the primary cells, developmental stages, or disease states where predictions matter most. A structural variant affecting 3D organization in neural progenitor cells cannot be reliably interpreted using models trained only on lymphoblastoid cells. The cell types most relevant for clinical interpretation are often those with the least 3D characterization data available. This challenge parallels the transferability concerns discussed throughout <a href="../part_2/p2-ch11-benchmarks.html" class="quarto-xref"><span>Chapter 12</span></a> and <a href="../part_2/p2-ch12-confounding.html" class="quarto-xref"><span>Chapter 12</span></a>.</p>
+<p>For clinical applications, the sparse training data creates systematic blind spots. Models trained on GM12878 and K562 may not transfer to the primary cells, developmental stages, or disease states where predictions matter most. A structural variant affecting 3D organization in neural progenitor cells cannot be reliably interpreted using models trained only on lymphoblastoid cells. The cell types most relevant for clinical interpretation are often those with the least 3D characterization data available. This challenge parallels the transferability concerns discussed throughout <a href="../part_2/p2-ch11-benchmarks.html" class="quarto-xref"><span>Chapter 11</span></a> and <a href="../part_2/p2-ch12-confounding.html" class="quarto-xref"><span>Chapter 12</span></a>.</p>
+<div class="callout callout-style-default callout-tip callout-titled" title="Knowledge Check">
+<div class="callout-header d-flex align-content-center">
+<div class="callout-icon-container">
+<i class="callout-icon"></i>
+</div>
+<div class="callout-title-container flex-fill">
+Knowledge Check
+</div>
+</div>
+<div class="callout-body-container callout-body">
+<p>Summarize three distinct limitations of current 3D genome prediction models. For each limitation, identify whether it is primarily (a) a data limitation that more sequencing could address, (b) a fundamental biological challenge, or (c) a computational/algorithmic limitation. How do these limitations affect the clinical utility of 3D structure predictions?</p>
+</div>
+</div>
 </section>
 <section id="sec-ch20-structure-context" class="level2" data-number="20.7">
 <h2 data-number="20.7" class="anchored" data-anchor-id="sec-ch20-structure-context"><span class="header-section-number">20.7</span> Structure as Context, Not Cause</h2>
 <p>The genome’s three-dimensional organization provides context that one-dimensional sequence models cannot capture. Enhancer-promoter contacts explain regulatory relationships spanning hundreds of kilobases; TAD boundaries constrain which elements can interact; tissue architecture determines the cellular neighborhoods where gene expression programs execute. Models like <em>Akita</em>, <em>Orca</em>, and <em>C.Origami</em> demonstrate that sequence contains substantial information about chromatin folding, predicting contact maps from DNA sequence with accuracy sufficient to identify structural variants and disease-associated changes.</p>
 <p>Yet the functional role of 3D structure remains more modest than early enthusiasm implied. Experimental perturbation studies show that TAD boundary disruption often has limited expression consequences <em>[Citation Needed]</em>. Many chromatin contacts appear permissive rather than instructive: they establish the possibility of regulatory communication without determining whether that communication occurs. A predicted enhancer-promoter contact indicates that interaction could happen, not that it does happen or that it matters when it does. The 3D genome may constrain the regulatory landscape without specifying regulatory outcomes.</p>
-<p>This distinction shapes how 3D structure should be integrated with other modalities. Chromatin contacts become edges in gene regulatory networks (<a href="p4-ch21-networks.html" class="quarto-xref"><span>Chapter 21</span></a>), providing structural priors for graph-based reasoning. Spatial expression patterns integrate with multi-omics approaches (<a href="p4-ch22-multi-omics.html" class="quarto-xref"><span>Chapter 22</span></a>), adding tissue architecture alongside genomics and transcriptomics. For interpretability (<a href="../part_5/p5-ch24-interpretability.html" class="quarto-xref"><span>Chapter 24</span></a>), 3D structure offers mechanistic hypotheses that require experimental validation. Whether a predicted regulatory effect operates through chromatin proximity, or whether proximity merely correlates with regulation through shared causes, remains a question that computational models can motivate but not answer. The integration of 3D information into genomic AI proceeds with appropriate uncertainty about what that information contributes.</p>
+<div class="callout callout-style-default callout-important callout-titled" title="Key Insight">
+<div class="callout-header d-flex align-content-center">
+<div class="callout-icon-container">
+<i class="callout-icon"></i>
+</div>
+<div class="callout-title-container flex-fill">
+Key Insight
+</div>
+</div>
+<div class="callout-body-container callout-body">
+<p><strong>3D structure is permissive, not deterministic.</strong> Think of TADs as enabling rather than commanding: they create the possibility of enhancer-promoter communication, but the actual communication requires transcription factors, chromatin accessibility, and other regulatory inputs. This is why disrupting a TAD boundary <em>can</em> cause disease (by enabling pathogenic new contacts) without boundary integrity being <em>necessary</em> for normal gene expression in most cases.</p>
+</div>
+</div>
+<p>This distinction shapes how 3D structure should be integrated with other modalities. Chromatin contacts become edges in gene regulatory networks (<a href="p4-ch21-networks.html" class="quarto-xref"><span>Chapter 22</span></a>), providing structural priors for graph-based reasoning. Spatial expression patterns integrate with multi-omics approaches (<a href="p4-ch22-multi-omics.html" class="quarto-xref"><span>Chapter 22</span></a>), adding tissue architecture alongside genomics and transcriptomics. For interpretability (<a href="../part_5/p5-ch24-interpretability.html" class="quarto-xref"><span>Chapter 25</span></a>), 3D structure offers mechanistic hypotheses that require experimental validation. Whether a predicted regulatory effect operates through chromatin proximity, or whether proximity merely correlates with regulation through shared causes, remains a question that computational models can motivate but not answer. The integration of 3D information into genomic AI proceeds with appropriate uncertainty about what that information contributes.</p>
+<div class="callout callout-style-default callout-note callout-titled" title="Chapter Summary">
+<div class="callout-header d-flex align-content-center">
+<div class="callout-icon-container">
+<i class="callout-icon"></i>
+</div>
+<div class="callout-title-container flex-fill">
+Chapter Summary
+</div>
+</div>
+<div class="callout-body-container callout-body">
+<p><strong>Key Concepts Covered:</strong></p>
+<ul>
+<li><strong>Chromatin organization hierarchy</strong>: Chromosome territories, A/B compartments, TADs, and fine-scale loops represent nested organizational levels with distinct mechanisms</li>
+<li><strong>Loop extrusion model</strong>: Cohesin extrudes DNA until blocked by convergent CTCF sites, explaining TAD boundary formation</li>
+<li><strong>Hi-C and contact matrices</strong>: Chromosome conformation capture methods measure 3D contacts; resolution depends on sequencing depth</li>
+<li><strong>Sequence-based prediction</strong>: <em>Akita</em>, <em>Orca</em>, and <em>C.Origami</em> predict contact maps from sequence, achieving ~0.6-0.8 correlation with experimental data</li>
+<li><strong>Structural variant interpretation</strong>: Boundary disruption causes enhancer hijacking with pathogenic consequences</li>
+<li><strong>Spatial transcriptomics</strong>: Extends single-cell analysis to include tissue location, enabling microenvironment characterization</li>
+</ul>
+<p><strong>Core Takeaways:</strong></p>
+<ol type="1">
+<li>The 3D genome provides regulatory context that 1D models cannot capture—linear distance is not regulatory distance</li>
+<li>CTCF motif orientation is a powerful predictor of loop anchors: convergent pairs form loops, divergent pairs do not</li>
+<li>Sequence contains substantial 3D information, but prediction accuracy varies by organizational level (best for TAD boundaries, worst for compartments)</li>
+<li>3D contacts are permissive rather than deterministic—contact predicts that regulation <em>could</em> occur, not that it <em>does</em></li>
+<li>Clinical application to structural variants is limited by training data bias toward a few cell lines</li>
+</ol>
+<p><strong>Connections to Other Chapters:</strong></p>
+<ul>
+<li><strong>Builds on</strong>: <a href="../part_2/p2-ch06-cnn.html" class="quarto-xref"><span>Chapter 6</span></a> (dilated convolutions), <a href="../part_3/p3-ch16-regulatory.html" class="quarto-xref"><span>Chapter 16</span></a> (<em>Enformer</em> and 1D models)</li>
+<li><strong>Extends to</strong>: <a href="p4-ch21-networks.html" class="quarto-xref"><span>Chapter 22</span></a> (3D contacts as graph edges), <a href="p4-ch22-multi-omics.html" class="quarto-xref"><span>Chapter 22</span></a> (spatial integration)</li>
+<li><strong>Relevant evaluation</strong>: <a href="../part_2/p2-ch11-benchmarks.html" class="quarto-xref"><span>Chapter 11</span></a> (transfer evaluation), <a href="../part_5/p5-ch24-interpretability.html" class="quarto-xref"><span>Chapter 25</span></a> (attribution methods)</li>
+<li><strong>Clinical context</strong>: <a href="../part_3/p3-ch17-vep-fm.html" class="quarto-xref"><span>Chapter 17</span></a> (variant effect prediction gaps), <a href="../part_6/p6-ch28-rare-disease.html" class="quarto-xref"><span>Chapter 28</span></a> (structural variant interpretation)</li>
+</ul>
+</div>
+</div>
 
 
 <div id="refs" class="references csl-bib-body hanging-indent" data-entry-spacing="0" role="list" style="display: none">
