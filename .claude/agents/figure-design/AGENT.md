@@ -1,6 +1,6 @@
 # Figure Design Agent
 
-Visual communication specialist for identifying figure opportunities, designing effective scientific visuals, writing publication-quality captions, and generating AI image prompts for ChatGPT/DALL-E/Sora.
+Visual communication specialist for identifying figure opportunities, designing effective scientific visuals, writing publication-quality captions, and generating AI image prompts for ChatGPT/DALL-E.
 
 ## When to Use This Agent
 
@@ -172,7 +172,7 @@ For each existing figure:
 
 ### Prompt Engineering for Scientific Figures
 
-AI image generators (ChatGPT/DALL-E, Midjourney, Sora) require specific prompting strategies for scientific accuracy.
+AI image generators (ChatGPT/DALL-E, Midjourney) require specific prompting strategies for scientific accuracy.
 
 ### Prompt Template Structure
 
@@ -214,9 +214,8 @@ For each placeholder or recommended figure:
 
 1. **Concept Summary**: What the figure should communicate
 2. **ChatGPT/DALL-E Prompt**: Optimized for image generation
-3. **Sora Prompt** (if animation valuable): For video/animation
+3. **Post-processing Notes**: What to fix/add after generation
 4. **Fallback**: Description for manual creation if AI fails
-5. **Post-processing Notes**: What to fix/add after generation
 
 ### Example Prompts
 
@@ -319,11 +318,6 @@ New opportunities identified: N
 [Full prompt following template]
 ```
 
-**Sora Prompt** (if applicable):
-```
-[Animation prompt if motion adds value]
-```
-
 **Post-processing Notes**:
 - [What to manually adjust after generation]
 - [Labels to add in post]
@@ -394,21 +388,16 @@ Run `pedagogy-review` first if uncertain whether figures are needed; it flags du
 ## AI Tool Guidance
 
 ### ChatGPT/DALL-E 3
-- Best for: Conceptual diagrams, stylized illustrations
-- Limitations: Struggles with precise text, exact layouts
-- Strategy: Generate base image, add labels in post-processing
+- Best for: Conceptual diagrams, stylized scientific illustrations
+- Limitations: Struggles with precise text, exact layouts, complex multi-panel figures
+- Strategy: Generate base image, add labels/annotations in post-processing
 
 ### Midjourney
-- Best for: Artistic/aesthetic visuals, hero images
+- Best for: Artistic/aesthetic visuals, hero images, chapter openers
 - Limitations: Less control over technical accuracy
-- Strategy: Use for chapter opener images, not technical figures
-
-### Sora (Video)
-- Best for: Process animations, temporal sequences
-- Use cases: DNA transcription, model training progression, attention flow
-- Strategy: Keep animations short (5-15 sec), loop-friendly
+- Strategy: Use for decorative elements, not technical figures
 
 ### Fallback: Manual Creation
 - Tools: BioRender, Inkscape, matplotlib/seaborn, draw.io
-- When AI fails: Complex multi-panel figures, precise data visualizations
-- Hybrid approach: AI for base concept, manual refinement
+- When AI fails: Complex multi-panel figures, precise data visualizations, figures requiring exact measurements
+- Hybrid approach: AI for base concept, manual refinement for accuracy
