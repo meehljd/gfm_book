@@ -155,6 +155,34 @@ Beyond individual motifs, *TF-MoDISco* enables grammar inference by analyzing mo
 
 Applications to models like *BPNet* trained on ChIP-seq data have recovered known transcription factor motifs, discovered novel sequence variants, and revealed spacing constraints validated through synthetic reporter assays *[Citation Needed: BPNet paper]*. The same workflow applies to foundation model analysis: use the model to produce base-level attributions for a downstream task, run *TF-MoDISco* to extract a task-specific motif vocabulary, and analyze how motif usage varies across conditions.
 
+::: {.callout-note title="Worked Example: TF-MoDISco Workflow"}
+**Scenario:** You have trained a model to predict liver enhancer activity and want to understand what sequence features it uses.
+
+**Step 1: Compute attributions**
+Run integrated gradients on 10,000 predicted enhancer sequences (selecting sequences with high prediction scores). This produces a 4 × L attribution matrix for each sequence, where L is sequence length.
+
+**Step 2: Extract seqlets**
+Scan each attribution profile for windows where summed importance exceeds a threshold (e.g., top 5% of all windows). A typical 500bp enhancer might yield 3-5 seqlets of 15-25bp each.
+
+**Step 3: Cluster seqlets**
+Using both sequence similarity and attribution profile similarity, cluster the ~40,000 extracted seqlets. Suppose this produces 12 distinct clusters.
+
+**Step 4: Generate motifs**
+For each cluster, align seqlets and compute position weight matrices. Results might include:
+
+| Cluster | # Seqlets | Top JASPAR Match | Match Score |
+|---------|-----------|------------------|-------------|
+| 1 | 8,200 | HNF4A | 0.92 |
+| 2 | 5,100 | CEBPA | 0.89 |
+| 3 | 3,400 | FOXA1 | 0.85 |
+| 4 | 2,800 | Novel (no match > 0.7) | — |
+
+**Step 5: Validate**
+The HNF4A and CEBPA motifs are known liver-specific transcription factors, confirming the model learned biologically relevant features. Cluster 4 represents a potential novel regulatory element requiring experimental validation.
+
+**Interpretation:** The model relies heavily on canonical liver transcription factor binding sites, consistent with known liver enhancer biology. The novel motif warrants ChIP-seq or MPRA follow-up.
+:::
+
 ::: {#fig-tfmodisco}
 ![TF-MoDISco motif discovery from attribution scores](../figs/part_5/ch24/03-fig-tfmodisco.svg)
 

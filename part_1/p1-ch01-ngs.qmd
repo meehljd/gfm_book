@@ -165,7 +165,33 @@ $$
 
 The prior *P(G)* often assumes Hardy-Weinberg equilibrium with a specified allele frequency, while the likelihood *P(r | G)* captures the probability of observing read *r* given that the true genotype is *G*. This formulation assumes conditional independence of reads given the genotype, an assumption violated in practice by systematic sequencing errors, read pair correlations, and library-level artifacts that create dependencies among observations. Classical pipelines attempt to correct for these violations through BQSR and ad hoc filters. Deep learning-based callers can learn these dependencies implicitly by processing entire pileups simultaneously, one of their key advantages.
 
-**Worked Example:** Consider a site with 30 reads, of which 14 support the reference allele and 16 support an alternate. For a heterozygous genotype (0/1), we expect roughly equal proportions. The likelihood P(D|0/1) would be high. For homozygous reference (0/0), seeing 16 alternate reads is unlikely--P(D|0/0) would be very low. The posterior probability thus strongly favors heterozygosity.
+::: {.callout-note title="Worked Example: Calculating Genotype Likelihoods"}
+Consider a genomic site with 30 overlapping reads: 14 support the reference allele (A) and 16 support an alternate allele (G).
+
+**Step 1: Define the hypothesis space**
+
+Three possible diploid genotypes: 0/0 (AA), 0/1 (AG), 1/1 (GG)
+
+**Step 2: Calculate expected read proportions under each genotype**
+
+| Genotype | Expected Ref | Expected Alt | Observed (14A, 16G) |
+|----------|--------------|--------------|---------------------|
+| 0/0 (AA) | ~100% | ~0% | Very unlikely |
+| 0/1 (AG) | ~50% | ~50% | Good match! |
+| 1/1 (GG) | ~0% | ~100% | Very unlikely |
+
+**Step 3: Compute likelihoods (simplified)**
+
+Assuming base quality of Q30 (error rate ~0.001):
+
+- P(data | 0/0): Probability of 16 "errors" from a homozygous reference site ≈ $(0.001)^{16}$ → essentially zero
+- P(data | 0/1): Probability of 14:16 split from a heterozygote ≈ $\binom{30}{14}(0.5)^{30}$ → high
+- P(data | 1/1): Probability of 14 "errors" from a homozygous alternate site ≈ $(0.001)^{14}$ → essentially zero
+
+**Step 4: Apply Bayes' theorem**
+
+The posterior strongly favors heterozygosity (0/1) because only this genotype explains the observed ~47:53 allelic ratio without invoking implausible error rates. This is reported as the called genotype with high genotype quality (GQ).
+:::
 
 The per-read likelihoods aggregate into genotype likelihoods, which combine with priors to yield posterior probabilities. These posteriors become the **genotype quality (GQ)** scores that downstream analyses often treat as ground truth. Per-sample results are output as `gVCF` files encoding both variant calls and "reference blocks" with estimated confidence at non-variant positions, enabling later joint analysis across samples.
 
