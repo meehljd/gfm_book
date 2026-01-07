@@ -11,7 +11,7 @@ The book has **31 chapters** organized into **6 parts** plus appendices:
 | 1 | Data Foundations | 1-4 | Sequencing, datasets, GWAS, classical VEP |
 | 2 | Learning & Evaluation | 5-12 | Representations, CNNs, attention, pretraining, benchmarks |
 | 3 | Foundation Model Families | 13-17 | DNA-LMs, protein-LMs, regulatory models, VEP |
-| 4 | Multi-Modal Models | 18-22 | RNA, single-cell, 3D genome, networks, multi-omics |
+| 4 | Cellular Context | 18-22 | RNA, single-cell, 3D genome, networks, multi-omics |
 | 5 | Responsible Deployment | 23-26 | Uncertainty, interpretability, causality, regulation |
 | 6 | Applications & Frontiers | 27-31 | Clinical risk, rare disease, drug discovery, design |
 
@@ -106,6 +106,7 @@ More complex review tools in `.claude/agents/`:
 | `pedagogy-review` | Learning science optimization |
 | `pre-commit` | Pre-commit content/style review |
 | `figure-design` | Figure opportunities, design, captions, AI image prompts |
+| `fact-checker` | Citation validation, claim verification, retraction/preprint audit |
 
 ### Figure Design Agent
 
@@ -127,8 +128,32 @@ The `figure-design` agent specializes in visual communication:
 
 Generates prompts optimized for:
 - **ChatGPT/DALL-E**: Scientific diagrams, conceptual illustrations
-- **Sora**: Process animations, temporal sequences
 - **Fallback**: Manual creation descriptions
+
+### Fact Checker Agent
+
+The `fact-checker` agent validates citation integrity:
+
+```bash
+# Full audit: claims + citations + retractions + preprints
+/fact-check p3-ch14-dna-lm
+
+# Only find unsupported claims
+/fact-check p3-ch14-dna-lm --mode claims
+
+# Verify citations support their claims
+/fact-check p3-ch14-dna-lm --mode verify
+
+# Check for retracted papers
+/fact-check p3-ch14-dna-lm --mode retractions
+
+# Audit preprint status (find published versions)
+/fact-check p3-ch14-dna-lm --mode preprints
+```
+
+Preprint policy:
+- **ML preprints (arXiv cs/stat)**: Allowed (standard in the field)
+- **Bio preprints (bioRxiv/medRxiv)**: Prefer peer-reviewed; flag if published version available
 
 ## Key Reference Files
 
