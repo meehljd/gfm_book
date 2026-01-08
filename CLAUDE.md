@@ -107,6 +107,7 @@ More complex review tools in `.claude/agents/`:
 | `pre-commit` | Pre-commit content/style review |
 | `figure-design` | Figure opportunities, design, captions, AI image prompts |
 | `fact-checker` | Citation validation, claim verification, retraction/preprint audit |
+| `lean-out` | Identify content with diminishing pedagogical returns for removal |
 
 ### Figure Design Agent
 
@@ -154,6 +155,32 @@ The `fact-checker` agent validates citation integrity:
 Preprint policy:
 - **ML preprints (arXiv cs/stat)**: Allowed (standard in the field)
 - **Bio preprints (bioRxiv/medRxiv)**: Prefer peer-reviewed; flag if published version available
+
+### Lean-Out Agent
+
+The `lean-out` agent identifies content with diminishing pedagogical returns:
+
+```bash
+# Single chapter analysis
+/lean-out p3-ch14-dna-lm
+
+# Analyze entire Part
+/lean-out part_3
+
+# Book-wide analysis
+/lean-out
+
+# Focus on specific pattern
+/lean-out p3-ch14 --mode lists-only
+```
+
+Key patterns detected:
+- **Exhaustive lists**: Lists beyond 3-5 items with diminishing value
+- **Redundant examples**: Multiple examples illustrating identical points
+- **Historical tangents**: History that doesn't illuminate current practice
+- **Appendix candidates**: Reference material better suited to appendices
+
+**Realistic expectations:** Well-edited prose with cross-references yields 0.5-2% cuts, not 15-20%. The agent validates estimates by checking for existing cross-references and drafting replacement text before reporting savings.
 
 ## Key Reference Files
 
