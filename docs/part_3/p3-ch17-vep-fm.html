@@ -585,6 +585,7 @@ Chapter Overview
 </div>
 </div>
 <div class="callout-body-container callout-body">
+<p><strong>Estimated reading time:</strong> 50-60 minutes</p>
 <p><strong>Prerequisites:</strong> Before reading this chapter, you should be familiar with:</p>
 <ul>
 <li>Classical variant effect prediction approaches (<a href="../part_1/p1-ch04-vep-classical.html" class="quarto-xref"><span>Chapter 4</span></a>)</li>
@@ -737,7 +738,7 @@ Figure&nbsp;17.1: Foundation model paradigms for variant effect prediction. (A) 
 </div>
 <section id="sec-ch17-zeroshot-supervised" class="level3" data-number="17.1.1">
 <h3 data-number="17.1.1" class="anchored" data-anchor-id="sec-ch17-zeroshot-supervised"><span class="header-section-number">17.1.1</span> Zero-Shot and Supervised Approaches</h3>
-<p>Foundation model VEP methods divide into two paradigms. Zero-shot approaches apply pretrained models directly without task-specific training: <em>ESM-1v</em> scores variants by comparing amino acid likelihoods, requiring no pathogenicity labels. The model’s pretraining objective (masked token prediction) implicitly teaches which substitutions violate evolutionary constraints. Supervised approaches like <em>AlphaMissense</em> add task-specific training layers and optimize explicitly for pathogenicity prediction using labeled examples.</p>
+<p>Foundation model VEP methods divide into two paradigms. Zero-shot approaches apply pretrained models directly without task-specific training: <em>ESM-1v</em> scores variants by comparing amino acid likelihoods, requiring no pathogenicity labels. Think of it like a spell-checker that flags words it has never seen in well-edited text—it does not need a dictionary of “misspellings” because any word that looks unusual compared to normal usage stands out as potentially wrong. Similarly, the model’s pretraining objective (masked token prediction) implicitly teaches which substitutions violate evolutionary constraints by learning what “well-edited” (evolutionarily tested) sequences look like. Supervised approaches like <em>AlphaMissense</em> add task-specific training layers and optimize explicitly for pathogenicity prediction using labeled examples.</p>
 <div class="callout callout-style-default callout-note callout-titled" title="Stop and Think: Zero-Shot vs. Supervised Trade-offs">
 <div class="callout-header d-flex align-content-center">
 <div class="callout-icon-container">
@@ -762,6 +763,48 @@ Stop and Think: Zero-Shot vs.&nbsp;Supervised Trade-offs
 <p>The simplest foundation model approach to missense VEP requires no task-specific training. A protein language model trained on masked token prediction assigns probabilities to each amino acid at each position given surrounding context. Variant effect scores emerge from comparing the probability of the reference amino acid to the probability of the variant amino acid.</p>
 <p><em>ESM-1v</em> operationalizes this approach using the <em>ESM-2</em> architecture fine-tuned for single-sequence variant effect prediction <span class="citation" data-cites="meier_esm-1v_2021">(<a href="../bib/references.html#ref-meier_esm-1v_2021" role="doc-biblioref">Meier et al. 2021</a>)</span>. For a variant substituting amino acid <span class="math inline">\(a_\text{ref}\)</span> with <span class="math inline">\(a_\text{var}\)</span> at position <em>i</em>, the score is computed as:</p>
 <p><span class="math display">\[\Delta \text{LLR} = \log P(a_\text{var} | \text{context}) - \log P(a_\text{ref} | \text{context})\]</span></p>
+<div class="callout callout-style-default callout-note callout-titled" title="Worked Example: Computing LLR Variant Scores">
+<div class="callout-header d-flex align-content-center">
+<div class="callout-icon-container">
+<i class="callout-icon"></i>
+</div>
+<div class="callout-title-container flex-fill">
+Worked Example: Computing LLR Variant Scores
+</div>
+</div>
+<div class="callout-body-container callout-body">
+<p>Consider a missense variant in <em>BRCA1</em> that substitutes leucine (L) with proline (P) at position 1780.</p>
+<p><strong>Step 1:</strong> The protein language model examines the sequence context around position 1780 and predicts probabilities for each amino acid at that position:</p>
+<table class="caption-top table">
+<thead>
+<tr class="header">
+<th>Amino Acid</th>
+<th>Probability</th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<td>Leucine (L, reference)</td>
+<td>0.35</td>
+</tr>
+<tr class="even">
+<td>Proline (P, variant)</td>
+<td>0.02</td>
+</tr>
+<tr class="odd">
+<td>Isoleucine (I)</td>
+<td>0.28</td>
+</tr>
+<tr class="even">
+<td>Other residues</td>
+<td>0.35</td>
+</tr>
+</tbody>
+</table>
+<p><strong>Step 2:</strong> Compute the log-likelihood ratio: <span class="math display">\[\Delta \text{LLR} = \log(0.02) - \log(0.35) = -3.91 - (-1.05) = -2.86\]</span></p>
+<p><strong>Step 3:</strong> Interpret the score: A score of -2.86 indicates the variant amino acid (proline) is substantially less probable than the reference (leucine) given the evolutionary context. The model has learned that this position strongly favors aliphatic residues (L, I, V), and the rigid proline is unexpected—consistent with a functionally important position where proline would disrupt structure.</p>
+</div>
+</div>
 <p>Negative scores indicate that the variant amino acid is less probable than reference in learned evolutionary context, suggesting potential deleteriousness. The model sees only the single query sequence, not multiple sequence alignments, yet achieves discrimination competitive with alignment-based methods on deep mutational scanning benchmarks. The emergence of this capability from masked token prediction, without explicit training on variant effects, exemplifies the emergent biological knowledge discussed in <span class="quarto-unresolved-ref">?sec-ch12-emergent-knowledge</span>.</p>
 <div class="callout callout-style-default callout-note callout-titled" title="Computing Variant Likelihoods from Language Models">
 <div class="callout-header d-flex align-content-center">
@@ -818,6 +861,22 @@ Knowledge Check: Single-Sequence vs.&nbsp;MSA-Based Models
 <li>What fundamental limitation does this example illustrate about alignment-based approaches?</li>
 <li>If the variant were in <em>BRCA1</em> instead (which has hundreds of homologs), would your answer change?</li>
 </ol>
+<div class="callout callout-style-default callout-note callout-titled" title="Check Your Answer">
+<div class="callout-header d-flex align-content-center" data-bs-toggle="collapse" data-bs-target=".callout-6-contents" aria-controls="callout-6" aria-expanded="false" aria-label="Toggle callout">
+<div class="callout-icon-container">
+<i class="callout-icon"></i>
+</div>
+<div class="callout-title-container flex-fill">
+Check Your Answer
+</div>
+<div class="callout-btn-toggle d-inline-block border-0 py-1 ps-1 pe-0 float-end"><i class="callout-toggle"></i></div>
+</div>
+<div id="callout-6" class="callout-6-contents callout-collapse collapse">
+<div class="callout-body-container callout-body">
+<p>ESM-1v would be more appropriate because it works on single sequences and doesn’t require a high-quality MSA. This illustrates that alignment-based methods fail for orphan proteins or those with sparse evolutionary sampling, where MSA-based approaches lack sufficient data. For BRCA1 with hundreds of homologs, EVE might perform better because the deep evolutionary sampling provides rich coevolution signals that EVE can exploit, though ESM-1v would still provide reliable predictions.</p>
+</div>
+</div>
+</div>
 </div>
 </div>
 </section>
@@ -1289,12 +1348,28 @@ Knowledge Check: Epistemic vs.&nbsp;Aleatoric Uncertainty
 <li>For which variant might the intermediate score more likely reflect aleatoric uncertainty (genuine biological ambiguity)?</li>
 <li>How would you communicate the different confidence levels to a clinician?</li>
 </ol>
+<div class="callout callout-style-default callout-note callout-titled" title="Check Your Answer">
+<div class="callout-header d-flex align-content-center" data-bs-toggle="collapse" data-bs-target=".callout-13-contents" aria-controls="callout-13" aria-expanded="false" aria-label="Toggle callout">
+<div class="callout-icon-container">
+<i class="callout-icon"></i>
+</div>
+<div class="callout-title-container flex-fill">
+Check Your Answer
+</div>
+<div class="callout-btn-toggle d-inline-block border-0 py-1 ps-1 pe-0 float-end"><i class="callout-toggle"></i></div>
+</div>
+<div id="callout-13" class="callout-13-contents callout-collapse collapse">
+<div class="callout-body-container callout-body">
+<p>Variant B has higher epistemic uncertainty because the model has limited training data for orphan genes with sparse evolutionary sampling. For Variant A in BRCA1, the intermediate score more likely reflects aleatoric uncertainty—genuine biological ambiguity about pathogenicity given extensive characterization data. Communication to clinicians should distinguish these: “For BRCA1, the intermediate score reflects uncertain biological effect; for the orphan gene, the score itself is uncertain due to limited data and should be interpreted cautiously.”</p>
+</div>
+</div>
+</div>
 </div>
 </div>
 </section>
 <section id="sec-ch17-uncertainty-methods" class="level3" data-number="17.6.2">
 <h3 data-number="17.6.2" class="anchored" data-anchor-id="sec-ch17-uncertainty-methods"><span class="header-section-number">17.6.2</span> Uncertainty Estimation Methods</h3>
-<p><strong>Ensemble methods</strong> train multiple models on different data subsets or with different random initializations. Prediction variance across ensemble members estimates epistemic uncertainty. Large disagreement indicates that the prediction depends strongly on training specifics rather than robust learned patterns. Deep ensembles provide well-calibrated uncertainty estimates but multiply computational cost linearly with ensemble size.</p>
+<p><strong>Ensemble methods</strong> train multiple models on different data subsets or with different random initializations. Like asking multiple doctors for second opinions on a diagnosis, if all the doctors independently reach the same conclusion, you can be more confident in the answer; if they disagree substantially, that disagreement itself is informative—the case is genuinely ambiguous. Similarly, prediction variance across ensemble members estimates epistemic uncertainty. Large disagreement indicates that the prediction depends strongly on training specifics rather than robust learned patterns. Deep ensembles provide well-calibrated uncertainty estimates but multiply computational cost linearly with ensemble size.</p>
 <p>Why does ensemble disagreement estimate uncertainty? The intuition is that if multiple models trained on slightly different data or with different random seeds all converge to similar predictions, the prediction is robust to training details and likely reflects genuine patterns in the data. Conversely, if predictions diverge substantially, each model has learned something idiosyncratic that does not generalize. For variant effect prediction, a variant where five ensemble members predict pathogenicity between 0.75 and 0.82 warrants more confidence than one where predictions range from 0.35 to 0.90. The ensemble is effectively asking: “Would I reach the same conclusion if I had seen slightly different training examples?” When the answer is no, that uncertainty should propagate to clinical interpretation.</p>
 <p>Monte Carlo dropout approximates Bayesian inference by applying dropout at test time and averaging predictions across multiple stochastic forward passes. Variance across passes estimates uncertainty without training multiple models. This approach adds modest computational overhead and can be applied to any dropout-containing architecture.</p>
 <p><strong>Conformal prediction</strong> provides distribution-free uncertainty quantification with coverage guarantees <span class="citation" data-cites="angelopoulos_conformal_2023">(<a href="../bib/references.html#ref-angelopoulos_conformal_2023" role="doc-biblioref">Angelopoulos and Bates 2023</a>)</span>. Given a calibration set, conformal methods construct prediction sets guaranteed to contain the true label with specified probability (e.g., 90%). For variant classification, this might produce sets like {pathogenic, uncertain} or {benign} depending on the variant and desired coverage. Larger prediction sets indicate greater uncertainty; single-element sets indicate confident predictions. <a href="../part_5/p5-ch23-uncertainty.html#sec-ch23-conformal" class="quarto-xref"><span>Section 23.5</span></a> examines conformal methods for genomic applications in detail.</p>
@@ -1573,6 +1648,48 @@ Chapter Summary
 </div>
 </div>
 <div class="callout-body-container callout-body">
+<div class="callout callout-style-default callout-tip callout-titled" title="Test Yourself">
+<div class="callout-header d-flex align-content-center">
+<div class="callout-icon-container">
+<i class="callout-icon"></i>
+</div>
+<div class="callout-title-container flex-fill">
+Test Yourself
+</div>
+</div>
+<div class="callout-body-container callout-body">
+<p>Before reviewing the summary, test your recall:</p>
+<ol type="1">
+<li><p>Explain the paradigm shift from classical feature-based VEP to foundation model-based VEP. How do foundation models perform zero-shot variant scoring without pathogenicity labels?</p></li>
+<li><p>Compare protein-based VEP approaches (ESM-1v, EVE, AlphaMissense) with DNA-based approaches (SpliceAI, Enformer, GPN-MSA). For each approach, identify what variant types it handles best and what biological information it leverages.</p></li>
+<li><p>What is model calibration and why does it matter for clinical variant interpretation? How do reliability diagrams help assess calibration quality?</p></li>
+<li><p>Describe three strategies for combining evidence across multiple foundation models. What is the double-counting problem and how can it be avoided when applying ACMG criteria?</p></li>
+<li><p>Identify three persistent challenges or limitations in foundation model-based VEP that require human judgment. For each, explain why current models struggle and what types of variants are most affected.</p></li>
+</ol>
+<div class="callout callout-style-default callout-note callout-titled" title="Check Your Answers">
+<div class="callout-header d-flex align-content-center" data-bs-toggle="collapse" data-bs-target=".callout-18-contents" aria-controls="callout-18" aria-expanded="false" aria-label="Toggle callout">
+<div class="callout-icon-container">
+<i class="callout-icon"></i>
+</div>
+<div class="callout-title-container flex-fill">
+Check Your Answers
+</div>
+<div class="callout-btn-toggle d-inline-block border-0 py-1 ps-1 pe-0 float-end"><i class="callout-toggle"></i></div>
+</div>
+<div id="callout-18" class="callout-18-contents callout-collapse collapse">
+<div class="callout-body-container callout-body">
+<ol type="1">
+<li><p><strong>Paradigm shift from classical to foundation model VEP</strong>: Classical methods manually engineer features (conservation scores, amino acid properties, domain annotations) and train classifiers on labeled pathogenic/benign variants. Foundation models invert this: they learn representations from unlabeled sequences during pretraining (masked token prediction), discovering evolutionary constraints implicitly. Zero-shot scoring compares the likelihood of reference versus variant alleles given learned sequence context—variants that are evolutionarily unexpected (low likelihood) tend to be deleterious. This approach requires no pathogenicity labels because evolution has already conducted billions of experiments testing which variants are compatible with life.</p></li>
+<li><p><strong>Protein vs.&nbsp;DNA approaches comparison</strong>: Protein approaches (<em>ESM-1v</em>, <em>EVE</em>, <em>AlphaMissense</em>) operate on amino acid sequences and excel at missense variants. <em>ESM-1v</em> uses zero-shot likelihood ratios from protein language models. <em>EVE</em> fits variational autoencoders to MSAs, capturing co-evolution. <em>AlphaMissense</em> combines sequence with AlphaFold2 structural features for state-of-the-art missense prediction. DNA approaches (<em>SpliceAI</em>, <em>Enformer</em>, <em>GPN-MSA</em>, <em>Evo 2</em>) work on nucleotide sequences and cover all variant types. <em>SpliceAI</em> specializes in splice variants using dilated convolutions. <em>Enformer</em> predicts regulatory impacts. <em>GPN-MSA</em> and <em>Evo 2</em> provide DNA language model scores genome-wide, including noncoding regions where protein models cannot operate.</p></li>
+<li><p><strong>Calibration importance and reliability diagrams</strong>: Calibration ensures that predicted probabilities match observed frequencies—a score of 0.8 should mean 80% of variants with that score are truly pathogenic. Without calibration, scores are arbitrary and cannot guide clinical decisions. Reliability diagrams plot predicted probabilities (x-axis) against observed pathogenic proportions (y-axis). Perfect calibration falls on the diagonal. Points below indicate overconfidence (model predicts higher probabilities than reality); points above indicate underconfidence. Neural networks typically overpredict extreme probabilities and require post-hoc calibration (temperature scaling, isotonic regression) before clinical use.</p></li>
+<li><p><strong>Combining evidence strategies and double-counting</strong>: Three strategies: (1) Modular routing—apply different models to different variant types (AlphaMissense for missense, SpliceAI for splice sites). (2) Score aggregation—combine predictions from multiple models using ensemble methods or Bayesian integration with careful weighting. (3) Tiered filtering—use fast models for initial screening, expensive models for prioritized variants. The double-counting problem arises when multiple predictors share information sources (e.g., <em>AlphaMissense</em> and <em>ESM-1v</em> both encode evolutionary constraint). Treating correlated predictions as independent evidence overweights shared signals. Solution: assess correlations, group predictors by information source, select one representative from each group for ACMG evidence, and document tool correlations in laboratory validation records.</p></li>
+<li><p><strong>Three persistent challenges</strong>: (1) <strong>Structural variants</strong> (deletions, duplications, inversions)—current sequence models cannot represent architectural rearrangements; they are trained on SNVs and small indels. (2) <strong>Combinatorial/compound effects</strong>—models score variants independently, missing compound heterozygosity where two individually tolerable variants together cause disease, and haplotype effects where phasing determines pathogenicity. (3) <strong>Population bias</strong>—training data overrepresent European ancestry; models perform worse for African and Asian populations where variants are undersampled in ClinVar/gnomAD, creating systematic disparities in prediction accuracy for underrepresented groups. These limitations require human judgment to integrate additional evidence (segregation, functional assays, ancestry-appropriate interpretation).</p></li>
+</ol>
+</div>
+</div>
+</div>
+</div>
+</div>
 <p><strong>Core concepts covered:</strong></p>
 <ul>
 <li><p><strong>Paradigm shift:</strong> Foundation models learn representations from unlabeled sequences, enabling variant scoring without pathogenicity labels. Evolution has already encoded functional constraints; models learn to detect when variants violate these patterns.</p></li>

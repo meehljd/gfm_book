@@ -573,6 +573,7 @@ Chapter Overview
 </div>
 </div>
 <div class="callout-body-container callout-body">
+<p><strong>Estimated reading time:</strong> 40-50 minutes</p>
 <p><strong>Prerequisites:</strong> This chapter builds on concepts from <a href="../part_2/p2-ch06-cnn.html" class="quarto-xref"><span>Chapter 6</span></a> (convolutional architectures), <a href="../part_2/p2-ch07-attention.html" class="quarto-xref"><span>Chapter 7</span></a> (attention mechanisms), and <a href="../part_2/p2-ch08-pretraining.html" class="quarto-xref"><span>Chapter 8</span></a> (self-supervised learning). Familiarity with basic neural network training and the distinction between supervised and unsupervised learning will help you follow the discussion.</p>
 <p><strong>Learning Objectives:</strong> After completing this chapter, you should be able to:</p>
 <ol type="1">
@@ -588,13 +589,26 @@ Chapter Overview
 <p>In 2019, a family arrived at a genetics clinic after their infant was diagnosed with a novel cardiac arrhythmia syndrome. Whole-genome sequencing identified a candidate variant, but determining whether it was pathogenic required answering three regulatory questions: Would this variant disrupt a transcription factor binding site? Would it alter chromatin accessibility in cardiomyocytes? Could it create a cryptic splice site? The research team trained three separate models, each requiring its own data curation, hyperparameter search, and validation pipeline. When the fourth question arose—would the variant affect 3D chromatin looping?—they had to start from scratch again. Months passed. The family waited. Every new biological question about the <em>same variant</em> demanded a new model. Knowledge learned for one task provided no benefit for another, even though all four questions probed different consequences of the same few nucleotides.</p>
 <p>This scenario captures the fragmentation that defined genomics’ early deep learning era. One convolutional network predicted transcription factor binding; another predicted chromatin accessibility; a third classified splice sites. Each model required its own training data, its own hyperparameter tuning, its own validation strategy. The field accumulated tools without accumulating shared knowledge.</p>
 <p><strong>Foundation models</strong> promise a different approach: train once on vast genomic data, then adapt to many downstream tasks. A single model pretrained on billions of nucleotides might provide representations useful for regulatory prediction, variant interpretation, sequence design, and cross-species analysis simultaneously. Rather than curating labeled datasets for each new question, researchers could fine-tune existing models on modest task-specific data, leveraging knowledge the model acquired during <strong>pretraining</strong>. The efficiency gains would be substantial; the conceptual shift would be larger still. Where specialized models treat each genomic question as independent, foundation models assume that shared patterns underlie diverse biological phenomena and that representations capturing those patterns should transfer.</p>
-<p>Why should patterns transfer across such different tasks? The key insight is that many genomic prediction tasks share underlying structure. Predicting whether a variant disrupts a transcription factor binding site requires understanding sequence motifs; predicting whether that same variant affects chromatin accessibility also requires understanding sequence motifs. A model that learns robust motif representations during pretraining can apply those representations to both tasks. More fundamentally, evolution has shaped genomic sequence through shared mechanisms—natural selection acts on function, and functional sequences share statistical properties regardless of which specific function is measured. A model that learns these shared properties during pretraining has learned something relevant to many downstream questions.</p>
+<p>Why should patterns transfer across such different tasks? The key insight is that many genomic prediction tasks share underlying structure. Consider how learning to read opens access to novels, newspapers, scientific papers, and poetry—a single skill unlocks diverse applications because all written text shares common structures (letters, words, grammar). Similarly, diverse genomic tasks share common structures: motifs, regulatory grammar, and evolutionary signatures. Predicting whether a variant disrupts a transcription factor binding site requires understanding sequence motifs; predicting whether that same variant affects chromatin accessibility also requires understanding sequence motifs. A model that learns robust motif representations during pretraining can apply those representations to both tasks. More fundamentally, evolution has shaped genomic sequence through shared mechanisms—natural selection acts on function, and functional sequences share statistical properties regardless of which specific function is measured. A model that learns these shared properties during pretraining has learned something relevant to many downstream questions.</p>
 <p>This paradigm, which transformed natural language processing and protein structure prediction, carries both promise and peril for genomics. Pretraining at scale requires computational resources beyond most academic budgets. Adaptation to specific tasks demands expertise in <strong>transfer learning</strong> techniques that remain poorly understood (<a href="../part_2/p2-ch09-transfer.html" class="quarto-xref"><span>Chapter 9</span></a>). Predictions from general-purpose models may lack the precision of specialized alternatives trained directly on task-specific data. The decision to use, adapt, or build foundation models involves tradeoffs that depend on available resources, target applications, and acceptable uncertainty.</p>
 <section id="sec-ch13-task-specific" class="level2" data-number="13.1">
 <h2 data-number="13.1" class="anchored" data-anchor-id="sec-ch13-task-specific"><span class="header-section-number">13.1</span> From Task-Specific Models to Foundation Models</h2>
 <p>The history of computational genomics reveals a consistent pattern: models become more general while maintaining or improving task-specific performance. Hand-crafted scores such as <em>CADD</em> and <em>SIFT</em> established that integration of diverse genomic annotations could improve variant pathogenicity prediction <span class="citation" data-cites="rentzsch_cadd_2019 schubach_cadd_2024">(<a href="../bib/references.html#ref-rentzsch_cadd_2019" role="doc-biblioref">Rentzsch et al. 2019</a>; <a href="../bib/references.html#ref-schubach_cadd_2024" role="doc-biblioref">Schubach et al. 2024</a>)</span> (<a href="../part_1/p1-ch04-vep-classical.html" class="quarto-xref"><span>Chapter 4</span></a>). These approaches faced a ceiling imposed by the features available for engineering, a limitation examined in <a href="../part_1/p1-ch04-vep-classical.html#sec-ch04-features-to-representations" class="quarto-xref"><span>Section 4.6.4</span></a>. These approaches relied on expert feature engineering, combining conservation scores, functional annotations, and population frequency data through ensemble methods or logistic regression.</p>
 <p>Task-specific deep learning models demonstrated that neural networks could learn relevant features directly from sequence. <em>DeepSEA</em> predicted chromatin accessibility and transcription factor binding from 1 kb sequences using convolutional architectures <span class="citation" data-cites="zhou_deepsea_2015">(<a href="../bib/references.html#ref-zhou_deepsea_2015" role="doc-biblioref">J. Zhou and Troyanskaya 2015</a>)</span>. <em>ExPecto</em> extended this approach to gene expression prediction by modeling regulatory elements across multiple cell types <span class="citation" data-cites="zhou_expecto_2018">(<a href="../bib/references.html#ref-zhou_expecto_2018" role="doc-biblioref">J. Zhou et al. 2018</a>)</span>. <em>Sei</em> organized regulatory predictions into interpretable sequence classes through unsupervised clustering <span class="citation" data-cites="chen_deepsea_2022">(<a href="../bib/references.html#ref-chen_deepsea_2022" role="doc-biblioref">Chen et al. 2022</a>)</span>. <em>SpliceAI</em> achieved near-perfect splice site prediction through dilated convolutions over 10 kb contexts, though its architecture was purpose-built for this specific task and could not generalize to other regulatory prediction problems (<a href="../part_2/p2-ch06-cnn.html" class="quarto-xref"><span>Chapter 6</span></a>). <em>Enformer</em> scaled sequence-to-function modeling to 200 kb windows and thousands of chromatin tracks through transformer architectures <span class="citation" data-cites="avsec_enformer_2021">(<a href="../bib/references.html#ref-avsec_enformer_2021" role="doc-biblioref">Avsec et al. 2021</a>)</span>.</p>
 <p>These models succeeded within their specific domains but remained difficult to repurpose. Training a <em>DeepSEA</em> model required chromatin accessibility data. Using <em>SpliceAI</em> for regulatory prediction would require complete retraining on different labels. Each application domain needed its own model, trained from scratch on task-specific data. The fundamental limitation was not model capacity but training paradigm: supervised learning on narrow tasks produced narrow capabilities.</p>
+<div class="callout callout-style-default callout-note callout-titled" title="Predict Before You Look">
+<div class="callout-header d-flex align-content-center">
+<div class="callout-icon-container">
+<i class="callout-icon"></i>
+</div>
+<div class="callout-title-container flex-fill">
+Predict Before You Look
+</div>
+</div>
+<div class="callout-body-container callout-body">
+<p>Before viewing the figure below, make a prediction: In the task-specific paradigm, if a researcher needs to solve five different genomic prediction problems (e.g., splice site prediction, enhancer identification, transcription factor binding, chromatin accessibility, and gene expression), how many separate models would they need to train? In the foundation model paradigm, how many models would be trained from scratch? What is the key difference in how knowledge is reused between these two approaches?</p>
+</div>
+</div>
 <div id="fig-paradigm-shift" class="quarto-layout-panel">
 <figure class="quarto-float quarto-float-fig figure">
 <div aria-describedby="fig-paradigm-shift-caption-0ceaefa1-69ba-4598-a22c-09a6ac19f8ca">
@@ -832,7 +846,7 @@ Stop and Think
 </section>
 <section id="sec-ch13-emergence" class="level3" data-number="13.3.3">
 <h3 data-number="13.3.3" class="anchored" data-anchor-id="sec-ch13-emergence"><span class="header-section-number">13.3.3</span> Emergent Capabilities</h3>
-<p>Perhaps the most intriguing aspect of foundation model scaling is the emergence of qualitatively new capabilities at sufficient scale. Emergence refers to abilities that are absent or negligible in smaller models but appear discontinuously as models grow.</p>
+<p>Perhaps the most intriguing aspect of foundation model scaling is the emergence of qualitatively new capabilities at sufficient scale. Emergence refers to abilities that are absent or negligible in smaller models but appear discontinuously as models grow. Think of it like learning to ride a bicycle: you cannot ride “a little bit”—you wobble and fall until suddenly, with enough practice, you can balance. The capability emerges all at once rather than improving gradually. Similarly, certain model capabilities remain effectively zero until the model crosses a threshold, then appear seemingly from nowhere.</p>
 <p>In large language models, emergent capabilities include multi-step reasoning, code generation, and in-context learning. These capabilities appear at model scales of roughly <span class="math inline">\(10^{10}\)</span> parameters and above, with no clear precursor in smaller models <span class="citation" data-cites="wei_emergent_2022">(<a href="../bib/references.html#ref-wei_emergent_2022" role="doc-biblioref"><strong>wei_emergent_2022?</strong></a>)</span>.</p>
 <p>Genomic foundation models exhibit analogous emergence, though the capability thresholds are less well characterized. The most striking example involves structural understanding from sequence: <em>ESM-2</em> at sufficient scale produces contact maps and secondary structure predictions from single sequences with accuracy approaching multiple sequence alignment methods like <em>trRosetta</em> <span class="citation" data-cites="lin_esm-2_2022">(<a href="../bib/references.html#ref-lin_esm-2_2022" role="doc-biblioref">Lin et al. 2022</a>)</span>. Smaller <em>ESM</em> models show no meaningful structural understanding. This capability emerges at approximately 650 million parameters and continues improving with scale.</p>
 <p>Larger <em>Nucleotide Transformer</em> models transfer more effectively to novel species not seen during training <span class="citation" data-cites="dalla-torre_nucleotide_2023">(<a href="../bib/references.html#ref-dalla-torre_nucleotide_2023" role="doc-biblioref">Dalla-Torre et al. 2023</a>)</span>. The ability to generalize beyond training species appears to require sufficient model capacity to learn abstract regulatory principles rather than memorizing species-specific patterns. Similarly, foundation models at sufficient scale can predict variant effects without task-specific fine-tuning, using only the difference in likelihood between reference and alternative sequences. For example, <em>ESM-1v</em> computes log-likelihood ratios to predict protein variant pathogenicity in a zero-shot manner. This zero-shot capability requires models large enough to capture subtle sequence dependencies</p>
@@ -967,6 +981,22 @@ Knowledge Check
 </div>
 <div class="callout-body-container callout-body">
 <p>At this point, you should be able to distinguish between the three model families covered so far. Without looking back, try to answer: What is the key difference between DNA language models and sequence-to-function models in terms of their training objectives? Which family would you choose if you needed to predict enhancer activity in a novel cell type not represented in existing training data?</p>
+<div class="callout callout-style-default callout-note callout-titled" title="Check Your Answer">
+<div class="callout-header d-flex align-content-center" data-bs-toggle="collapse" data-bs-target=".callout-9-contents" aria-controls="callout-9" aria-expanded="false" aria-label="Toggle callout">
+<div class="callout-icon-container">
+<i class="callout-icon"></i>
+</div>
+<div class="callout-title-container flex-fill">
+Check Your Answer
+</div>
+<div class="callout-btn-toggle d-inline-block border-0 py-1 ps-1 pe-0 float-end"><i class="callout-toggle"></i></div>
+</div>
+<div id="callout-9" class="callout-9-contents callout-collapse collapse">
+<div class="callout-body-container callout-body">
+<p>DNA language models use self-supervised objectives (masked language modeling or next-token prediction) on raw sequence without functional labels, while sequence-to-function models train with supervised multi-task prediction on thousands of chromatin and expression assays. For a novel cell type, DNA language models would be preferable because they learn general sequence patterns that transfer across contexts, whereas sequence-to-function models are tied to the specific cell types and assays in their training data.</p>
+</div>
+</div>
+</div>
 </div>
 </div>
 </section>
@@ -1257,6 +1287,48 @@ Chapter Summary
 </div>
 </div>
 <div class="callout-body-container callout-body">
+<div class="callout callout-style-default callout-tip callout-titled" title="Test Yourself">
+<div class="callout-header d-flex align-content-center">
+<div class="callout-icon-container">
+<i class="callout-icon"></i>
+</div>
+<div class="callout-title-container flex-fill">
+Test Yourself
+</div>
+</div>
+<div class="callout-body-container callout-body">
+<p>Before reviewing the summary, test your recall:</p>
+<ol type="1">
+<li><p>What distinguishes a foundation model from a task-specific deep learning model? Why does self-supervised pretraining enable transfer to multiple downstream tasks while supervised training does not?</p></li>
+<li><p>According to the Chinchilla scaling laws, what is the relationship between model parameters, training data, and compute budget? If you have a fixed compute budget, should you train a larger model on less data or a smaller model on more data?</p></li>
+<li><p>What are the four major families of genomic foundation models and what is the key strength and limitation of each family?</p></li>
+<li><p>Explain the concept of emergent capabilities in foundation models. Why does this matter when selecting a model for adaptation to a new task?</p></li>
+<li><p>When should you build a foundation model from scratch versus adapting an existing one? What are the key decision factors in the build-versus-use hierarchy?</p></li>
+</ol>
+<div class="callout callout-style-default callout-note callout-titled" title="Check Your Answers">
+<div class="callout-header d-flex align-content-center" data-bs-toggle="collapse" data-bs-target=".callout-13-contents" aria-controls="callout-13" aria-expanded="false" aria-label="Toggle callout">
+<div class="callout-icon-container">
+<i class="callout-icon"></i>
+</div>
+<div class="callout-title-container flex-fill">
+Check Your Answers
+</div>
+<div class="callout-btn-toggle d-inline-block border-0 py-1 ps-1 pe-0 float-end"><i class="callout-toggle"></i></div>
+</div>
+<div id="callout-13" class="callout-13-contents callout-collapse collapse">
+<div class="callout-body-container callout-body">
+<ol type="1">
+<li><p><strong>Foundation vs.&nbsp;task-specific models</strong>: Foundation models are distinguished by their ability to transfer to diverse downstream tasks through embeddings or lightweight adaptation, not by their size alone. Self-supervised pretraining enables transfer because the model must learn general features useful for reconstructing any genomic context (e.g., how motifs combine, sequence composition patterns, functional vs.&nbsp;non-functional sequence). In contrast, supervised training on narrow tasks produces features specifically optimized for that task (e.g., splice site prediction learns GT-AG consensus and branch points), which may be irrelevant or misleading for other applications.</p></li>
+<li><p><strong>Chinchilla scaling laws</strong>: The framework shows that loss <span class="math inline">\(L(N, D) = E + A/N^\alpha + B/D^\beta\)</span> where <span class="math inline">\(N\)</span> is parameters, <span class="math inline">\(D\)</span> is training tokens, and compute <span class="math inline">\(C \approx 6ND\)</span>. The key insight is that model parameters and training data should scale approximately equally—the optimal ratio is roughly 20 tokens per parameter. For a fixed compute budget, you should train a smaller model on more data rather than a larger model on less data, as undertrained large models typically underperform smaller compute-optimal models.</p></li>
+<li><p><strong>Four foundation model families</strong>: (1) DNA language models use self-supervised pretraining for general sequence representations but lack functional grounding for subtle regulatory patterns. (2) Sequence-to-function models predict molecular phenotypes with mechanistic grounding but are tied to training assays and cell types. (3) Variant effect prediction models integrate multiple information sources for clinical relevance but focus narrowly on variant interpretation. (4) Multi-omic models integrate across modalities for holistic understanding but face data engineering complexity and are still early in development.</p></li>
+<li><p><strong>Emergent capabilities</strong>: These are abilities that appear discontinuously at certain scale thresholds and are absent in smaller models (e.g., ESM-2’s structural understanding emerges at ~650M parameters, zero-shot variant effect prediction requires sufficient scale). This matters because attempting to fine-tune a model below the capability threshold is wasted effort—if a 100M parameter model fundamentally cannot perform a task, no amount of fine-tuning will enable it. You must verify that models of similar scale have demonstrated the required capability before attempting adaptation.</p></li>
+<li><p><strong>Build vs.&nbsp;use hierarchy</strong>: Start with frozen embeddings from existing models (hours of work, ~$10 compute, 70-90% of fine-tuned performance). Escalate to parameter-efficient adaptation like LoRA if embeddings underperform (days of work, $100-1000 compute, ~95% of full fine-tuning). Consider full fine-tuning only for high-stakes applications (weeks, $1000+). Train from scratch only when: (a) target domain differs fundamentally from existing pretraining data, (b) you have unique large-scale data, (c) timeline permits months, and (d) budget permits $100K+ compute. Most researchers never need to train from scratch.</p></li>
+</ol>
+</div>
+</div>
+</div>
+</div>
+</div>
 <p><strong>Core Concepts:</strong></p>
 <ul>
 <li><p><strong>Foundation models</strong> are distinguished from task-specific models by their ability to transfer to diverse downstream tasks through embeddings or lightweight adaptation, not by size alone.</p></li>

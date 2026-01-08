@@ -553,7 +553,9 @@ window.Quarto = {
 </header>
 
 
-<p><em>The model found something. But did it find what we think it found?</em></p>
+<blockquote class="blockquote">
+<p>The model found something. But did it find what we think it found?</p>
+</blockquote>
 <div class="callout callout-style-default callout-note callout-titled">
 <div class="callout-header d-flex align-content-center">
 <div class="callout-icon-container">
@@ -774,6 +776,24 @@ Knowledge Check: CNN Filter Interpretation
 <li>If another filter shows high activation for poly-G stretches, what follow-up analysis would distinguish whether this reflects true CTCF biology versus a training data artifact?</li>
 <li>Why might the model learn separate filters for the same motif in different orientations, even though CTCF binding is largely orientation-independent at the ChIP-seq level?</li>
 </ol>
+<div class="callout callout-style-default callout-note callout-titled" title="Check Your Answer">
+<div class="callout-header d-flex align-content-center" data-bs-toggle="collapse" data-bs-target=".callout-4-contents" aria-controls="callout-4" aria-expanded="false" aria-label="Toggle callout">
+<div class="callout-icon-container">
+<i class="callout-icon"></i>
+</div>
+<div class="callout-title-container flex-fill">
+Check Your Answer
+</div>
+<div class="callout-btn-toggle d-inline-block border-0 py-1 ps-1 pe-0 float-end"><i class="callout-toggle"></i></div>
+</div>
+<div id="callout-4" class="callout-4-contents callout-collapse collapse">
+<div class="callout-body-container callout-body">
+<ol type="1">
+<li>Check the reverse complement of the discovered pattern against known CTCF motifs in JASPAR. (2) Test whether removing poly-G sequences reduces prediction accuracy for CTCF binding in held-out data, and check whether poly-G enrichment correlates with GC content or mappability artifacts in the training set. (3) CNNs without explicit reverse-complement architecture learn separate filters because the convolution operation treats forward and reverse strands as independent patterns, even when biology treats them equivalently.</li>
+</ol>
+</div>
+</div>
+</div>
 </div>
 </div>
 </section>
@@ -803,6 +823,61 @@ Key Insight: Why TF-MoDISco Works Better Than Traditional Motif Finding
 <p>The workflow proceeds through several stages. Base-level importance scores are computed for many sequences using <em>DeepLIFT</em>, ISM, or integrated gradients. Windows where total importance exceeds a threshold are extracted as seqlets, each representing a candidate motif instance. These seqlets are compared using metrics that consider both sequence content and importance profiles, then clustered into groups corresponding to putative motifs. Within each cluster, seqlets are aligned and consolidated into PWMs and importance-weighted logos. The resulting motifs can be matched to known transcription factors or flagged as novel patterns.</p>
 <p>Beyond individual motifs, <em>TF-MoDISco</em> enables grammar inference by analyzing motif co-occurrence. Mapping discovered motif instances back to genomic coordinates reveals characteristic spacing between motif pairs, orientation preferences, and cell-type-specific usage patterns. These grammatical rules can be validated through <em>in silico</em> experiments: inserting or removing motifs in synthetic sequences and checking whether predictions change as expected.</p>
 <p>Applications to models like <em>BPNet</em> trained on ChIP-seq data have recovered known transcription factor motifs, discovered novel sequence variants, and revealed spacing constraints validated through synthetic reporter assays <em>[Citation Needed: BPNet paper]</em>. The same workflow applies to foundation model analysis: use the model to produce base-level attributions for a downstream task, run <em>TF-MoDISco</em> to extract a task-specific motif vocabulary, and analyze how motif usage varies across conditions.</p>
+<div class="callout callout-style-default callout-note callout-titled" title="Worked Example: TF-MoDISco Workflow">
+<div class="callout-header d-flex align-content-center">
+<div class="callout-icon-container">
+<i class="callout-icon"></i>
+</div>
+<div class="callout-title-container flex-fill">
+Worked Example: TF-MoDISco Workflow
+</div>
+</div>
+<div class="callout-body-container callout-body">
+<p><strong>Scenario:</strong> You have trained a model to predict liver enhancer activity and want to understand what sequence features it uses.</p>
+<p><strong>Step 1: Compute attributions</strong> Run integrated gradients on 10,000 predicted enhancer sequences (selecting sequences with high prediction scores). This produces a 4 × L attribution matrix for each sequence, where L is sequence length.</p>
+<p><strong>Step 2: Extract seqlets</strong> Scan each attribution profile for windows where summed importance exceeds a threshold (e.g., top 5% of all windows). A typical 500bp enhancer might yield 3-5 seqlets of 15-25bp each.</p>
+<p><strong>Step 3: Cluster seqlets</strong> Using both sequence similarity and attribution profile similarity, cluster the ~40,000 extracted seqlets. Suppose this produces 12 distinct clusters.</p>
+<p><strong>Step 4: Generate motifs</strong> For each cluster, align seqlets and compute position weight matrices. Results might include:</p>
+<table class="caption-top table">
+<thead>
+<tr class="header">
+<th>Cluster</th>
+<th># Seqlets</th>
+<th>Top JASPAR Match</th>
+<th>Match Score</th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<td>1</td>
+<td>8,200</td>
+<td>HNF4A</td>
+<td>0.92</td>
+</tr>
+<tr class="even">
+<td>2</td>
+<td>5,100</td>
+<td>CEBPA</td>
+<td>0.89</td>
+</tr>
+<tr class="odd">
+<td>3</td>
+<td>3,400</td>
+<td>FOXA1</td>
+<td>0.85</td>
+</tr>
+<tr class="even">
+<td>4</td>
+<td>2,800</td>
+<td>Novel (no match &gt; 0.7)</td>
+<td>—</td>
+</tr>
+</tbody>
+</table>
+<p><strong>Step 5: Validate</strong> The HNF4A and CEBPA motifs are known liver-specific transcription factors, confirming the model learned biologically relevant features. Cluster 4 represents a potential novel regulatory element requiring experimental validation.</p>
+<p><strong>Interpretation:</strong> The model relies heavily on canonical liver transcription factor binding sites, consistent with known liver enhancer biology. The novel motif warrants ChIP-seq or MPRA follow-up.</p>
+</div>
+</div>
 <div id="fig-tfmodisco" class="quarto-float quarto-figure quarto-figure-center anchored">
 <figure class="quarto-float quarto-float-fig figure">
 <div aria-describedby="fig-tfmodisco-caption-0ceaefa1-69ba-4598-a22c-09a6ac19f8ca">
@@ -821,7 +896,7 @@ Figure&nbsp;24.3: TF-MoDISco motif discovery from attribution scores. Starting f
 </section>
 <section id="sec-ch24-probing" class="level2" data-number="24.4">
 <h2 data-number="24.4" class="anchored" data-anchor-id="sec-ch24-probing"><span class="header-section-number">24.4</span> Probing Learned Representations</h2>
-<p>Attribution methods ask which input positions matter; probing asks what information the model’s internal representations encode. A probing classifier is a simple supervised model (typically linear) trained to predict some property of interest from the hidden representations of a pretrained model. If a linear probe can accurately predict a property, that property is encoded in an accessible form within the representation.</p>
+<p>Attribution methods ask which input positions matter; probing asks what information the model’s internal representations encode. The approach resembles asking a student to “show their work” on an exam: if they can correctly answer follow-up questions about intermediate steps, they likely understood the underlying concepts rather than memorizing answers. A probing classifier is a simple supervised model (typically linear) trained to predict some property of interest from the hidden representations of a pretrained model. If a linear probe can accurately predict a property, that property is encoded in an accessible form within the representation—the model “knows” this information in a way that can be easily extracted.</p>
 <section id="sec-ch24-probing-methods" class="level3" data-number="24.4.1">
 <h3 data-number="24.4.1" class="anchored" data-anchor-id="sec-ch24-probing-methods"><span class="header-section-number">24.4.1</span> Probing Methodology</h3>
 <p>The standard probing workflow extracts hidden states from a pretrained model for a set of inputs where the property of interest is known. These hidden states, without further transformation, serve as features for training a simple classifier to predict the property. The classifier’s accuracy indicates how well the representation encodes the probed property, while its simplicity (linearity, minimal parameters) ensures that the probe identifies information present in the representation rather than information the probe itself computes.</p>
@@ -964,6 +1039,24 @@ Knowledge Check: Local vs.&nbsp;Global Interpretability
 <li>In what clinical scenario would you prefer local interpretability? In what research scenario would global interpretability be more valuable?</li>
 </ol>
 <p><em>Think about the difference between explaining one prediction versus characterizing the model’s overall regulatory vocabulary.</em></p>
+<div class="callout callout-style-default callout-note callout-titled" title="Check Your Answer">
+<div class="callout-header d-flex align-content-center" data-bs-toggle="collapse" data-bs-target=".callout-11-contents" aria-controls="callout-11" aria-expanded="false" aria-label="Toggle callout">
+<div class="callout-icon-container">
+<i class="callout-icon"></i>
+</div>
+<div class="callout-title-container flex-fill">
+Check Your Answer
+</div>
+<div class="callout-btn-toggle d-inline-block border-0 py-1 ps-1 pe-0 float-end"><i class="callout-toggle"></i></div>
+</div>
+<div id="callout-11" class="callout-11-contents callout-collapse collapse">
+<div class="callout-body-container callout-body">
+<ol type="1">
+<li>Local analysis (attribution methods) would identify which specific nucleotides the variant disrupts and what motifs are affected—for example, “variant disrupts a GATA4 binding site at position 142.” (2) Global analysis would show how the variant shifts regulatory program membership—for example, “variant shifts sequence class from cardiac-specific enhancer to generic promoter-like.” (3) Prefer local for clinical variant interpretation where you need mechanistic detail for a specific case; prefer global for GWAS follow-up where you want to understand which regulatory programs are disease-relevant across many variants.</li>
+</ol>
+</div>
+</div>
+</div>
 </div>
 </div>
 </section>
@@ -975,7 +1068,7 @@ Knowledge Check: Local vs.&nbsp;Global Interpretability
 </section>
 <section id="sec-ch24-mechanistic" class="level2" data-number="24.7">
 <h2 data-number="24.7" class="anchored" data-anchor-id="sec-ch24-mechanistic"><span class="header-section-number">24.7</span> Mechanistic Interpretability</h2>
-<p>Classical interpretability methods treat models as input-output functions, probing what they compute without examining how they compute it. Mechanistic interpretability takes a different approach, attempting to reverse-engineer the algorithms implemented by neural network weights. This emerging field, most developed for language models, offers tools increasingly applicable to genomic foundation models.</p>
+<p>Classical interpretability methods treat models as input-output functions, probing what they compute without examining how they compute it. Mechanistic interpretability takes a different approach, attempting to reverse-engineer the algorithms implemented by neural network weights. Think of it like the difference between knowing that a car gets you from A to B versus opening the hood to understand how the engine, transmission, and fuel system work together. Classical interpretability tells you the car runs; mechanistic interpretability identifies which piston fires when and how the carburetor mixes fuel. This emerging field, most developed for language models, offers tools increasingly applicable to genomic foundation models.</p>
 <div class="callout callout-style-default callout-warning callout-titled">
 <div class="callout-header d-flex align-content-center">
 <div class="callout-icon-container">
@@ -1246,6 +1339,26 @@ Table&nbsp;24.3: Decision framework for interpretability analysis of genomic fou
 <p>The distinction between plausibility and faithfulness remains central to interpretability for genomic foundation models. Models can produce compelling motifs, structured attention patterns, and interpretable probing results while operating through mechanisms that do not correspond to biological reality. A model that correctly predicts splice site strength may do so by recognizing confounded sequence features rather than learning splice site grammar. A model that attributes importance to a transcription factor binding site may be exploiting correlation with GC content rather than modeling regulatory mechanism. Plausible explanations that match biological intuition are not the same as faithful explanations that accurately reflect model computation.</p>
 <p>Only interventional experiments can distinguish genuine regulatory insight from sophisticated pattern matching. Computational interventions (deletion tests, counterfactual sequence generation, circuit analysis) probe whether identified features are necessary and sufficient for model predictions. Biological interventions (reporter assays, CRISPR perturbations, massively parallel experiments) test whether model-derived hypotheses hold in living systems. The sequence design applications in <a href="../part_6/p6-ch30-design.html" class="quarto-xref"><span>Chapter 30</span></a> operationalize this validation loop, using interpretability-derived hypotheses to guide experimental libraries. The conjunction of computational and experimental validation transforms interpretability from rationalization into discovery, generating testable hypotheses that advance biological understanding rather than merely explaining model behavior.</p>
 <p>As foundation models grow in scale and capability, interpretability becomes simultaneously more important and more challenging. Larger models implement more complex computations, potentially capturing subtler regulatory logic but resisting simple interpretation. Mechanistic interpretability offers a path forward by characterizing model internals directly, though scaling these techniques to billion-parameter genomic models remains an open problem. The evaluation challenges this creates are examined in <a href="../part_2/p2-ch11-benchmarks.html#sec-ch11-evaluating-fm" class="quarto-xref"><span>Section 12.9</span></a>, while the confounding risks of scale are addressed in <a href="../part_2/p2-ch12-confounding.html" class="quarto-xref"><span>Chapter 12</span></a>. The integration of interpretability with model development points toward a future where understanding and prediction advance together: motifs discovered through interpretation inform architecture design, experimentally validated hypotheses become supervision signals, and interpretability failures that reveal confounding drive improvements in training data and evaluation. In this vision, interpretability is not merely a tool for explaining existing models but a methodology for building models whose predictions we trust because we understand the mechanisms they have learned.</p>
+<div class="callout callout-style-default callout-tip callout-titled" title="Test Yourself">
+<div class="callout-header d-flex align-content-center">
+<div class="callout-icon-container">
+<i class="callout-icon"></i>
+</div>
+<div class="callout-title-container flex-fill">
+Test Yourself
+</div>
+</div>
+<div class="callout-body-container callout-body">
+<p>Before reviewing the summary, test your recall:</p>
+<ol type="1">
+<li>What is the difference between a plausible and a faithful explanation? Why might a model produce attributions that highlight a biologically plausible motif even when that motif doesn’t drive the prediction?</li>
+<li>Why is in silico mutagenesis (ISM) considered the “gold standard” for attribution faithfulness, and what is its main practical limitation?</li>
+<li>What problem does the saturation issue create for gradient-based attribution methods, and how do integrated gradients address this?</li>
+<li>Explain why attention weights are not reliable indicators of input importance. What do they actually measure?</li>
+<li>Describe the validation hierarchy from sanity checks to biological sufficiency. What distinguishes computational necessity from biological necessity?</li>
+</ol>
+</div>
+</div>
 <div class="callout callout-style-default callout-note callout-titled">
 <div class="callout-header d-flex align-content-center">
 <div class="callout-icon-container">

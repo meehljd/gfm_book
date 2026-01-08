@@ -540,7 +540,9 @@ window.Quarto = {
 </header>
 
 
-<p><em>The network discovered what biologists had spent decades cataloging—without ever being told what to look for.</em></p>
+<blockquote class="blockquote">
+<p>The network discovered what biologists had spent decades cataloging—without ever being told what to look for.</p>
+</blockquote>
 <div class="callout callout-style-default callout-note callout-titled" title="Chapter Overview">
 <div class="callout-header d-flex align-content-center">
 <div class="callout-icon-container">
@@ -551,6 +553,7 @@ Chapter Overview
 </div>
 </div>
 <div class="callout-body-container callout-body">
+<p><strong>Estimated reading time:</strong> 35-45 minutes</p>
 <p><strong>Prerequisites:</strong> Understanding of one-hot encoding and tokenization (see <a href="p2-ch05-representations.html" class="quarto-xref"><span>Chapter 5</span></a>), basic familiarity with neural network concepts (layers, activation functions, gradient descent). No prior deep learning architecture knowledge required.</p>
 <p><strong>You will learn:</strong></p>
 <ul>
@@ -594,6 +597,78 @@ Key Insight
 </div>
 <div class="callout-body-container callout-body">
 <p>Convolutional filters are learned position weight matrices. The difference from classical PWMs is not in what they compute, but in how they are derived: through gradient descent on prediction tasks rather than sequence alignment. This means filters discover patterns that predict the training labels, not just patterns that recur in sequences.</p>
+</div>
+</div>
+<div class="callout callout-style-default callout-note callout-titled" title="Worked Example: Convolution Computation">
+<div class="callout-header d-flex align-content-center">
+<div class="callout-icon-container">
+<i class="callout-icon"></i>
+</div>
+<div class="callout-title-container flex-fill">
+Worked Example: Convolution Computation
+</div>
+</div>
+<div class="callout-body-container callout-body">
+<p>Consider a filter of width 4 learning to detect the TATA box motif. Why width 4? The TATA box consensus is approximately 4-6 bp, so a 4-bp filter can capture its core pattern. Filters narrower than the motif miss context; filters much wider waste capacity on flanking sequence that varies between binding sites. The first CNN layer typically uses multiple filter widths (4, 8, 12, 16 bp) to capture motifs of different lengths simultaneously—transcription factor binding sites range from 6-12 bp, so no single width suffices.</p>
+<p>After training, the filter weights might be:</p>
+<table class="caption-top table">
+<thead>
+<tr class="header">
+<th>Position</th>
+<th>A</th>
+<th>C</th>
+<th>G</th>
+<th>T</th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<td>1</td>
+<td>-0.2</td>
+<td>-0.5</td>
+<td>-0.5</td>
+<td><strong>1.8</strong></td>
+</tr>
+<tr class="even">
+<td>2</td>
+<td><strong>1.5</strong></td>
+<td>-0.3</td>
+<td>-0.4</td>
+<td>-0.2</td>
+</tr>
+<tr class="odd">
+<td>3</td>
+<td>-0.2</td>
+<td>-0.5</td>
+<td>-0.5</td>
+<td><strong>1.9</strong></td>
+</tr>
+<tr class="even">
+<td>4</td>
+<td><strong>1.6</strong></td>
+<td>-0.4</td>
+<td>-0.3</td>
+<td>-0.3</td>
+</tr>
+</tbody>
+</table>
+<p><strong>For input sequence “TATA”:</strong></p>
+<ul>
+<li>Position 1 (T): weight = 1.8</li>
+<li>Position 2 (A): weight = 1.5</li>
+<li>Position 3 (T): weight = 1.9</li>
+<li>Position 4 (A): weight = 1.6</li>
+<li><strong>Total activation: 6.8</strong> (high match)</li>
+</ul>
+<p><strong>For input sequence “GCGC”:</strong></p>
+<ul>
+<li>Position 1 (G): weight = -0.5</li>
+<li>Position 2 (C): weight = -0.3</li>
+<li>Position 3 (G): weight = -0.5</li>
+<li>Position 4 (C): weight = -0.4</li>
+<li><strong>Total activation: -1.7</strong> (low match)</li>
+</ul>
+<p>The filter produces high activation for sequences matching its learned pattern (TATA) and low/negative activation for mismatches. As this filter slides across a long sequence, it produces a profile of TATA box likelihood at each position.</p>
 </div>
 </div>
 <p>The first layer of a genomic CNN typically contains hundreds of such filters, each learning to detect different local patterns. Analysis of trained filters consistently reveals correspondence to known transcription factor binding motifs. The CTCF insulator motif, the ETS family consensus sequence, the AP-1 binding site: these patterns emerge from training on chromatin data without any explicit motif supervision. The network identifies them because they predict the training labels. Supervision on chromatin state induces discovery of the sequence patterns that create chromatin state, providing unsupervised motif learning as a byproduct of supervised prediction.</p>
@@ -707,6 +782,24 @@ Knowledge Check
 </div>
 <div class="callout-body-container callout-body">
 <p>Before continuing, make sure you can answer: (1) What is a convolutional filter learning to detect? (2) Why does pooling create position invariance? (3) What determines how far a CNN can “see” in the input sequence?</p>
+<div class="callout callout-style-default callout-note callout-titled" title="Check Your Answer">
+<div class="callout-header d-flex align-content-center" data-bs-toggle="collapse" data-bs-target=".callout-7-contents" aria-controls="callout-7" aria-expanded="false" aria-label="Toggle callout">
+<div class="callout-icon-container">
+<i class="callout-icon"></i>
+</div>
+<div class="callout-title-container flex-fill">
+Check Your Answer
+</div>
+<div class="callout-btn-toggle d-inline-block border-0 py-1 ps-1 pe-0 float-end"><i class="callout-toggle"></i></div>
+</div>
+<div id="callout-7" class="callout-7-contents callout-collapse collapse">
+<div class="callout-body-container callout-body">
+<ol type="1">
+<li>A convolutional filter learns to detect a specific sequence pattern or motif, responding strongly when that pattern appears in its receptive field. (2) Pooling creates position invariance by taking the maximum (or average) activation within a region, so the filter responds similarly whether the motif appears at position 10 or position 15 within that region. (3) The receptive field size determines how far a CNN can see, which is determined by the combination of filter width, number of layers, pooling operations, and dilation rates across the network.</li>
+</ol>
+</div>
+</div>
+</div>
 </div>
 </div>
 </section>
@@ -872,6 +965,26 @@ Stop and Think
 <p>With a trained sequence-to-chromatin model, variant scoring becomes straightforward: predict chromatin profiles for reference and alternative sequences, compute the difference. This <strong>in silico mutagenesis</strong> produces a 919-dimensional vector describing predicted changes across all features. The model never encounters variant data during training; effect prediction emerges from learned sequence-function relationships applied to mutations the model has never seen.</p>
 <p>Validation used allelic imbalance data from digital genomic footprinting. For variants showing allele-specific DNase I sensitivity, <em>DeepSEA</em> predictions correlated with experimentally observed biases: variants predicted to increase accessibility tended to show higher accessibility on the corresponding allele. This correlation would not exist if the model merely learned coarse sequence features insensitive to point mutations.</p>
 <p>Systematic characterization of regulatory elements requires more than single-variant scoring. <strong>In silico saturation mutagenesis</strong> predicts effects of all possible substitutions across a regulatory element, identifying positions where mutations most strongly perturb function. These critical positions typically correspond to transcription factor binding motifs, providing motif discovery that emerges from learned representations rather than explicit sequence alignment. The approach enables characterization of any regulatory element, including those in cell types or conditions never experimentally profiled. Foundation models extend these principles to longer contexts and richer representations (<a href="../part_3/p3-ch17-vep-fm.html" class="quarto-xref"><span>Chapter 17</span></a>), while clinical integration requires calibration approaches that map model outputs to actionable categories (<a href="../part_6/p6-ch28-rare-disease.html" class="quarto-xref"><span>Chapter 28</span></a>).</p>
+<div class="callout callout-style-default callout-important callout-titled" title="Checkpoint: What You Should Understand So Far">
+<div class="callout-header d-flex align-content-center">
+<div class="callout-icon-container">
+<i class="callout-icon"></i>
+</div>
+<div class="callout-title-container flex-fill">
+Checkpoint: What You Should Understand So Far
+</div>
+</div>
+<div class="callout-body-container callout-body">
+<p>Before continuing, make sure you can explain:</p>
+<ol type="1">
+<li><strong>How convolutional filters work</strong>: Learned weight patterns that slide across sequences, producing high activation when input matches the learned motif</li>
+<li><strong>Why multi-task learning helps</strong>: Shared representations across 919 chromatin features prevent overfitting and discover general regulatory patterns</li>
+<li><strong>In silico mutagenesis</strong>: Predict effects by comparing reference vs.&nbsp;alternative sequence predictions—no variant training data required</li>
+<li><strong>The receptive field limitation</strong>: CNNs can only integrate information within their architectural context window (typically 1-10 kb)</li>
+</ol>
+<p>If any of these are unclear, re-read the relevant sections before proceeding. The remaining sections build on these foundations.</p>
+</div>
+</div>
 </section>
 </section>
 <section id="sec-ch06-basset" class="level2" data-number="6.3">
@@ -1197,6 +1310,24 @@ Knowledge Check
 </div>
 <div class="callout-body-container callout-body">
 <p>Before proceeding, ensure you can explain: (1) Why can’t a CNN learn dependencies that exceed its receptive field, even with more training data? (2) What biological phenomena require context longer than typical CNN receptive fields? (3) What architectural approaches extend receptive fields in CNNs?</p>
+<div class="callout callout-style-default callout-note callout-titled" title="Check Your Answer">
+<div class="callout-header d-flex align-content-center" data-bs-toggle="collapse" data-bs-target=".callout-19-contents" aria-controls="callout-19" aria-expanded="false" aria-label="Toggle callout">
+<div class="callout-icon-container">
+<i class="callout-icon"></i>
+</div>
+<div class="callout-title-container flex-fill">
+Check Your Answer
+</div>
+<div class="callout-btn-toggle d-inline-block border-0 py-1 ps-1 pe-0 float-end"><i class="callout-toggle"></i></div>
+</div>
+<div id="callout-19" class="callout-19-contents callout-collapse collapse">
+<div class="callout-body-container callout-body">
+<ol type="1">
+<li>A CNN cannot learn dependencies beyond its receptive field because positions outside this window have zero gradient with respect to the output—information simply cannot flow between them, regardless of training data quantity. (2) Distal enhancer-promoter interactions (tens of kilobases), long-range chromatin loops, TAD boundary effects, and coordinated regulation across large genomic domains all require longer context than typical CNN receptive fields of 200-1000 bp. (3) Receptive fields can be extended through dilated convolutions, deeper networks with more layers, or hybrid architectures that combine CNNs with attention mechanisms.</li>
+</ol>
+</div>
+</div>
+</div>
 </div>
 </div>
 </section>
@@ -1305,6 +1436,25 @@ Stop and Think
 </div>
 <p>These principles carry forward into foundation model architectures. What CNNs could not resolve was the receptive field limitation. Genomic regulation operates across scales that exceed practical convolutional depth: enhancers modulating genes across hundreds of kilobases, topologically associating domains spanning megabases. Dilated convolutions and deeper networks extend reach but cannot fundamentally escape the constraint that convolutions aggregate local information through hierarchical composition.</p>
 <p>Yet specialization retains value even as general-purpose models advance. <em>SpliceAI</em> achieves clinical-grade splice site prediction that broader foundation models have not matched. When the prediction target is well-defined, training data abundant, and the relevant context fits within architectural constraints, task-specific models remain competitive with or superior to general-purpose approaches. This tension between specialized accuracy and general capability defines architectural choices across genomic AI. For clinical deployment requiring high reliability on specific tasks, specialized architectures may remain preferred. For discovery applications requiring broad coverage across diverse molecular mechanisms, the foundation model paradigm (see <a href="../part_3/p3-ch13-fm-principles.html" class="quarto-xref"><span>Chapter 13</span></a>) offers different trade-offs. Attention mechanisms provide the architectural substrate for long-range modeling while inheriting the end-to-end learning principles that convolutional networks established.</p>
+<div class="callout callout-style-default callout-tip callout-titled" title="Test Yourself">
+<div class="callout-header d-flex align-content-center">
+<div class="callout-icon-container">
+<i class="callout-icon"></i>
+</div>
+<div class="callout-title-container flex-fill">
+Test Yourself
+</div>
+</div>
+<div class="callout-body-container callout-body">
+<p>Before reviewing the summary, test your recall:</p>
+<ol type="1">
+<li>How do convolutional filters differ from classical position weight matrices, and why does this difference matter for discovering regulatory patterns?</li>
+<li>Explain why multi-task training across 919 chromatin features helps regularization and improves generalization compared to single-task training.</li>
+<li>A CNN has three convolutional layers with kernel width 8 and pooling factor 2. Approximately what receptive field does this architecture achieve, and why does this limit regulatory modeling?</li>
+<li>Why did SpliceAI use dilated convolutions with increasing dilation rates across 32 layers, and what biological patterns required this architectural choice?</li>
+</ol>
+</div>
+</div>
 <div class="callout callout-style-default callout-note callout-titled" title="Chapter Summary">
 <div class="callout-header d-flex align-content-center">
 <div class="callout-icon-container">

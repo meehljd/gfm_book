@@ -567,7 +567,9 @@ window.Quarto = {
 </header>
 
 
-<p><em>The question is not whether to adapt, but how much.</em></p>
+<blockquote class="blockquote">
+<p>The question is not whether to adapt, but how much.</p>
+</blockquote>
 <div class="callout callout-style-default callout-note callout-titled">
 <div class="callout-header d-flex align-content-center">
 <div class="callout-icon-container">
@@ -578,6 +580,7 @@ Chapter Overview
 </div>
 </div>
 <div class="callout-body-container callout-body">
+<p><strong>Estimated reading time:</strong> 35-45 minutes</p>
 <p><strong>Prerequisites:</strong> Before reading this chapter, you should be familiar with:</p>
 <ul>
 <li>Transformer architecture fundamentals (<a href="p2-ch07-attention.html" class="quarto-xref"><span>Chapter 7</span></a>)</li>
@@ -601,7 +604,7 @@ Chapter Overview
 <h2 data-number="10.1" class="anchored" data-anchor-id="sec-ch10-peft"><span class="header-section-number">10.1</span> Parameter-Efficient Fine-Tuning</h2>
 <section id="sec-ch10-lora" class="level3" data-number="10.1.1">
 <h3 data-number="10.1.1" class="anchored" data-anchor-id="sec-ch10-lora"><span class="header-section-number">10.1.1</span> Low-Rank Adaptation</h3>
-<p><strong>Low-Rank Adaptation (LoRA)</strong> has emerged as the dominant PEFT technique in genomic applications because it directly operationalizes this insight. Rather than updating a large weight matrix <span class="math inline">\(W\)</span> directly, LoRA introduces two smaller matrices <span class="math inline">\(A\)</span> and <span class="math inline">\(B\)</span> whose product approximates the desired weight change: <span class="math inline">\(W' = W + BA\)</span> <span class="citation" data-cites="hu_lora_2021">(<a href="../bib/references.html#ref-hu_lora_2021" role="doc-biblioref">Hu et al. 2021</a>)</span>. During fine-tuning, <span class="math inline">\(W\)</span> remains frozen while only <span class="math inline">\(A\)</span> and <span class="math inline">\(B\)</span> receive gradient updates. The rank of these matrices (typically 8 to 64 for genomic models) controls adaptation expressiveness: lower ranks introduce fewer parameters and stronger implicit regularization; higher ranks enable more flexible task-specific modification at greater overfitting risk.</p>
+<p><strong>Low-Rank Adaptation (LoRA)</strong> has emerged as the dominant PEFT technique in genomic applications because it directly operationalizes this insight. Think of it like adding a correction lens to a camera rather than rebuilding the optics from scratch: the original lens (pretrained weights) stays intact, while a small, carefully shaped addition adjusts the focus for your specific purpose. Rather than updating a large weight matrix <span class="math inline">\(W\)</span> directly, LoRA introduces two smaller matrices <span class="math inline">\(A\)</span> and <span class="math inline">\(B\)</span> whose product approximates the desired weight change: <span class="math inline">\(W' = W + BA\)</span> <span class="citation" data-cites="hu_lora_2021">(<a href="../bib/references.html#ref-hu_lora_2021" role="doc-biblioref">Hu et al. 2021</a>)</span>. During fine-tuning, <span class="math inline">\(W\)</span> remains frozen while only <span class="math inline">\(A\)</span> and <span class="math inline">\(B\)</span> receive gradient updates. The rank of these matrices (typically 8 to 64 for genomic models) controls adaptation expressiveness: lower ranks introduce fewer parameters and stronger implicit regularization; higher ranks enable more flexible task-specific modification at greater overfitting risk.</p>
 <div class="callout callout-style-default callout-tip callout-titled">
 <div class="callout-header d-flex align-content-center">
 <div class="callout-icon-container">
@@ -672,6 +675,55 @@ Practical Guidance: LoRA Configuration Checklist
 </div>
 </div>
 <p>These heuristics provide starting points, not guarantees. The interaction between model architecture, pretraining objective, target task, and available data creates a combinatorial space that resists simple rules. Systematic hyperparameter search over rank, layer selection, and weight matrix targeting, guided by validation performance on data matching the deployment distribution, remains the most reliable path to effective adaptation.</p>
+<div class="callout callout-style-default callout-note callout-titled" title="Worked Example: Configuring LoRA for Tissue-Specific Prediction">
+<div class="callout-header d-flex align-content-center">
+<div class="callout-icon-container">
+<i class="callout-icon"></i>
+</div>
+<div class="callout-title-container flex-fill">
+Worked Example: Configuring LoRA for Tissue-Specific Prediction
+</div>
+</div>
+<div class="callout-body-container callout-body">
+<p>Consider adapting <em>Nucleotide Transformer</em> (500M parameters) for predicting chromatin accessibility in liver tissue, with 2,000 labeled training examples.</p>
+<p><strong>Step 1: Choose initial rank.</strong> With moderate data (2,000 examples) and a task similar to pretraining (sequence to chromatin state), start with rank 16.</p>
+<p><strong>Step 2: Select layers.</strong> <em>Nucleotide Transformer</em> is an encoder model with 24 layers. Apply LoRA to layers 17-24 (final third), prioritizing attention weights (Q, K, V projections).</p>
+<p><strong>Step 3: Count parameters.</strong></p>
+<table class="caption-top table">
+<colgroup>
+<col style="width: 30%">
+<col style="width: 36%">
+<col style="width: 33%">
+</colgroup>
+<thead>
+<tr class="header">
+<th>Component</th>
+<th>Calculation</th>
+<th>Parameters</th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<td>Original attention (per layer)</td>
+<td><span class="math inline">\(4 \times d \times d = 4 \times 1024 \times 1024\)</span></td>
+<td>4.2M</td>
+</tr>
+<tr class="even">
+<td>LoRA matrices (per layer)</td>
+<td><span class="math inline">\(4 \times (d \times r + r \times d) = 4 \times 2 \times 1024 \times 16\)</span></td>
+<td>131K</td>
+</tr>
+<tr class="odd">
+<td>8 adapted layers</td>
+<td><span class="math inline">\(8 \times 131K\)</span></td>
+<td>~1M trainable</td>
+</tr>
+</tbody>
+</table>
+<p>Result: ~1M trainable parameters vs.&nbsp;500M frozen—a 500-fold reduction.</p>
+<p><strong>Step 4: Validate.</strong> Compare against frozen features baseline. If validation performance plateaus, try rank 32 or extend to feed-forward weights. If performance matches frozen features, the task may not require adaptation beyond linear probing.</p>
+</div>
+</div>
 </section>
 </section>
 <section id="sec-ch10-layer-selection" class="level2" data-number="10.2">
@@ -702,7 +754,7 @@ Difficulty Warning
 </div>
 <p>Decoder models trained with causal attention create fundamentally different representation hierarchies. Each layer can only integrate information from preceding positions due to the causal mask. Position 500 in a 1000-token sequence has rich representations of the first 499 tokens but no information about the following 500. This asymmetry propagates through layers, creating representations that emphasize historical context over global sequence properties.</p>
 <p>The next-token prediction objective compounds this asymmetry by specializing the final layers for a specific output format. Consider what the final layer must learn: transform the current hidden state into a probability distribution over vocabulary tokens. This transformation discards information about the input sequence that is irrelevant for predicting the immediate next token. Evolutionary conservation patterns 200 positions upstream, motif co-occurrence statistics, and global sequence composition may all inform intermediate representations but contribute nothing to next-token prediction and can be safely discarded by the final layer.</p>
-<div class="callout callout-style-default callout-note callout-titled">
+<div class="callout callout-style-default callout-tip callout-titled" title="Knowledge Check">
 <div class="callout-header d-flex align-content-center">
 <div class="callout-icon-container">
 <i class="callout-icon"></i>
@@ -713,6 +765,22 @@ Knowledge Check
 </div>
 <div class="callout-body-container callout-body">
 <p>A decoder model has 12 layers. You are using it for promoter classification (binary: promoter vs.&nbsp;non-promoter). Based on the layer hunting problem, which layers would you expect to perform best for this task, and why? What would you predict about the final layer’s performance?</p>
+<div class="callout callout-style-default callout-note callout-titled" title="Check Your Answer">
+<div class="callout-header d-flex align-content-center" data-bs-toggle="collapse" data-bs-target=".callout-7-contents" aria-controls="callout-7" aria-expanded="false" aria-label="Toggle callout">
+<div class="callout-icon-container">
+<i class="callout-icon"></i>
+</div>
+<div class="callout-title-container flex-fill">
+Check Your Answer
+</div>
+<div class="callout-btn-toggle d-inline-block border-0 py-1 ps-1 pe-0 float-end"><i class="callout-toggle"></i></div>
+</div>
+<div id="callout-7" class="callout-7-contents callout-collapse collapse">
+<div class="callout-body-container callout-body">
+<p>You would expect intermediate layers (roughly layers 4-8, the middle third of the network) to perform best for promoter classification. These layers contain general-purpose sequence representations before they are transformed into next-token predictions. The final layer would likely perform poorly because it has been specialized to produce token probability distributions, discarding information about global sequence properties like “is this a promoter?” that are irrelevant for predicting the immediate next token but crucial for classification.</p>
+</div>
+</div>
+</div>
 </div>
 </div>
 <p>Empirically, practitioners using decoder models for classification consistently find that intermediate layers outperform final layers, often dramatically. For <em>HyenaDNA</em> on regulatory element classification, layers in the middle third of the network frequently achieve the best linear probing accuracy. For GPT-style genomic models, the optimal layer can vary by 30-50% of network depth depending on the specific downstream task. A splice site classifier might perform best with layer 4 representations while a promoter classifier using the same model achieves optimal performance at layer 8. The task-dependence of optimal layer selection adds a hyperparameter dimension that does not exist for encoder models.</p>
@@ -855,7 +923,7 @@ Stop and Think
 </div>
 </div>
 <p>Sequence classification requires a fixed-size representation regardless of input length. A promoter classifier must produce the same prediction format whether the input spans 200 or 2,000 nucleotides. A pathogenicity model must output a single score whether analyzing a 50-residue peptide or a 3,000-residue multidomain protein. Transformers produce per-position representations: for a 512-token input, the model generates 512 embedding vectors, one for each position. Converting these variable-length outputs into fixed-size vectors suitable for classification constitutes the <strong>sequence aggregation</strong> problem.</p>
-<p>The <code>[CLS]</code> token provides one solution, introduced in <em>BERT</em> and adopted widely across encoder architectures including <em>DNABERT</em> and <em>Nucleotide Transformer</em> <span class="citation" data-cites="devlin_bert_2019">(<a href="../bib/references.html#ref-devlin_bert_2019" role="doc-biblioref">Devlin et al. 2019</a>)</span>. The approach prepends a special classification token to every input sequence before processing. This token participates in attention computations like any other position, attending to all sequence positions and being attended to by them. Unlike content tokens that represent actual nucleotides or amino acids, the <code>[CLS]</code> token carries no intrinsic meaning. Its representation emerges entirely from aggregating information across the sequence through the attention mechanism.</p>
+<p>The <code>[CLS]</code> token provides one solution, introduced in <em>BERT</em> and adopted widely across encoder architectures including <em>DNABERT</em> and <em>Nucleotide Transformer</em> <span class="citation" data-cites="devlin_bert_2019">(<a href="../bib/references.html#ref-devlin_bert_2019" role="doc-biblioref">Devlin et al. 2019</a>)</span>. The approach works like a note-taker sitting at the front of a meeting: this special token attends to everything being said (all sequence positions) and distills the discussion into a summary that captures the essential points. The approach prepends a special classification token to every input sequence before processing. This token participates in attention computations like any other position, attending to all sequence positions and being attended to by them. Unlike content tokens that represent actual nucleotides or amino acids, the <code>[CLS]</code> token carries no intrinsic meaning. Its representation emerges entirely from aggregating information across the sequence through the attention mechanism.</p>
 <p>The critical insight is that training shapes the <code>[CLS]</code> representation specifically for sequence-level tasks. During <em>BERT</em>’s pretraining, the <code>[CLS]</code> token was used for next-sentence prediction, requiring it to encode information sufficient to determine whether two sentences were contiguous in the original text. This training pressure transforms the <code>[CLS]</code> position into a natural aggregation point: its final-layer representation captures sequence-level properties distilled from positional representations throughout the network. When <em>DNABERT</em> applies this architecture to genomic sequences, the <code>[CLS]</code> token learns to aggregate regulatory signals, motif patterns, and compositional features into a single vector suitable for downstream classification.</p>
 <p>The computational mechanism is straightforward. For an input sequence of <span class="math inline">\(n\)</span> tokens, the model prepends <code>[CLS]</code> to create an <span class="math inline">\((n+1)\)</span>-token input. After processing through all transformer layers, the final representation at position 0 (the <code>[CLS]</code> position) serves as the sequence embedding. A linear classifier or shallow neural network trained on this embedding produces the final prediction. The <code>[CLS]</code> approach adds exactly one token to the input, creating negligible computational overhead while providing a principled aggregation mechanism shaped by pretraining.</p>
 <p>The <code>[CLS]</code> token’s effectiveness depends on the pretraining objective. When pretraining includes explicit sequence-level tasks (next-sentence prediction in <em>BERT</em>, similar objectives in some genomic models), the <code>[CLS]</code> representation receives direct training signal to encode sequence properties. When pretraining uses only token-level objectives like masked language modeling, the <code>[CLS]</code> representation is shaped indirectly through its participation in attention. <em>DNABERT</em> used masked language modeling without an explicit sequence-level pretraining task, yet its <code>[CLS]</code> representations still proved effective for downstream classification, suggesting that attention-based aggregation suffices even without task-specific pretraining signal <span class="citation" data-cites="ji_dnabert_2021">(<a href="../bib/references.html#ref-ji_dnabert_2021" role="doc-biblioref">Ji et al. 2021</a>)</span>.</p>
@@ -1111,7 +1179,7 @@ Difficulty Warning
 </section>
 <section id="mitigation-strategies" class="level3" data-number="10.7.2">
 <h3 data-number="10.7.2" class="anchored" data-anchor-id="mitigation-strategies"><span class="header-section-number">10.7.2</span> Mitigation Strategies</h3>
-<div class="callout callout-style-default callout-note callout-titled">
+<div class="callout callout-style-default callout-tip callout-titled" title="Knowledge Check">
 <div class="callout-header d-flex align-content-center">
 <div class="callout-icon-container">
 <i class="callout-icon"></i>
@@ -1122,6 +1190,22 @@ Knowledge Check
 </div>
 <div class="callout-body-container callout-body">
 <p>Consider a variant classifier trained on 10,000 benign variants and 100 pathogenic variants. The model achieves 99% accuracy on the test set. Is this model performing well? What additional information would you need to assess its clinical utility?</p>
+<div class="callout callout-style-default callout-note callout-titled" title="Check Your Answer">
+<div class="callout-header d-flex align-content-center" data-bs-toggle="collapse" data-bs-target=".callout-14-contents" aria-controls="callout-14" aria-expanded="false" aria-label="Toggle callout">
+<div class="callout-icon-container">
+<i class="callout-icon"></i>
+</div>
+<div class="callout-title-container flex-fill">
+Check Your Answer
+</div>
+<div class="callout-btn-toggle d-inline-block border-0 py-1 ps-1 pe-0 float-end"><i class="callout-toggle"></i></div>
+</div>
+<div id="callout-14" class="callout-14-contents callout-collapse collapse">
+<div class="callout-body-container callout-body">
+<p>No, 99% accuracy does not indicate good performance in this imbalanced scenario. A trivial baseline that predicts “benign” for every variant would achieve 99% accuracy (10,000/10,100 correct). You would need to see: (1) sensitivity and specificity separately to know if the model actually detects pathogenic variants, (2) auPRC (not just auROC) which is sensitive to class imbalance, (3) confusion matrix showing true/false positives and negatives, and (4) performance at clinically relevant decision thresholds. The model might be achieving high accuracy by simply predicting benign for everything, making it clinically useless.</p>
+</div>
+</div>
+</div>
 </div>
 </div>
 <p>Addressing class imbalance requires intervention at data, loss, and evaluation levels. No single strategy suffices; effective pipelines combine multiple approaches.</p>
@@ -1264,6 +1348,48 @@ Stop and Think
 <p>Transfer learning amplifies the value of pretrained models by connecting learned representations to specific applications. A foundation model pretrained on billions of sequences encodes patterns that would require orders of magnitude more labeled data to learn from scratch. Effective transfer realizes this investment; ineffective transfer inherits hidden limitations without the promised benefits.</p>
 <p>The risks are concrete. Domain shift between pretraining and deployment contexts causes silent failures: models trained on research cohorts may miscalibrate on clinical populations, models trained on one species may fail unpredictably on another, models trained on one assay technology may not generalize to its successor. These failures produce confident predictions that are systematically wrong, often in ways that correlate with clinically relevant subgroups. Detection through distribution divergence measures and embedding visualization can identify shift before deployment, but mitigation requires either domain-adaptive fine-tuning or acceptance that some shifts cannot be bridged.</p>
 <p>Validating transfer claims requires adversarial rigor. Test for contamination between pretraining and evaluation data through sequence-level deduplication. Implement temporal splits that respect real-world prediction scenarios. Compare against properly-tuned baselines trained from scratch with equivalent effort. Stratify performance by ancestry, variant type, and other clinically meaningful categories. The goal is establishing whether transfer provides genuine benefit under realistic deployment conditions, not optimizing for favorable benchmarks. Foundation model applications assume that transfer succeeds; the methods here determine whether that assumption holds for specific contexts.</p>
+<div class="callout callout-style-default callout-tip callout-titled" title="Test Yourself">
+<div class="callout-header d-flex align-content-center">
+<div class="callout-icon-container">
+<i class="callout-icon"></i>
+</div>
+<div class="callout-title-container flex-fill">
+Test Yourself
+</div>
+</div>
+<div class="callout-body-container callout-body">
+<p>Before reviewing the summary, test your recall:</p>
+<ol type="1">
+<li>How does LoRA achieve parameter-efficient adaptation through low-rank decomposition, and why does constraining adaptation to low-rank subspaces provide implicit regularization?</li>
+<li>Explain the layer hunting problem for decoder models. Why do intermediate layers often outperform final layers for classification, and how does this differ from encoder models?</li>
+<li>A classifier trained on 10,000 benign variants and 100 pathogenic variants achieves 99% accuracy. Why might this model be clinically useless despite high accuracy?</li>
+<li>What is domain shift, and how does it differ from data leakage? Give an example where a model experiences distribution shift without any leakage.</li>
+<li>When should you use linear probing versus LoRA versus full fine-tuning? What data quantity thresholds guide this decision?</li>
+</ol>
+<div class="callout callout-style-default callout-note callout-titled" title="Check Your Answers">
+<div class="callout-header d-flex align-content-center" data-bs-toggle="collapse" data-bs-target=".callout-18-contents" aria-controls="callout-18" aria-expanded="false" aria-label="Toggle callout">
+<div class="callout-icon-container">
+<i class="callout-icon"></i>
+</div>
+<div class="callout-title-container flex-fill">
+Check Your Answers
+</div>
+<div class="callout-btn-toggle d-inline-block border-0 py-1 ps-1 pe-0 float-end"><i class="callout-toggle"></i></div>
+</div>
+<div id="callout-18" class="callout-18-contents callout-collapse collapse">
+<div class="callout-body-container callout-body">
+<ol type="1">
+<li><p><strong>Low-Rank Adaptation</strong>: LoRA introduces two smaller matrices <span class="math inline">\(A\)</span> and <span class="math inline">\(B\)</span> whose product approximates the desired weight change: <span class="math inline">\(W' = W + BA\)</span>. During fine-tuning, only <span class="math inline">\(A\)</span> and <span class="math inline">\(B\)</span> receive gradient updates while <span class="math inline">\(W\)</span> remains frozen. This reduces trainable parameters from hundreds of millions to just 2-5 million, achieving a 500-fold reduction in parameter count. The low-rank constraint provides implicit regularization because task-specific adaptations empirically lie in low-dimensional subspaces; forcing adaptation through limited dimensions prevents overfitting while capturing most required changes.</p></li>
+<li><p><strong>Layer Hunting Problem</strong>: Decoder models are trained with next-token prediction, which specializes final layers to produce token probability distributions rather than general-purpose representations. This optimization discards information irrelevant for predicting the immediate next token but crucial for classification tasks. Intermediate layers (typically middle third of the network) contain richer general-purpose sequence representations before this specialization occurs, often outperforming final layers by 15-30%. Encoder models avoid this problem because bidirectional masked language modeling shapes all layers for general utility, making final-layer representations reliably effective for downstream tasks.</p></li>
+<li><p><strong>Class Imbalance</strong>: With a 100:1 ratio of benign to pathogenic variants, a trivial baseline that predicts “benign” for every variant achieves 99% accuracy (10,000/10,100 correct). High accuracy masks complete failure on the clinically important minority class. The model might have zero sensitivity for pathogenic variants while achieving near-perfect specificity on benign variants, making it useless for clinical diagnosis. Proper evaluation requires sensitivity and specificity reported separately, auPRC (not just auROC), and performance at clinically relevant decision thresholds.</p></li>
+<li><p><strong>Domain Shift vs.&nbsp;Leakage</strong>: Domain shift occurs when training and deployment distributions differ due to biological or technical variation (e.g., training on European-ancestry samples and deploying on African-ancestry samples, training on one tissue type and deploying on another). This creates systematic failures even when datasets are properly separated with no overlap. Data leakage, by contrast, occurs when test examples appear in training data or when future information unavailable at prediction time influences training. Example: a model trained on liver chromatin data shows poor performance on heart tissue (domain shift) even though the heart test sequences were never seen during training (no leakage).</p></li>
+<li><p><strong>Adaptation Strategy Selection</strong>: Use linear probing with fewer than 500 labeled examples; more complex adaptation will overfit catastrophically. Between 500 and 5,000 examples, LoRA and other PEFT methods offer favorable tradeoffs between flexibility and regularization. With more than 10,000 examples, full fine-tuning becomes viable if the target task diverges substantially from pretraining. However, data quantity alone does not determine strategy; task alignment with pretraining matters equally. Always establish frozen feature baselines first, then escalate to more complex methods only when simpler approaches demonstrably fail.</p></li>
+</ol>
+</div>
+</div>
+</div>
+</div>
+</div>
 <div class="callout callout-style-default callout-note callout-titled">
 <div class="callout-header d-flex align-content-center">
 <div class="callout-icon-container">

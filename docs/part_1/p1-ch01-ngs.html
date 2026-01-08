@@ -582,6 +582,7 @@ Chapter Overview
 </div>
 </div>
 <div class="callout-body-container callout-body">
+<p><strong>Estimated reading time:</strong> 40-50 minutes</p>
 <p><strong>Prerequisites:</strong> Basic understanding of DNA structure and the concept of genetic variants (mutations, SNPs). No prior knowledge of sequencing technology required.</p>
 <p><strong>You will learn:</strong></p>
 <ul>
@@ -769,6 +770,22 @@ Knowledge Check
 </div>
 <div class="callout-body-container callout-body">
 <p>Before continuing, can you articulate the three sources of signal that manifest as mismatches between reads and reference? (Answer: sequencing errors, alignment artifacts, and genuine biological variation)</p>
+<div class="callout callout-style-default callout-note callout-titled" title="Check Your Answer">
+<div class="callout-header d-flex align-content-center" data-bs-toggle="collapse" data-bs-target=".callout-6-contents" aria-controls="callout-6" aria-expanded="false" aria-label="Toggle callout">
+<div class="callout-icon-container">
+<i class="callout-icon"></i>
+</div>
+<div class="callout-title-container flex-fill">
+Check Your Answer
+</div>
+<div class="callout-btn-toggle d-inline-block border-0 py-1 ps-1 pe-0 float-end"><i class="callout-toggle"></i></div>
+</div>
+<div id="callout-6" class="callout-6-contents callout-collapse collapse">
+<div class="callout-body-container callout-body">
+<p>The three sources are: (1) sequencing errors from instrument noise and library preparation artifacts, (2) alignment artifacts when reads map to incorrect genomic locations, and (3) genuine biological variation including germline variants, somatic mutations, and mosaicism. All three produce identical-looking mismatches in the data, making it impossible to distinguish them without sophisticated probabilistic models.</p>
+</div>
+</div>
+</div>
 </div>
 </div>
 <section id="sec-ch01-alignment" class="level3" data-number="1.3.1">
@@ -844,8 +861,92 @@ Mathematical Detail
 P(G \mid D) \propto P(G) \prod_{r \in \text{reads}} P(r \mid G)
 \]</span></p>
 <p>The prior <em>P(G)</em> often assumes Hardy-Weinberg equilibrium with a specified allele frequency, while the likelihood <em>P(r | G)</em> captures the probability of observing read <em>r</em> given that the true genotype is <em>G</em>. This formulation assumes conditional independence of reads given the genotype, an assumption violated in practice by systematic sequencing errors, read pair correlations, and library-level artifacts that create dependencies among observations. Classical pipelines attempt to correct for these violations through BQSR and ad hoc filters. Deep learning-based callers can learn these dependencies implicitly by processing entire pileups simultaneously, one of their key advantages.</p>
-<p><strong>Worked Example:</strong> Consider a site with 30 reads, of which 14 support the reference allele and 16 support an alternate. For a heterozygous genotype (0/1), we expect roughly equal proportions. The likelihood P(D|0/1) would be high. For homozygous reference (0/0), seeing 16 alternate reads is unlikely–P(D|0/0) would be very low. The posterior probability thus strongly favors heterozygosity.</p>
+<div class="callout callout-style-default callout-note callout-titled" title="Worked Example: Calculating Genotype Likelihoods">
+<div class="callout-header d-flex align-content-center">
+<div class="callout-icon-container">
+<i class="callout-icon"></i>
+</div>
+<div class="callout-title-container flex-fill">
+Worked Example: Calculating Genotype Likelihoods
+</div>
+</div>
+<div class="callout-body-container callout-body">
+<p>Consider a genomic site with 30 overlapping reads: 14 support the reference allele (A) and 16 support an alternate allele (G).</p>
+<p><strong>Step 1: Define the hypothesis space</strong></p>
+<p>Three possible diploid genotypes: 0/0 (AA), 0/1 (AG), 1/1 (GG)</p>
+<p><strong>Step 2: Calculate expected read proportions under each genotype</strong></p>
+<table class="caption-top table">
+<thead>
+<tr class="header">
+<th>Genotype</th>
+<th>Expected Ref</th>
+<th>Expected Alt</th>
+<th>Observed (14A, 16G)</th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<td>0/0 (AA)</td>
+<td>~100%</td>
+<td>~0%</td>
+<td>Very unlikely</td>
+</tr>
+<tr class="even">
+<td>0/1 (AG)</td>
+<td>~50%</td>
+<td>~50%</td>
+<td>Good match!</td>
+</tr>
+<tr class="odd">
+<td>1/1 (GG)</td>
+<td>~0%</td>
+<td>~100%</td>
+<td>Very unlikely</td>
+</tr>
+</tbody>
+</table>
+<p><strong>Step 3: Compute likelihoods (simplified)</strong></p>
+<p>Assuming base quality of Q30 (error rate ~0.001):</p>
+<ul>
+<li>P(data | 0/0): Probability of 16 “errors” from a homozygous reference site ≈ <span class="math inline">\((0.001)^{16}\)</span> → essentially zero</li>
+<li>P(data | 0/1): Probability of 14:16 split from a heterozygote ≈ <span class="math inline">\(\binom{30}{14}(0.5)^{30}\)</span> → high</li>
+<li>P(data | 1/1): Probability of 14 “errors” from a homozygous alternate site ≈ <span class="math inline">\((0.001)^{14}\)</span> → essentially zero</li>
+</ul>
+<p><strong>Step 4: Apply Bayes’ theorem</strong></p>
+<p>The posterior strongly favors heterozygosity (0/1) because only this genotype explains the observed ~47:53 allelic ratio without invoking implausible error rates. This is reported as the called genotype with high genotype quality (GQ).</p>
+</div>
+</div>
 <p>The per-read likelihoods aggregate into genotype likelihoods, which combine with priors to yield posterior probabilities. These posteriors become the <strong>genotype quality (GQ)</strong> scores that downstream analyses often treat as ground truth. Per-sample results are output as <code>gVCF</code> files encoding both variant calls and “reference blocks” with estimated confidence at non-variant positions, enabling later joint analysis across samples.</p>
+<div class="callout callout-style-default callout-tip callout-titled" title="Try This: Transfer Practice">
+<div class="callout-header d-flex align-content-center">
+<div class="callout-icon-container">
+<i class="callout-icon"></i>
+</div>
+<div class="callout-title-container flex-fill">
+Try This: Transfer Practice
+</div>
+</div>
+<div class="callout-body-container callout-body">
+<p>Extend the genotype likelihood calculation to a more complex scenario: You have a site with 25 reads, 10 supporting reference allele A, 8 supporting alternate allele G, and 7 supporting a second alternate allele T. How would you modify the likelihood calculation to handle this tri-allelic site? Which diploid genotypes would you need to consider?</p>
+<div class="callout callout-style-default callout-note callout-titled" title="Check Your Answer">
+<div class="callout-header d-flex align-content-center" data-bs-toggle="collapse" data-bs-target=".callout-12-contents" aria-controls="callout-12" aria-expanded="false" aria-label="Toggle callout">
+<div class="callout-icon-container">
+<i class="callout-icon"></i>
+</div>
+<div class="callout-title-container flex-fill">
+Check Your Answer
+</div>
+<div class="callout-btn-toggle d-inline-block border-0 py-1 ps-1 pe-0 float-end"><i class="callout-toggle"></i></div>
+</div>
+<div id="callout-12" class="callout-12-contents callout-collapse collapse">
+<div class="callout-body-container callout-body">
+<p>With three alleles (A/G/T), you must consider <strong>six</strong> diploid genotypes: AA, AG, AT, GG, GT, TT. The 1/2 (GT) genotype best explains the 8:7 split between G and T alleles, though the 10 reference-supporting reads suggest possible sequencing errors or alignment artifacts.</p>
+<p><strong>Key insight:</strong> The number of possible genotypes grows combinatorially with the number of alleles: <span class="math inline">\(\binom{n+1}{2}\)</span> genotypes for <span class="math inline">\(n\)</span> alternate alleles. This makes multi-allelic sites computationally expensive and more prone to calling errors.</p>
+</div>
+</div>
+</div>
+</div>
+</div>
 <div class="callout callout-style-default callout-note callout-titled" title="The VCF Format">
 <div class="callout-header d-flex align-content-center">
 <div class="callout-icon-container">
@@ -892,6 +993,38 @@ Reflection
 <section id="sec-ch01-phasing-importance" class="level3" data-number="1.4.1">
 <h3 data-number="1.4.1" class="anchored" data-anchor-id="sec-ch01-phasing-importance"><span class="header-section-number">1.4.1</span> Clinical and Analytical Importance</h3>
 <p>The distinction between <em>cis</em> and <em>trans</em> configurations drives clinical decisions for recessive conditions across hundreds of disease genes, from metabolic disorders to hearing loss to retinal degeneration. Beyond compound heterozygosity, phased haplotypes enable several critical analyses. <strong>Haplotype-specific expression</strong> studies reveal allelic imbalance where one parental copy is preferentially transcribed, a phenomenon with implications for imprinting disorders and variable penetrance. Accurate modeling of <strong>linkage disequilibrium (LD)</strong> structure in population genetics depends on knowing which alleles are inherited together. Reference panels used for genotype imputation are stored as phased haplotypes; inaccurate phasing in these panels propagates errors to every study that uses them for imputation.</p>
+<div class="callout callout-style-default callout-tip callout-titled" title="Knowledge Check">
+<div class="callout-header d-flex align-content-center">
+<div class="callout-icon-container">
+<i class="callout-icon"></i>
+</div>
+<div class="callout-title-container flex-fill">
+Knowledge Check
+</div>
+</div>
+<div class="callout-body-container callout-body">
+<p>How would inaccurate phasing in reference panels affect genotype imputation accuracy? Consider both common and rare variants.</p>
+<div class="callout callout-style-default callout-note callout-titled" title="Check Your Answer">
+<div class="callout-header d-flex align-content-center" data-bs-toggle="collapse" data-bs-target=".callout-16-contents" aria-controls="callout-16" aria-expanded="false" aria-label="Toggle callout">
+<div class="callout-icon-container">
+<i class="callout-icon"></i>
+</div>
+<div class="callout-title-container flex-fill">
+Check Your Answer
+</div>
+<div class="callout-btn-toggle d-inline-block border-0 py-1 ps-1 pe-0 float-end"><i class="callout-toggle"></i></div>
+</div>
+<div id="callout-16" class="callout-16-contents callout-collapse collapse">
+<div class="callout-body-container callout-body">
+<p>Inaccurate phasing in reference panels degrades imputation through two mechanisms:</p>
+<p><strong>For common variants:</strong> Phasing errors break up true haplotype blocks, creating chimeric haplotypes that don’t actually exist in the population. When the imputation algorithm tries to match a target individual’s genotypes to reference haplotypes, it may select the wrong haplotype block, leading to incorrect imputation of nearby variants. The impact is moderate because multiple reference haplotypes may carry similar common variant patterns.</p>
+<p><strong>For rare variants:</strong> The impact is much more severe. Rare variants are typically carried on specific ancestral haplotypes with distinctive patterns of linked common variants. If phasing errors separate a rare variant from its characteristic haplotype background, the imputation algorithm loses the primary signal for inferring that variant’s presence. This leads to systematic underimputation of rare variants, effectively making them invisible in imputed datasets.</p>
+<p><strong>Consequence for models:</strong> Since imputation quality is better for common variants, models trained on imputed data will systematically underweight rare variants compared to models trained on directly sequenced data, potentially missing important rare variant associations.</p>
+</div>
+</div>
+</div>
+</div>
+</div>
 <p>For deep learning applications, phasing determines whether models receive unordered genotype pairs or structured, haplotype-resolved representations. This choice affects model architecture, training procedures, and ultimately performance. A model that processes phased haplotypes can learn patterns spanning multiple variant sites that would appear as noise in unphased data.</p>
 </section>
 <section id="sec-ch01-phasing-methods" class="level3" data-number="1.4.2">
@@ -936,6 +1069,36 @@ Figure&nbsp;1.2: Haplotype phase determines clinical outcome in compound heteroz
 <section id="sec-ch01-phasing-approaches" class="level3" data-number="1.4.3">
 <h3 data-number="1.4.3" class="anchored" data-anchor-id="sec-ch01-phasing-approaches"><span class="header-section-number">1.4.3</span> Phasing Approaches</h3>
 <p>When read-based phasing reaches its limits, two complementary strategies extend phase inference across longer distances. Population-based methods exploit the fact that chromosomes are inherited in long blocks that persist across generations. Tools such as <em>SHAPEIT</em>, <em>Eagle</em>, and <em>Beagle</em> compare study samples against reference panels of previously phased haplotypes, identifying shared segments that reveal which alleles travel together <span class="citation" data-cites="oconnell_general_2014 loh_reference-based_2016 browning_fast_2021">(<a href="../bib/references.html#ref-oconnell_general_2014" role="doc-biblioref">O’Connell et al. 2014</a>; <a href="../bib/references.html#ref-loh_reference-based_2016" role="doc-biblioref">Loh et al. 2016</a>; <a href="../bib/references.html#ref-browning_fast_2021" role="doc-biblioref">Browning et al. 2021</a>)</span>. When an individual’s genotypes match a known haplotype pattern, the algorithm can confidently assign alleles to chromosomes even without direct read evidence spanning the variants. These statistical approaches work well for common variation where linkage disequilibrium provides informative context but struggle with rare variants that lack haplotype representation in reference panels.</p>
+<div class="callout callout-style-default callout-tip callout-titled" title="Stop and Recall">
+<div class="callout-header d-flex align-content-center">
+<div class="callout-icon-container">
+<i class="callout-icon"></i>
+</div>
+<div class="callout-title-container flex-fill">
+Stop and Recall
+</div>
+</div>
+<div class="callout-body-container callout-body">
+<p>Before reading about family-based phasing, can you think of how parent-offspring genotype data could be used to determine phase? Consider a child who is heterozygous (0/1) at two nearby sites, with one parent homozygous 0/0 and the other heterozygous 0/1 at both sites.</p>
+<div class="callout callout-style-default callout-note callout-titled" title="Check Your Answer">
+<div class="callout-header d-flex align-content-center" data-bs-toggle="collapse" data-bs-target=".callout-18-contents" aria-controls="callout-18" aria-expanded="false" aria-label="Toggle callout">
+<div class="callout-icon-container">
+<i class="callout-icon"></i>
+</div>
+<div class="callout-title-container flex-fill">
+Check Your Answer
+</div>
+<div class="callout-btn-toggle d-inline-block border-0 py-1 ps-1 pe-0 float-end"><i class="callout-toggle"></i></div>
+</div>
+<div id="callout-18" class="callout-18-contents callout-collapse collapse">
+<div class="callout-body-container callout-body">
+<p>The child must have inherited the 0 allele at both sites from the homozygous parent. Therefore, at both sites, the child’s alternate (1) allele must have come from the heterozygous parent. This means both alternate alleles are on the same chromosome (inherited together), allowing us to phase the child’s genotype as 0|1, 0|1 (both alts on the same haplotype) rather than 1|0, 0|1 (alts on different haplotypes).</p>
+<p>More generally, any allele present in the child but absent in one parent must have come from the other parent. By comparing genotypes across the trio, we can determine which alleles were co-inherited on the same parental chromosome without requiring reads that physically span the variants.</p>
+</div>
+</div>
+</div>
+</div>
+</div>
 <p>Family data, when available, resolves phase through Mendelian logic rather than statistical inference. An allele present in a child and one parent but absent in the other must have been inherited from that parent. This deterministic reasoning makes <strong>pedigree-based phasing</strong> the gold standard for accuracy, though its applicability depends on recruiting family members for sequencing. The two approaches are complementary: <strong>statistical phasing</strong> provides genome-wide coverage for any individual, while family-based phasing offers higher confidence for the specific variants segregating within a pedigree.</p>
 <div id="tbl-phasing-comparison" class="quarto-float quarto-figure quarto-figure-center anchored">
 <figure class="quarto-float quarto-float-tbl figure">
@@ -1017,6 +1180,22 @@ Knowledge Check
 </div>
 <div class="callout-body-container callout-body">
 <p>Before reading about error sources, list at least three ways that a variant call might be wrong. What could cause a false positive (calling a variant that isn’t really there)? What could cause a false negative (missing a true variant)?</p>
+<div class="callout callout-style-default callout-note callout-titled" title="Check Your Answer">
+<div class="callout-header d-flex align-content-center" data-bs-toggle="collapse" data-bs-target=".callout-20-contents" aria-controls="callout-20" aria-expanded="false" aria-label="Toggle callout">
+<div class="callout-icon-container">
+<i class="callout-icon"></i>
+</div>
+<div class="callout-title-container flex-fill">
+Check Your Answer
+</div>
+<div class="callout-btn-toggle d-inline-block border-0 py-1 ps-1 pe-0 float-end"><i class="callout-toggle"></i></div>
+</div>
+<div id="callout-20" class="callout-20-contents callout-collapse collapse">
+<div class="callout-body-container callout-body">
+<p>False positives can arise from sequencing errors (particularly in homopolymers), PCR duplicates amplifying early errors, and reads misaligned to paralogous regions. False negatives occur when coverage is insufficient to detect a heterozygous allele, when variants fall in difficult-to-map repetitive regions, or when reference bias causes reads carrying alternate alleles to be discarded during alignment.</p>
+</div>
+</div>
+</div>
 </div>
 </div>
 <p>Even with sophisticated pipelines, variant calls remain imperfect measurements of biological reality. These errors concentrate in specific genomic contexts and variant types, creating systematic blind spots in training data that downstream models inherit without warning <span class="citation" data-cites="li_towards_2014">(<a href="../bib/references.html#ref-li_towards_2014" role="doc-biblioref">Li 2014</a>)</span>. Understanding where errors arise, and why they cluster where they do, is essential for interpreting model performance and designing robust training strategies.</p>
@@ -1055,7 +1234,7 @@ Key Insight
 </section>
 <section id="sec-ch01-artifacts" class="level3" data-number="1.5.2">
 <h3 data-number="1.5.2" class="anchored" data-anchor-id="sec-ch01-artifacts"><span class="header-section-number">1.5.2</span> Systematic Sequencing Artifacts</h3>
-<p>Sequencing chemistry introduces predictable error patterns that differ qualitatively from random noise. Homopolymer runs (stretches of identical nucleotides such as AAAAAAA or GGGGGG) cause polymerase slippage during synthesis, generating false indels at rates far exceeding substitution errors. Certain sequence motifs, particularly those with extreme GC content, exhibit systematically elevated error rates that persist even at high coverage. PCR amplification during library preparation can introduce errors early in the process; these errors then propagate into multiple reads, creating correlated false positives that appear well-supported by independent evidence.</p>
+<p>Sequencing chemistry introduces predictable error patterns that differ qualitatively from random noise. Homopolymer runs (stretches of identical nucleotides such as AAAAAAA or GGGGGG) cause polymerase slippage during synthesis, generating false indels at rates far exceeding substitution errors. Why does slippage occur specifically at homopolymers? During DNA synthesis, the template and nascent strands can transiently dissociate and re-anneal. In non-repetitive sequence, there is only one correct re-annealing position. But in a homopolymer, multiple positions are sequence-identical, allowing the nascent strand to slip forward or backward and re-anneal at an offset position—adding or deleting nucleotides without creating a mismatch that would trigger correction. Certain sequence motifs, particularly those with extreme GC content, exhibit systematically elevated error rates that persist even at high coverage. PCR amplification during library preparation can introduce errors early in the process; these errors then propagate into multiple reads, creating correlated false positives that appear well-supported by independent evidence.</p>
 <p>Index hopping occurs when sample barcodes are misassigned during multiplexed sequencing, causing variants from one sample to appear spuriously in others sharing the same flow cell. Strand bias, where variant-supporting reads cluster on one strand orientation, often indicates systematic artifact rather than true variation. These patterns create correlated errors that cluster by batch, lane, or library preparation method, and they are difficult to distinguish from rare true variants precisely because they can appear in multiple reads with reasonable quality scores.</p>
 </section>
 <section id="sec-ch01-coverage" class="level3" data-number="1.5.3">
@@ -1311,6 +1490,46 @@ Chapter Summary
 </div>
 </div>
 <div class="callout-body-container callout-body">
+<div class="callout callout-style-default callout-tip callout-titled" title="Test Yourself">
+<div class="callout-header d-flex align-content-center">
+<div class="callout-icon-container">
+<i class="callout-icon"></i>
+</div>
+<div class="callout-title-container flex-fill">
+Test Yourself
+</div>
+</div>
+<div class="callout-body-container callout-body">
+<p>Before reviewing the summary, test your recall:</p>
+<ol type="1">
+<li>What are the three fundamentally different sources of signal that manifest as mismatches between reads and reference sequence?</li>
+<li>Why is haplotype phasing clinically important, particularly for compound heterozygosity in recessive disorders?</li>
+<li>What specific approach does DeepVariant use to distinguish true variants from artifacts, and how does this differ from classical variant callers?</li>
+<li>Why do variant calling errors in difficult genomic regions create systematic blind spots for downstream machine learning models?</li>
+</ol>
+<div class="callout callout-style-default callout-note callout-titled" title="Check Your Answer">
+<div class="callout-header d-flex align-content-center" data-bs-toggle="collapse" data-bs-target=".callout-27-contents" aria-controls="callout-27" aria-expanded="false" aria-label="Toggle callout">
+<div class="callout-icon-container">
+<i class="callout-icon"></i>
+</div>
+<div class="callout-title-container flex-fill">
+Check Your Answer
+</div>
+<div class="callout-btn-toggle d-inline-block border-0 py-1 ps-1 pe-0 float-end"><i class="callout-toggle"></i></div>
+</div>
+<div id="callout-27" class="callout-27-contents callout-collapse collapse">
+<div class="callout-body-container callout-body">
+<ol type="1">
+<li><p><strong>Three signal sources:</strong> (1) sequencing errors from instrument noise and library preparation, (2) alignment artifacts when reads map to incorrect genomic locations, and (3) genuine biological variation including germline variants, somatic mutations, and mosaicism. All three produce identical-looking mismatches in the data.</p></li>
+<li><p><strong>Phasing importance:</strong> Phasing determines whether two variants are on the same chromosome (cis) or different chromosomes (trans). For compound heterozygosity in recessive disorders like cystic fibrosis, cis configuration leaves one functional gene copy (carrier status), while trans configuration eliminates all functional copies (affected status). The clinical outcomes are entirely different despite identical unphased genotypes.</p></li>
+<li><p><strong>DeepVariant approach:</strong> DeepVariant reformulates variant calling as image classification by encoding read pileups as multi-channel tensors and using a CNN to learn patterns distinguishing true variants from artifacts. Classical callers like HaplotypeCaller use explicit probabilistic models (pair-HMMs) with hand-crafted features and separate recalibration steps (VQSR). DeepVariant learns artifact signatures end-to-end from data rather than requiring expert-defined heuristics.</p></li>
+<li><p><strong>Blind spots in downstream models:</strong> If a variant is never called due to systematic failures in difficult regions (segmental duplications, HLA, tandem repeats), it cannot appear in training data. Models trained on VCF files effectively learn from an incomplete representation of the genome where entire classes of clinically important variants are invisible. No amount of sophisticated downstream modeling can recover information lost at the variant calling stage.</p></li>
+</ol>
+</div>
+</div>
+</div>
+</div>
+</div>
 <p><strong>Key concepts:</strong> NGS data challenges, targeting strategies (panels/WES/WGS), classical variant calling pipelines, phasing, error sources, difficult genomic regions, benchmarking, DeepVariant</p>
 <p><strong>Main takeaways:</strong></p>
 <ol type="1">

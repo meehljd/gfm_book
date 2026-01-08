@@ -867,6 +867,7 @@ Figure&nbsp;23.2: Model calibration assessment. (A) Perfect calibration: predict
 <section id="sec-ch23-calibration-problem" class="level3" data-number="23.2.1">
 <h3 data-number="23.2.1" class="anchored" data-anchor-id="sec-ch23-calibration-problem"><span class="header-section-number">23.2.1</span> The Calibration Problem</h3>
 <p><em>AlphaMissense</em> outputs a continuous score between 0 and 1 for each possible missense variant in the human proteome. When it reports 0.85 for a particular variant, what does this number mean? If the model is calibrated, collecting all variants scored near 0.85 and checking their true clinical status should reveal that approximately 85% are pathogenic. Perfect calibration means that predicted probabilities match observed frequencies across the entire range of model outputs: among variants scored at 0.30, roughly 30% should be pathogenic; among variants scored at 0.95, roughly 95% should be pathogenic. This alignment between stated confidence and empirical accuracy is calibration, and most foundation models fail to achieve it.</p>
+<p>Think of calibration like weather forecasts. When your weather app says “70% chance of rain,” you expect that across many days with 70% forecasts, it actually rains about 70% of the time. If it only rains 40% of those days, the app is overconfident and you cannot trust its numbers to plan your week. Similarly, a pathogenicity predictor claiming 85% confidence should be right 85% of the time at that confidence level—otherwise, clinicians cannot rationally weigh its predictions against other evidence.</p>
 <p>Formally, a model <span class="math inline">\(f\)</span> mapping inputs <span class="math inline">\(X\)</span> to probability estimates <span class="math inline">\(p = f(X)\)</span> is calibrated if <span class="math inline">\(P(Y = 1 \mid f(X) = p) = p\)</span> for all <span class="math inline">\(p\)</span> in the interval from <span class="math inline">\(0\)</span> to <span class="math inline">\(1\)</span>. The calibration condition requires that the model’s stated confidence equals the true probability of the positive class conditional on that stated confidence. Miscalibration occurs when this equality fails: overconfident models produce predicted probabilities that exceed true frequencies (a variant scored at <span class="math inline">\(0.85\)</span> is pathogenic only <span class="math inline">\(60\%\)</span> of the time), while underconfident models produce predicted probabilities below true frequencies.</p>
 <p>Modern deep neural networks are systematically miscalibrated despite achieving high accuracy. Guo and colleagues demonstrated that contemporary architectures exhibit worse calibration than older, less accurate models <span class="citation" data-cites="guo_calibration_2017">(<a href="../bib/references.html#ref-guo_calibration_2017" role="doc-biblioref">Guo et al. 2017</a>)</span>. The phenomenon arises because standard training objectives like cross-entropy loss optimize for discrimination (separating positive from negative examples) rather than calibration (matching predicted probabilities to frequencies). Over-parameterized models with capacity exceeding what the data requires can achieve near-perfect training loss while producing overconfident predictions on held-out data. The softmax temperature in transformer architectures affects the sharpness of probability distributions, and default settings often produce excessively peaked outputs.</p>
 <p>Calibration and discrimination are distinct properties. A model can achieve perfect <strong>area under the receiver operating characteristic curve (auROC)</strong>, correctly ranking all positive examples above all negative examples, while being arbitrarily miscalibrated. If a classifier assigns probability 0.99 to all positive examples and 0.98 to all negative examples, it ranks perfectly but provides useless probability estimates. Conversely, a calibrated model that assigns 0.51 to positives and 0.49 to negatives would be calibrated but nearly useless for discrimination. Clinical applications typically require both: accurate ranking to identify high-risk variants and accurate probabilities to inform decision-making.</p>
@@ -881,6 +882,22 @@ Knowledge Check
 </div>
 <div class="callout-body-container callout-body">
 <p>A variant effect predictor achieves auROC of 0.95 on a held-out test set. A colleague concludes that “the model’s probability estimates are reliable.” What is wrong with this reasoning? What additional assessment would you recommend?</p>
+<div class="callout callout-style-default callout-note callout-titled" title="Check Your Answer">
+<div class="callout-header d-flex align-content-center" data-bs-toggle="collapse" data-bs-target=".callout-6-contents" aria-controls="callout-6" aria-expanded="false" aria-label="Toggle callout">
+<div class="callout-icon-container">
+<i class="callout-icon"></i>
+</div>
+<div class="callout-title-container flex-fill">
+Check Your Answer
+</div>
+<div class="callout-btn-toggle d-inline-block border-0 py-1 ps-1 pe-0 float-end"><i class="callout-toggle"></i></div>
+</div>
+<div id="callout-6" class="callout-6-contents callout-collapse collapse">
+<div class="callout-body-container callout-body">
+<p>auROC measures discrimination (how well the model ranks pathogenic variants above benign ones) but says nothing about calibration (whether predicted probabilities match observed frequencies). A model can achieve perfect auROC while being arbitrarily miscalibrated—for example, by assigning 0.99 to all pathogenic variants and 0.98 to all benign variants. You should assess calibration using reliability diagrams and ECE, stratified by relevant subgroups like ancestry and variant type.</p>
+</div>
+</div>
+</div>
 </div>
 </div>
 </section>
@@ -1035,7 +1052,54 @@ Stop and Think
 <p>The simplest calibration fix is often the most effective. <strong>Temperature scaling</strong> applies a single learned parameter to adjust model confidence, dramatically improving calibration with minimal computational overhead and no change to model predictions’ ranking.</p>
 <p>The method modifies the softmax function by dividing logits by a temperature parameter <em>T</em> before applying softmax. The intuition is straightforward: overconfident models produce logits that are too large in magnitude, causing softmax probabilities to concentrate near 0 or 1 rather than reflecting true uncertainty. Dividing by <em>T</em> &gt; 1 shrinks these logits toward zero, which “softens” the probability distribution and reduces spurious confidence:</p>
 <p><span class="math display">\[\hat{p}_i = \frac{\exp(z_i / T)}{\sum_j \exp(z_j / T)}\]</span></p>
-<p>where <em>z_i</em> are the logits (pre-softmax outputs) and *p̂_i* are the calibrated probabilities. When <em>T</em> &gt; 1, the distribution becomes softer (more uniform), reducing overconfidence. When <em>T</em> &lt; 1, the distribution becomes sharper, increasing confidence. The optimal temperature is learned by minimizing negative log-likelihood on a held-out calibration set, typically yielding <em>T</em> between 1.5 and 3 for overconfident deep networks.</p>
+<p>where <em>z_i</em> are the logits (pre-softmax outputs) and *p̂_i* are the calibrated probabilities.</p>
+<div class="callout callout-style-default callout-note callout-titled" title="Worked Example: Temperature Scaling">
+<div class="callout-header d-flex align-content-center">
+<div class="callout-icon-container">
+<i class="callout-icon"></i>
+</div>
+<div class="callout-title-container flex-fill">
+Worked Example: Temperature Scaling
+</div>
+</div>
+<div class="callout-body-container callout-body">
+<p>A variant effect prediction model produces logits for a missense variant:</p>
+<p><strong>Before calibration (T = 1.0):</strong> - Logits: <span class="math inline">\(z = [2.5, -1.2]\)</span> for [pathogenic, benign] - Softmax: <span class="math inline">\(p = [\frac{e^{2.5}}{e^{2.5} + e^{-1.2}}, \frac{e^{-1.2}}{e^{2.5} + e^{-1.2}}] = [0.976, 0.024]\)</span> - The model claims 97.6% confidence in pathogenicity</p>
+<p><strong>After calibration (T = 2.0, learned from calibration set):</strong> - Scaled logits: <span class="math inline">\(z/T = [1.25, -0.6]\)</span> - Softmax: <span class="math inline">\(p = [\frac{e^{1.25}}{e^{1.25} + e^{-0.6}}, \frac{e^{-0.6}}{e^{1.25} + e^{-0.6}}] = [0.86, 0.14]\)</span> - Now the model reports 86% confidence—still favoring pathogenic, but acknowledging greater uncertainty</p>
+<table class="caption-top table">
+<thead>
+<tr class="header">
+<th>Temperature</th>
+<th>P(pathogenic)</th>
+<th>P(benign)</th>
+<th>Interpretation</th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<td>T = 1.0 (uncalibrated)</td>
+<td>0.976</td>
+<td>0.024</td>
+<td>Overconfident</td>
+</tr>
+<tr class="even">
+<td>T = 2.0 (calibrated)</td>
+<td>0.86</td>
+<td>0.14</td>
+<td>Realistic uncertainty</td>
+</tr>
+<tr class="odd">
+<td>T = 4.0 (over-softened)</td>
+<td>0.71</td>
+<td>0.29</td>
+<td>Underconfident</td>
+</tr>
+</tbody>
+</table>
+<p>Note that the ranking is preserved: pathogenic remains more likely than benign. Only the magnitude of confidence changes.</p>
+</div>
+</div>
+<p>When <em>T</em> &gt; 1, the distribution becomes softer (more uniform), reducing overconfidence. When <em>T</em> &lt; 1, the distribution becomes sharper, increasing confidence. The optimal temperature is learned by minimizing negative log-likelihood on a held-out calibration set, typically yielding <em>T</em> between 1.5 and 3 for overconfident deep networks.</p>
 <p>Temperature scaling preserves the model’s ranking because dividing all logits by the same constant does not change their relative ordering. A variant ranked as more likely pathogenic than another remains more likely after temperature scaling; only the magnitudes of probability estimates change. This preservation of discrimination while improving calibration makes temperature scaling particularly attractive: calibration improves without sacrificing the model’s hard-won ability to distinguish pathogenic from benign variants.</p>
 <p>The method’s simplicity (one parameter) is both strength and limitation. A single global temperature cannot fix heterogeneous miscalibration where the model is overconfident in some regions of input space and underconfident in others. When reliability diagrams show complex nonlinear patterns, more flexible calibration methods are necessary.</p>
 </section>
@@ -1167,6 +1231,7 @@ Figure&nbsp;23.4: Uncertainty quantification methods for deep learning. Ensemble
 <h3 data-number="23.4.2" class="anchored" data-anchor-id="sec-ch23-mc-dropout"><span class="header-section-number">23.4.2</span> Monte Carlo Dropout</h3>
 <p><strong>Monte Carlo (MC) dropout</strong> provides uncertainty estimates from a single trained model by treating dropout regularization as approximate Bayesian inference. During standard training with dropout, random subsets of neurons are zeroed at each forward pass. MC dropout keeps dropout active at test time and performs multiple stochastic forward passes, treating the variation across passes as a measure of model uncertainty.</p>
 <p>Gal and Ghahramani showed that this procedure approximates variational inference over the model’s weights <span class="citation" data-cites="gal_dropout_2016">(<a href="../bib/references.html#ref-gal_dropout_2016" role="doc-biblioref">Gal and Ghahramani 2016</a>)</span>. Each forward pass with dropout samples a different subnetwork, and the distribution of predictions across samples approximates the predictive distribution under a particular prior over weights. High variance across MC samples indicates epistemic uncertainty about the model’s parameters for that input.</p>
+<p>Why does dropout approximate Bayesian inference? During training, dropout randomly masks neurons to prevent co-adaptation—forcing the network to learn redundant representations. Treating this masking as sampling from a distribution over subnetworks connects to Bayesian inference: each sampled subnetwork is like a draw from a posterior over model architectures. When many subnetworks agree on a prediction, the input lies in a region well-constrained by training data; when subnetworks disagree, the input lies in a region where different architectural variants have learned different solutions—exactly the signature of epistemic uncertainty.</p>
 <p>MC dropout offers the significant advantage of requiring only a single trained model, avoiding the computational overhead of ensembles. Implementation is straightforward: enable dropout during inference and average predictions over 10 to 50 stochastic forward passes. The variance or entropy of these predictions serves as the uncertainty estimate.</p>
 <p>Limitations temper the method’s appeal. Modern transformer architectures often do not use dropout in their standard configurations, or use dropout only in specific locations (attention dropout, residual dropout) where the approximation may be less accurate. The quality of uncertainty estimates depends on the dropout rate and architecture, with higher dropout rates providing better uncertainty estimates but potentially degrading mean predictions. Empirical comparisons often find that MC dropout underestimates uncertainty relative to deep ensembles, particularly in low-data regimes where epistemic uncertainty should be high.</p>
 <div class="callout callout-style-default callout-tip callout-titled">
@@ -1280,7 +1345,8 @@ Table&nbsp;23.4: Comparison of uncertainty quantification methods for genomic fo
 <section id="sec-ch23-conformal" class="level2" data-number="23.5">
 <h2 data-number="23.5" class="anchored" data-anchor-id="sec-ch23-conformal"><span class="header-section-number">23.5</span> Conformal Prediction: Distribution-Free Guarantees</h2>
 <p>Most uncertainty quantification methods make assumptions about model behavior or data distributions that may not hold in practice. Temperature scaling assumes miscalibration follows a particular functional form. Ensembles assume that disagreement reflects epistemic uncertainty rather than artifacts of training. Bayesian methods assume specific priors over model parameters. When these assumptions fail, uncertainty estimates may be unreliable precisely when reliability matters most.</p>
-<p><strong>Conformal prediction</strong> offers something stronger: finite-sample coverage guarantees that hold under minimal assumptions. Instead of outputting a point prediction, conformal methods produce a prediction set guaranteed to contain the true label with probability at least <span class="math inline">\(1 - \alpha\)</span>, where <span class="math inline">\(\alpha\)</span> is a user-specified error rate. If we request <span class="math inline">\(90\%\)</span> coverage (<span class="math inline">\(\alpha = 0.10\)</span>), the prediction set will contain the true label at least <span class="math inline">\(90\%\)</span> of the time, regardless of the model’s accuracy or calibration. This guarantee requires only that calibration and test examples are exchangeable (a condition weaker than independent and identically distributed), making conformal prediction robust to model misspecification.</p>
+<p>Consider how a cautious doctor might communicate diagnostic uncertainty. Rather than saying “I am 73% confident this is condition A,” they might say “Based on your symptoms and test results, I can confidently rule out conditions C, D, and E, but I cannot yet distinguish between A and B—we need more information.” This approach sidesteps the difficulty of assigning precise probabilities by instead specifying which possibilities remain plausible. The size of this “plausible set” communicates uncertainty: a single remaining possibility indicates high confidence, while many remaining possibilities indicate low confidence.</p>
+<p><strong>Conformal prediction</strong> formalizes this intuition and offers something stronger: finite-sample coverage guarantees that hold under minimal assumptions. Instead of outputting a point prediction, conformal methods produce a prediction set guaranteed to contain the true label with probability at least <span class="math inline">\(1 - \alpha\)</span>, where <span class="math inline">\(\alpha\)</span> is a user-specified error rate. If we request <span class="math inline">\(90\%\)</span> coverage (<span class="math inline">\(\alpha = 0.10\)</span>), the prediction set will contain the true label at least <span class="math inline">\(90\%\)</span> of the time, regardless of the model’s accuracy or calibration. This guarantee requires only that calibration and test examples are exchangeable (a condition weaker than independent and identically distributed), making conformal prediction robust to model misspecification.</p>
 <div class="callout callout-style-default callout-important callout-titled">
 <div class="callout-header d-flex align-content-center">
 <div class="callout-icon-container">
@@ -1401,6 +1467,22 @@ Knowledge Check
 </div>
 <div class="callout-body-container callout-body">
 <p>A protein language model is deployed to score variants in a newly discovered gene with no homologs in UniRef. The model returns high-confidence pathogenicity predictions. What concerns should you have? What additional information would help you assess whether to trust these predictions?</p>
+<div class="callout callout-style-default callout-note callout-titled" title="Check Your Answer">
+<div class="callout-header d-flex align-content-center" data-bs-toggle="collapse" data-bs-target=".callout-15-contents" aria-controls="callout-15" aria-expanded="false" aria-label="Toggle callout">
+<div class="callout-icon-container">
+<i class="callout-icon"></i>
+</div>
+<div class="callout-title-container flex-fill">
+Check Your Answer
+</div>
+<div class="callout-btn-toggle d-inline-block border-0 py-1 ps-1 pe-0 float-end"><i class="callout-toggle"></i></div>
+</div>
+<div id="callout-15" class="callout-15-contents callout-collapse collapse">
+<div class="callout-body-container callout-body">
+<p>This gene is out-of-distribution relative to the model’s training data—high epistemic uncertainty is expected. The confident predictions are a red flag: the model may be extrapolating unreliably beyond its training experience. You should check embedding distance to training examples, ensemble disagreement if available, and whether the model’s confidence is calibrated for truly novel protein families. Experimental validation through functional assays would be essential before acting on these predictions.</p>
+</div>
+</div>
+</div>
 </div>
 </div>
 </section>
@@ -1537,6 +1619,26 @@ Figure&nbsp;23.7: Selective prediction for clinical deployment. Rather than forc
 <p>Uncertainty quantification transforms foundation model outputs from opaque scores into components of rational decision processes. A well-calibrated pathogenicity prediction that honestly communicates its limitations enables appropriate clinical reasoning: high confidence warrants action, low confidence warrants additional testing or expert review. An overconfident score that claims false precision causes harm through both false positives (unnecessary interventions) and false negatives (missed diagnoses). Temperature scaling, conformal prediction, and out-of-distribution detection together provide the technical foundation for trustworthy genomic AI.</p>
 <p>The path from uncertainty quantification to clinical impact requires integrating these methods into operational workflows. Selective prediction enables triage between automated handling and expert review based on model confidence. Conformal prediction sets provide coverage guarantees that support risk-aware decision-making. Out-of-distribution detection prevents confident predictions on inputs that fall outside the training distribution, a particularly important capability given the confounding issues examined in <a href="../part_2/p2-ch12-confounding.html" class="quarto-xref"><span>Chapter 12</span></a>. Calibration ensures that numerical probabilities mean what they claim to mean. Together, these tools enable foundation models to participate in clinical decisions without overstating their reliability. Clinical risk prediction frameworks (<a href="../part_6/p6-ch27-clinical-risk.html" class="quarto-xref"><span>Chapter 27</span></a>) develop these tools further for deployment contexts, while rare disease workflows (<a href="../part_6/p6-ch28-rare-disease.html" class="quarto-xref"><span>Chapter 28</span></a>) apply them to diagnostic interpretation.</p>
 <p>Yet uncertainty quantification alone is insufficient. A perfectly calibrated black box remains a black box. The clinician who receives an uncertain prediction wants to understand why the model is uncertain: Is it because the variant falls in a poorly characterized gene? Because the model has never encountered this protein fold? Because the underlying biology is genuinely ambiguous? Interpretability, examined in <a href="p5-ch24-interpretability.html" class="quarto-xref"><span>Chapter 24</span></a>, complements uncertainty by revealing the basis for predictions and their associated confidence. Attribution methods (<a href="p5-ch24-interpretability.html#sec-ch24-attribution" class="quarto-xref"><span>Section 24.1</span></a>) identify which input features drive predictions; probing classifiers (<a href="p5-ch24-interpretability.html#sec-ch24-probing" class="quarto-xref"><span>Section 24.4</span></a>) reveal what information representations encode. The conjunction of calibrated uncertainty and mechanistic understanding approaches what trustworthy clinical AI requires. Neither alone suffices; together they provide the foundation for models that clinicians can reason with rather than merely defer to.</p>
+<div class="callout callout-style-default callout-tip callout-titled" title="Test Yourself">
+<div class="callout-header d-flex align-content-center">
+<div class="callout-icon-container">
+<i class="callout-icon"></i>
+</div>
+<div class="callout-title-container flex-fill">
+Test Yourself
+</div>
+</div>
+<div class="callout-body-container callout-body">
+<p>Before reviewing the summary, test your recall:</p>
+<ol type="1">
+<li>What is the difference between epistemic and aleatoric uncertainty, and why does this distinction matter for clinical decision-making?</li>
+<li>What is model calibration, and why can a highly accurate model still be dangerously miscalibrated?</li>
+<li>Explain how temperature scaling improves calibration. What does it preserve and what does it change?</li>
+<li>How do deep ensembles quantify epistemic uncertainty, and what makes them the “gold standard” among uncertainty quantification methods?</li>
+<li>What coverage guarantee does conformal prediction provide, and why does marginal coverage differ from conditional coverage?</li>
+</ol>
+</div>
+</div>
 <div class="callout callout-style-default callout-note callout-titled">
 <div class="callout-header d-flex align-content-center">
 <div class="callout-icon-container">

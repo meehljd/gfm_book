@@ -578,7 +578,9 @@ window.Quarto = {
 </header>
 
 
-<p><em>What you ask a model to predict during pretraining determines what it learns to see.</em></p>
+<blockquote class="blockquote">
+<p>What you ask a model to predict during pretraining determines what it learns to see.</p>
+</blockquote>
 <div class="callout callout-style-default callout-note callout-titled">
 <div class="callout-header d-flex align-content-center">
 <div class="callout-icon-container">
@@ -589,6 +591,7 @@ Chapter Overview
 </div>
 </div>
 <div class="callout-body-container callout-body">
+<p><strong>Estimated reading time:</strong> 35-45 minutes</p>
 <p><strong>Prerequisites:</strong> Before reading this chapter, you should be familiar with:</p>
 <ul>
 <li>Tokenization strategies for genomic sequences (<a href="p2-ch05-representations.html" class="quarto-xref"><span>Chapter 5</span></a>)</li>
@@ -648,6 +651,51 @@ Figure&nbsp;8.1: Comparison of major pretraining objectives for genomic sequence
 <h2 data-number="8.1" class="anchored" data-anchor-id="sec-ch08-mlm"><span class="header-section-number">8.1</span> Masked Language Modeling</h2>
 <p>Consider predicting whether a splice site variant in <em>DMD</em> will cause exon skipping in Duchenne muscular dystrophy. The model must recognize the canonical GT-AG splice signals, encode how flanking sequences modulate splicing efficiency, and integrate information from both the upstream exon and downstream intron. A model trained only on labeled splice variants would see perhaps a few hundred <em>DMD</em> examples across the entire clinical literature. A model pretrained on billions of nucleotides learns splice grammar across the entire genome, then applies that knowledge to the specific clinical question. Masked language modeling provides this pretraining by teaching models to predict missing sequence content from surrounding context, and the bidirectional attention it requires captures exactly the upstream-downstream integration that splice prediction demands.</p>
 <p>MLM treats sequences as partially observed and trains models to reconstruct missing content. The procedure is straightforward: randomly mask portions of an input sequence, feed the corrupted sequence to the model, and train the model to predict the original tokens at masked positions. A <strong>masking strategy</strong> replaces selected tokens with a special <code>[MASK]</code> token, leaving the surrounding context intact. The model processes the masked sequence through its layers and produces predictions for the masked positions, typically optimizing cross-entropy loss over the vocabulary at each masked location.</p>
+<div class="callout callout-style-default callout-note callout-titled" title="Worked Example: MLM on a Promoter Sequence">
+<div class="callout-header d-flex align-content-center">
+<div class="callout-icon-container">
+<i class="callout-icon"></i>
+</div>
+<div class="callout-title-container flex-fill">
+Worked Example: MLM on a Promoter Sequence
+</div>
+</div>
+<div class="callout-body-container callout-body">
+<p>Consider this 12-nucleotide promoter fragment containing a TATA box:</p>
+<p><strong>Original sequence:</strong> <code>GCTATAAAGCTT</code></p>
+<p><strong>Step 1 - Masking (15%):</strong> Randomly mask ~2 positions <code>GCT[MASK]TAAGC[MASK]T</code></p>
+<p><strong>Step 2 - Model prediction:</strong> The model sees the masked sequence and, for each [MASK] position, outputs a probability distribution over {A, C, G, T}.</p>
+<p><strong>Step 3 - Loss computation:</strong> For position 4 (true answer: A), suppose the model predicts:</p>
+<table class="caption-top table">
+<thead>
+<tr class="header">
+<th>Nucleotide</th>
+<th>Probability</th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<td>A</td>
+<td>0.70</td>
+</tr>
+<tr class="even">
+<td>T</td>
+<td>0.20</td>
+</tr>
+<tr class="odd">
+<td>G</td>
+<td>0.05</td>
+</tr>
+<tr class="even">
+<td>C</td>
+<td>0.05</td>
+</tr>
+</tbody>
+</table>
+<p>Cross-entropy loss = <span class="math inline">\(-\log(0.70) = 0.36\)</span></p>
+<p><strong>What the model learns:</strong> Positions within TATA boxes strongly predict A/T nucleotides from surrounding context. After seeing millions of promoters, the model internalizes that sequences matching <code>...TAT_AA...</code> almost always have A or T in the masked position—this is exactly the regulatory grammar that transfers to splice prediction and variant interpretation.</p>
+</div>
+</div>
 <div class="callout callout-style-default callout-tip callout-titled">
 <div class="callout-header d-flex align-content-center">
 <div class="callout-icon-container">
@@ -661,7 +709,33 @@ Key Insight: What MLM Prediction Difficulty Reveals
 <p>The key insight is that accurate prediction requires learning genuine sequence structure. To predict a masked position in a transcription factor binding site, the model must recognize the surrounding motif context. To predict masked splice donor sequences, the model must encode the consensus GT dinucleotide and the flanking patterns that modulate splicing strength. Over millions of training examples, models build distributed representations of motifs, compositional rules, and sequence constraints that transfer to tasks never seen during pretraining. The <em>DMD</em> splice variant can be evaluated using patterns learned from every splice site in the genome.</p>
 </div>
 </div>
+<div class="callout callout-style-default callout-note callout-titled" title="Stop and Think">
+<div class="callout-header d-flex align-content-center">
+<div class="callout-icon-container">
+<i class="callout-icon"></i>
+</div>
+<div class="callout-title-container flex-fill">
+Stop and Think
+</div>
+</div>
+<div class="callout-body-container callout-body">
+<p>Before continuing, consider: If a model confidently predicts the masked nucleotides in a TATA box (high probability for A or T at each masked position), but struggles to predict nucleotides in a random intergenic region (nearly uniform probabilities), what does this tell you about functional constraint at these two locations?</p>
+</div>
+</div>
 <p>MLM encourages bidirectional context integration, and this bidirectionality has direct clinical relevance. Unlike autoregressive models that condition only on preceding tokens, MLM models see both left and right context when predicting masked positions. For genomics, this matches biological reality: regulatory function depends on patterns both upstream and downstream of any given position. A transcription factor binding site is recognized through flanking sequences on both sides. Splicing signals require coordination between donor and acceptor sites separated by hundreds of bases. Missense variants disrupt protein function through effects that depend on the entire domain context, not just the preceding amino acids. The bidirectional attention mechanisms examined in <a href="p2-ch07-attention.html" class="quarto-xref"><span>Chapter 7</span></a> naturally capture these dependencies.</p>
+<div class="callout callout-style-default callout-tip callout-titled" title="Stop and Think">
+<div class="callout-header d-flex align-content-center">
+<div class="callout-icon-container">
+<i class="callout-icon"></i>
+</div>
+<div class="callout-title-container flex-fill">
+Stop and Think
+</div>
+</div>
+<div class="callout-body-container callout-body">
+<p>How would span masking (masking consecutive tokens) differ from random masking in terms of what the model learns? What biological sequences might benefit from each approach?</p>
+</div>
+</div>
 <section id="sec-ch08-mlm-strategies" class="level3" data-number="8.1.1">
 <h3 data-number="8.1.1" class="anchored" data-anchor-id="sec-ch08-mlm-strategies"><span class="header-section-number">8.1.1</span> Masking Strategies and Their Implications</h3>
 <div id="fig-masking-strategies" class="quarto-layout-panel">
@@ -705,7 +779,8 @@ Stop and Think
 </div>
 </div>
 <p>Predicting whether a regulatory variant disrupts an entire transcription factor binding site or merely alters its affinity requires models that learn compositional patterns, not just local nucleotide statistics. The tension between local and compositional learning plays out in masking strategy design.</p>
-<p>Random masking of individual tokens creates predictions that are relatively local: each masked position can often be inferred from immediately adjacent nucleotides. This approach is efficient but may not force models to learn higher-order structure. <strong>Span masking</strong>, which masks contiguous blocks of tokens, forces models to infer longer-range dependencies and compositional patterns. If an entire transcription factor binding motif is masked, the model cannot rely on partial motif information and must instead recognize the motif’s role from surrounding regulatory context. For clinical variant interpretation, span masking may better capture the compositional grammar that determines whether a regulatory variant disrupts an entire binding site or merely modulates its affinity.</p>
+<p>Random masking of individual tokens creates predictions that are relatively local: each masked position can often be inferred from immediately adjacent nucleotides. This approach is efficient but may not force models to learn higher-order structure. <strong>Span masking</strong>, which masks contiguous blocks of tokens, forces models to infer longer-range dependencies and compositional patterns. If an entire transcription factor binding motif is masked, the model cannot rely on partial motif information and must instead recognize the motif’s role from surrounding regulatory context.</p>
+<p>Why does span masking force compositional learning while random masking does not? When individual nucleotides are masked, adjacent positions provide strong local cues—if you see <code>TATA_A</code>, the missing position is almost certainly <code>A</code> or <code>T</code> based on TATA box grammar. But when an entire 6-bp motif is masked, those local cues vanish. The model must now ask: “Given that there’s an enhancer upstream and a core promoter downstream, what kind of regulatory element belongs here?” This requires learning which regulatory elements co-occur and why—the compositional grammar of regulation rather than mere nucleotide statistics. For clinical variant interpretation, span masking may better capture whether a regulatory variant disrupts an entire binding site or merely modulates its affinity.</p>
 <p>Masking rates present a fundamental tradeoff between supervision density and prediction difficulty. Higher masking rates (30-40% of tokens) provide more supervision per sequence but make prediction harder and may destabilize training. Since each masked token becomes a prediction target, higher rates extract more learning signal from a single forward pass through the model. Lower masking rates (10-15%) produce more stable training but require more data to achieve equivalent coverage. The standard 15% rate from <em>BERT</em> represents a reasonable compromise, though genomic models have explored values ranging from 10% to 40% depending on context length and <strong>tokenization</strong> granularity <span class="citation" data-cites="devlin_bert_2019">(<a href="../bib/references.html#ref-devlin_bert_2019" role="doc-biblioref">Devlin et al. 2019</a>)</span>. <em>DNABERT</em> used 15% masking on 6-mer tokens, while later models have experimented with adaptive masking rates that increase as training progresses, starting conservatively and becoming more aggressive as the model’s predictions improve <span class="citation" data-cites="ji_dnabert_2021">(<a href="../bib/references.html#ref-ji_dnabert_2021" role="doc-biblioref">Ji et al. 2021</a>)</span>.</p>
 <div id="tbl-masking-strategies" class="quarto-float quarto-figure quarto-figure-center anchored">
 <figure class="quarto-float quarto-float-tbl figure">
@@ -771,13 +846,27 @@ Table&nbsp;8.1: Comparison of masking strategies for genomic MLM pretraining.
 <h3 data-number="8.1.2" class="anchored" data-anchor-id="sec-ch08-mlm-learning"><span class="header-section-number">8.1.2</span> What Masked Language Models Learn</h3>
 <p>MLM objectives drive models to capture multiple levels of sequence organization, from local nucleotide statistics to long-range regulatory grammar. At the lowest level, models learn base composition and local constraints: CpG dinucleotide frequencies, GC content biases, and simple repeat patterns. These basic properties are necessary but not sufficient for biological function prediction.</p>
 <p>At higher levels, MLM captures motif patterns and sequence grammar. Predicting masked positions in regulatory regions requires recognizing transcription factor binding sites, understanding how motifs combine in enhancers and promoters, and learning context-dependent usage patterns. If certain transcription factor motifs co-occur at specific distances (as they do in developmental enhancers where factors like <em>HOX</em> proteins bind cooperatively), masking one motif and predicting it from the other reinforces this grammatical relationship. This compositional learning is difficult to achieve with supervised learning alone, which typically provides coarse binary labels (“enhancer” versus “non-enhancer”) rather than fine-grained structural information about sequence organization.</p>
+<div class="callout callout-style-default callout-note callout-titled" title="Stop and Think">
+<div class="callout-header d-flex align-content-center">
+<div class="callout-icon-container">
+<i class="callout-icon"></i>
+</div>
+<div class="callout-title-container flex-fill">
+Stop and Think
+</div>
+</div>
+<div class="callout-body-container callout-body">
+<p>Pause and recall: What are the three main levels of sequence organization that MLM objectives help models learn? How does each level contribute to downstream variant interpretation tasks?</p>
+</div>
+</div>
 <p>MLM also captures evolutionary conservation patterns implicitly, and this has direct relevance for clinical variant interpretation. Conserved sequences are constrained because mutations would disrupt function. By learning to predict conserved patterns from surrounding context, models encode which sequence features are under selection. This knowledge transfers to variant effect prediction, where the model recognizes when a mutation disrupts a learned conserved pattern. A variant that replaces a highly predictable position (one the model confidently fills in during MLM) is more likely to be damaging than one at a position where the model is uncertain. The connection between pretraining on raw sequence and downstream variant interpretation illustrates how self-supervised objectives capture biologically meaningful structure without explicit functional labels. The variant effect prediction approaches in <a href="../part_3/p3-ch17-vep-fm.html" class="quarto-xref"><span>Chapter 17</span></a> leverage these learned patterns directly, while probing methods (<a href="p2-ch09-transfer.html#sec-ch09-feature-extraction" class="quarto-xref"><span>Section 9.3</span></a>) reveal what specific patterns models have captured.</p>
 </section>
 </section>
 <section id="sec-ch08-autoregressive" class="level2" data-number="8.2">
 <h2 data-number="8.2" class="anchored" data-anchor-id="sec-ch08-autoregressive"><span class="header-section-number">8.2</span> Next-Token Prediction</h2>
 <p>Designing a novel promoter sequence for gene therapy requires generating DNA that respects learned regulatory grammar while achieving specific expression characteristics. Masked language modeling can evaluate whether a candidate sequence looks “natural,” but it cannot generate sequences from scratch. A gene therapy team optimizing a CAR-T construct needs promoter variants to test; they cannot simply evaluate candidates one by one when the search space spans <span class="math inline">\(4^{500}\)</span> possible 500-base-pair sequences. Next-token prediction provides the generative capability missing from MLM, learning to predict each token given only preceding tokens and thereby acquiring the ability to sample coherent novel sequences that respect learned biological constraints.</p>
-<p>Next-token prediction represents an alternative paradigm where models learn to predict each token in a sequence given only the preceding tokens. This autoregressive approach, popularized by GPT-style language models, treats sequence generation as a core capability rather than a secondary feature. For a sequence of length <span class="math inline">\(T\)</span>, the model predicts token <span class="math inline">\(t\)</span> from tokens <span class="math inline">\(1\)</span> through <span class="math inline">\(t-1\)</span>, maximizing the likelihood of the observed sequence under the model’s learned distribution. The probability of a sequence factors as the product of conditional probabilities for each token given its predecessors:</p>
+<p>Next-token prediction represents an alternative paradigm where models learn to predict each token in a sequence given only the preceding tokens. The intuition is familiar from everyday experience: predicting the next word in “The cat sat on the…” is easier than predicting a word from the middle of a sentence, because you have a clear thread of context leading up to the prediction point. Weather forecasting works similarly—tomorrow’s weather is predicted from today’s conditions, and next week’s weather is predicted by chaining together day-by-day forecasts. This autoregressive approach, popularized by GPT-style language models, treats sequence generation as a core capability rather than a secondary feature.</p>
+<p>For a sequence of length <span class="math inline">\(T\)</span>, the model predicts token <span class="math inline">\(t\)</span> from tokens <span class="math inline">\(1\)</span> through <span class="math inline">\(t-1\)</span>, maximizing the likelihood of the observed sequence under the model’s learned distribution. The probability of a sequence factors as the product of conditional probabilities for each token given its predecessors—just as the probability of a week’s weather is the product of each day’s probability given the preceding days:</p>
 <p><span class="math display">\[P(x_1, x_2, \ldots, x_T) = \prod_{t=1}^{T} P(x_t \mid x_1, \ldots, x_{t-1})\]</span></p>
 <div class="callout callout-style-default callout-warning callout-titled">
 <div class="callout-header d-flex align-content-center">
@@ -832,7 +921,7 @@ Figure&nbsp;8.3: Information flow determines downstream capabilities. (A) Masked
 </figcaption>
 </figure>
 </div>
-<div class="callout callout-style-default callout-note callout-titled">
+<div class="callout callout-style-default callout-tip callout-titled" title="Knowledge Check">
 <div class="callout-header d-flex align-content-center">
 <div class="callout-icon-container">
 <i class="callout-icon"></i>
@@ -843,7 +932,22 @@ Knowledge Check
 </div>
 <div class="callout-body-container callout-body">
 <p>A researcher wants to predict whether a missense variant in the middle of a protein domain is pathogenic. They need to assess how the variant disrupts interactions with residues both before and after it in the sequence. Which pretraining objective would provide better representations for this task, and why?</p>
-<p><em>Think through your answer before continuing.</em></p>
+<div class="callout callout-style-default callout-note callout-titled" title="Check Your Answer">
+<div class="callout-header d-flex align-content-center" data-bs-toggle="collapse" data-bs-target=".callout-9-contents" aria-controls="callout-9" aria-expanded="false" aria-label="Toggle callout">
+<div class="callout-icon-container">
+<i class="callout-icon"></i>
+</div>
+<div class="callout-title-container flex-fill">
+Check Your Answer
+</div>
+<div class="callout-btn-toggle d-inline-block border-0 py-1 ps-1 pe-0 float-end"><i class="callout-toggle"></i></div>
+</div>
+<div id="callout-9" class="callout-9-contents callout-collapse collapse">
+<div class="callout-body-container callout-body">
+<p>Masked language modeling (MLM) would provide better representations for this task. MLM uses bidirectional attention, allowing the model to integrate information from both upstream and downstream residues when evaluating the variant’s impact. Since pathogenicity depends on how the variant disrupts interactions with the entire domain (both before and after the mutation), having access to full sequence context produces richer representations than autoregressive models, which only see preceding residues.</p>
+</div>
+</div>
+</div>
 </div>
 </div>
 <p>The tension between bidirectional understanding and generative capability represents the fundamental tradeoff between these objectives. For tasks requiring understanding of full sequence context, MLM’s bidirectional attention provides richer representations. Predicting transcription factor binding at a specific location benefits from seeing both upstream and downstream sequence, information that autoregressive models cannot access during inference. Variant effect prediction similarly benefits from full context: a missense variant’s impact depends on the entire domain, not just the preceding residues.</p>
@@ -943,6 +1047,7 @@ Table&nbsp;8.2: Comparison of MLM and autoregressive pretraining objectives for 
 <p>This objective teaches different aspects of sequence structure than standard MLM. Reconstructing entire spans requires understanding longer-range dependencies and compositional patterns. If a span encompasses an entire transcription factor binding motif (typically 6-12 base pairs), the model cannot infer the motif from partial information and must instead reason about the motif’s role from surrounding regulatory context. Span lengths are typically sampled from a distribution (geometric or uniform) with a mean around 3-5 tokens, creating a mix of short and long reconstruction challenges within each training example.</p>
 <section id="sec-ch08-corruption" class="level3" data-number="8.4.1">
 <h3 data-number="8.4.1" class="anchored" data-anchor-id="sec-ch08-corruption"><span class="header-section-number">8.4.1</span> Corruption Beyond Masking</h3>
+<p>Real clinical sequencing data contains substitution errors, missing bases, and spurious insertions that simple masking does not prepare a model to handle. If a model has only ever seen clean reference sequence with masked positions, will it recognize a pathogenic variant when the surrounding bases contain sequencing errors? Training with diverse corruption strategies builds the robustness that clinical deployment demands.</p>
 <p>Denoising objectives extend beyond masking to include other forms of corruption that mirror real-world data degradation. Token substitution replaces input tokens with random tokens from the vocabulary, creating corrupted sequences that resemble sequencing errors or natural variation. The model learns to distinguish correct from incorrect tokens based on surrounding context, encouraging representations that capture local consistency and motif structure. Deletion and insertion corruptions remove or add tokens at random positions, teaching models about position-invariant features that remain identifiable despite surrounding changes. For genomics, insertions and deletions are biologically realistic mutation types (indels account for approximately 15% of pathogenic variants in ClinVar <span class="citation" data-cites="landrum_clinvar_2018">(<a href="../bib/references.html#ref-landrum_clinvar_2018" role="doc-biblioref">Landrum et al. 2018</a>)</span>), and models that handle them during pretraining may better predict their effects downstream.</p>
 </section>
 <section id="sec-ch08-biological-corruption" class="level3" data-number="8.4.2">
@@ -971,13 +1076,14 @@ Stop and Think
 </div>
 <p>Contrastive learning takes a fundamentally different approach to self-supervised pretraining than reconstruction-based objectives. Rather than recovering corrupted inputs, contrastive objectives train models to produce similar representations for different views of the same sequence while distinguishing them from representations of unrelated sequences. The intuition is that augmented versions of a sequence (with minor corruptions, reverse complementation, or variants) should map to nearby points in representation space, while unrelated sequences should map to distant points. This teaches invariance to transformations that do not change function.</p>
 <p>The algorithmic framework constructs <strong>positive pairs</strong> and <strong>negative samples</strong>. For a given anchor sequence, positive pairs are created through augmentation: reverse complementation, random cropping, variant injection, or other transformations that preserve functional identity. Negative samples are drawn from other sequences in the training batch. The model produces <strong>embeddings</strong> for all sequences, and the contrastive loss encourages anchor and positive embeddings to be similar (high cosine similarity) while pushing apart anchor and negative embeddings.</p>
-<p><strong>InfoNCE loss</strong> is the most common contrastive objective <span class="citation" data-cites="oord_representation_2018">(<a href="../bib/references.html#ref-oord_representation_2018" role="doc-biblioref">Oord, Li, and Vinyals 2019</a>)</span>. For an anchor embedding <span class="math inline">\(z_i\)</span> and positive embedding <span class="math inline">\(z_i^{+}\)</span>, InfoNCE maximizes:</p>
+<p><strong>InfoNCE loss</strong> is the most common contrastive objective <span class="citation" data-cites="oord_representation_2018">(<a href="../bib/references.html#ref-oord_representation_2018" role="doc-biblioref">Oord, Li, and Vinyals 2019</a>)</span>. The intuition is like a matching game: given a photo of a person (the anchor), you must identify which of several voice recordings belongs to the same person (the positive) among many strangers’ voices (the negatives). The loss function rewards correctly matching anchor to positive while distinguishing them from negatives. For an anchor embedding <span class="math inline">\(z_i\)</span> and positive embedding <span class="math inline">\(z_i^{+}\)</span>, InfoNCE maximizes:</p>
 <p><span class="math display">\[
 \mathcal{L} = -\log \frac{\exp\!\left(z_i \cdot z_i^{+} / \tau\right)}{\sum_{j} \exp\!\left(z_i \cdot z_{j} / \tau\right)}
 \]</span></p>
 <p>where the sum runs over the positive and all negative samples, and <span class="math inline">\(\tau\)</span> is a temperature parameter controlling the sharpness of the distribution. Why take this particular mathematical form? The objective frames contrastive learning as a classification problem: given the anchor, identify which of the many candidates is the true positive pair. The softmax structure ensures the model can only increase the score for the positive pair by simultaneously decreasing scores for negatives, forcing it to learn discriminative features rather than simply inflating all similarity scores. The temperature <span class="math inline">\(\tau\)</span> controls how harshly the model is penalized for near-misses. Lower temperatures make the model more discriminative, requiring cleaner separation between positives and negatives; a low temperature means that even small differences in similarity are amplified into large differences in the loss. The objective is equivalent to classifying the positive pair among all possible pairs, and the model learns representations that make this classification easy.</p>
 <section id="sec-ch08-augmentation" class="level3" data-number="8.5.1">
 <h3 data-number="8.5.1" class="anchored" data-anchor-id="sec-ch08-augmentation"><span class="header-section-number">8.5.1</span> Augmentation Design for Genomic Sequences</h3>
+<p>If you pair a sequence with its reverse complement and call them “similar,” the model learns strand symmetry. If you pair a sequence with itself plus a common SNP and call them “similar,” the model learns robustness to population variation. The augmentations you choose define what “similarity” means, and therefore what invariances your model acquires. Choosing the wrong augmentations teaches the model to ignore differences that actually matter.</p>
 <p>A CTCF binding site must be recognizable whether it appears on a European or African genetic background, whether read on the forward or reverse strand, and whether the surrounding sequence contains common polymorphisms or reference alleles. Augmentation design is critical for contrastive learning because augmentations must preserve functional identity while introducing variability. If augmentations change function, the contrastive objective will learn meaningless invariances. Several augmentation strategies are biologically grounded and preserve the functional relationships that matter for downstream clinical applications.</p>
 <p>The double-stranded nature of DNA provides the simplest and most reliable augmentation. Many regulatory elements function identically on either strand, and a model that fails to recognize this symmetry has learned an incomplete representation of genomic function. Reverse complementation trains the model to treat forward and reverse complement sequences as equivalent, capturing strand symmetry inherent in molecular biology. This augmentation is universally applicable and introduces no risk of changing functional identity; a TATA box is a TATA box regardless of which strand is reported.</p>
 <p>Position invariance presents a subtler challenge. A transcription factor binding site should be recognizable regardless of where it falls within an input window, yet models naturally learn position-specific features. Random cropping addresses this by extracting overlapping windows from longer sequences. If a binding site appears in multiple cropped windows at different positions, the model learns that the site itself is the functionally relevant feature, not its coordinates. This proves particularly useful for tasks where genomic location matters less than local sequence content. The augmentation also provides practical benefits: a single long sequence becomes many training examples, increasing effective data diversity without collecting new data.</p>
@@ -1069,10 +1175,12 @@ Figure&nbsp;8.4: Cross-species contrastive learning for species-invariant repres
 <p>Multi-task pretraining combines multiple related objectives during the same training run, jointly optimizing for several prediction tasks. Different tasks provide complementary supervision signals: masking captures local sequence patterns, chromatin prediction captures regulatory function, conservation scoring captures evolutionary constraint, and expression prediction captures transcriptional consequences. Representations that satisfy all tasks simultaneously develop richer and more general features than any single objective alone.</p>
 <section id="sec-ch08-task-selection" class="level3" data-number="8.6.1">
 <h3 data-number="8.6.1" class="anchored" data-anchor-id="sec-ch08-task-selection"><span class="header-section-number">8.6.1</span> Task Selection and Architecture</h3>
+<p>A model trained to predict chromatin accessibility learns different features than one trained to predict gene expression, even from identical sequences. Add evolutionary conservation prediction, and the representations shift again. The tasks you choose for multi-task pretraining determine what biological signals your model captures, so how do you select the right combination?</p>
 <p>The first design decision is which tasks to include. Ideally, tasks should be diverse enough to provide distinct supervision signals but related enough to benefit from shared representations. For genomic models, effective combinations include masked language modeling for general sequence structure, chromatin accessibility prediction for regulatory function, gene expression prediction for transcriptional output, evolutionary conservation scoring for functional constraint, and variant frequency prediction from population databases. Each task operates on the same input sequence but predicts different outputs using task-specific head layers. The shared backbone encoder processes the sequence into intermediate representations, and separate prediction heads map these representations to task-specific outputs.</p>
 </section>
 <section id="sec-ch08-loss-weighting" class="level3" data-number="8.6.2">
 <h3 data-number="8.6.2" class="anchored" data-anchor-id="sec-ch08-loss-weighting"><span class="header-section-number">8.6.2</span> Loss Weighting and Balancing</h3>
+<p>Training a model on five tasks sounds straightforward until you discover that chromatin accessibility loss is ten times larger than expression prediction loss, causing the model to optimize almost exclusively for chromatin while ignoring expression. Worse, the expression task may actually be more important for your downstream clinical application. How you weight the contribution of each task to the total loss can make or break multi-task pretraining.</p>
 <div class="callout callout-style-default callout-warning callout-titled">
 <div class="callout-header d-flex align-content-center">
 <div class="callout-icon-container">
@@ -1114,6 +1222,7 @@ Figure&nbsp;8.5: Multi-task pretraining architecture for comprehensive regulator
 </section>
 <section id="sec-ch08-multitask-failure" class="level3" data-number="8.6.4">
 <h3 data-number="8.6.4" class="anchored" data-anchor-id="sec-ch08-multitask-failure"><span class="header-section-number">8.6.4</span> When Multi-Task Learning Fails</h3>
+<p>More tasks should mean more learning signal, so why does adding a third task sometimes make performance on the original two tasks worse? Multi-task learning can fail in surprising ways, and understanding these failure modes is essential before committing computational resources to joint training.</p>
 <div class="callout callout-style-default callout-note callout-titled">
 <div class="callout-header d-flex align-content-center">
 <div class="callout-icon-container">
@@ -1138,6 +1247,7 @@ Stop and Think
 <p>The biological rationale mirrors curriculum learning in human education: master fundamentals before tackling advanced material. A medical student learns anatomy before pathology; a genomic model might learn local motif structure before enhancer-promoter interactions spanning 100 kilobases. When <em>HyenaDNA</em> attempted direct training on million-base contexts, optimization diverged. Progressive context extension, starting at shorter windows and gradually increasing, proved essential for stable learning <span class="citation" data-cites="nguyen_hyenadna_2023">(<a href="../bib/references.html#ref-nguyen_hyenadna_2023" role="doc-biblioref">Nguyen et al. 2023</a>)</span>. This curriculum effect appears across architectures: the structure of what is learned first shapes what can be learned later.</p>
 <section id="sec-ch08-context-curriculum" class="level3" data-number="8.7.1">
 <h3 data-number="8.7.1" class="anchored" data-anchor-id="sec-ch08-context-curriculum"><span class="header-section-number">8.7.1</span> Context Length Curricula</h3>
+<p>An enhancer 50 kilobases from its target promoter can only be modeled if the context window spans that entire distance. But training directly on 100-kilobase sequences often fails: the optimization diverges, the model never converges, and weeks of compute are wasted. How do you build a model that understands long-range regulatory interactions when training on long sequences is so unstable?</p>
 <p>Long-range genomic dependencies present a fundamental training challenge. Attention mechanisms scale quadratically with context length, making training on long sequences orders of magnitude more expensive than short sequences. Beyond computational cost, optimization dynamics change with context length: models processing thousands of tokens face different gradient distributions than those processing hundreds. Context length curricula address both challenges by training first on tractable short contexts, then progressively extending to longer sequences.</p>
 <p><em>HyenaDNA</em> exemplifies this approach. Initial pretraining used contexts of a few thousand bases, allowing rapid iteration through the genome and stable optimization. As training progressed, context windows expanded through intermediate stages (8 kilobases, then 32 kilobases) until reaching the target of one million bases. Each stage inherited weights from the previous stage, with learning rate warmup to accommodate the new context regime. The curriculum proved necessary for convergence: ablations attempting direct long-context training without warmup phases showed instability and degraded final performance.</p>
 <p><em>Gene42</em> extended this pattern with explicit continuous pretraining stages <span class="citation" data-cites="gene42_2024">(<a href="../bib/references.html#ref-gene42_2024" role="doc-biblioref"><strong>gene42_2024?</strong></a>)</span>. The model trained initially at 4,096 tokens, then continued pretraining at 8,192, 16,384, 32,768, 65,536, and finally 192,000 tokens. Each context extension required adjustments to positional encodings (specifically, modifications to rotary position embedding parameters to prevent distant-token interactions from collapsing). The staged approach enabled dense attention at scales where training from scratch would be computationally prohibitive. Notably, the longest-context checkpoints required only incremental compute beyond the shorter-context stages, amortizing the total training cost across the curriculum.</p>
@@ -1160,6 +1270,7 @@ Figure&nbsp;8.6: Context length curriculum for stable long-range pretraining. Tr
 </section>
 <section id="sec-ch08-domain-adaptive" class="level3" data-number="8.7.2">
 <h3 data-number="8.7.2" class="anchored" data-anchor-id="sec-ch08-domain-adaptive"><span class="header-section-number">8.7.2</span> Domain-Adaptive Pretraining</h3>
+<p>You have a pretrained model on human DNA and want to apply it to bacterial genomes. Do you continue training from the human checkpoint, hoping to preserve useful sequence patterns while adapting to different GC content and codon usage? Or do you start fresh, reasoning that bacterial genomes are different enough that the human pretraining provides no benefit and may even hurt? This decision can save months of compute or waste it entirely.</p>
 <p>When should a genomic model build on existing pretrained weights versus train from scratch? The question parallels a broader tension in NLP, where <strong>domain-adaptive pretraining</strong> (continuing training from a general-domain checkpoint on domain-specific data) competes with <strong>from-scratch domain pretraining</strong> (training exclusively on domain-specific data). The answer depends on data abundance, domain distance, and whether vocabulary transfer is feasible.</p>
 <p><em>BioBERT</em> pioneered domain-adaptive pretraining for biomedical text, initializing from general-domain <em>BERT</em> weights and continuing pretraining on PubMed abstracts <span class="citation" data-cites="lee_biobert_2020">(<a href="../bib/references.html#ref-lee_biobert_2020" role="doc-biblioref"><strong>lee_biobert_2020?</strong></a>)</span>. This approach leverages general language understanding (syntax, semantics, common knowledge) acquired during the initial pretraining phase, requiring only adaptation to domain-specific vocabulary and concepts. The strategy proved effective when biomedical data was limited and general-domain pretraining captured useful structure.</p>
 <p><em>PubMedBERT</em> challenged this assumption by demonstrating that from-scratch pretraining on biomedical text alone could outperform domain-adaptive approaches when sufficient domain data exists <span class="citation" data-cites="gu_pubmedbert_2021">(<a href="../bib/references.html#ref-gu_pubmedbert_2021" role="doc-biblioref"><strong>gu_pubmedbert_2021?</strong></a>)</span>. The key insight was vocabulary mismatch: general-domain tokenizers fragment biomedical terms into meaningless subwords (“lymphoma” becomes “l”, “##ym”, “##ph”, “##oma”), forcing the model to reconstruct meaning from pieces rather than representing concepts directly. Training from scratch with a domain-specific vocabulary eliminated this overhead. When domain-specific data is abundant (as with PubMed’s millions of abstracts), the benefits of general-domain initialization may not justify the vocabulary mismatch cost.</p>
@@ -1197,6 +1308,7 @@ Practical Guidance
 </section>
 <section id="sec-ch08-data-complexity" class="level3" data-number="8.7.5">
 <h3 data-number="8.7.5" class="anchored" data-anchor-id="sec-ch08-data-complexity"><span class="header-section-number">8.7.5</span> Data Complexity Curricula</h3>
+<p>Should the model see simple repetitive sequences first and complex regulatory regions later, or dive straight into the hardest examples? The order in which training data is presented affects what the model learns and how efficiently it learns it. Presenting complex enhancer grammar before the model has mastered basic motif recognition may waste training steps on examples the model cannot yet learn from.</p>
 <p>Not all genomic sequences present equal learning difficulty. Repetitive regions offer little to learn beyond detecting repeats; complex regulatory regions require learning combinatorial motif grammar; intergenic regions provide evolutionary constraint signal distinct from coding regions. <strong>Data complexity curricula</strong> order training examples from simple to complex, allowing models to build representations progressively.</p>
 <p>Complexity ordering can be implicit or explicit. Implicit ordering emerges from data sampling: if training oversamples certain regions early (promoters, conserved sequences), the model learns those patterns first. Explicit ordering requires defining complexity metrics (sequence entropy, motif density, evolutionary conservation, expression variability) and scheduling examples accordingly. While less explored in genomics than context curricula, data complexity scheduling offers potential for improving sample efficiency, particularly when some sequence classes are over-represented in training corpora.</p>
 </section>
@@ -1218,6 +1330,7 @@ Practical Guidance
 </section>
 <section id="sec-ch08-repeats" class="level3" data-number="8.8.2">
 <h3 data-number="8.8.2" class="anchored" data-anchor-id="sec-ch08-repeats"><span class="header-section-number">8.8.2</span> Repeat Handling</h3>
+<p>Half the human genome consists of repetitive sequences, but should your model spend half its training capacity learning to recognize LINE elements and Alu repeats? The answer depends entirely on your downstream task. For variant interpretation in coding regions, repeats are noise; for studying repeat expansion disorders like Huntington disease, they are the signal. How you handle repeats during pretraining shapes what your model can and cannot do.</p>
 <p>Repeat handling impacts pretraining in ways that depend on downstream applications. Simple repeats, tandem repeats, and transposable elements occupy roughly half of the human genome but contribute less directly to protein-coding function than unique sequences <em>[Citation Needed]</em>. Hard-masking repeats (replacing repetitive bases with N characters, rendering <code>ATCGATCGATCG</code> as <code>NNNNNNNNNNNN</code>) reduces training data but may discard information relevant to some tasks; many regulatory elements derive from transposable elements, and some disease-associated repeats (like the CGG expansion in FMR1 causing Fragile X syndrome, or the CAG expansion in HTT causing Huntington disease) are clinically important. Soft-masking retains sequence information while using lowercase to flag repetitive regions (<code>atcgatcgatcg</code>), allowing models to learn differential representations for repeats and unique sequences. Tools like RepeatMasker produce these annotations, and training pipelines can be configured to treat masked regions differently: exclude them entirely, downweight their contribution to loss, or process them normally while preserving the distinction in tokenization.</p>
 </section>
 <section id="sec-ch08-multispecies" class="level3" data-number="8.8.3">
@@ -1231,6 +1344,7 @@ Practical Guidance
 <p>Training a model to predict variant effects in genes like <em>BRCA1</em> requires not just the right objective but also stable optimization that converges to useful representations. A model that diverges during training or gets stuck in poor local minima will fail clinically regardless of how well-designed its architecture may be. The optimization details that seem merely technical have direct consequences for whether the final model can reliably distinguish pathogenic from benign variants.</p>
 <section id="sec-ch08-hyperparameters" class="level3" data-number="8.9.1">
 <h3 data-number="8.9.1" class="anchored" data-anchor-id="sec-ch08-hyperparameters"><span class="header-section-number">8.9.1</span> Optimization Hyperparameters</h3>
+<p>A learning rate that is too high causes loss to spike and never recover; a learning rate that is too low means the model crawls toward convergence over months instead of weeks. Gradient explosions can corrupt a week of training in a single batch. These optimization details seem purely technical until they determine whether your model learns useful representations or produces garbage.</p>
 <p>Stable training requires careful attention to learning rate scheduling, gradient management, and numerical precision. Learning rate warmup gradually increases the learning rate from near-zero over the first several thousand steps, preventing early training instability when the model has random initializations and large gradient variance. After warmup, cosine decay schedules reduce the learning rate following a cosine curve from peak to near-zero over training, providing aggressive learning early when gradients are most informative and gentle refinement late as the model approaches convergence.</p>
 <p><strong>Gradient clipping</strong> (see <a href="p2-ch07-attention.html#sec-ch07-gradients" class="quarto-xref"><span>Section 7.6.3</span></a>) uses a norm threshold of 1.0 in most genomic pretraining configurations. Without clipping, a single anomalous batch can destabilize training irreversibly.</p>
 <p>Modern pretraining relies on mixed precision arithmetic (<code>float16</code> or <code>bfloat16</code> instead of <code>float32</code>) to reduce memory consumption and accelerate computation on modern GPUs. Loss scaling prevents numerical underflow in <code>float16</code>, and careful handling of gradient updates ensures stability. Mixed precision is now standard for large-scale pretraining, roughly doubling throughput with minimal impact on model quality.</p>
@@ -1252,7 +1366,7 @@ Advanced Topic
 </div>
 <p>Pretraining scales with model size, sequence length, and dataset size in predictable ways that have profound implications for what models can learn. Larger models with more parameters capture more complex patterns but require more data and compute to train. <em>ESM-2’s</em> largest variant has 15 billion parameters <span class="citation" data-cites="lin_esm-2_2022">(<a href="../bib/references.html#ref-lin_esm-2_2022" role="doc-biblioref">Lin et al. 2022</a>)</span> (roughly one parameter for every two amino acids in its training corpus), enabling it to capture subtle evolutionary constraints invisible to smaller models. Longer sequence contexts enable learning of long-range dependencies but increase memory requirements quadratically for standard attention. More diverse training data improves generalization but requires proportionally more training time.</p>
 <p>The relationships between scale and capability follow power laws that predict optimal resource allocation <span class="citation" data-cites="hoffmann_training_2022">(<a href="../bib/references.html#ref-hoffmann_training_2022" role="doc-biblioref">Hoffmann et al. 2022</a>)</span>. For a fixed computational budget, there exists an optimal balance between model size and training data: models that are too large undertrain on available data, while models that are too small cannot capture the complexity present in abundant data. These <strong>scaling laws</strong>, first characterized systematically for language models <span class="citation" data-cites="kaplan_scaling_2020">(<a href="../bib/references.html#ref-kaplan_scaling_2020" role="doc-biblioref">Kaplan et al. 2020</a>)</span>, appear to hold for genomic foundation models as well, though the precise exponents and constants differ. Understanding these relationships guides decisions about when to scale up versus when to improve data quality or model architecture. <a href="../part_3/p3-ch13-fm-principles.html" class="quarto-xref"><span>Chapter 13</span></a> examines these scaling relationships in detail, formalizing the observations introduced here into quantitative laws that define the foundation model paradigm.</p>
-<p>These empirical scaling laws contradict classical intuitions from statistical learning theory. The Vapnik-Chervonenkis framework predicts generalization error scaling as <span class="math inline">\(O(1/\sqrt{N})\)</span>: halving the error requires quadrupling the training data, with model complexity strictly bounded by available examples <span class="citation" data-cites="vapnik_statistical_1998">(<a href="../bib/references.html#ref-vapnik_statistical_1998" role="doc-biblioref"><strong>vapnik_statistical_1998?</strong></a>)</span>. Models with parameters vastly exceeding training examples should memorize rather than generalize. Yet foundation models operate precisely in this “overparameterized” regime and still improve predictably with scale. This <strong>benign overfitting</strong> reflects properties of gradient descent and high-dimensional loss landscapes that classical worst-case bounds did not anticipate <span class="citation" data-cites="zhang_understanding_2017 belkin_reconciling_2019">(<a href="../bib/references.html#ref-zhang_understanding_2017" role="doc-biblioref"><strong>zhang_understanding_2017?</strong></a>; <a href="../bib/references.html#ref-belkin_reconciling_2019" role="doc-biblioref"><strong>belkin_reconciling_2019?</strong></a>)</span>.</p>
+<p>These empirical scaling laws contradict classical intuitions from statistical learning theory. A helpful analogy: traditional theory says that a student who memorizes 100 flashcards cannot pass a 1000-question exam—there simply are not enough examples to learn general rules. The Vapnik-Chervonenkis framework formalizes this intuition, predicting generalization error scaling as <span class="math inline">\(O(1/\sqrt{N})\)</span>: halving the error requires quadrupling the training data, with model complexity strictly bounded by available examples <span class="citation" data-cites="vapnik_statistical_1998">(<a href="../bib/references.html#ref-vapnik_statistical_1998" role="doc-biblioref"><strong>vapnik_statistical_1998?</strong></a>)</span>. Models with parameters vastly exceeding training examples should memorize rather than generalize—like a student with more flashcard slots than study examples. Yet foundation models operate precisely in this “overparameterized” regime and still improve predictably with scale, as if the student discovered underlying patterns that make even unseen questions answerable. This <strong>benign overfitting</strong> reflects properties of gradient descent and high-dimensional loss landscapes that classical worst-case bounds did not anticipate <span class="citation" data-cites="zhang_understanding_2017 belkin_reconciling_2019">(<a href="../bib/references.html#ref-zhang_understanding_2017" role="doc-biblioref"><strong>zhang_understanding_2017?</strong></a>; <a href="../bib/references.html#ref-belkin_reconciling_2019" role="doc-biblioref"><strong>belkin_reconciling_2019?</strong></a>)</span>.</p>
 <p>Beyond smooth improvements in loss, scale produces qualitative changes in model capabilities that were absent at smaller scales. Language models exhibit <strong>emergent behaviors</strong> (in-context learning, chain-of-thought reasoning, few-shot generalization) that appear only above certain parameter thresholds <em>[Citation Needed]</em>. Whether genomic models exhibit analogous emergent capabilities remains an active research question with early evidence suggesting they do. <em>ESM-2</em>, trained on evolutionary sequence databases containing hundreds of millions of protein sequences from UniRef <span class="citation" data-cites="suzek_uniref_2007">(<a href="../bib/references.html#ref-suzek_uniref_2007" role="doc-biblioref">Suzek et al. 2007</a>)</span>, develops structural understanding of proteins despite receiving no explicit structural supervision: the three-dimensional contacts emerge from predicting amino acid sequences alone. <em>Evo</em>, trained autoregressively on genomes, learns to generate sequences with realistic gene structure and regulatory organization. These emergent properties cannot be predicted by extrapolating from smaller models, making them both scientifically interesting and practically difficult to anticipate.</p>
 </section>
 </section>
@@ -1261,18 +1375,20 @@ Advanced Topic
 <p>A two-week pretraining run that begins diverging on day three but is not detected until day thirteen wastes ten days of compute and forces rollback to earlier checkpoints. The failure is not losing everything; it’s continuing to train a model that stopped learning useful representations long before anyone noticed. Early detection of training issues is essential for avoiding wasted computation and ensuring models achieve the representations necessary for clinical utility.</p>
 <section id="sec-ch08-monitoring" class="level3" data-number="8.10.1">
 <h3 data-number="8.10.1" class="anchored" data-anchor-id="sec-ch08-monitoring"><span class="header-section-number">8.10.1</span> Monitoring Loss and Gradients</h3>
+<p>When loss suddenly spikes on day five of a two-week training run, is it a temporary anomaly that will self-correct, or the beginning of catastrophic divergence that will waste the remaining nine days? Knowing which metrics to watch, and what patterns signal trouble, lets you catch problems early and decide whether to continue, roll back, or restart with different hyperparameters.</p>
 <p>Training loss curves should decrease smoothly in early stages, eventually plateauing as the model approaches convergence. Sudden spikes suggest numerical instability (often from learning rate issues or gradient explosion), inappropriate optimization hyperparameters, or corrupted data batches. Persistent plateaus may indicate insufficient model capacity, inappropriate objectives, or learning rates that prevent further improvement. Tracking loss on held-out validation data monitors generalization: if training loss decreases while validation loss increases, the model is <strong>overfitting</strong> to the training corpus.</p>
 <p>Gradient norms indicate whether optimization is proceeding normally. Very small gradients suggest the <strong>vanishing gradient problem</strong>, preventing effective learning in early layers. Very large gradients suggest instability that gradient clipping should catch. Tracking per-layer gradient norms helps diagnose where problems originate in deep networks; if early layers show vanishing gradients while later layers have healthy magnitudes, the architecture may need residual connections or different initialization.</p>
 </section>
 <section id="sec-ch08-probing" class="level3" data-number="8.10.2">
 <h3 data-number="8.10.2" class="anchored" data-anchor-id="sec-ch08-probing"><span class="header-section-number">8.10.2</span> Functional Probing</h3>
+<p>Loss can decrease steadily for weeks while the model learns patterns useless for your downstream task. A model might become excellent at predicting repeat sequences (which dominate the genome) while learning nothing about regulatory elements (which matter for variant interpretation). Probing intermediate checkpoints on biologically meaningful tasks reveals whether learning is on track, regardless of what the loss curve shows.</p>
 <p>Probing tasks provide functional sanity checks during pretraining that loss curves alone cannot capture. Simple downstream evaluations (predicting known splice sites, identifying transcription factor binding motifs, distinguishing exons from introns) can be run periodically on intermediate checkpoints to verify that learned representations capture biologically meaningful patterns. If probing performance plateaus or degrades while pretraining loss continues improving, the model may be learning patterns that do not transfer to downstream tasks. This dissociation between pretraining loss and probe performance signals a problem with the pretraining objective or data that would otherwise go undetected until final evaluation.</p>
 </section>
 </section>
 <section id="sec-ch08-selection" class="level2" data-number="8.11">
 <h2 data-number="8.11" class="anchored" data-anchor-id="sec-ch08-selection"><span class="header-section-number">8.11</span> Strategy Selection</h2>
 <p>A clinician asking “will this <em>BRCA1</em> variant cause disease?” needs a model pretrained with objectives that capture protein function and evolutionary constraint. A synthetic biologist asking “can you design me a promoter with 10-fold higher expression?” needs generative capabilities that MLM does not provide. Selecting a pretraining approach involves matching computational investment to the clinical or research questions the model must ultimately answer.</p>
-<div class="callout callout-style-default callout-note callout-titled">
+<div class="callout callout-style-default callout-tip callout-titled" title="Knowledge Check">
 <div class="callout-header d-flex align-content-center">
 <div class="callout-icon-container">
 <i class="callout-icon"></i>
@@ -1289,7 +1405,24 @@ Knowledge Check
 <li>Creating a variant classifier that works across diverse human populations</li>
 <li>Predicting splice-altering variants in rare disease patients</li>
 </ol>
-<p><em>Consider what kind of context each task requires and whether generation is needed.</em></p>
+<div class="callout callout-style-default callout-note callout-titled" title="Check Your Answer">
+<div class="callout-header d-flex align-content-center" data-bs-toggle="collapse" data-bs-target=".callout-17-contents" aria-controls="callout-17" aria-expanded="false" aria-label="Toggle callout">
+<div class="callout-icon-container">
+<i class="callout-icon"></i>
+</div>
+<div class="callout-title-container flex-fill">
+Check Your Answer
+</div>
+<div class="callout-btn-toggle d-inline-block border-0 py-1 ps-1 pe-0 float-end"><i class="callout-toggle"></i></div>
+</div>
+<div id="callout-17" class="callout-17-contents callout-collapse collapse">
+<div class="callout-body-container callout-body">
+<ol type="1">
+<li>MLM - predicting binding disruption requires bidirectional context to assess how the variant affects the motif and flanking regions. (2) Autoregressive/next-token prediction - designing new sequences requires generation capabilities that sample coherent proteins respecting learned sequence grammar. (3) Contrastive learning - robustness across populations benefits from pretraining that learns invariance to genetic variation through contrastive objectives on variant pairs. (4) MLM - splice site prediction needs to assess how variants affect both donor and acceptor sites with full bidirectional context around the junction.</li>
+</ol>
+</div>
+</div>
+</div>
 </div>
 </div>
 <p>For most general-purpose DNA or protein models, MLM pretraining provides a strong default. It learns bidirectional context, scales efficiently, and transfers well to diverse downstream tasks. <em>DNABERT</em> and <em>DNABERT-2</em> exemplify this approach for genomics, while <em>ESM</em> models demonstrate its effectiveness for proteins. Start with MLM unless there is a specific reason to prefer alternatives.</p>
@@ -1422,6 +1555,48 @@ Table&nbsp;8.4: Summary of pretraining strategies across major genomic foundatio
 <p>The fundamental insight underlying self-supervised pretraining is that patterns relevant to biological function are embedded in sequence statistics themselves. A model that learns to predict masked nucleotides must implicitly capture the evolutionary constraints, regulatory grammar, and structural requirements that determine what sequences are viable. A model that learns to generate plausible protein sequences must internalize the constraints that distinguish functional proteins from random polymers. These objectives extract biological knowledge from sequence without requiring explicit functional labels, transforming abundant unlabeled data into learned representations that improve data efficiency for downstream applications.</p>
 <p>The choice of pretraining objective shapes what models learn in ways that propagate to clinical utility. Masked language modeling teaches bidirectional sequence understanding, making it the natural choice for variant interpretation and regulatory prediction where full flanking context informs the prediction. Next-token prediction teaches generative capabilities essential for therapeutic protein design and synthetic sequence generation. Contrastive learning teaches invariance to perturbations, building robustness that transfers across species and populations. Aligning pretraining objectives with intended applications improves transfer; misalignment creates representational gaps that fine-tuning may struggle to bridge.</p>
 <p>Self-supervised pretraining has become the default approach for building genomic foundation models. The DNA language models in <a href="../part_3/p3-ch14-dna-lm.html" class="quarto-xref"><span>Chapter 14</span></a>, protein language models in <a href="../part_3/p3-ch15-protein-lm.html" class="quarto-xref"><span>Chapter 15</span></a>, and regulatory sequence models in <a href="../part_3/p3-ch16-regulatory.html" class="quarto-xref"><span>Chapter 16</span></a> each employ variants of these objectives tailored to their sequence modalities and downstream applications. The transfer learning methods examined in <a href="p2-ch09-transfer.html" class="quarto-xref"><span>Chapter 9</span></a> determine how effectively pretrained representations can be adapted to specific clinical and research tasks, completing the pipeline from raw sequence through learned representation to deployed application.</p>
+<div class="callout callout-style-default callout-tip callout-titled" title="Test Yourself">
+<div class="callout-header d-flex align-content-center">
+<div class="callout-icon-container">
+<i class="callout-icon"></i>
+</div>
+<div class="callout-title-container flex-fill">
+Test Yourself
+</div>
+</div>
+<div class="callout-body-container callout-body">
+<p>Before reviewing the summary, test your recall:</p>
+<ol type="1">
+<li>How does masked language modeling encourage bidirectional context integration, and why does this make MLM-pretrained models better suited for variant effect prediction than autoregressive models?</li>
+<li>Explain why span masking forces compositional learning while random token masking encourages local pattern learning. Which is better for regulatory element prediction?</li>
+<li>What is the positional bias problem in autoregressive models, and why does it create asymmetric representation quality across sequence positions?</li>
+<li>When does zero-shot transfer succeed without any task-specific fine-tuning, and what alignment between pretraining and downstream tasks makes this possible?</li>
+<li>Why does context length curriculum (training first on short sequences, then progressively extending) improve optimization stability compared to training directly on long contexts?</li>
+</ol>
+<div class="callout callout-style-default callout-note callout-titled" title="Check Your Answers">
+<div class="callout-header d-flex align-content-center" data-bs-toggle="collapse" data-bs-target=".callout-20-contents" aria-controls="callout-20" aria-expanded="false" aria-label="Toggle callout">
+<div class="callout-icon-container">
+<i class="callout-icon"></i>
+</div>
+<div class="callout-title-container flex-fill">
+Check Your Answers
+</div>
+<div class="callout-btn-toggle d-inline-block border-0 py-1 ps-1 pe-0 float-end"><i class="callout-toggle"></i></div>
+</div>
+<div id="callout-20" class="callout-20-contents callout-collapse collapse">
+<div class="callout-body-container callout-body">
+<ol type="1">
+<li><p>MLM uses bidirectional attention, allowing each position to integrate information from the entire sequence. During prediction of a masked token, the model sees both upstream and downstream context. For variant effect prediction, pathogenicity often depends on how a variant disrupts interactions with residues or motifs on both sides, making bidirectional context essential. Autoregressive models only see preceding tokens, missing critical downstream information.</p></li>
+<li><p>Random token masking allows models to predict each masked position from immediately adjacent context (e.g., predicting the missing base in TATA_A is easy from local cues). Span masking removes entire contiguous blocks, eliminating local context entirely. To predict a masked 6bp transcription factor binding motif, the model must reason from more distant regulatory context about what kind of element belongs there, forcing it to learn compositional patterns. Span masking is better for regulatory element prediction because it forces the model to treat motifs as integrated functional units.</p></li>
+<li><p>Autoregressive models predict each token given only preceding tokens. Early positions in a sequence have minimal conditioning information (the first token has none), while later positions benefit from rich preceding context. This creates asymmetric representation quality: early positions are learned less reliably than later ones. For genomic sequences with no inherent directionality, this introduces artifacts unrelated to biology.</p></li>
+<li><p>Zero-shot transfer succeeds when the pretraining objective perfectly aligns with the downstream task structure. For example, if a model is pretrained to predict masked tokens in transcription factor binding sites, and the downstream task is to identify disrupted binding sites, the representations learned during pretraining directly solve the downstream task without additional adaptation. This requires that the pretraining objective captures exactly the patterns the downstream task needs.</p></li>
+<li><p>Starting with long contexts forces models to learn both basic sequence statistics and long-range structure simultaneously, creating competing optimization pressures that can interfere. Context curricula separate these phases: models first learn local patterns efficiently at short contexts where optimization is stable, then learn to integrate these patterns across distance at extended contexts. This staged approach allows attention patterns to develop gradually rather than requiring structured long-range attention from random initialization.</p></li>
+</ol>
+</div>
+</div>
+</div>
+</div>
+</div>
 <div class="callout callout-style-default callout-note callout-titled">
 <div class="callout-header d-flex align-content-center">
 <div class="callout-icon-container">

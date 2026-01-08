@@ -532,7 +532,9 @@ div.csl-indent {
 </header>
 
 
-<p><em>Models learn shortcuts. Shortcuts work—until they don’t.</em></p>
+<blockquote class="blockquote">
+<p>Models learn shortcuts. Shortcuts work—until they don’t.</p>
+</blockquote>
 <div class="callout callout-style-default callout-note callout-titled">
 <div class="callout-header d-flex align-content-center">
 <div class="callout-icon-container">
@@ -543,6 +545,7 @@ Chapter Overview
 </div>
 </div>
 <div class="callout-body-container callout-body">
+<p><strong>Estimated reading time:</strong> 40-50 minutes</p>
 <p><strong>Prerequisites:</strong> This chapter assumes familiarity with basic machine learning evaluation concepts (training/test splits, performance metrics) from <span class="quarto-unresolved-ref">?sec-ch09-evaluation</span>, population structure concepts from <a href="../part_1/p1-ch03-gwas.html#sec-ch03-population-structure" class="quarto-xref"><span>Section 3.1.4</span></a>, and variant annotation databases from <a href="../part_1/p1-ch02-data.html#sec-ch02-clinical" class="quarto-xref"><span>Section 2.8</span></a>. Readers should also understand the distinction between correlation and causation.</p>
 <p><strong>Learning Objectives:</strong> After completing this chapter, you should be able to:</p>
 <ol type="1">
@@ -581,6 +584,26 @@ Figure&nbsp;12.1: Confounding structure in genomic prediction. (Left) Ancestry a
 <p><strong>Bias</strong> refers to systematic deviation from the quantity we intend to estimate or predict. Bias can result from confounding, but also arises from measurement error, label definitions, sampling procedures, or deployment differences. A case-control study with 50% disease prevalence will train models that systematically over-predict risk when deployed in populations where true prevalence is 5%. The model may be perfectly calibrated for the training distribution yet dangerously miscalibrated for clinical use.</p>
 <p><strong>Data leakage</strong> occurs when information about the test set inadvertently influences model training or selection. Leakage pathways include overlapping individuals or variants between training and evaluation, shared family members across splits, duplicated samples under different identifiers, and indirect channels such as pretraining on resources that later serve as benchmarks. The circularity between computational predictors and ClinVar annotations discussed in <a href="../part_1/p1-ch04-vep-classical.html#sec-ch04-circularity" class="quarto-xref"><span>Section 4.5</span></a> exemplifies this last category: <em>CADD</em>-like scores influence which variants receive pathogenic annotations, and those annotations then become training labels for the next generation of predictors.</p>
 <p><strong>Distribution shift</strong> describes mismatch between training and deployment data distributions. Shift can be driven by changes in ancestry composition, sequencing technology, clinical coding practices, or temporal trends in care. A model that learns hospital-specific coding patterns will fail when deployed at a different institution, not because the biology differs but because the label generation process does.</p>
+<div class="callout callout-style-default callout-note callout-titled" title="Predict Before You Look">
+<div class="callout-header d-flex align-content-center">
+<div class="callout-icon-container">
+<i class="callout-icon"></i>
+</div>
+<div class="callout-title-container flex-fill">
+Predict Before You Look
+</div>
+</div>
+<div class="callout-body-container callout-body">
+<p>Before examining the table below, test your understanding: For each scenario, identify whether it represents confounding, bias, data leakage, or distribution shift:</p>
+<ol type="1">
+<li>A model trained on variants from 2018-2020 ClinVar is tested on variants added to ClinVar in 2023</li>
+<li>A polygenic score calibrated on 50% case prevalence is deployed in a population with 5% prevalence</li>
+<li>Ancestry affects both allele frequencies and disease risk through healthcare access pathways</li>
+<li>The same individual’s genome appears in both training and test sets under different identifiers</li>
+</ol>
+<p>Check your predictions against the table definitions below.</p>
+</div>
+</div>
 <p>The following table clarifies the distinctions between these related but distinct concepts:</p>
 <div id="tbl-terminology" class="quarto-float quarto-figure quarto-figure-center anchored">
 <figure class="quarto-float quarto-float-tbl figure">
@@ -834,6 +857,42 @@ Key Insight: Capacity Amplifies Confounding
 </div>
 </div>
 <p>This mismatch between the populations used for model development and the populations that would benefit from genomic medicine creates a fundamental tension between current practice and equitable healthcare. Models that work primarily for European ancestry individuals perpetuate existing health disparities, regardless of their benchmark performance. The fairness implications are examined further in <a href="#sec-ch12-fairness" class="quarto-xref"><span>Section 12.10</span></a>.</p>
+<div class="callout callout-style-default callout-tip callout-titled" title="Knowledge Check: Recall Key Concepts">
+<div class="callout-header d-flex align-content-center">
+<div class="callout-icon-container">
+<i class="callout-icon"></i>
+</div>
+<div class="callout-title-container flex-fill">
+Knowledge Check: Recall Key Concepts
+</div>
+</div>
+<div class="callout-body-container callout-body">
+<p>Before moving to technical artifacts, test your retention from the earlier sections:</p>
+<ol type="1">
+<li>What is the difference between a confounder and data leakage? Give a concrete example of each.</li>
+<li>Why does ancestry act as a confounding variable in genomic prediction?</li>
+<li>What diagnostic would reveal that your model’s 0.85 auROC primarily reflects ancestry rather than biological mechanism?</li>
+</ol>
+<div class="callout callout-style-default callout-note callout-titled" title="Check Your Answer">
+<div class="callout-header d-flex align-content-center" data-bs-toggle="collapse" data-bs-target=".callout-6-contents" aria-controls="callout-6" aria-expanded="false" aria-label="Toggle callout">
+<div class="callout-icon-container">
+<i class="callout-icon"></i>
+</div>
+<div class="callout-title-container flex-fill">
+Check Your Answer
+</div>
+<div class="callout-btn-toggle d-inline-block border-0 py-1 ps-1 pe-0 float-end"><i class="callout-toggle"></i></div>
+</div>
+<div id="callout-6" class="callout-6-contents callout-collapse collapse">
+<div class="callout-body-container callout-body">
+<ol type="1">
+<li>A confounder is a variable that affects both features and labels (e.g., ancestry affects allele frequencies and disease risk through healthcare access), while data leakage occurs when test information influences training (e.g., the same variant appearing in both train and test sets). Both inflate performance, but leakage involves information that shouldn’t exist at prediction time, while confounding involves real but non-causal associations. (2) Ancestry affects genomic features through population-specific allele frequencies and haplotype structure, while simultaneously affecting disease labels through environmental factors, healthcare access, socioeconomic status, and clinical ascertainment practices—creating a spurious association pathway the model can exploit. (3) Train a confounder-only baseline using just ancestry principal components with no genomic features. If this baseline achieves performance close to your full model (e.g., 0.80 vs 0.85 auROC), ancestry confounding drives most of the signal.</li>
+</ol>
+</div>
+</div>
+</div>
+</div>
+</div>
 </section>
 <section id="sec-ch12-technical-artifacts" class="level2" data-number="12.4">
 <h2 data-number="12.4" class="anchored" data-anchor-id="sec-ch12-technical-artifacts"><span class="header-section-number">12.4</span> Technical Artifacts as Biological Signal</h2>
@@ -874,8 +933,9 @@ Figure&nbsp;12.3: Technical batch effects masquerade as biological signal. (A) M
 </figcaption>
 </figure>
 </div>
-<p>When samples from a particular batch or platform are disproportionately drawn from a specific phenotype class, models learn to distinguish batches. In high-dimensional feature spaces, even subtle batch-specific artifacts (coverage dips at particular loci, variant density patterns reflecting caller behavior, residual adapter sequences) can become predictive. Foundation models that process raw reads, coverage tracks, or variant streams are particularly vulnerable because batch signatures may be encoded in features that preprocessing would typically remove.</p>
-<div class="callout callout-style-default callout-warning callout-titled">
+<p>When samples from a particular batch or platform are disproportionately drawn from a specific phenotype class, models learn to distinguish batches. Why does batch-phenotype correlation arise in real studies? Practical constraints drive the pattern: case samples are often collected at specialized disease centers with particular sequencing infrastructure, while controls come from population biobanks using different platforms. Temporal factors compound this—if cases were sequenced earlier when certain technologies dominated, and controls were added later with newer platforms, technology-phenotype correlation becomes embedded in the data. Studies rarely randomize case-control status across batches because retrospective collection is cheaper than prospective design, creating systematic confounding that standard quality control cannot detect.</p>
+<p>In high-dimensional feature spaces, even subtle batch-specific artifacts (coverage dips at particular loci, variant density patterns reflecting caller behavior, residual adapter sequences) can become predictive. Foundation models that process raw reads, coverage tracks, or variant streams are particularly vulnerable because batch signatures may be encoded in features that preprocessing would typically remove.</p>
+<div class="callout callout-style-default callout-tip callout-titled" title="Knowledge Check">
 <div class="callout-header d-flex align-content-center">
 <div class="callout-icon-container">
 <i class="callout-icon"></i>
@@ -886,6 +946,22 @@ Knowledge Check
 </div>
 <div class="callout-body-container callout-body">
 <p>A model achieves 0.88 auROC predicting disease status from whole-genome sequences. You discover that case samples were sequenced at Center A using Illumina NovaSeq, while control samples were sequenced at Center B using HiSeq. What would you predict about performance on a new cohort where cases and controls are equally distributed across both centers? What diagnostic would you run to test for batch confounding?</p>
+<div class="callout callout-style-default callout-note callout-titled" title="Check Your Answer">
+<div class="callout-header d-flex align-content-center" data-bs-toggle="collapse" data-bs-target=".callout-8-contents" aria-controls="callout-8" aria-expanded="false" aria-label="Toggle callout">
+<div class="callout-icon-container">
+<i class="callout-icon"></i>
+</div>
+<div class="callout-title-container flex-fill">
+Check Your Answer
+</div>
+<div class="callout-btn-toggle d-inline-block border-0 py-1 ps-1 pe-0 float-end"><i class="callout-toggle"></i></div>
+</div>
+<div id="callout-8" class="callout-8-contents callout-collapse collapse">
+<div class="callout-body-container callout-body">
+<p>Performance would likely collapse to near-chance levels (close to 0.50 auROC) because the model learned to distinguish sequencing centers rather than disease biology. When cases and controls are equally distributed across both centers, the batch-disease correlation disappears and the learned shortcut becomes useless. Diagnostics to run: (1) Train a classifier to predict sequencing center from the model’s learned embeddings - high accuracy confirms batch encoding. (2) Visualize embeddings colored by center and by disease status - clustering by center rather than disease reveals the problem. (3) Evaluate performance stratified by center - if within-center performance is poor, the model relies on between-center differences.</p>
+</div>
+</div>
+</div>
 </div>
 </div>
 <p>Common patterns suggesting batch confounding include embedding spaces where samples cluster by sequencing center rather than phenotype, strong predictive performance that collapses when evaluated on data from a new platform, and models that can accurately predict batch identity (sequencing center, capture kit, processing date) from inputs that should be batch-independent. When a model designed to predict disease can also predict which laboratory processed the sample, something has gone wrong.</p>
@@ -910,6 +986,7 @@ Figure&nbsp;12.4: Label circularity inflates apparent validation. Clinical labor
 </figure>
 </div>
 <p>Variant pathogenicity labels illustrate the problem of circularity. ClinVar aggregates submissions from clinical laboratories, research groups, and expert panels <span class="citation" data-cites="landrum_clinvar_2018">(<a href="../bib/references.html#ref-landrum_clinvar_2018" role="doc-biblioref">Landrum et al. 2018</a>)</span>. The evidence underlying these submissions often includes computational predictions: a laboratory may cite <em>CADD</em>, <em>REVEL</em>, or other predictors as supporting evidence for a pathogenic classification. When the next generation of predictors trains on ClinVar, it learns to replicate the computational predictions that contributed to those labels. Performance on ClinVar-derived benchmarks thus reflects, in part, agreement with previous predictors rather than independent biological insight.</p>
+<p>Why does circularity inflate validation metrics specifically? The mechanism is statistical: the new model’s task becomes predicting what previous models predicted, not predicting true pathogenicity. If <em>CADD</em> influenced 30% of pathogenic labels, and the new model learns to approximate <em>CADD</em>, it automatically achieves high agreement on those labels—regardless of whether the underlying biology was correctly captured. The inflation is proportional to the previous model’s influence on labeling: more circularity means more inflated benchmarks. Critically, this inflation is invisible within the circular ecosystem; only prospective validation on genuinely novel variants or independent functional assays reveals the gap between apparent and true performance.</p>
 <p>This circularity extends across the ecosystem of genomic resources. gnomAD allele frequencies inform variant filtering in clinical pipelines. UK Biobank genotype-phenotype associations shape which variants receive functional follow-up. Structural annotations from ENCODE and Roadmap Epigenomics influence which regulatory regions are considered biologically important. Foundation models pretrained on these resources, then evaluated against benchmarks derived from the same resources, may achieve impressive scores while learning to reproduce the assumptions and biases of existing annotations rather than discovering new biology.</p>
 </section>
 <section id="sec-ch12-data-splitting" class="level2" data-number="12.6">
@@ -938,7 +1015,9 @@ Mathematical Foundations
 </section>
 <section id="sec-ch12-locus-splits" class="level3" data-number="12.6.3">
 <h3 data-number="12.6.3" class="anchored" data-anchor-id="sec-ch12-locus-splits"><span class="header-section-number">12.6.3</span> Locus-Level Splits</h3>
-<p>Locus-level splits hold out entire genomic positions, ensuring that no variant at a test position appears during training. This stringent approach prevents models from memorizing site-specific patterns and is essential for <strong>variant effect prediction</strong> where the goal is to score novel variants at positions the model has never seen. Many published benchmarks fail to implement locus-level splitting, allowing models to achieve high scores by recognizing familiar positions rather than learning generalizable effects. The evaluation considerations in <a href="p2-ch11-benchmarks.html#sec-ch11-leakage-detection" class="quarto-xref"><span>Section 12.4</span></a> address these issues in detail.</p>
+<p>Locus-level splits hold out entire genomic positions, ensuring that no variant at a test position appears during training. This stringent approach prevents models from memorizing site-specific patterns and is essential for <strong>variant effect prediction</strong> where the goal is to score novel variants at positions the model has never seen.</p>
+<p>Why do models memorize positions when batch effects or ascertainment biases exist? Gradient descent discovers whatever pathway most efficiently reduces loss. When certain genomic positions systematically appear in training with particular labels—because well-studied genes are overrepresented, or because sequencing centers focused on specific regions—the model can reduce loss by learning “position X tends to be pathogenic” rather than “variants disrupting this motif tend to be pathogenic.” In high-dimensional feature spaces, both pathways are viable; position memorization is often easier. Locus-level splits force the model to succeed on positions it has never seen, eliminating the memorization shortcut entirely.</p>
+<p>Many published benchmarks fail to implement locus-level splitting, allowing models to achieve high scores by recognizing familiar positions rather than learning generalizable effects. The evaluation considerations in <a href="p2-ch11-benchmarks.html#sec-ch11-leakage-detection" class="quarto-xref"><span>Section 12.4</span></a> address these issues in detail.</p>
 </section>
 <section id="sec-ch12-region-splits" class="level3" data-number="12.6.4">
 <h3 data-number="12.6.4" class="anchored" data-anchor-id="sec-ch12-region-splits"><span class="header-section-number">12.6.4</span> Region and Chromosome Splits</h3>
@@ -955,6 +1034,26 @@ Mathematical Foundations
 <section id="sec-ch12-indirect-leakage" class="level3" data-number="12.6.7">
 <h3 data-number="12.6.7" class="anchored" data-anchor-id="sec-ch12-indirect-leakage"><span class="header-section-number">12.6.7</span> Indirect Leakage Across Resources</h3>
 <p>Beyond explicit split design, indirect leakage remains a concern. A variant that appears in ClinVar may also appear in gnomAD (with population frequency information), in functional assay datasets (with splicing or expression effects), and in literature-derived databases (with disease associations). Pretraining on any of these resources while evaluating on another creates indirect information flow that standard deduplication would miss.</p>
+<div class="callout callout-style-default callout-note callout-titled" title="Predict Before You Look">
+<div class="callout-header d-flex align-content-center">
+<div class="callout-icon-container">
+<i class="callout-icon"></i>
+</div>
+<div class="callout-title-container flex-fill">
+Predict Before You Look
+</div>
+</div>
+<div class="callout-body-container callout-body">
+<p>Before examining the table, consider these scenarios and predict which splitting strategy is most appropriate:</p>
+<ol type="1">
+<li>You’re building a variant effect predictor that must score novel variants at genomic positions never seen before</li>
+<li>Your model showed excellent performance in development but you need to test if it will work at other hospitals</li>
+<li>You’re training on genotypes from families with rare diseases</li>
+<li>You want to simulate how your model would perform if deployed next year</li>
+</ol>
+<p>Match each scenario to the splitting strategy it requires. Then check the table to see if your predictions align with the “When to Use” column.</p>
+</div>
+</div>
 <p>The following table compares splitting strategies and their properties:</p>
 <div id="tbl-splitting-strategies" class="quarto-float quarto-figure quarto-figure-center anchored">
 <figure class="quarto-float quarto-float-tbl figure">
@@ -1097,6 +1196,21 @@ Key Insight: The Baseline Diagnostic
 <p>If a model using only ancestry principal components (no genomic features) achieves 0.75 auROC, and your full genomic model achieves 0.82 auROC, how much of that 0.82 reflects biology versus ancestry confounding? The baseline provides a floor: any performance attributable to your genomic features is the delta above this floor. Always compute and report confounder-only baselines.</p>
 </div>
 </div>
+<p>The choice of baseline fundamentally shapes conclusions about model performance. A particularly insidious form of baseline weakness occurs when polygenic prediction studies use only <strong>clumping-and-thresholding (C+T)</strong> methods as comparators rather than LD-aware Bayesian approaches. C+T aggressively discards genetic signal by pruning correlated variants, creating an artificially weak baseline that inflates apparent deep learning gains by 16-60% compared to properly tuned alternatives <span class="citation" data-cites="ge_polygenic_2019 vilhjalmsson_modeling_2015">(<a href="../bib/references.html#ref-ge_polygenic_2019" role="doc-biblioref">Ge et al. 2019</a>; <a href="../bib/references.html#ref-vilhjalmsson_modeling_2015" role="doc-biblioref">Vilhjálmsson et al. 2015</a>)</span>.</p>
+<p>Studies reporting neural network “improvements” over C+T baselines may be demonstrating only that neural networks implicitly model linkage disequilibrium—which LD-aware Bayesian methods like LDpred2 and PRS-CS already capture more efficiently. When compared against these stronger baselines, apparent neural network advantages often disappear or reverse. A 2025 Nature Communications analysis found that neural networks performed only 93-95% as well as properly tuned linear regression for polygenic prediction when appropriate baselines were used, with apparent “nonlinear advantages” reflecting joint-tagging effects rather than genuine epistasis detection.</p>
+<div class="callout callout-style-default callout-warning callout-titled" title="Baseline Selection as Hidden Confounder">
+<div class="callout-header d-flex align-content-center">
+<div class="callout-icon-container">
+<i class="callout-icon"></i>
+</div>
+<div class="callout-title-container flex-fill">
+Baseline Selection as Hidden Confounder
+</div>
+</div>
+<div class="callout-body-container callout-body">
+<p>Weak baselines function as hidden confounders in model evaluation: they create spurious associations between model complexity and performance improvement that do not reflect genuine capability gains. Always verify that published comparisons include LD-aware methods (LDpred2-auto, PRS-CS, SBayesR) rather than only C+T. Claims of substantial improvement over “state-of-the-art” warrant skepticism until baseline strength is confirmed.</p>
+</div>
+</div>
 </section>
 <section id="sec-ch12-stratified-performance" class="level3" data-number="12.8.2">
 <h3 data-number="12.8.2" class="anchored" data-anchor-id="sec-ch12-stratified-performance"><span class="header-section-number">12.8.2</span> Stratified Performance Analysis</h3>
@@ -1113,6 +1227,42 @@ Key Insight: The Baseline Diagnostic
 <section id="sec-ch12-negative-controls" class="level3" data-number="12.8.5">
 <h3 data-number="12.8.5" class="anchored" data-anchor-id="sec-ch12-negative-controls"><span class="header-section-number">12.8.5</span> Negative Control Outcomes</h3>
 <p>Using outcomes known to be unrelated to genomics as <strong>negative controls</strong> provides powerful confirmation of confounding. If a model trained to predict disease from genotypes can also predict administrative outcomes (insurance type, documentation completeness) with similar accuracy, it has learned confounders. Shuffling labels within batch or ancestry strata should eliminate predictive signal; if it does not, the model exploits structure that transcends any specific outcome.</p>
+<div class="callout callout-style-default callout-tip callout-titled" title="Knowledge Check: Apply Detection Methods">
+<div class="callout-header d-flex align-content-center">
+<div class="callout-icon-container">
+<i class="callout-icon"></i>
+</div>
+<div class="callout-title-container flex-fill">
+Knowledge Check: Apply Detection Methods
+</div>
+</div>
+<div class="callout-body-container callout-body">
+<p>You’ve trained a disease prediction model that achieves 0.88 auROC. Apply what you’ve learned about detection:</p>
+<ol type="1">
+<li>Name three diagnostic tests you would run to detect confounding</li>
+<li>For each test, describe what result would indicate a problem</li>
+<li>If your confounder-only baseline achieves 0.82 auROC, what does this tell you about your model?</li>
+</ol>
+<div class="callout callout-style-default callout-note callout-titled" title="Check Your Answer">
+<div class="callout-header d-flex align-content-center" data-bs-toggle="collapse" data-bs-target=".callout-15-contents" aria-controls="callout-15" aria-expanded="false" aria-label="Toggle callout">
+<div class="callout-icon-container">
+<i class="callout-icon"></i>
+</div>
+<div class="callout-title-container flex-fill">
+Check Your Answer
+</div>
+<div class="callout-btn-toggle d-inline-block border-0 py-1 ps-1 pe-0 float-end"><i class="callout-toggle"></i></div>
+</div>
+<div id="callout-15" class="callout-15-contents callout-collapse collapse">
+<div class="callout-body-container callout-body">
+<ol type="1">
+<li>Three key diagnostics: (a) Confounder-only baseline using ancestry PCs and batch indicators, (b) Stratified performance analysis across ancestry groups and sequencing centers, (c) Split sensitivity comparing random vs.&nbsp;locus-level vs.&nbsp;temporal splits. (2) Problem indicators: (a) Baseline approaches full model performance (e.g., 0.82 vs 0.88), indicating confounding drives most signal; (b) Performance varies dramatically across subgroups (e.g., 0.90 in European ancestry but 0.60 in African ancestry), suggesting shortcuts; (c) Performance drops substantially under stricter splits (e.g., from 0.88 to 0.70 with locus-level), indicating memorization. (3) If the confounder-only baseline achieves 0.82 auROC while your full model achieves 0.88, then 0.82 of your performance comes from ancestry/batch shortcuts, and only 0.06 (the delta) comes from actual genomic features—your model has learned primarily confounders, not biology.</li>
+</ol>
+</div>
+</div>
+</div>
+</div>
+</div>
 </section>
 </section>
 <section id="sec-ch12-mitigation" class="level2" data-number="12.9">
@@ -1258,13 +1408,13 @@ Table&nbsp;12.4: Mitigation strategy selection guide. Choose based on when inter
 <p>Confounding connects directly to fairness and health equity. Models that achieve high average performance while failing for specific populations may appear successful while exacerbating existing disparities.</p>
 <p>Polygenic risk scores illustrate this tension. European ancestry-derived scores predict cardiovascular disease, diabetes, and breast cancer risk reasonably well within European ancestry populations. Applied to African or Asian ancestry individuals, the same scores show substantially worse discrimination and calibration <span class="citation" data-cites="duncan_analysis_2019">(<a href="../bib/references.html#ref-duncan_analysis_2019" role="doc-biblioref">Duncan et al. 2019</a>)</span>. Healthcare systems that deploy these scores without ancestry-specific validation risk providing inferior risk stratification to already underserved populations. The portability analysis framework in <a href="../part_1/p1-ch03-gwas.html#sec-ch03-portability" class="quarto-xref"><span>Section 3.7</span></a> quantifies these degradations, while clinical deployment frameworks (<a href="../part_6/p6-ch27-clinical-risk.html#sec-ch27-fairness" class="quarto-xref"><span>Section 27.8</span></a>) address operational responses.</p>
 <p>Variant interpretation exhibits similar patterns. ClinVar contains many more pathogenic variant classifications for European ancestry individuals than for other populations <span class="citation" data-cites="landrum_clinvar_2018">(<a href="../bib/references.html#ref-landrum_clinvar_2018" role="doc-biblioref">Landrum et al. 2018</a>)</span>. The data composition issues underlying this imbalance are examined in <a href="../part_1/p1-ch02-data.html#sec-ch02-clinvar" class="quarto-xref"><span>Section 2.8.1</span></a>. Predictors trained on ClinVar inherit this imbalance, performing better for variants common in European populations and worse for variants enriched in other ancestries. Clinical deployment of such predictors may reduce diagnostic yield for non-European patients.</p>
-<div class="callout callout-style-default callout-warning callout-titled">
+<div class="callout callout-style-default callout-tip callout-titled" title="Knowledge Check">
 <div class="callout-header d-flex align-content-center">
 <div class="callout-icon-container">
 <i class="callout-icon"></i>
 </div>
 <div class="callout-title-container flex-fill">
-Knowledge Check: Fairness Implications
+Knowledge Check
 </div>
 </div>
 <div class="callout-body-container callout-body">
@@ -1274,6 +1424,24 @@ Knowledge Check: Fairness Implications
 <li>What validation studies would you require?</li>
 <li>What monitoring should be implemented post-deployment?</li>
 </ol>
+<div class="callout callout-style-default callout-note callout-titled" title="Check Your Answer">
+<div class="callout-header d-flex align-content-center" data-bs-toggle="collapse" data-bs-target=".callout-17-contents" aria-controls="callout-17" aria-expanded="false" aria-label="Toggle callout">
+<div class="callout-icon-container">
+<i class="callout-icon"></i>
+</div>
+<div class="callout-title-container flex-fill">
+Check Your Answer
+</div>
+<div class="callout-btn-toggle d-inline-block border-0 py-1 ps-1 pe-0 float-end"><i class="callout-toggle"></i></div>
+</div>
+<div id="callout-17" class="callout-17-contents callout-collapse collapse">
+<div class="callout-body-container callout-body">
+<ol type="1">
+<li>Major fairness concerns: the score may show 40-75% reduced accuracy in non-European populations, potentially providing inferior risk stratification to already underserved groups; differential performance could lead to missed diagnoses in minority populations or inappropriate screening recommendations. (2) Required validation: stratified performance analysis by ancestry group in the target population; calibration assessment for each ancestry group (not just discrimination); comparison to ancestry-matched baselines; sensitivity analysis to understand performance degradation mechanisms. (3) Post-deployment monitoring: track screening recommendations and cancer detection rates stratified by ancestry; monitor for disparities in false positive/negative rates; assess whether the tool improves or worsens existing outcome disparities; implement thresholds for stopping use if equity metrics deteriorate.</li>
+</ol>
+</div>
+</div>
+</div>
 </div>
 </div>
 <p>The <strong>uncertainty quantification</strong> approaches discussed in <a href="../part_5/p5-ch23-uncertainty.html" class="quarto-xref"><span>Chapter 23</span></a> provide partial mitigation: models that report high uncertainty for under-represented populations at least flag predictions that should not be trusted. Out-of-distribution detection methods (<a href="../part_5/p5-ch23-uncertainty.html#sec-ch23-ood-detection" class="quarto-xref"><span>Section 23.6</span></a>) specifically address when inputs fall outside the training distribution. The <strong>interpretability</strong> methods in <a href="../part_5/p5-ch24-interpretability.html" class="quarto-xref"><span>Chapter 24</span></a> can reveal when models rely on ancestry-correlated features, with attribution analysis (<a href="../part_5/p5-ch24-interpretability.html#sec-ch24-attribution" class="quarto-xref"><span>Section 24.1</span></a>) identifying which input features drive ancestry-dependent predictions. Yet technical solutions alone are insufficient. Addressing fairness requires intentional data collection that prioritizes under-represented populations, evaluation protocols that mandate subgroup analysis, and deployment decisions that consider equity alongside aggregate accuracy.</p>
@@ -1309,6 +1477,48 @@ Practical Guidance: Using This Checklist
 <p>These confounding and bias problems are not reasons for despair. They are reasons for rigor. The same expressive capacity that enables foundation models to discover subtle shortcuts also enables them to learn complex biological patterns when training data and evaluation protocols are designed appropriately. The goal is not to abandon powerful models but to create conditions under which their power serves biological discovery rather than benchmark gaming.</p>
 <p>Several trends support progress. Multi-ancestry biobanks and international collaborations expand the diversity of available training data. Benchmark developers implement stricter splitting protocols and require subgroup analyses. Pretraining strategies that explicitly promote invariance to technical factors are emerging. Uncertainty quantification methods (<a href="../part_5/p5-ch23-uncertainty.html" class="quarto-xref"><span>Chapter 23</span></a>) provide mechanisms for models to express appropriate caution when inputs fall outside their training distribution. The problem of confounding is tractable with sustained attention to data provenance, evaluation design, and deployment monitoring. The benchmark catalog in <a href="p2-ch11-benchmarks.html" class="quarto-xref"><span>Chapter 11</span></a> identifies which evaluation resources are most susceptible to particular confounders, while the evaluation methodology in <a href="p2-ch11-benchmarks.html" class="quarto-xref"><span>Chapter 12</span></a> provides protocols for detecting leakage before it inflates reported performance.</p>
 <p>Yet vigilance remains essential. New datasets bring new confounders. Novel architectures create new opportunities for shortcut learning. Community benchmarks accumulate indirect leakage as resources are reused across studies. Treating confounding as a first-order concern throughout model development, rather than an afterthought addressed only when reviewers complain, distinguishes models that actually work from models that merely perform well on convenient benchmarks. The interpretability methods in <a href="../part_5/p5-ch24-interpretability.html" class="quarto-xref"><span>Chapter 24</span></a> provide tools for distinguishing genuine regulatory insight from sophisticated pattern matching, with mechanistic interpretability (<a href="../part_5/p5-ch24-interpretability.html#sec-ch24-mechanistic" class="quarto-xref"><span>Section 24.7</span></a>) offering the strongest evidence about what models have actually learned. The uncertainty quantification approaches in <a href="../part_5/p5-ch23-uncertainty.html" class="quarto-xref"><span>Chapter 23</span></a> enable models to communicate when their predictions should not be trusted, with selective prediction (<a href="../part_5/p5-ch23-uncertainty.html#sec-ch23-selective-prediction" class="quarto-xref"><span>Section 23.7</span></a>) providing operational frameworks for routing uncertain cases to human review. Together with rigorous evaluation, these capabilities move the field toward models that reveal genuine biology and behave reliably across the diverse clinical and scientific settings where they will be deployed.</p>
+<div class="callout callout-style-default callout-tip callout-titled" title="Test Yourself">
+<div class="callout-header d-flex align-content-center">
+<div class="callout-icon-container">
+<i class="callout-icon"></i>
+</div>
+<div class="callout-title-container flex-fill">
+Test Yourself
+</div>
+</div>
+<div class="callout-body-container callout-body">
+<p>Before reviewing the summary, test your recall:</p>
+<ol type="1">
+<li>Distinguish between confounding, bias, data leakage, and distribution shift. Give a concrete genomic example of each.</li>
+<li>How does population structure create shortcuts that foundation models exploit, and why does increasing model capacity amplify rather than mitigate this problem?</li>
+<li>A confounder-only baseline using ancestry PCs achieves 0.75 auROC, while your full genomic model achieves 0.82 auROC. What does this reveal about your model’s learned features?</li>
+<li>Why does label circularity in ClinVar (where computational predictions influence pathogenicity annotations) inflate validation metrics for new predictors trained on ClinVar?</li>
+<li>What splitting strategies address different types of leakage (individual overlap, family structure, position memorization, temporal drift)?</li>
+</ol>
+<div class="callout callout-style-default callout-note callout-titled" title="Check Your Answers">
+<div class="callout-header d-flex align-content-center" data-bs-toggle="collapse" data-bs-target=".callout-20-contents" aria-controls="callout-20" aria-expanded="false" aria-label="Toggle callout">
+<div class="callout-icon-container">
+<i class="callout-icon"></i>
+</div>
+<div class="callout-title-container flex-fill">
+Check Your Answers
+</div>
+<div class="callout-btn-toggle d-inline-block border-0 py-1 ps-1 pe-0 float-end"><i class="callout-toggle"></i></div>
+</div>
+<div id="callout-20" class="callout-20-contents callout-collapse collapse">
+<div class="callout-body-container callout-body">
+<ol type="1">
+<li><p><strong>Confounding, bias, leakage, and distribution shift</strong>: Confounding occurs when a variable affects both features and labels (example: ancestry influences allele frequencies through population history and disease risk through healthcare access pathways). Bias is systematic deviation from the target quantity (example: training on 50% disease prevalence but deploying at 5% prevalence causes systematic over-prediction). Data leakage occurs when test information influences training (example: the same variant appearing in both training and test sets, or ClinVar labels being influenced by CADD scores that later become training features). Distribution shift is mismatch between training and deployment distributions (example: a model trained on one hospital’s coding practices failing at a different institution with different documentation standards).</p></li>
+<li><p><strong>Population structure as exploitable shortcut</strong>: Population structure creates dual pathways where ancestry affects genetic features (through population-specific allele frequencies, haplotypes, and linkage disequilibrium patterns) and simultaneously affects disease labels through non-biological pathways (healthcare access, environmental exposures, clinical ascertainment practices). Foundation models can detect ancestry from local k-mer frequencies and haplotype patterns even in raw sequences, then exploit ancestry-label correlations as shortcuts. Increasing model capacity amplifies this problem because larger transformers with billions of parameters can discover increasingly subtle ancestry-linked features that smaller models would miss—model expressiveness is an amplifier of confounding, not a defense against it.</p></li>
+<li><p><strong>Interpreting confounder-only baseline performance</strong>: The confounder-only baseline achieving 0.75 auROC while the full model achieves 0.82 auROC reveals that the vast majority of predictive performance (0.75 out of 0.82) comes from ancestry/batch shortcuts rather than genomic biology. Only the 0.07 delta represents signal genuinely attributable to genomic features beyond what ancestry alone provides. This indicates the model has primarily learned to exploit confounders rather than biological mechanisms, and would likely fail when deployed in settings where ancestry-outcome relationships differ from the training distribution.</p></li>
+<li><p><strong>Label circularity inflates validation metrics</strong>: When clinical laboratories cite computational predictions like CADD or REVEL as supporting evidence for pathogenic classifications, and those classifications become ClinVar labels, new predictors trained on ClinVar face a circular task: they are learning to replicate what previous predictors said, not learning true pathogenicity. The inflation occurs because the new model achieves high agreement on labels that were influenced by computational predictions—essentially predicting what old models predicted rather than independent biological truth. This circularity is invisible within the circular ecosystem but becomes apparent during prospective validation on genuinely novel variants or independent functional assays where the feedback loop does not exist.</p></li>
+<li><p><strong>Splitting strategies for different leakage types</strong>: Individual overlap requires random individual-level splits at minimum, but this only works when samples are truly independent. Family structure requires family-aware splits that keep all relatives together in the same partition to prevent haplotype memorization. Position memorization requires locus-level splits that hold out entire genomic positions, ensuring the model has never seen any variant at test positions during training. Temporal drift requires time-based splits that train on earlier data and test on later data, simulating prospective deployment and capturing evolution in sequencing technology, coding practices, and diagnostic criteria. Each splitting strategy tests a different aspect of generalization, and models should be evaluated under all relevant strategies to demonstrate genuine robustness.</p></li>
+</ol>
+</div>
+</div>
+</div>
+</div>
+</div>
 <div class="callout callout-style-default callout-note callout-titled">
 <div class="callout-header d-flex align-content-center">
 <div class="callout-icon-container">
@@ -1360,6 +1570,9 @@ Davey Smith, George, and Shah Ebrahim. 2003. <span>“<span>‘<span>Mendelian</
 <div id="ref-duncan_analysis_2019" class="csl-entry" role="listitem">
 Duncan, L., H. Shen, B. Gelaye, J. Meijsen, K. Ressler, M. Feldman, R. Peterson, and B. Domingue. 2019. <span>“Analysis of Polygenic Risk Score Usage and Performance in Diverse Human Populations.”</span> <em>Nature Communications</em> 10 (1): 3328. <a href="https://doi.org/10.1038/s41467-019-11112-0">https://doi.org/10.1038/s41467-019-11112-0</a>.
 </div>
+<div id="ref-ge_polygenic_2019" class="csl-entry" role="listitem">
+Ge, Tian, Chia-Yen Chen, Yang Ni, Yen-Chen Anne Feng, and Jordan W. Smoller. 2019. <span>“Polygenic Prediction via <span>Bayesian</span> Regression and Continuous Shrinkage Priors.”</span> <em>Nature Communications</em> 10 (1): 1776. <a href="https://doi.org/10.1038/s41467-019-09718-5">https://doi.org/10.1038/s41467-019-09718-5</a>.
+</div>
 <div id="ref-landrum_clinvar_2018" class="csl-entry" role="listitem">
 Landrum, Melissa J, Jennifer M Lee, Mark Benson, Garth R Brown, Chen Chao, Shanmuga Chitipiralla, Baoshan Gu, et al. 2018. <span>“<span>ClinVar</span>: Improving Access to Variant Interpretations and Supporting Evidence.”</span> <em>Nucleic Acids Research</em> 46 (D1): D1062–67. <a href="https://doi.org/10.1093/nar/gkx1153">https://doi.org/10.1093/nar/gkx1153</a>.
 </div>
@@ -1374,6 +1587,9 @@ Pearl, Judea. 2009. <em>Causality</em>. Cambridge University Press.
 </div>
 <div id="ref-price_pca_2006" class="csl-entry" role="listitem">
 Price, Alkes L., Nick J. Patterson, Robert M. Plenge, Michael E. Weinblatt, Nancy A. Shadick, and David Reich. 2006. <span>“Principal Components Analysis Corrects for Stratification in Genome-Wide Association Studies.”</span> <em>Nature Genetics</em> 38 (8): 904–9. <a href="https://doi.org/10.1038/ng1847">https://doi.org/10.1038/ng1847</a>.
+</div>
+<div id="ref-vilhjalmsson_modeling_2015" class="csl-entry" role="listitem">
+Vilhjálmsson, Bjarni J., Jian Yang, Hilary K. Finucane, Alexander Gusev, Sara Lindström, Stephan Ripke, Giulio Genovese, et al. 2015. <span>“Modeling <span>Linkage</span> <span>Disequilibrium</span> <span>Increases</span> <span>Accuracy</span> of <span>Polygenic</span> <span>Risk</span> <span>Scores</span>.”</span> <em>American Journal of Human Genetics</em> 97 (4): 576–92. <a href="https://doi.org/10.1016/j.ajhg.2015.09.001">https://doi.org/10.1016/j.ajhg.2015.09.001</a>.
 </div>
 </div>
 </section>

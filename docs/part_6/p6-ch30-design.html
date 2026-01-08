@@ -559,7 +559,9 @@ window.Quarto = {
 </header>
 
 
-<p><em>Reading genomes is hard. Writing them is harder.</em></p>
+<blockquote class="blockquote">
+<p>Reading genomes is hard. Writing them is harder.</p>
+</blockquote>
 <div class="callout callout-style-default callout-note callout-titled">
 <div class="callout-header d-flex align-content-center">
 <div class="callout-icon-container">
@@ -570,6 +572,7 @@ Chapter Overview
 </div>
 </div>
 <div class="callout-body-container callout-body">
+<p><strong>Estimated reading time:</strong> 35-45 minutes</p>
 <p><strong>Prerequisites:</strong> Before reading this chapter, you should be familiar with:</p>
 <ul>
 <li>Sequence representations and embedding spaces (<a href="../part_2/p2-ch05-representations.html" class="quarto-xref"><span>Chapter 5</span></a>)</li>
@@ -723,7 +726,65 @@ Figure&nbsp;30.2: Protein design approaches. (A) Directed evolution in silico: g
 </div>
 <section id="sec-ch30-plm-generation" class="level3" data-number="30.2.1">
 <h3 data-number="30.2.1" class="anchored" data-anchor-id="sec-ch30-plm-generation"><span class="header-section-number">30.2.1</span> Sequence Generation from Language Model Priors</h3>
+<div class="callout callout-style-default callout-note callout-titled" title="Stop and Think">
+<div class="callout-header d-flex align-content-center">
+<div class="callout-icon-container">
+<i class="callout-icon"></i>
+</div>
+<div class="callout-title-container flex-fill">
+Stop and Think
+</div>
+</div>
+<div class="callout-body-container callout-body">
+<p>Before reading about protein language model generation, recall from <a href="../part_2/p2-ch08-pretraining.html" class="quarto-xref"><span>Chapter 8</span></a>: What is the difference between autoregressive and masked language modeling objectives? How would each approach support sequence generation differently?</p>
+<div class="callout callout-style-default callout-note callout-titled" title="Check Your Answer">
+<div class="callout-header d-flex align-content-center" data-bs-toggle="collapse" data-bs-target=".callout-3-contents" aria-controls="callout-3" aria-expanded="false" aria-label="Toggle callout">
+<div class="callout-icon-container">
+<i class="callout-icon"></i>
+</div>
+<div class="callout-title-container flex-fill">
+Check Your Answer
+</div>
+<div class="callout-btn-toggle d-inline-block border-0 py-1 ps-1 pe-0 float-end"><i class="callout-toggle"></i></div>
+</div>
+<div id="callout-3" class="callout-3-contents callout-collapse collapse">
+<div class="callout-body-container callout-body">
+<p>Autoregressive models (like GPT-style) predict each token given all previous tokens, making them naturally suited for sequential generation. Masked models (like BERT-style) predict masked tokens given surrounding context bidirectionally, supporting iterative refinement by masking and resampling positions. For protein design, autoregressive models generate sequences left-to-right, while masked models enable position-specific refinement of existing sequences.</p>
+</div>
+</div>
+</div>
+</div>
+</div>
 <p>Autoregressive protein language models such as <em>ProGen</em> and <em>ProtGPT2</em> generate novel protein sequences by sampling tokens sequentially from learned distributions <span class="citation" data-cites="madani_progen_2023 ferruz_protgpt2_2022">(<a href="../bib/references.html#ref-madani_progen_2023" role="doc-biblioref">Madani et al. 2023</a>; <a href="../bib/references.html#ref-ferruz_protgpt2_2022" role="doc-biblioref">Ferruz, Schmidt, and Höcker 2022</a>)</span>. Given a partial sequence, the model predicts probability distributions over the next amino acid, enabling iterative extension until a complete protein emerges. This generation process can be unconditional (sampling from the full learned distribution) or conditional on control signals such as protein family annotations, organism of origin, or functional keywords.</p>
+<div class="callout callout-style-default callout-note callout-titled" title="Stop and Think">
+<div class="callout-header d-flex align-content-center">
+<div class="callout-icon-container">
+<i class="callout-icon"></i>
+</div>
+<div class="callout-title-container flex-fill">
+Stop and Think
+</div>
+</div>
+<div class="callout-body-container callout-body">
+<p>Consider the temperature parameter in sequence generation. If you sample at T=0 (deterministic, always picking highest-probability amino acid), what kind of sequences would you expect to generate? What about at very high temperature? What tradeoff does this create for protein design?</p>
+<div class="callout callout-style-default callout-note callout-titled" title="Check Your Answer">
+<div class="callout-header d-flex align-content-center" data-bs-toggle="collapse" data-bs-target=".callout-5-contents" aria-controls="callout-5" aria-expanded="false" aria-label="Toggle callout">
+<div class="callout-icon-container">
+<i class="callout-icon"></i>
+</div>
+<div class="callout-title-container flex-fill">
+Check Your Answer
+</div>
+<div class="callout-btn-toggle d-inline-block border-0 py-1 ps-1 pe-0 float-end"><i class="callout-toggle"></i></div>
+</div>
+<div id="callout-5" class="callout-5-contents callout-collapse collapse">
+<div class="callout-body-container callout-body">
+<p>At T=0, you generate the single most probable sequence—likely a “consensus” protein similar to highly abundant natural proteins. At very high T, you sample broadly including low-probability amino acids, producing diverse but potentially nonfunctional sequences. The tradeoff: low temperature exploits known-good sequence space (safe but unoriginal), high temperature explores novel space (creative but risky). Practical workflows sample across temperatures and use downstream filters.</p>
+</div>
+</div>
+</div>
+</div>
+</div>
 <p>The quality of generated sequences depends critically on how closely the sampling distribution matches functional proteins. Sequences sampled at low temperature (more deterministic) tend to resemble common protein families but may lack novelty. Sequences sampled at high temperature (more stochastic) exhibit greater diversity but risk straying into nonfunctional regions. The temperature parameter controls the entropy of the sampling distribution: at temperature T=0, the model deterministically selects the highest-probability token at each position; as T increases, lower-probability tokens become increasingly likely to be sampled. This creates a fundamental exploration-exploitation tradeoff: low temperatures exploit the model’s knowledge of natural sequences but may miss novel functional solutions, while high temperatures explore more broadly but venture into regions where the model’s predictions become unreliable. Practical design workflows often generate large libraries of candidates across temperature ranges, then filter using downstream oracles for structure, stability, or function.</p>
 <p>Masked language models like <em>ESM-2</em> support design through a different mechanism. Rather than generating sequences <em>de novo</em>, these models estimate the probability of each amino acid at each position given the surrounding context. Design proceeds by iterative refinement: starting from an initial sequence, positions are masked and resampled according to model predictions, gradually shifting the sequence toward higher-likelihood regions. This Gibbs-sampling-like procedure can be biased toward specific objectives by combining model likelihoods with scores from downstream predictors.</p>
 <p>The key advantage of protein language model-based design lies in data efficiency. Because models are pretrained on millions of natural sequences, they generalize to design tasks with minimal task-specific data. A model fine-tuned on a few hundred functional variants can propose candidates across sequence space, extrapolating far beyond the training examples. This contrasts with traditional directed evolution approaches that require extensive experimental screening to navigate sequence space.</p>
@@ -830,10 +891,26 @@ Knowledge Check
 </div>
 <div class="callout-body-container callout-body">
 <p>Consider a therapeutic antibody design project. List at least four properties you would need to optimize simultaneously, and explain why optimizing for just one property (e.g., binding affinity) would be insufficient for a successful therapeutic.</p>
+<div class="callout callout-style-default callout-note callout-titled" title="Check Your Answer">
+<div class="callout-header d-flex align-content-center" data-bs-toggle="collapse" data-bs-target=".callout-9-contents" aria-controls="callout-9" aria-expanded="false" aria-label="Toggle callout">
+<div class="callout-icon-container">
+<i class="callout-icon"></i>
+</div>
+<div class="callout-title-container flex-fill">
+Check Your Answer
+</div>
+<div class="callout-btn-toggle d-inline-block border-0 py-1 ps-1 pe-0 float-end"><i class="callout-toggle"></i></div>
+</div>
+<div id="callout-9" class="callout-9-contents callout-collapse collapse">
+<div class="callout-body-container callout-body">
+<p>Key properties include: (1) binding affinity to target, (2) specificity to avoid off-target effects, (3) manufacturability and expression levels, (4) stability during storage, (5) solubility to prevent aggregation, and (6) low immunogenicity to minimize immune responses. Optimizing only affinity could yield an antibody that binds excellently but aggregates during manufacturing, triggers immune responses in patients, or binds unintended targets causing toxicity.</p>
+</div>
+</div>
+</div>
 </div>
 </div>
 <p>Real therapeutic or industrial applications rarely optimize a single objective. A designed enzyme must not only be catalytically active but also stable at process temperatures, expressible in the production host, and resistant to proteolytic degradation. A therapeutic antibody must bind its target with high affinity while avoiding off-target interactions, maintaining solubility, and minimizing immunogenicity. These competing demands create multi-objective optimization problems where no single sequence optimizes all criteria simultaneously.</p>
-<p>Multi-objective design produces <strong>Pareto frontiers</strong> of solutions representing different trade-offs among objectives. A sequence might achieve exceptional binding affinity at the cost of reduced stability, while another balances moderate affinity with excellent developability properties. Practitioners must select among Pareto-optimal solutions based on application-specific priorities, and foundation models increasingly support this selection by providing diverse oracles across multiple property dimensions.</p>
+<p>Multi-objective design produces <strong>Pareto frontiers</strong>—the set of solutions where no objective can be improved without worsening another—representing different trade-offs among objectives. A sequence might achieve exceptional binding affinity at the cost of reduced stability, while another balances moderate affinity with excellent developability properties. Practitioners must select among Pareto-optimal solutions based on application-specific priorities, and foundation models increasingly support this selection by providing diverse oracles across multiple property dimensions.</p>
 <p>Foundation models contribute to multi-objective design in three ways. Generative priors propose candidate sequences that satisfy basic plausibility constraints (foldability, expressibility) before optimization begins. Multiple differentiable oracles (for binding, stability, immunogenicity) enable gradient-based optimization toward Pareto frontiers. Embedding spaces support interpolation between sequences with different property profiles, enabling exploration of intermediate trade-offs. The combination of these capabilities makes foundation models central to modern protein design pipelines.</p>
 </section>
 </section>
@@ -884,6 +961,35 @@ Stop and Think
 </section>
 <section id="sec-ch30-mrna-design" class="level2" data-number="30.4">
 <h2 data-number="30.4" class="anchored" data-anchor-id="sec-ch30-mrna-design"><span class="header-section-number">30.4</span> mRNA Design and Optimization</h2>
+<div class="callout callout-style-default callout-note callout-titled" title="Stop and Think">
+<div class="callout-header d-flex align-content-center">
+<div class="callout-icon-container">
+<i class="callout-icon"></i>
+</div>
+<div class="callout-title-container flex-fill">
+Stop and Think
+</div>
+</div>
+<div class="callout-body-container callout-body">
+<p>Consider what you learned about protein design in <a href="#sec-ch30-protein-design" class="quarto-xref"><span>Section 30.2</span></a>. How does mRNA design differ fundamentally? What additional constraints does an mRNA therapeutic face compared to a designed protein?</p>
+<div class="callout callout-style-default callout-note callout-titled" title="Check Your Answer">
+<div class="callout-header d-flex align-content-center" data-bs-toggle="collapse" data-bs-target=".callout-12-contents" aria-controls="callout-12" aria-expanded="false" aria-label="Toggle callout">
+<div class="callout-icon-container">
+<i class="callout-icon"></i>
+</div>
+<div class="callout-title-container flex-fill">
+Check Your Answer
+</div>
+<div class="callout-btn-toggle d-inline-block border-0 py-1 ps-1 pe-0 float-end"><i class="callout-toggle"></i></div>
+</div>
+<div id="callout-12" class="callout-12-contents callout-collapse collapse">
+<div class="callout-body-container callout-body">
+<p>Key differences: (1) mRNA must encode the <em>same</em> protein sequence (constrained by genetic code), limiting design to synonymous codon choices and UTRs; (2) mRNA faces immune recognition as a foreign nucleic acid, requiring evasion strategies; (3) mRNA degrades rapidly, requiring stability optimization; (4) mRNA must be manufactured and delivered, adding constraints proteins don’t face. Protein design optimizes amino acid sequence directly; mRNA design optimizes the nucleotide encoding while keeping the protein constant.</p>
+</div>
+</div>
+</div>
+</div>
+</div>
 <p>The clinical success of mRNA vaccines has intensified interest in systematic approaches to mRNA sequence design. Unlike protein or regulatory element design where the primary challenge is achieving desired function, mRNA design must simultaneously optimize translation efficiency, molecular stability, immune evasion, and manufacturing tractability. Foundation models increasingly contribute to each of these objectives.</p>
 <div id="fig-mrna-optimization" class="quarto-float quarto-figure quarto-figure-center anchored">
 <figure class="quarto-float quarto-float-fig figure">
@@ -902,6 +1008,35 @@ Figure&nbsp;30.4: mRNA therapeutic design optimization. Each region requires dis
 </div>
 <section id="sec-ch30-codon-optimization" class="level3" data-number="30.4.1">
 <h3 data-number="30.4.1" class="anchored" data-anchor-id="sec-ch30-codon-optimization"><span class="header-section-number">30.4.1</span> Codon Optimization Principles</h3>
+<div class="callout callout-style-default callout-note callout-titled" title="Stop and Think">
+<div class="callout-header d-flex align-content-center">
+<div class="callout-icon-container">
+<i class="callout-icon"></i>
+</div>
+<div class="callout-title-container flex-fill">
+Stop and Think
+</div>
+</div>
+<div class="callout-body-container callout-body">
+<p>Before diving into codon optimization, recall the genetic code’s degeneracy. For a 100-amino-acid protein, roughly how many different mRNA sequences could encode the same protein? Why does this create both an opportunity and a challenge for mRNA design?</p>
+<div class="callout callout-style-default callout-note callout-titled" title="Check Your Answer">
+<div class="callout-header d-flex align-content-center" data-bs-toggle="collapse" data-bs-target=".callout-14-contents" aria-controls="callout-14" aria-expanded="false" aria-label="Toggle callout">
+<div class="callout-icon-container">
+<i class="callout-icon"></i>
+</div>
+<div class="callout-title-container flex-fill">
+Check Your Answer
+</div>
+<div class="callout-btn-toggle d-inline-block border-0 py-1 ps-1 pe-0 float-end"><i class="callout-toggle"></i></div>
+</div>
+<div id="callout-14" class="callout-14-contents callout-collapse collapse">
+<div class="callout-body-container callout-body">
+<p>Most amino acids have 2-6 synonymous codons (Met and Trp have only 1). For 100 amino acids with ~3 average synonymous options per position, there are roughly 3^100 ≈ 10^47 possible encodings—an astronomical number. This creates opportunity because we can search for optimal encodings, but also creates a challenge because the search space is impossibly large, requiring smart optimization strategies rather than exhaustive search.</p>
+</div>
+</div>
+</div>
+</div>
+</div>
 <p>The genetic code is degenerate: sixty-one sense codons encode twenty amino acids, meaning that any protein sequence can be encoded by many different mRNA sequences. These synonymous sequences differ in translation efficiency, mRNA stability, and immunogenicity despite producing identical proteins. <strong>Codon optimization</strong> exploits this redundancy to improve therapeutic mRNA performance.</p>
 <div class="callout callout-style-default callout-important callout-titled">
 <div class="callout-header d-flex align-content-center">
@@ -921,12 +1056,70 @@ Key Insight: The Hidden Complexity of Synonymous Mutations
 </section>
 <section id="sec-ch30-utr-design" class="level3" data-number="30.4.2">
 <h3 data-number="30.4.2" class="anchored" data-anchor-id="sec-ch30-utr-design"><span class="header-section-number">30.4.2</span> Stability Engineering and UTR Design</h3>
+<div class="callout callout-style-default callout-note callout-titled" title="Stop and Think">
+<div class="callout-header d-flex align-content-center">
+<div class="callout-icon-container">
+<i class="callout-icon"></i>
+</div>
+<div class="callout-title-container flex-fill">
+Stop and Think
+</div>
+</div>
+<div class="callout-body-container callout-body">
+<p>Think back to regulatory element design (<a href="#sec-ch30-regulatory-design" class="quarto-xref"><span>Section 30.3</span></a>). How is UTR design similar to enhancer/promoter design? How is it different? What properties must a 5’ UTR balance that a promoter does not?</p>
+<div class="callout callout-style-default callout-note callout-titled" title="Check Your Answer">
+<div class="callout-header d-flex align-content-center" data-bs-toggle="collapse" data-bs-target=".callout-17-contents" aria-controls="callout-17" aria-expanded="false" aria-label="Toggle callout">
+<div class="callout-icon-container">
+<i class="callout-icon"></i>
+</div>
+<div class="callout-title-container flex-fill">
+Check Your Answer
+</div>
+<div class="callout-btn-toggle d-inline-block border-0 py-1 ps-1 pe-0 float-end"><i class="callout-toggle"></i></div>
+</div>
+<div id="callout-17" class="callout-17-contents callout-collapse collapse">
+<div class="callout-body-container callout-body">
+<p>Similarities: Both are non-coding regulatory sequences where foundation models predict activity; both use gradient-based or generative design approaches. Key differences: (1) UTRs are transcribed into RNA (must consider RNA structure, not DNA), (2) 5’ UTRs must balance ribosome recruitment (high translation) against secondary structure that blocks scanning (low translation), (3) 3’ UTRs affect mRNA half-life via RNA-binding protein sites, while promoters don’t face degradation. UTRs operate post-transcriptionally; promoters control transcription initiation.</p>
+</div>
+</div>
+</div>
+</div>
+</div>
 <p>mRNA stability in the cytoplasm determines the duration of protein production and thus the dose required for therapeutic effect. Stability is governed by multiple sequence features: the 5’ and 3’ <strong>untranslated regions (UTRs)</strong> that flank the coding sequence, the presence of destabilizing sequence motifs recognized by RNA-binding proteins, and secondary structures that protect against or expose the molecule to nucleases.</p>
 <p>UTR engineering represents a particularly active area of foundation model application. Natural UTRs contain binding sites for regulatory proteins and microRNAs, sequences that affect ribosome recruitment, and structures that influence mRNA localization and stability. Foundation models trained on expression data across diverse UTR sequences learn which features promote stability and efficient translation. <em>[Citation Needed]</em> Design algorithms then search for synthetic UTRs that maximize these properties while avoiding sequences that trigger immune recognition or rapid degradation.</p>
 <p>Chemical modifications of mRNA (pseudouridine, N1-methylpseudouridine, and other nucleoside analogs) dramatically improve stability and reduce immunogenicity. These modifications alter the sequence-function relationship in ways that current foundation models, trained primarily on natural RNA, may not fully capture. Emerging models that incorporate modification information promise to enable joint optimization of sequence and modification patterns.</p>
 </section>
 <section id="sec-ch30-mrna-immunogenicity" class="level3" data-number="30.4.3">
 <h3 data-number="30.4.3" class="anchored" data-anchor-id="sec-ch30-mrna-immunogenicity"><span class="header-section-number">30.4.3</span> Immunogenicity Considerations</h3>
+<div class="callout callout-style-default callout-note callout-titled" title="Stop and Think">
+<div class="callout-header d-flex align-content-center">
+<div class="callout-icon-container">
+<i class="callout-icon"></i>
+</div>
+<div class="callout-title-container flex-fill">
+Stop and Think
+</div>
+</div>
+<div class="callout-body-container callout-body">
+<p>Recall multi-objective optimization from protein design (<a href="#sec-ch30-multi-objective" class="quarto-xref"><span>Section 30.2.3</span></a>). For an mRNA therapeutic, you need to balance: (1) high translation efficiency, (2) long mRNA half-life, (3) low immunogenicity, and (4) manufacturability. Why can’t you simply maximize each property independently? What is the likely tradeoff between translation efficiency and immunogenicity?</p>
+<div class="callout callout-style-default callout-note callout-titled" title="Check Your Answer">
+<div class="callout-header d-flex align-content-center" data-bs-toggle="collapse" data-bs-target=".callout-19-contents" aria-controls="callout-19" aria-expanded="false" aria-label="Toggle callout">
+<div class="callout-icon-container">
+<i class="callout-icon"></i>
+</div>
+<div class="callout-title-container flex-fill">
+Check Your Answer
+</div>
+<div class="callout-btn-toggle d-inline-block border-0 py-1 ps-1 pe-0 float-end"><i class="callout-toggle"></i></div>
+</div>
+<div id="callout-19" class="callout-19-contents callout-collapse collapse">
+<div class="callout-body-container callout-body">
+<p>These objectives create competing constraints: (1) High GC content can improve stability but increases immunogenicity via TLR recognition; (2) Rare codons reduce translation but may reduce immune detection; (3) Strong secondary structures protect from nucleases but can block ribosome scanning; (4) Chemical modifications reduce immunogenicity but increase manufacturing cost. Translation efficiency often requires features (abundant codons, specific motifs) that immune sensors recognize. Optimization must find Pareto-optimal solutions balancing these tradeoffs, not single-objective maxima.</p>
+</div>
+</div>
+</div>
+</div>
+</div>
 <p>Exogenous mRNA triggers innate immune responses through pattern recognition receptors including Toll-like receptors (<em>TLR3</em>, <em>TLR7</em>, <em>TLR8</em>) and cytosolic sensors (<em>RIG-I</em>, <em>MDA5</em>). While some immune activation may be beneficial for vaccine applications, excessive inflammation limits dosing and causes adverse effects. For protein replacement therapies where repeated dosing is required, minimizing immunogenicity is essential.</p>
 <p>The immunostimulatory potential of mRNA depends on sequence features including GC content, specific sequence motifs recognized by pattern receptors, and secondary structures that resemble viral replication intermediates. Foundation models that predict immunogenicity from sequence enable design of mRNAs that evade innate immune detection. <em>[Citation Needed]</em> These predictions must be balanced against other objectives: modifications that reduce immunogenicity may also reduce translation efficiency, creating multi-objective trade-offs that characterize mRNA design more broadly.</p>
 </section>
@@ -1095,6 +1288,24 @@ Knowledge Check
 <li>Finding a sequence that maximizes binding affinity while maintaining stability above a threshold</li>
 <li>Exploring the fitness landscape around a well-characterized parental protein</li>
 </ol>
+<div class="callout callout-style-default callout-note callout-titled" title="Check Your Answer">
+<div class="callout-header d-flex align-content-center" data-bs-toggle="collapse" data-bs-target=".callout-24-contents" aria-controls="callout-24" aria-expanded="false" aria-label="Toggle callout">
+<div class="callout-icon-container">
+<i class="callout-icon"></i>
+</div>
+<div class="callout-title-container flex-fill">
+Check Your Answer
+</div>
+<div class="callout-btn-toggle d-inline-block border-0 py-1 ps-1 pe-0 float-end"><i class="callout-toggle"></i></div>
+</div>
+<div id="callout-24" class="callout-24-contents callout-collapse collapse">
+<div class="callout-body-container callout-body">
+<ol type="1">
+<li><strong>Gradient-based optimization</strong> - single position allows exhaustive search of 20 amino acids, or gradient methods if using soft encodings. (2) <strong>Monte Carlo or evolutionary algorithms</strong> - generate diverse populations naturally; avoid mode collapse. (3) <strong>Constrained optimization or multi-objective evolutionary</strong> - explicit constraint handling for stability threshold. (4) <strong>Bayesian optimization</strong> - sample-efficient exploration when starting from known good sequence; balances exploitation and exploration naturally.</li>
+</ol>
+</div>
+</div>
+</div>
 </div>
 </div>
 <p><strong>Gradient-based optimization</strong> treats foundation models as differentiable functions and computes gradients of objectives with respect to input sequence representations. Because sequences are discrete while gradients are continuous, optimization operates on relaxed representations (probability distributions over nucleotides or amino acids) that are projected back to discrete sequences for evaluation. The relaxation step is necessary because gradient descent requires continuous inputs: a “soft” one-hot encoding represents each position as a probability distribution over amino acids (e.g., 0.7 Ala, 0.2 Gly, 0.1 Ser) rather than a discrete choice, allowing gradients to flow and guide optimization. Projection to discrete sequences occurs either through argmax (selecting the highest-probability amino acid) or through stochastic sampling from the learned distribution. This approach efficiently navigates high-dimensional spaces but can produce adversarial sequences that exploit model weaknesses rather than achieving genuine biological function.</p>
@@ -1211,6 +1422,116 @@ Chapter Summary
 </div>
 </div>
 <div class="callout-body-container callout-body">
+<div class="callout callout-style-default callout-tip callout-titled" title="Test Yourself">
+<div class="callout-header d-flex align-content-center">
+<div class="callout-icon-container">
+<i class="callout-icon"></i>
+</div>
+<div class="callout-title-container flex-fill">
+Test Yourself
+</div>
+</div>
+<div class="callout-body-container callout-body">
+<p>Before reviewing the summary, test your recall:</p>
+<ol type="1">
+<li>Why is the design problem fundamentally harder than the prediction problem? What changes when you invert from “sequence → function” to “function → sequence”?</li>
+</ol>
+<div class="callout callout-style-default callout-note callout-titled" title="Check Your Answer">
+<div class="callout-header d-flex align-content-center" data-bs-toggle="collapse" data-bs-target=".callout-26-contents" aria-controls="callout-26" aria-expanded="false" aria-label="Toggle callout">
+<div class="callout-icon-container">
+<i class="callout-icon"></i>
+</div>
+<div class="callout-title-container flex-fill">
+Check Your Answer
+</div>
+<div class="callout-btn-toggle d-inline-block border-0 py-1 ps-1 pe-0 float-end"><i class="callout-toggle"></i></div>
+</div>
+<div id="callout-26" class="callout-26-contents callout-collapse collapse">
+<div class="callout-body-container callout-body">
+<p>Prediction evaluates one sequence (computable in milliseconds); design must search astronomically large spaces (20^200 for a 200-residue protein). Prediction stays near training data where models are accurate; design optimizes toward extremes where models become unreliable (distribution shift). Prediction has ground truth for validation; design creates novel sequences with unknown true function, requiring expensive experimental validation.</p>
+</div>
+</div>
+</div>
+<ol start="2" type="1">
+<li>Compare sequence-based protein design (using language models) with structure-aware design (using diffusion and inverse folding). What are the advantages of each approach?</li>
+</ol>
+<div class="callout callout-style-default callout-note callout-titled" title="Check Your Answer">
+<div class="callout-header d-flex align-content-center" data-bs-toggle="collapse" data-bs-target=".callout-27-contents" aria-controls="callout-27" aria-expanded="false" aria-label="Toggle callout">
+<div class="callout-icon-container">
+<i class="callout-icon"></i>
+</div>
+<div class="callout-title-container flex-fill">
+Check Your Answer
+</div>
+<div class="callout-btn-toggle d-inline-block border-0 py-1 ps-1 pe-0 float-end"><i class="callout-toggle"></i></div>
+</div>
+<div id="callout-27" class="callout-27-contents callout-collapse collapse">
+<div class="callout-body-container callout-body">
+<p>Sequence-based (PLMs): Advantages include computational efficiency, strong priors from evolutionary data, good for variant optimization. Limitations: restricted to known fold families. Structure-aware (RFdiffusion + ProteinMPNN): Advantages include ability to generate entirely novel topologies, target specific binding geometries, design for function-first. Limitations: higher computational cost, requires structural specification. Choose PLMs for optimizing existing proteins, structure-aware for de novo creation.</p>
+</div>
+</div>
+</div>
+<ol start="3" type="1">
+<li>What are the four key dimensions for evaluating generative sequence models (novelty, validity, diversity, functionality)? Why is no single metric sufficient?</li>
+</ol>
+<div class="callout callout-style-default callout-note callout-titled" title="Check Your Answer">
+<div class="callout-header d-flex align-content-center" data-bs-toggle="collapse" data-bs-target=".callout-28-contents" aria-controls="callout-28" aria-expanded="false" aria-label="Toggle callout">
+<div class="callout-icon-container">
+<i class="callout-icon"></i>
+</div>
+<div class="callout-title-container flex-fill">
+Check Your Answer
+</div>
+<div class="callout-btn-toggle d-inline-block border-0 py-1 ps-1 pe-0 float-end"><i class="callout-toggle"></i></div>
+</div>
+<div id="callout-28" class="callout-28-contents callout-collapse collapse">
+<div class="callout-body-container callout-body">
+<ol type="1">
+<li>Novelty: distance from training data (avoid memorization); (2) Validity: satisfies basic constraints (foldable, correct chemistry); (3) Diversity: variation among outputs (avoid mode collapse); (4) Functionality: achieves intended purpose (ultimate test). These can trade off—highly novel sequences may have lower validity. High validity doesn’t guarantee function. High diversity is useless if all designs fail. Comprehensive evaluation requires assessing all dimensions.</li>
+</ol>
+</div>
+</div>
+</div>
+<ol start="4" type="1">
+<li>Describe a design-build-test-learn cycle for protein engineering. How do foundation models contribute at each stage, and where does the bottleneck typically occur?</li>
+</ol>
+<div class="callout callout-style-default callout-note callout-titled" title="Check Your Answer">
+<div class="callout-header d-flex align-content-center" data-bs-toggle="collapse" data-bs-target=".callout-29-contents" aria-controls="callout-29" aria-expanded="false" aria-label="Toggle callout">
+<div class="callout-icon-container">
+<i class="callout-icon"></i>
+</div>
+<div class="callout-title-container flex-fill">
+Check Your Answer
+</div>
+<div class="callout-btn-toggle d-inline-block border-0 py-1 ps-1 pe-0 float-end"><i class="callout-toggle"></i></div>
+</div>
+<div id="callout-29" class="callout-29-contents callout-collapse collapse">
+<div class="callout-body-container callout-body">
+<p>Design: FM scores candidates, optimization identifies promising sequences (seconds-minutes). Build: DNA synthesis and assembly create physical constructs (days). Test: expression and functional assays measure performance (days-weeks). Learn: results update models for next cycle. FMs contribute in Design (generative priors, fitness prediction) and Learn (incorporating experimental data to improve predictions). Bottleneck: Build-Test phases (days-weeks) vs.&nbsp;fast Design (seconds), limiting iteration speed.</p>
+</div>
+</div>
+</div>
+<ol start="5" type="1">
+<li>What characteristic failure modes should you watch for in model-guided design (distribution shift, mode collapse, reward hacking)? Give an example of each.</li>
+</ol>
+<div class="callout callout-style-default callout-note callout-titled" title="Check Your Answer">
+<div class="callout-header d-flex align-content-center" data-bs-toggle="collapse" data-bs-target=".callout-30-contents" aria-controls="callout-30" aria-expanded="false" aria-label="Toggle callout">
+<div class="callout-icon-container">
+<i class="callout-icon"></i>
+</div>
+<div class="callout-title-container flex-fill">
+Check Your Answer
+</div>
+<div class="callout-btn-toggle d-inline-block border-0 py-1 ps-1 pe-0 float-end"><i class="callout-toggle"></i></div>
+</div>
+<div id="callout-30" class="callout-30-contents callout-collapse collapse">
+<div class="callout-body-container callout-body">
+<p>Distribution shift: optimization pushes into regions where FM predictions are unreliable (e.g., designed protein with 15% identity to any training sequence—model never saw such distant sequences). Mode collapse: generative model produces minor variants of training sequences rather than novel designs (all generated antibodies are &gt;95% identical to natural sequences in database). Reward hacking: optimization exploits model artifacts (e.g., promoter design finds sequences with spurious features correlating with high expression in training data but having no causal effect).</p>
+</div>
+</div>
+</div>
+</div>
+</div>
 <p>This chapter explored how foundation models enable the transition from predicting sequence function to designing sequences with desired properties.</p>
 <p><strong>Key Topics Covered:</strong></p>
 <ul>

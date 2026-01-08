@@ -91,6 +91,35 @@ div.csl-indent {
   }
 }</script>
 
+  <script src="https://cdnjs.cloudflare.com/polyfill/v3/polyfill.min.js?features=es6"></script>
+  <script src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-chtml-full.js" type="text/javascript"></script>
+
+<script type="text/javascript">
+const typesetMath = (el) => {
+  if (window.MathJax) {
+    // MathJax Typeset
+    window.MathJax.typeset([el]);
+  } else if (window.katex) {
+    // KaTeX Render
+    var mathElements = el.getElementsByClassName("math");
+    var macros = [];
+    for (var i = 0; i < mathElements.length; i++) {
+      var texText = mathElements[i].firstChild;
+      if (mathElements[i].tagName == "SPAN") {
+        window.katex.render(texText.data, mathElements[i], {
+          displayMode: mathElements[i].classList.contains('display'),
+          throwOnError: false,
+          macros: macros,
+          fleqn: false
+        });
+      }
+    }
+  }
+}
+window.Quarto = {
+  typesetMath
+};
+</script>
 
 <link rel="stylesheet" href="../styles.css">
 </head>
@@ -523,7 +552,9 @@ div.csl-indent {
 </header>
 
 
-<p><em>Every classical predictor measures a proxy—and proxies can lie.</em></p>
+<blockquote class="blockquote">
+<p>Every classical predictor measures a proxy—and proxies can lie.</p>
+</blockquote>
 <div class="callout callout-style-default callout-note callout-titled" title="Chapter Overview">
 <div class="callout-header d-flex align-content-center">
 <div class="callout-icon-container">
@@ -534,6 +565,7 @@ Chapter Overview
 </div>
 </div>
 <div class="callout-body-container callout-body">
+<p><strong>Estimated reading time:</strong> 40-50 minutes</p>
 <p><strong>Prerequisites:</strong> Understanding of genetic variants (SNPs, indels, missense/nonsense terminology) from Chapter 1; familiarity with population databases and allele frequency concepts from Chapter 2; basic awareness of GWAS principles from Chapter 3. No machine learning background required.</p>
 <p><strong>You will learn:</strong></p>
 <ul>
@@ -678,6 +710,7 @@ Figure&nbsp;4.2: Evolutionary conservation as a proxy for functional importance.
 </div>
 <section id="sec-ch04-constraint-metrics" class="level3" data-number="4.1.1">
 <h3 data-number="4.1.1" class="anchored" data-anchor-id="sec-ch04-constraint-metrics"><span class="header-section-number">4.1.1</span> Evolutionary Constraint Metrics</h3>
+<p>A clinical report arrives stating that a variant has “phyloP = 3.2” and “GERP = 4.5”—but what do these numbers actually mean? Without understanding the quantitative framework behind conservation scores, these values are opaque. The challenge is translating the qualitative intuition that “conservation implies function” into precise numerical values that can be compared across variants and combined with other evidence.</p>
 <p>The logic of conservation is straightforward: if a position matters for survival or reproduction, mutations there will be removed by selection before they can spread through the population. Quantifying this signal requires comparing sequences across species to identify positions where substitutions occur less frequently than expected under neutral evolution. Conservation scores translate this evolutionary signal into numerical values that can inform variant interpretation.</p>
 <p>PhyloP scores quantify the deviation of observed substitution rates from neutral expectation at individual positions <span class="citation" data-cites="siepel_phastcons_2005">(<a href="../bib/references.html#ref-siepel_phastcons_2005" role="doc-biblioref">Siepel et al. 2005</a>)</span>. The score is computed by comparing the observed pattern of bases at each alignment column against a neutral evolutionary model (typically fit to ancestral repeat sequences that are assumed to evolve without selective constraint). The choice of ancestral repeats for calibrating the neutral model is deliberate: these sequences arose from transposon insertions that have lost their original function and now accumulate mutations at rates reflecting only mutation pressure, without selective filtering. This provides a baseline against which constraint at functional positions can be measured. Positive phyloP scores indicate conservation, meaning evolution is slower than expected under neutrality. Negative scores indicate acceleration, suggesting faster evolution that may reflect positive selection. A phyloP score of 2 indicates that the observed base is approximately 100-fold more conserved than expected under neutrality, providing strong evidence that mutations at this position have been systematically removed by selection.</p>
 <p>GERP takes a complementary approach by estimating rejected substitutions at each position: the number of substitutions that would have been expected under neutrality but are absent from the observed alignment <span class="citation" data-cites="davydov_gerp_2010">(<a href="../bib/references.html#ref-davydov_gerp_2010" role="doc-biblioref">Davydov et al. 2010</a>)</span>. Large positive GERP scores indicate strong constraint. For a position conserved across 30 mammalian species, a GERP score of 5 implies that approximately five substitutions were rejected by selection over mammalian evolution. This interpretation connects directly to the biological process of <strong>purifying selection</strong> but depends on accurate neutral rate estimation and alignment quality.</p>
@@ -757,11 +790,28 @@ Knowledge Check
 </div>
 <div class="callout-body-container callout-body">
 <p>A patient has a variant at a position with phyloP = 0.5 (weak conservation) in <em>BRCA1</em>, a well-established breast cancer gene. Another patient has a variant with phyloP = 4.0 (strong conservation) in a gene with no known disease associations. Which variant is more likely to be clinically actionable? What additional information would you need?</p>
+<div class="callout callout-style-default callout-note callout-titled" title="Check Your Answer">
+<div class="callout-header d-flex align-content-center" data-bs-toggle="collapse" data-bs-target=".callout-5-contents" aria-controls="callout-5" aria-expanded="false" aria-label="Toggle callout">
+<div class="callout-icon-container">
+<i class="callout-icon"></i>
+</div>
+<div class="callout-title-container flex-fill">
+Check Your Answer
+</div>
+<div class="callout-btn-toggle d-inline-block border-0 py-1 ps-1 pe-0 float-end"><i class="callout-toggle"></i></div>
+</div>
+<div id="callout-5" class="callout-5-contents callout-collapse collapse">
+<div class="callout-body-container callout-body">
+<p>The <em>BRCA1</em> variant is more likely to be clinically actionable despite weak conservation, because gene-disease association trumps position-level constraint when making clinical decisions. Additional information needed includes: variant type (missense vs.&nbsp;nonsense), population frequency, other computational predictions, family history, and whether the variant has been reported in clinical databases like ClinVar.</p>
+</div>
+</div>
+</div>
 </div>
 </div>
 </section>
 <section id="sec-ch04-conservation-boundaries" class="level3" data-number="4.1.3">
 <h3 data-number="4.1.3" class="anchored" data-anchor-id="sec-ch04-conservation-boundaries"><span class="header-section-number">4.1.3</span> Clinical Application and Boundaries</h3>
+<p>When should a clinical laboratory trust a conservation score, and when should they treat it with skepticism? The answer depends on understanding both where conservation signals excel and where they systematically fail. A deep intronic variant with no regulatory annotations but strong conservation demands attention; a variant in an immune gene with weak conservation may still be pathogenic. Knowing when to rely on evolutionary evidence—and when to look elsewhere—separates effective variant interpretation from mechanical score-chasing.</p>
 <p>Conservation scores prove particularly valuable for non-coding variant interpretation, where direct functional annotations are often incomplete or absent. A deeply conserved intronic position likely participates in splicing regulation, gene expression control, or other functional processes even if no explicit annotation overlaps it. Under ACMG-AMP guidelines for variant classification, strong conservation provides computational evidence (the PP3 criterion) supporting pathogenicity <span class="citation" data-cites="richards_standards_2015">(<a href="../bib/references.html#ref-richards_standards_2015" role="doc-biblioref">Richards et al. 2015</a>)</span>. A variant falling at a position with phyloP greater than 2 and GERP greater than 4 carries significantly more weight than one at an unconserved position, even when no other annotation is available. These scores remain central to clinical variant interpretation workflows, as examined in <a href="../part_6/p6-ch27-clinical-risk.html" class="quarto-xref"><span>Chapter 27</span></a>, where they contribute evidence alongside population frequency, functional studies, and segregation data.</p>
 <p>The boundaries of conservation-based approaches are equally important to recognize, and these boundaries are not merely technical inconveniences but reflect fundamental gaps in what evolutionary signal can reveal. Conservation requires evolutionary time to accumulate signal. Recently evolved functional elements, including human-specific regulatory sequences and primate-specific genes, may show little conservation despite genuine function. A position can be functionally critical in humans yet unconserved because the function arose too recently for selection to leave a detectable signature. The fraction of the human genome showing evidence of human-specific function since the human-chimpanzee split (including thousands of human accelerated regions) presents exactly this challenge: important to human biology, yet invisible to conservation metrics <span class="citation" data-cites="hubisz_exploring_2014">(<a href="../bib/references.html#ref-hubisz_exploring_2014" role="doc-biblioref"><strong>hubisz_exploring_2014?</strong></a>)</span>.</p>
 <p>Conservation patterns vary dramatically by functional context. Neural development genes tend to be highly conserved across vertebrates, while immune genes evolve rapidly under positive selection. Critically, lack of conservation does not prove neutrality: a position may be diverging under positive selection, or may serve lineage-specific functions absent in the comparison species.</p>
@@ -777,8 +827,7 @@ ACMG-AMP Variant Classification Framework
 </div>
 </div>
 <div class="callout-body-container callout-body">
-<p>The American College of Medical Genetics and Genomics and the Association for Molecular Pathology jointly established a standardized framework for clinical variant interpretation <span class="citation" data-cites="richards_standards_2015">(<a href="../bib/references.html#ref-richards_standards_2015" role="doc-biblioref">Richards et al. 2015</a>)</span>. Variants are classified into five tiers: Pathogenic, Likely Pathogenic, <strong>Variant of Uncertain Significance (VUS)</strong>, Likely Benign, and Benign. Classification combines multiple evidence types, each assigned a strength level. Pathogenic evidence ranges from very strong (PVS) through strong (PS), moderate (PM), to supporting (PP). Benign evidence follows a parallel hierarchy: stand-alone (BA), strong (BS), and supporting (BP).</p>
-<p>Computational predictions occupy the supporting tier: PP3 when algorithms predict a damaging effect, BP4 when they predict benign impact. This placement reflects appropriate caution. Computational evidence can contribute to classification but cannot establish pathogenicity or benign status independently. Multiple computational tools showing concordant predictions may strengthen the evidence, but the framework explicitly limits their weight. Variants classified primarily on computational grounds warrant flagging for reclassification as functional or clinical evidence emerges.</p>
+<p>The ACMG-AMP framework classifies variants into five clinical tiers: Pathogenic, Likely Pathogenic, <strong>Variant of Uncertain Significance (VUS)</strong>, Likely Benign, and Benign <span class="citation" data-cites="richards_standards_2015">(<a href="../bib/references.html#ref-richards_standards_2015" role="doc-biblioref">Richards et al. 2015</a>)</span>. Classification combines multiple evidence types at different strength levels (very strong through supporting). Computational predictions occupy the supporting tier through criteria PP3 (predicted damaging) and BP4 (predicted benign), meaning they can contribute to but not independently establish pathogenicity. The full evidence framework, including thresholds for upgrading computational evidence strength, is detailed in <a href="../part_3/p3-ch17-vep-fm.html#sec-ch17-acmg-mapping" class="quarto-xref"><span>Section 17.5.3</span></a>.</p>
 <div id="fig-acmg-classification" class="quarto-float quarto-figure quarto-figure-center anchored">
 <figure class="quarto-float quarto-float-fig figure">
 <div aria-describedby="fig-acmg-classification-caption-0ceaefa1-69ba-4598-a22c-09a6ac19f8ca">
@@ -790,7 +839,7 @@ ACMG-AMP Variant Classification Framework
 </div>
 </div>
 <figcaption class="quarto-float-caption-bottom quarto-float-caption quarto-float-fig" id="fig-acmg-classification-caption-0ceaefa1-69ba-4598-a22c-09a6ac19f8ca">
-Figure&nbsp;4.3: The ACMG-AMP framework for clinical variant classification. Variants are classified into five tiers based on combined evidence: Pathogenic (red), Likely Pathogenic (orange), Variant of Uncertain Significance (gray), Likely Benign (light green), and Benign (green). Pathogenic evidence is categorized by strength: very strong (PVS), strong (PS), moderate (PM), and supporting (PP). Benign evidence follows a parallel structure: stand-alone (BA), strong (BS), and supporting (BP). Computational predictions occupy the supporting tier (PP3 for predicted damaging, BP4 for predicted benign), reflecting appropriate caution about their evidentiary weight. Definitive classification requires combining multiple independent lines of evidence according to specified rules.
+Figure&nbsp;4.3: The ACMG-AMP framework for clinical variant classification. Variants are classified into five tiers based on combined evidence. Computational predictions (PP3/BP4) provide supporting-level evidence, reflecting appropriate caution about their evidentiary weight.
 </figcaption>
 </figure>
 </div>
@@ -886,6 +935,7 @@ Table&nbsp;4.2: Comparison of <em>SIFT</em> and <em>PolyPhen-2</em>
 </section>
 <section id="sec-ch04-sequence-to-function" class="level3" data-number="4.2.3">
 <h3 data-number="4.2.3" class="anchored" data-anchor-id="sec-ch04-sequence-to-function"><span class="header-section-number">4.2.3</span> From Sequence to Function</h3>
+<p>A clinical report states that a variant is “probably damaging” according to PolyPhen-2 and “deleterious” according to SIFT. The patient’s physician asks: “So this variant causes disease?” The answer is more complicated than the scores suggest. A “probably damaging” designation means the substitution likely impairs the protein’s normal function—but whether that impairment causes the patient’s disease depends on factors these tools cannot assess.</p>
 <p><em>PolyPhen-2</em>, <em>SIFT</em>, and similar tools answer a mechanistic question: does this amino acid substitution disrupt protein function? They assess whether the new residue fits the structural context, whether the position tolerates variation across species, and whether the physicochemical change is drastic. These are genuine molecular insights. A “probably damaging” designation from <em>PolyPhen-2</em> means the substitution likely impairs the protein’s normal function, but the clinical significance of that impairment requires reasoning that protein-level predictors cannot provide.</p>
 <p>Protein language models like <em>ESM-2</em> (<a href="../part_3/p3-ch15-protein-lm.html#sec-ch15-esm-family" class="quarto-xref"><span>Section 15.1</span></a>) provide alternative approaches to variant effect prediction that learn evolutionary constraint from sequence alone, without explicit multiple sequence alignments. <em>ESM</em>-based variant scoring is examined in <span class="quarto-unresolved-ref">?sec-ch14-protein-vep</span>, where zero-shot prediction paradigms avoid the limitations of supervised training on biased clinical labels.</p>
 </section>
@@ -1104,6 +1154,54 @@ Mathematical Detail
 </div>
 </div>
 <p>Raw classifier outputs are not directly interpretable as probabilities or biological effect sizes. A clinician presented with a <strong>support vector machine</strong> decision value has no intuitive understanding of what that number means. To address this, <em>CADD</em> defines PHRED-scaled scores based on the rank of each variant among all possible single-nucleotide substitutions in the reference genome. A scaled score of 10 indicates that a variant falls in the top 10% of predicted deleteriousness. A score of 20 indicates the top 1%, and a score of 30 indicates the top 0.1%. This rank-based transformation ensures comparability across <em>CADD</em> versions and provides immediate interpretability: a clinician can understand that a score of 25 places this variant among the most extreme 0.3% of possible mutations without needing to understand the underlying classifier.</p>
+<div class="callout callout-style-default callout-note callout-titled" title="Worked Example: CADD PHRED Scoring">
+<div class="callout-header d-flex align-content-center">
+<div class="callout-icon-container">
+<i class="callout-icon"></i>
+</div>
+<div class="callout-title-container flex-fill">
+Worked Example: CADD PHRED Scoring
+</div>
+</div>
+<div class="callout-body-container callout-body">
+<p>Suppose <em>CADD’s</em> classifier assigns a raw score to a missense variant in <em>BRCA1</em>. To convert this to the interpretable scaled score, <em>CADD</em> ranks this variant against all ~8.6 billion possible single-nucleotide substitutions in the reference genome.</p>
+<p><strong>Step 1:</strong> The classifier produces a raw score (e.g., 2.34 on the SVM decision boundary).</p>
+<p><strong>Step 2:</strong> <em>CADD</em> determines where this score ranks among all possible variants. If this variant’s raw score places it at the 99th percentile (more extreme than 99% of possible variants), it receives a scaled score of 20.</p>
+<p><strong>Step 3:</strong> The PHRED formula: scaled score = <span class="math inline">\(-10 \times \log_{10}(\text{percentile rank})\)</span></p>
+<table class="caption-top table">
+<thead>
+<tr class="header">
+<th>Raw Percentile</th>
+<th>Calculation</th>
+<th>Scaled Score</th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<td>Top 10% (0.10)</td>
+<td><span class="math inline">\(-10 \times \log_{10}(0.10)\)</span></td>
+<td>10</td>
+</tr>
+<tr class="even">
+<td>Top 1% (0.01)</td>
+<td><span class="math inline">\(-10 \times \log_{10}(0.01)\)</span></td>
+<td>20</td>
+</tr>
+<tr class="odd">
+<td>Top 0.1% (0.001)</td>
+<td><span class="math inline">\(-10 \times \log_{10}(0.001)\)</span></td>
+<td>30</td>
+</tr>
+<tr class="even">
+<td>Top 0.03% (0.0003)</td>
+<td><span class="math inline">\(-10 \times \log_{10}(0.0003)\)</span></td>
+<td>~35</td>
+</tr>
+</tbody>
+</table>
+<p>Each 10-point increase represents a 10-fold enrichment in predicted deleteriousness. A variant with a scaled score of 25 is rarer (more extreme) than 99.7% of all possible substitutions.</p>
+</div>
+</div>
 <p><em>CADD’s</em> classifier operates on the high-dimensional feature vector assembled for each variant. The original <em>CADD</em> model (v1.0) used a linear support vector machine trained to discriminate proxy-neutral and proxy-deleterious variants based on approximately 30 million training examples. The choice of a linear model was deliberate and pragmatic: with tens of millions of training examples and dozens of features, a linear classifier is computationally tractable while capturing the main structure of the classification problem. More fundamentally, the proxy labeling strategy means training labels are inherently noisy: the proxy-neutral class contains some deleterious variants, and the proxy-deleterious class contains some neutral ones. A simple linear model is less likely to overfit to this label noise than a complex nonlinear model, which might learn to memorize spurious patterns in the noisy labels rather than the generalizable structure that distinguishes evolutionary constraint from neutrality. Subsequent versions (v1.1 onward) transitioned to logistic regression, which offers comparable discriminative performance while providing native probability outputs and faster scoring of new variants <span class="citation" data-cites="rentzsch_cadd-splice_2021">(<a href="../bib/references.html#ref-rentzsch_cadd-splice_2021" role="doc-biblioref"><strong>rentzsch_cadd-splice_2021?</strong></a>)</span>. Version 1.7 expanded the feature set to include protein language model scores and regulatory predictions from deep learning models <span class="citation" data-cites="schubach_cadd_2024">(<a href="../bib/references.html#ref-schubach_cadd_2024" role="doc-biblioref">Schubach et al. 2024</a>)</span>.</p>
 <div class="callout callout-style-default callout-tip callout-titled" title="Practical Guidance: Interpreting CADD Scores">
 <div class="callout-header d-flex align-content-center">
@@ -1196,11 +1294,28 @@ Knowledge Check
 </div>
 <div class="callout-body-container callout-body">
 <p>A clinical laboratory is evaluating tools for a rare disease diagnostic pipeline. They need high specificity (few false positives) because false pathogenic calls lead to unnecessary interventions. Which of <em>CADD</em>, <em>REVEL</em>, or <em>M-CAP</em> would you recommend for their primary filter, and why?</p>
+<div class="callout callout-style-default callout-note callout-titled" title="Check Your Answer">
+<div class="callout-header d-flex align-content-center" data-bs-toggle="collapse" data-bs-target=".callout-18-contents" aria-controls="callout-18" aria-expanded="false" aria-label="Toggle callout">
+<div class="callout-icon-container">
+<i class="callout-icon"></i>
+</div>
+<div class="callout-title-container flex-fill">
+Check Your Answer
+</div>
+<div class="callout-btn-toggle d-inline-block border-0 py-1 ps-1 pe-0 float-end"><i class="callout-toggle"></i></div>
+</div>
+<div id="callout-18" class="callout-18-contents callout-collapse collapse">
+<div class="callout-body-container callout-body">
+<p><em>M-CAP</em> is the best choice for this use case because it was explicitly designed to minimize false positives (high specificity) at the cost of some sensitivity. <em>REVEL</em> offers high accuracy for missense variants but balances sensitivity and specificity equally, while <em>CADD</em> provides genome-wide coverage but may have more false positives within specific variant classes.</p>
+</div>
+</div>
+</div>
 </div>
 </div>
 </section>
 <section id="sec-ch04-ensemble-comparison" class="level3" data-number="4.4.3">
 <h3 data-number="4.4.3" class="anchored" data-anchor-id="sec-ch04-ensemble-comparison"><span class="header-section-number">4.4.3</span> Comparison and Selection</h3>
+<p>A clinical laboratory must choose which computational predictors to incorporate into their diagnostic pipeline. Should they use CADD for its universal coverage, REVEL for its missense accuracy, or M-CAP for its low false-positive rate? The wrong choice can mean missing pathogenic variants or overwhelming clinical reviewers with false alarms. Understanding what each method optimizes for—and what it trades away—is essential for matching tools to clinical context.</p>
 <p>No single ensemble method dominates across all variant types and clinical contexts. <em>CADD</em> provides the broadest coverage (genome-wide, all variant types) but may sacrifice accuracy within specific variant classes to achieve this generality. <em>REVEL</em> often outperforms <em>CADD</em> on missense-only benchmarks, reflecting its focused training objective. <em>M-CAP</em> prioritizes specificity over sensitivity, appropriate for clinical settings where avoiding false positives is paramount.</p>
 <div id="tbl-ensemble-comparison" class="quarto-float quarto-figure quarto-figure-center anchored">
 <figure class="quarto-float quarto-float-tbl figure">
@@ -1354,6 +1469,48 @@ Chapter Summary
 </div>
 </div>
 <div class="callout-body-container callout-body">
+<div class="callout callout-style-default callout-tip callout-titled" title="Test Yourself">
+<div class="callout-header d-flex align-content-center">
+<div class="callout-icon-container">
+<i class="callout-icon"></i>
+</div>
+<div class="callout-title-container flex-fill">
+Test Yourself
+</div>
+</div>
+<div class="callout-body-container callout-body">
+<p>Before reviewing the summary, test your recall:</p>
+<ol type="1">
+<li>What do conservation scores like phyloP and GERP actually measure, and why is this different from clinical pathogenicity?</li>
+<li>How do SIFT and PolyPhen-2 assess missense variant severity, and what are the key differences in their approaches?</li>
+<li>Why did CADD use evolutionary proxy labels (observed vs.&nbsp;simulated variants) rather than clinical pathogenicity labels for training?</li>
+<li>What is the circularity problem between variant effect predictors and clinical databases like ClinVar?</li>
+<li>Why do classical variant effect predictors struggle with rare variants and novel mechanisms?</li>
+</ol>
+<div class="callout callout-style-default callout-note callout-titled" title="Check Your Answers">
+<div class="callout-header d-flex align-content-center" data-bs-toggle="collapse" data-bs-target=".callout-21-contents" aria-controls="callout-21" aria-expanded="false" aria-label="Toggle callout">
+<div class="callout-icon-container">
+<i class="callout-icon"></i>
+</div>
+<div class="callout-title-container flex-fill">
+Check Your Answers
+</div>
+<div class="callout-btn-toggle d-inline-block border-0 py-1 ps-1 pe-0 float-end"><i class="callout-toggle"></i></div>
+</div>
+<div id="callout-21" class="callout-21-contents callout-collapse collapse">
+<div class="callout-body-container callout-body">
+<ol type="1">
+<li><p><strong>Conservation scores measure evolutionary constraint, not disease relevance</strong>: phyloP quantifies deviation from neutral evolution rates, while GERP estimates rejected substitutions across evolutionary time. These scores measure whether positions have been important for reproductive fitness across species, which differs from clinical pathogenicity because evolution cannot detect late-onset diseases, tissue-specific effects, or recently evolved human-specific functions.</p></li>
+<li><p><strong>SIFT uses sequence homology alone, while PolyPhen-2 integrates structure</strong>: SIFT examines which amino acids appear at each position across homologous sequences and predicts that substitutions introducing amino acids not observed evolutionarily are deleterious. PolyPhen-2 extends this by incorporating protein structure features (solvent accessibility, secondary structure, proximity to functional sites) and physicochemical properties (Grantham distance, BLOSUM matrices) to assess whether substitutions are conservative or radical in their structural context.</p></li>
+<li><p><strong>Evolutionary proxy labels provided millions of training examples from unlabeled data</strong>: Clinical pathogenicity labels were scarce (thousands of variants) and biased toward well-studied genes, while evolutionary proxy labels (observed human-derived alleles versus simulated variants) provided millions of training examples. The proxy-neutral class consists of variants that survived purifying selection, while the proxy-deleterious class represents mutations that could occur but are generally not observed at high frequency, allowing CADD to learn at scale despite measuring evolutionary tolerance rather than clinical pathogenicity directly.</p></li>
+<li><p><strong>Circularity creates a self-reinforcing loop that inflates performance</strong>: Clinical laboratories use computational scores like CADD as evidence when classifying variants in ClinVar, then benchmarking studies evaluate those same predictors on ClinVar variants. This means predictors are tested on labels they helped create, artificially inflating their apparent performance because they influenced the ground truth labels used for evaluation.</p></li>
+<li><p><strong>Rare variants and novel mechanisms lack training examples</strong>: Classical predictors learn from patterns observed in training data, so variants with mechanisms not represented in curated databases (gain-of-function mutations, human-specific regulatory elements, recently evolved functions) have no labeled examples to learn from. Ascertainment bias means training sets over-represent variants in well-studied genes with severe Mendelian phenotypes, while diagnostically challenging cases in rare genes or with unusual mechanisms are systematically underrepresented.</p></li>
+</ol>
+</div>
+</div>
+</div>
+</div>
+</div>
 <p><strong>Core concepts covered:</strong></p>
 <ul>
 <li><strong>Conservation scores</strong> (phyloP, GERP, phastCons) quantify evolutionary constraint by comparing observed substitution rates to neutral expectations</li>

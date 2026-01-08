@@ -583,6 +583,7 @@ Chapter Overview
 </div>
 </div>
 <div class="callout-body-container callout-body">
+<p><strong>Estimated reading time:</strong> 35-45 minutes</p>
 <p><strong>Prerequisites:</strong> Understanding of DNA and protein foundation models from Part III (<a href="../part_3/p3-ch14-dna-lm.html" class="quarto-xref"><span>Chapter 14</span></a>, <a href="../part_3/p3-ch15-protein-lm.html" class="quarto-xref"><span>Chapter 15</span></a>), familiarity with self-supervised pretraining objectives (<a href="../part_2/p2-ch08-pretraining.html" class="quarto-xref"><span>Chapter 8</span></a>), and basic knowledge of transformer architectures (<a href="../part_2/p2-ch07-attention.html" class="quarto-xref"><span>Chapter 7</span></a>).</p>
 <p><strong>You will learn:</strong></p>
 <ul>
@@ -662,10 +663,23 @@ Stop and Think
 <p>Proteins fold into stable three-dimensional structures, and protein language models have learned to predict these folds with remarkable accuracy. Before reading on, consider: why might RNA structure prediction be fundamentally harder than protein structure prediction, despite RNA having only 4 bases compared to 20 amino acids?</p>
 </div>
 </div>
-<p>RNA secondary structure prediction differs fundamentally from protein structure prediction in ways that shape every modeling choice. Where DNA language models learn from linear sequence patterns (<a href="../part_3/p3-ch14-dna-lm.html" class="quarto-xref"><span>Chapter 14</span></a>) and protein models exploit evolutionary constraints across homologs (<a href="../part_3/p3-ch15-protein-lm.html" class="quarto-xref"><span>Chapter 15</span></a>), RNA models must contend with conformational dynamics that neither domain faces at comparable scale. Three interrelated challenges define the problem: thermodynamic landscapes with multiple competing minima, base-pairing interactions that span hundreds of nucleotides, and <strong>pseudoknot</strong> structures that violate the assumptions of efficient algorithms. Understanding these challenges clarifies why RNA structure remains harder to predict than protein structure despite the apparent simplicity of four bases versus twenty amino acids.</p>
+<p>RNA secondary structure prediction differs fundamentally from protein structure prediction in ways that shape every modeling choice. Where DNA language models learn from linear sequence patterns (<a href="../part_3/p3-ch14-dna-lm.html" class="quarto-xref"><span>Chapter 14</span></a>) and protein models exploit evolutionary constraints across homologs (<a href="../part_3/p3-ch15-protein-lm.html" class="quarto-xref"><span>Chapter 15</span></a>), RNA models must contend with conformational dynamics that neither domain faces at comparable scale. Three interrelated challenges define the problem: thermodynamic landscapes with multiple competing minima, base-pairing interactions that span hundreds of nucleotides, and <strong>pseudoknot</strong> structures (configurations where bases in a loop pair with bases outside that loop, creating interleaved patterns that standard algorithms cannot efficiently handle) that violate the assumptions of efficient algorithms. Understanding these challenges clarifies why RNA structure remains harder to predict than protein structure despite the apparent simplicity of four bases versus twenty amino acids.</p>
 <section id="sec-ch18-energy-landscape" class="level3" data-number="18.2.1">
 <h3 data-number="18.2.1" class="anchored" data-anchor-id="sec-ch18-energy-landscape"><span class="header-section-number">18.2.1</span> Flat Energy Landscape Problem</h3>
-<p>RNA’s defining computational challenge emerges from thermodynamics. Proteins fold into stable three-dimensional structures because their energy landscapes contain deep minima: the native state sits in a pronounced funnel that guides the folding process. RNA energy landscapes are remarkably flatter. Multiple conformations compete for occupancy, with free energy differences often smaller than thermal fluctuations at cellular temperatures. A given RNA sequence may adopt several alternative structures with similar stabilities, and the dominant conformation can shift in response to ion concentrations, temperature, protein binding, or chemical modifications.</p>
+<div class="callout callout-style-default callout-note callout-titled" title="Stop and Think">
+<div class="callout-header d-flex align-content-center">
+<div class="callout-icon-container">
+<i class="callout-icon"></i>
+</div>
+<div class="callout-title-container flex-fill">
+Stop and Think
+</div>
+</div>
+<div class="callout-body-container callout-body">
+<p>Before reading about RNA’s energy landscape, predict: if an RNA sequence can fold into multiple different structures with similar energies, what would this mean for predicting “the” structure of that RNA? How does this differ from protein folding?</p>
+</div>
+</div>
+<p>RNA’s defining computational challenge emerges from thermodynamics. Proteins fold into stable three-dimensional structures because their energy landscapes contain deep minima: the native state sits in a pronounced funnel that guides the folding process. RNA energy landscapes are remarkably flatter—like a marble on a dinner plate with multiple shallow dents rather than a deep bowl. The marble settles in one dent but can easily roll to another with a small nudge. Multiple conformations compete for occupancy, with free energy differences often smaller than thermal fluctuations at cellular temperatures. A given RNA sequence may adopt several alternative structures with similar stabilities, and the dominant conformation can shift in response to ion concentrations, temperature, protein binding, or chemical modifications.</p>
 <div class="callout callout-style-default callout-important callout-titled" title="Key Insight">
 <div class="callout-header d-flex align-content-center">
 <div class="callout-icon-container">
@@ -716,6 +730,19 @@ Figure&nbsp;18.1: Energy landscape comparison between protein and RNA folding. (
 </section>
 <section id="sec-ch18-pseudoknots" class="level3" data-number="18.2.3">
 <h3 data-number="18.2.3" class="anchored" data-anchor-id="sec-ch18-pseudoknots"><span class="header-section-number">18.2.3</span> Pseudoknots and Tertiary Complexity</h3>
+<div class="callout callout-style-default callout-note callout-titled" title="Stop and Think">
+<div class="callout-header d-flex align-content-center">
+<div class="callout-icon-container">
+<i class="callout-icon"></i>
+</div>
+<div class="callout-title-container flex-fill">
+Stop and Think
+</div>
+</div>
+<div class="callout-body-container callout-body">
+<p>Standard RNA structure prediction algorithms use dynamic programming with O(n³) complexity by assuming nested base pairs. What happens to this assumption when bases in a loop pair with bases outside that loop? Why would this dramatically increase computational complexity?</p>
+</div>
+</div>
 <p>Pseudoknots occur when bases in a loop pair with bases outside that loop, creating interleaved base-pairing patterns that violate the nested structure assumed by standard secondary structure algorithms. A typical pseudoknot involves two stem regions whose base pairs cross each other when drawn in standard notation. These structures are functionally important (the telomerase RNA catalytic core contains a pseudoknot essential for activity) but algorithmically challenging. Standard dynamic programming approaches for secondary structure prediction exclude pseudoknots because their inclusion increases computational complexity from <span class="math inline">\(O(n^3)\)</span> to <span class="math inline">\(O(n^6)\)</span> or worse. <em>[Citation Needed]</em> The complexity increase arises because nested base pairs can be solved by recursive decomposition—if positions <span class="math inline">\(i\)</span> and <span class="math inline">\(j\)</span> pair, the structure between them is independent of the structure outside—but pseudoknots violate this independence by creating dependencies between the “inside” and “outside” regions. The algorithm must therefore consider all possible ways the crossing pairs might interleave, leading to exponentially more states.</p>
 <div id="fig-rna-structure-elements" class="quarto-layout-panel">
 <figure class="quarto-float quarto-float-fig figure">
@@ -784,6 +811,22 @@ Knowledge Check
 </div>
 <div class="callout-body-container callout-body">
 <p>Thermodynamic folding methods find the minimum free energy structure. Given what you’ve learned about RNA’s flat energy landscape, what is the main limitation of this approach? (Hint: think about alternative conformations.)</p>
+<div class="callout callout-style-default callout-note callout-titled" title="Check Your Answer">
+<div class="callout-header d-flex align-content-center" data-bs-toggle="collapse" data-bs-target=".callout-6-contents" aria-controls="callout-6" aria-expanded="false" aria-label="Toggle callout">
+<div class="callout-icon-container">
+<i class="callout-icon"></i>
+</div>
+<div class="callout-title-container flex-fill">
+Check Your Answer
+</div>
+<div class="callout-btn-toggle d-inline-block border-0 py-1 ps-1 pe-0 float-end"><i class="callout-toggle"></i></div>
+</div>
+<div id="callout-6" class="callout-6-contents callout-collapse collapse">
+<div class="callout-body-container callout-body">
+<p>The main limitation is that MFE methods predict only the single lowest-energy structure, missing functionally relevant alternative conformations that may have similar free energies. RNA’s flat energy landscape means multiple structures can coexist with comparable stability, so the global minimum may not be the only biologically important state.</p>
+</div>
+</div>
+</div>
 </div>
 </div>
 </section>
@@ -862,6 +905,19 @@ Table&nbsp;18.2: Comparison of RNA structure prediction approaches. Each has com
 </section>
 <section id="sec-ch18-foundation" class="level2" data-number="18.5">
 <h2 data-number="18.5" class="anchored" data-anchor-id="sec-ch18-foundation"><span class="header-section-number">18.5</span> RNA Foundation Models</h2>
+<div class="callout callout-style-default callout-note callout-titled" title="Stop and Think">
+<div class="callout-header d-flex align-content-center">
+<div class="callout-icon-container">
+<i class="callout-icon"></i>
+</div>
+<div class="callout-title-container flex-fill">
+Stop and Think
+</div>
+</div>
+<div class="callout-body-container callout-body">
+<p>Protein language models like ESM-2 trained on 65 million sequences and learned to predict protein structure from sequence alone. Before reading on, consider: what would an RNA foundation model need to achieve a similar breakthrough? What resources or data might be missing?</p>
+</div>
+</div>
 <p>The success of protein language models naturally prompted attempts to apply the same paradigm to RNA. Train large transformers on massive sequence corpora following the scaling principles examined in <a href="../part_3/p3-ch13-fm-principles.html#sec-ch13-scaling" class="quarto-xref"><span>Section 13.3</span></a>, learn representations through self-supervised objectives (<a href="../part_2/p2-ch08-pretraining.html" class="quarto-xref"><span>Chapter 8</span></a>), then transfer to downstream tasks. RNA foundation models exist and show promise, but they have not yet achieved the transformative impact of their protein counterparts. The reasons illuminate fundamental differences between protein and RNA modeling.</p>
 <section id="sec-ch18-scale-gap" class="level3" data-number="18.5.1">
 <h3 data-number="18.5.1" class="anchored" data-anchor-id="sec-ch18-scale-gap"><span class="header-section-number">18.5.1</span> Scale Gap with Protein Language Models</h3>
@@ -954,6 +1010,19 @@ Figure&nbsp;18.3: The scale gap between protein and RNA foundation models. (A) K
 </section>
 <section id="sec-ch18-codon" class="level2" data-number="18.6">
 <h2 data-number="18.6" class="anchored" data-anchor-id="sec-ch18-codon"><span class="header-section-number">18.6</span> Codon-Level Models for Coding RNA</h2>
+<div class="callout callout-style-default callout-note callout-titled" title="Stop and Think">
+<div class="callout-header d-flex align-content-center">
+<div class="callout-icon-container">
+<i class="callout-icon"></i>
+</div>
+<div class="callout-title-container flex-fill">
+Stop and Think
+</div>
+</div>
+<div class="callout-body-container callout-body">
+<p>Consider two mRNA sequences that encode the exact same protein but differ in their codon choices (synonymous codons). A protein language model sees identical sequences. What biological information exists in the mRNA that the protein model completely misses?</p>
+</div>
+</div>
 <p>Coding sequences present a modeling opportunity that neither DNA nor protein foundation models fully exploit. The genetic code’s synonymous redundancy means that mRNA sequence carries information beyond amino acid identity: codon choice affects translation speed, mRNA stability, and co-translational folding. Codon-level foundation models tokenize mRNA into three-nucleotide units, learning representations that capture these codon-specific signals invisible to protein language models.</p>
 <section id="sec-ch18-codon-tokenization" class="level3" data-number="18.6.1">
 <h3 data-number="18.6.1" class="anchored" data-anchor-id="sec-ch18-codon-tokenization"><span class="header-section-number">18.6.1</span> Beyond Nucleotide Tokenization</h3>
@@ -1021,6 +1090,19 @@ Figure&nbsp;18.4: Codon-level modeling of mRNA. (A) Multiple mRNA sequences can 
 </section>
 <section id="sec-ch18-codon-advantages" class="level3" data-number="18.6.2">
 <h3 data-number="18.6.2" class="anchored" data-anchor-id="sec-ch18-codon-advantages"><span class="header-section-number">18.6.2</span> What Codon Models Add</h3>
+<div class="callout callout-style-default callout-note callout-titled" title="Stop and Think">
+<div class="callout-header d-flex align-content-center">
+<div class="callout-icon-container">
+<i class="callout-icon"></i>
+</div>
+<div class="callout-title-container flex-fill">
+Stop and Think
+</div>
+</div>
+<div class="callout-body-container callout-body">
+<p>You’re designing a therapeutic mRNA to express a protein in human cells. The amino acid sequence is fixed (you need that exact protein). But you have roughly 3^300 possible mRNA sequences to choose from for a 300-amino-acid protein. What criteria would guide your choice among synonymous alternatives?</p>
+</div>
+</div>
 <p>Compared to protein language models, codon-level models enable direct modeling of mRNA design problems where amino acid sequence is fixed but codon choice is variable. They capture codon usage bias and its relationship to expression, model translation elongation dynamics that affect co-translational folding, and distinguish synonymous variants that are neutral at the protein level but affect mRNA properties.</p>
 <p><em>Life-Code</em> extends this approach into a central-dogma-wide framework, linking DNA, RNA, and protein representations through shared or aligned embedding spaces <span class="citation" data-cites="liu_life-code_2025">(<a href="../bib/references.html#ref-liu_life-code_2025" role="doc-biblioref">Liu et al. 2025</a>)</span>. <em>CodonBERT</em> specifically targets mRNA design for vaccines and therapeutics, training on over 10 million mRNA sequences to learn representations that predict expression, stability, and immunogenicity <span class="citation" data-cites="li_codonbert_2023">(<a href="../bib/references.html#ref-li_codonbert_2023" role="doc-biblioref">Li et al. 2023</a>)</span>.</p>
 <p>Codon models typically ignore mRNA secondary structure and modifications. Local structure affects ribosome access and translation rate; modifications like m6A influence stability and localization. Combining codon-aware tokenization with structure-aware representations remains an open direction, less mature than the parallel integration of sequence and structure in protein modeling (<a href="../part_3/p3-ch15-protein-lm.html" class="quarto-xref"><span>Chapter 15</span></a>).</p>
@@ -1085,10 +1167,23 @@ Table&nbsp;18.3: Comparison of model types for coding sequences. Codon models fi
 </section>
 <section id="sec-ch18-utr" class="level2" data-number="18.7">
 <h2 data-number="18.7" class="anchored" data-anchor-id="sec-ch18-utr"><span class="header-section-number">18.7</span> UTR Models and Translation Regulation</h2>
+<div class="callout callout-style-default callout-note callout-titled" title="Stop and Think">
+<div class="callout-header d-flex align-content-center">
+<div class="callout-icon-container">
+<i class="callout-icon"></i>
+</div>
+<div class="callout-title-container flex-fill">
+Stop and Think
+</div>
+</div>
+<div class="callout-body-container callout-body">
+<p>Two mRNAs encode identical proteins with identical codon sequences, but one produces 100-fold more protein than the other. Where would you look to explain this difference, and what mechanisms might be responsible?</p>
+</div>
+</div>
 <p>The untranslated regions flanking a coding sequence determine how much protein an mRNA produces and how long the message survives in the cell. These regulatory effects operate through distinct mechanisms in the 5’ and 3’ UTRs, creating opportunities for both understanding endogenous regulation and engineering synthetic mRNAs with desired expression properties.</p>
 <section id="sec-ch18-utr-control" class="level3" data-number="18.7.1">
 <h3 data-number="18.7.1" class="anchored" data-anchor-id="sec-ch18-utr-control"><span class="header-section-number">18.7.1</span> Why UTRs Dominate Expression Control</h3>
-<p>The protein output of an mRNA depends as much on its untranslated regions as on its coding sequence. A transcript’s 5’ UTR determines whether ribosomes find and engage the start codon; its 3’ UTR controls how long the message survives and where in the cell it localizes. Two mRNAs encoding identical proteins can differ by orders of magnitude in expression if their UTRs differ. This regulatory leverage makes UTR modeling essential for both understanding endogenous gene regulation and designing synthetic mRNAs for therapeutic applications.</p>
+<p>The protein output of an mRNA depends as much on its untranslated regions as on its coding sequence. A transcript’s 5’ UTR determines whether ribosomes find and engage the start codon; its 3’ UTR controls how long the message survives and where in the cell it localizes—like an expiration date stamped on perishable goods, except here the “date” is encoded in sequence features that cellular machinery reads to decide when to degrade the transcript. Two mRNAs encoding identical proteins can differ by orders of magnitude in expression if their UTRs differ. This regulatory leverage makes UTR modeling essential for both understanding endogenous gene regulation and designing synthetic mRNAs for therapeutic applications.</p>
 <p>The 5’ UTR spans from the transcription start site to the start codon, typically 50 to 200 nucleotides in human mRNAs. Within this region, secondary structure can occlude the start codon and impede ribosome scanning, upstream open reading frames (uORFs) can capture ribosomes before they reach the main coding sequence, and internal ribosome entry sites (IRES) can enable cap-independent translation under stress conditions. The Kozak consensus sequence surrounding the start codon influences initiation efficiency, but context extending dozens of nucleotides in either direction modulates this effect. Predicting translation efficiency from 5’ UTR sequence requires integrating these overlapping signals.</p>
 <p>The 3’ UTR extends from the stop codon to the poly-A tail, ranging from under 100 nucleotides to over 10 kilobases. This region harbors binding sites for RNA-binding proteins and microRNAs that collectively determine mRNA half-life, localization, and translational status. AU-rich elements (AREs) recruit decay machinery in response to cellular signals. Pumilio and other RNA-binding proteins recognize specific motifs to repress or activate translation. The density and arrangement of miRNA binding sites create combinatorial regulatory logic that varies across cell types depending on which miRNAs are expressed.</p>
 <div class="callout callout-style-default callout-note callout-titled" title="Practical Guidance: UTR Design Considerations">
@@ -1279,6 +1374,22 @@ Knowledge Check
 </div>
 <div class="callout-body-container callout-body">
 <p>miRNA target prediction relies heavily on “seed complementarity”—perfect base pairing between nucleotides 2-7 of the miRNA and the target site. Why might focusing only on seed matches miss many functional targets? What other factors could influence whether a site is actually regulated?</p>
+<div class="callout callout-style-default callout-note callout-titled" title="Check Your Answer">
+<div class="callout-header d-flex align-content-center" data-bs-toggle="collapse" data-bs-target=".callout-17-contents" aria-controls="callout-17" aria-expanded="false" aria-label="Toggle callout">
+<div class="callout-icon-container">
+<i class="callout-icon"></i>
+</div>
+<div class="callout-title-container flex-fill">
+Check Your Answer
+</div>
+<div class="callout-btn-toggle d-inline-block border-0 py-1 ps-1 pe-0 float-end"><i class="callout-toggle"></i></div>
+</div>
+<div id="callout-17" class="callout-17-contents callout-collapse collapse">
+<div class="callout-body-container callout-body">
+<p>Seed-only approaches miss functional targets because actual regulation depends on additional context: local RNA secondary structure may occlude seed matches, competing RNA-binding proteins may block access, miRNA and target abundance vary across cell types, and non-canonical binding modes exist without perfect seed pairing. The cellular context determines whether a seed match produces functional regulation.</p>
+</div>
+</div>
+</div>
 </div>
 </div>
 <p>The dominant paradigm centers on seed complementarity. Nucleotides 2 through 7 of the miRNA (the seed region) typically form perfect Watson-Crick pairs with target sites, while the remaining nucleotides contribute variably to binding affinity and regulatory effect. Classical algorithms like <em>TargetScan</em> identify conserved seed matches in 3’ UTRs and rank targets by evolutionary conservation, site type (8mer, 7mer-m8, 7mer-A1), and local sequence context <span class="citation" data-cites="agarwal_predicting_2020">(<a href="../bib/references.html#ref-agarwal_predicting_2020" role="doc-biblioref">Agarwal and Shendure 2020</a>)</span>. Additional features including AU content flanking the site, position within the UTR, and proximity to other miRNA sites improve prediction accuracy.</p>
@@ -1334,6 +1445,46 @@ Key Insight
 <p>RNA occupies a distinctive position in genomic AI, bridging the sequence-level models of Part III with the cellular perspectives that follow. Splicing models like <em>SpliceAI</em> operate on pre-mRNA and predict transcript processing outcomes (<a href="../part_2/p2-ch06-cnn.html#sec-ch06-spliceai" class="quarto-xref"><span>Section 6.5</span></a>). Codon-level models capture translation dynamics invisible to protein language models. mRNA therapeutic design demonstrates practical value through codon optimization, UTR engineering, and stability prediction. These applications proceed despite the absence of the structure prediction breakthrough that transformed protein modeling; secondary structure prediction has advanced through deep learning, but tertiary structure accuracy lags protein structure by a wide margin.</p>
 <p>The relationship between RNA models and other modalities reflects RNA’s position in the central dogma. RNA is the product of transcription that regulatory models predict (<a href="../part_3/p3-ch16-regulatory.html" class="quarto-xref"><span>Chapter 16</span></a>), the substrate for translation that protein models assume (<a href="../part_3/p3-ch15-protein-lm.html" class="quarto-xref"><span>Chapter 15</span></a>), and the primary measurement that single-cell models use to represent cellular state (<a href="p4-ch22-multi-omics.html" class="quarto-xref"><span>Chapter 22</span></a>). Foundation models that learn from RNA sequence capture patterns distinct from those in DNA or protein: codon usage biases, secondary structure constraints, and post-transcriptional regulatory elements that neither genomic nor protein models directly represent.</p>
 <p>Beyond sequence, biological understanding requires cellular and tissue context. Single-cell models treat RNA expression as the primary readout of cellular state, learning representations that capture cell type identity and perturbation response (<a href="p4-ch22-multi-omics.html" class="quarto-xref"><span>Chapter 22</span></a>). Three-dimensional genome models add spatial context that influences transcription. Network models integrate gene relationships that transcend individual sequences. RNA models provide sequence-level representations that feed into these higher-level frameworks, completing the molecular arc from DNA through RNA to protein while opening the path to systems-level integration.</p>
+<div class="callout callout-style-default callout-tip callout-titled" title="Test Yourself">
+<div class="callout-header d-flex align-content-center">
+<div class="callout-icon-container">
+<i class="callout-icon"></i>
+</div>
+<div class="callout-title-container flex-fill">
+Test Yourself
+</div>
+</div>
+<div class="callout-body-container callout-body">
+<p>Before reviewing the summary, test your recall:</p>
+<ol type="1">
+<li>Why is RNA secondary structure prediction fundamentally harder than protein structure prediction, despite RNA having only 4 bases compared to 20 amino acids?</li>
+<li>What information do codon-level foundation models capture that both DNA language models and protein language models miss?</li>
+<li>Explain why the 5’ UTR and 3’ UTR both matter for therapeutic mRNA design, but through different mechanisms.</li>
+<li>What is the primary data limitation preventing RNA foundation models from achieving breakthroughs comparable to protein language models like ESM-2?</li>
+</ol>
+<div class="callout callout-style-default callout-note callout-titled" title="Check Your Answers">
+<div class="callout-header d-flex align-content-center" data-bs-toggle="collapse" data-bs-target=".callout-20-contents" aria-controls="callout-20" aria-expanded="false" aria-label="Toggle callout">
+<div class="callout-icon-container">
+<i class="callout-icon"></i>
+</div>
+<div class="callout-title-container flex-fill">
+Check Your Answers
+</div>
+<div class="callout-btn-toggle d-inline-block border-0 py-1 ps-1 pe-0 float-end"><i class="callout-toggle"></i></div>
+</div>
+<div id="callout-20" class="callout-20-contents callout-collapse collapse">
+<div class="callout-body-container callout-body">
+<ol type="1">
+<li><p><strong>RNA structure is harder because:</strong> RNA has flat energy landscapes where multiple conformations have similar free energies (creating many-to-many sequence-structure relationships), long-range base pairing that creates global dependencies, and pseudoknots that violate the nested structure assumptions enabling efficient algorithms. Proteins typically fold to a single stable structure with a deep energy minimum.</p></li>
+<li><p><strong>Codon models capture:</strong> Synonymous codon usage patterns that affect translation speed, mRNA stability, and co-translational folding. DNA language models see nucleotides but don’t know codon boundaries; protein language models see only amino acids and miss synonymous variation entirely. Codon models operate at the biologically meaningful unit of translation.</p></li>
+<li><p><strong>UTR mechanisms differ:</strong> The 5’ UTR controls translation initiation through secondary structure accessibility, upstream ORFs, Kozak consensus strength, and ribosome recruitment. The 3’ UTR controls mRNA stability and localization through RBP binding sites, miRNA target sites, and AU-rich elements. Both affect expression but through distinct molecular mechanisms—initiation versus decay/localization.</p></li>
+<li><p><strong>Primary data limitation:</strong> RNA has fewer than 2,000 experimentally determined 3D structures (versus 200,000+ for proteins), and sequence databases are 3× smaller with less functional diversity. Without massive structural training data, RNA foundation models cannot learn the sequence-to-structure mappings that enabled ESM-2’s breakthrough.</p></li>
+</ol>
+</div>
+</div>
+</div>
+</div>
+</div>
 <div class="callout callout-style-default callout-note callout-titled" title="Chapter Summary">
 <div class="callout-header d-flex align-content-center">
 <div class="callout-icon-container">
