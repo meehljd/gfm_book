@@ -125,6 +125,54 @@ def create_fig_02():
     plt.close()
     print("Saved: 02-B-fig-rna-structure-elements.svg")
 
+    # Panel C: Pseudoknot complexity
+    fig, ax = plt.subplots(figsize=(6, 4))
+
+    complexity = ['Simple\nHairpin', 'Nested\nLoops', 'Pseudoknot', 'Multi-way\nJunction']
+    compute_time = [1, 10, 1000, 100]
+    colors = ['#2ca02c', '#1f77b4', '#d62728', '#ff7f0e']
+
+    bars = ax.bar(complexity, compute_time, color=colors, edgecolor='white')
+    ax.set_ylabel('Relative Compute Time', fontweight='bold')
+    ax.set_title('C. Pseudoknots Increase Complexity', fontweight='bold', loc='left')
+    ax.set_yscale('log')
+    ax.set_ylim(0.5, 5000)
+
+    plt.tight_layout()
+    plt.savefig(OUTPUT_DIR / '02-C-fig-rna-structure-elements.svg', format='svg')
+    plt.close()
+    print("Saved: 02-C-fig-rna-structure-elements.svg")
+
+    # Panel D: Notation systems
+    fig, ax = plt.subplots(figsize=(8, 4))
+
+    notations = [
+        ('Dot-bracket', '(((...)))', '#1f77b4'),
+        ('CT Format', 'i  j  base', '#2ca02c'),
+        ('BPSEQ', 'Base pairs list', '#ff7f0e'),
+        ('Vienna', 'MFE structure', '#9467bd'),
+    ]
+
+    for i, (name, example, color) in enumerate(notations):
+        ax.add_patch(mpatches.FancyBboxPatch((i * 2 + 0.1, 0.3), 1.8, 1.5,
+                                              boxstyle='round,pad=0.02',
+                                              facecolor=color, alpha=0.7,
+                                              edgecolor='white', linewidth=2))
+        ax.text(i * 2 + 1, 1.3, name, ha='center', va='center', fontsize=10,
+                fontweight='bold', color='white')
+        ax.text(i * 2 + 1, 0.7, example, ha='center', va='center', fontsize=8,
+                color='white', family='monospace')
+
+    ax.set_xlim(-0.2, 8.2)
+    ax.set_ylim(-0.1, 2.2)
+    ax.axis('off')
+    ax.set_title('D. Common Structure Notation Systems', fontweight='bold', loc='left')
+
+    plt.tight_layout()
+    plt.savefig(OUTPUT_DIR / '02-D-fig-rna-structure-elements.svg', format='svg')
+    plt.close()
+    print("Saved: 02-D-fig-rna-structure-elements.svg")
+
 # Fig 03 A-B: RNA PLM Gap
 def create_fig_03():
     np.random.seed(42)
@@ -180,6 +228,57 @@ def create_fig_03():
     plt.close()
     print("Saved: 03-B-fig-rna-plm-gap.svg")
 
+    # Panel C: Emergent capabilities comparison
+    fig, ax = plt.subplots(figsize=(6, 4))
+
+    capabilities = ['Zero-shot\nTransfer', 'In-context\nLearning', 'Chain of\nThought', 'Tool\nUse']
+    protein_cap = [0.85, 0.70, 0.60, 0.50]
+    rna_cap = [0.40, 0.25, 0.15, 0.10]
+
+    x = np.arange(len(capabilities))
+    width = 0.35
+
+    ax.bar(x - width/2, protein_cap, width, label='Protein LM', color='#2ca02c', edgecolor='white')
+    ax.bar(x + width/2, rna_cap, width, label='RNA LM', color='#1f77b4', edgecolor='white')
+
+    ax.set_ylabel('Capability Score', fontweight='bold')
+    ax.set_title('C. Emergent Capabilities Comparison', fontweight='bold', loc='left')
+    ax.set_xticks(x)
+    ax.set_xticklabels(capabilities, fontsize=9)
+    ax.legend(fontsize=9)
+    ax.set_ylim(0, 1)
+
+    plt.tight_layout()
+    plt.savefig(OUTPUT_DIR / '03-C-fig-rna-plm-gap.svg', format='svg')
+    plt.close()
+    print("Saved: 03-C-fig-rna-plm-gap.svg")
+
+    # Panel D: Structural data challenge
+    fig, ax = plt.subplots(figsize=(6, 4))
+
+    data_types = ['High-res\nX-ray', 'Cryo-EM', 'NMR', 'Predicted']
+    protein_count = [180000, 15000, 12000, 200000000]
+    rna_count = [3000, 500, 1500, 5000000]
+
+    x = np.arange(len(data_types))
+    width = 0.35
+
+    ax.bar(x - width/2, protein_count, width, label='Protein', color='#2ca02c', edgecolor='white')
+    ax.bar(x + width/2, rna_count, width, label='RNA', color='#1f77b4', edgecolor='white')
+
+    ax.set_ylabel('Number of Structures', fontweight='bold')
+    ax.set_title('D. The Fundamental Structural Data Challenge', fontweight='bold', loc='left')
+    ax.set_xticks(x)
+    ax.set_xticklabels(data_types, fontsize=9)
+    ax.legend(fontsize=9)
+    ax.set_yscale('log')
+    ax.set_ylim(100, 1e9)
+
+    plt.tight_layout()
+    plt.savefig(OUTPUT_DIR / '03-D-fig-rna-plm-gap.svg', format='svg')
+    plt.close()
+    print("Saved: 03-D-fig-rna-plm-gap.svg")
+
 # Fig 04 A-B: Codon Tokenization
 def create_fig_04():
     # Panel A: Nucleotide vs codon tokenization
@@ -230,6 +329,59 @@ def create_fig_04():
     plt.savefig(OUTPUT_DIR / '04-B-fig-codon-tokenization.svg', format='svg')
     plt.close()
     print("Saved: 04-B-fig-codon-tokenization.svg")
+
+    # Panel C: Sequence length reduction
+    fig, ax = plt.subplots(figsize=(6, 4))
+
+    gene_lengths = ['Short\n(1 kb)', 'Medium\n(5 kb)', 'Long\n(10 kb)', 'Very Long\n(50 kb)']
+    nt_tokens = [1000, 5000, 10000, 50000]
+    codon_tokens = [333, 1667, 3333, 16667]
+
+    x = np.arange(len(gene_lengths))
+    width = 0.35
+
+    ax.bar(x - width/2, nt_tokens, width, label='Nucleotide', color='#d62728', edgecolor='white')
+    ax.bar(x + width/2, codon_tokens, width, label='Codon', color='#2ca02c', edgecolor='white')
+
+    ax.set_ylabel('Token Count', fontweight='bold')
+    ax.set_title('C. Codon Tokenization Reduces Sequence Length', fontweight='bold', loc='left')
+    ax.set_xticks(x)
+    ax.set_xticklabels(gene_lengths, fontsize=9)
+    ax.legend(fontsize=9)
+    ax.set_yscale('log')
+    ax.set_ylim(100, 100000)
+
+    plt.tight_layout()
+    plt.savefig(OUTPUT_DIR / '04-C-fig-codon-tokenization.svg', format='svg')
+    plt.close()
+    print("Saved: 04-C-fig-codon-tokenization.svg")
+
+    # Panel D: Information captured by model types
+    fig, ax = plt.subplots(figsize=(6, 4))
+
+    info_types = ['Sequence\npatterns', 'Codon\nbias', 'Splice\nsignals', 'Regulatory\nmotifs']
+    nucleotide_model = [0.9, 0.5, 0.85, 0.8]
+    codon_model = [0.7, 0.95, 0.6, 0.65]
+    hybrid_model = [0.85, 0.90, 0.80, 0.75]
+
+    x = np.arange(len(info_types))
+    width = 0.25
+
+    ax.bar(x - width, nucleotide_model, width, label='Nucleotide', color='#1f77b4', edgecolor='white')
+    ax.bar(x, codon_model, width, label='Codon', color='#2ca02c', edgecolor='white')
+    ax.bar(x + width, hybrid_model, width, label='Hybrid', color='#9467bd', edgecolor='white')
+
+    ax.set_ylabel('Information Captured', fontweight='bold')
+    ax.set_title('D. Different Models Capture Different Information', fontweight='bold', loc='left')
+    ax.set_xticks(x)
+    ax.set_xticklabels(info_types, fontsize=9)
+    ax.legend(fontsize=9)
+    ax.set_ylim(0, 1)
+
+    plt.tight_layout()
+    plt.savefig(OUTPUT_DIR / '04-D-fig-codon-tokenization.svg', format='svg')
+    plt.close()
+    print("Saved: 04-D-fig-codon-tokenization.svg")
 
 # Fig 05: mRNA Design Pipeline
 def create_fig_05():

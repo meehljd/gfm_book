@@ -88,6 +88,53 @@ def create_fig_01():
     plt.close()
     print("Saved: 01-B-fig-cellular-lm-analogy.svg")
 
+    # Panel C: Parallel structure table
+    fig, ax = plt.subplots(figsize=(8, 4))
+
+    parallels = [
+        ('Vocabulary', '~30,000 words', '~20,000 genes'),
+        ('Document', '~500 words', '~2,000 genes'),
+        ('Corpus', 'Wikipedia', 'Cell atlases'),
+        ('Task', 'Sentiment', 'Cell type'),
+    ]
+
+    ax.axis('off')
+    table_data = [[p[0], p[1], p[2]] for p in parallels]
+    table = ax.table(cellText=table_data,
+                     colLabels=['Concept', 'NLP', 'Single-Cell'],
+                     loc='center',
+                     cellLoc='center')
+    table.auto_set_font_size(False)
+    table.set_fontsize(10)
+    table.scale(1.2, 1.8)
+    for i in range(3):
+        table[(0, i)].set_facecolor('#1f77b4')
+        table[(0, i)].set_text_props(color='white', fontweight='bold')
+
+    ax.set_title('C. Parallel Structure Between Domains', fontweight='bold', loc='left', pad=20)
+
+    plt.tight_layout()
+    plt.savefig(OUTPUT_DIR / '01-C-fig-cellular-lm-analogy.svg', format='svg')
+    plt.close()
+    print("Saved: 01-C-fig-cellular-lm-analogy.svg")
+
+    # Panel D: What each model type learns
+    fig, ax = plt.subplots(figsize=(6, 4))
+
+    model_types = ['BERT-style\n(masked)', 'GPT-style\n(autoregressive)', 'Contrastive', 'VAE']
+    learns = [0.85, 0.70, 0.80, 0.75]
+    colors = ['#1f77b4', '#2ca02c', '#ff7f0e', '#9467bd']
+
+    bars = ax.bar(model_types, learns, color=colors, edgecolor='white')
+    ax.set_ylabel('Cell Type Classification (F1)', fontweight='bold')
+    ax.set_title('D. What Each Model Type Learns', fontweight='bold', loc='left')
+    ax.set_ylim(0, 1)
+
+    plt.tight_layout()
+    plt.savefig(OUTPUT_DIR / '01-D-fig-cellular-lm-analogy.svg', format='svg')
+    plt.close()
+    print("Saved: 01-D-fig-cellular-lm-analogy.svg")
+
 # Fig 02 A-B: Single-Cell Challenges
 def create_fig_02():
     np.random.seed(42)
@@ -130,6 +177,62 @@ def create_fig_02():
     plt.close()
     print("Saved: 02-B-fig-single-cell-challenges.svg")
 
+    # Panel C: Dynamic range
+    fig, ax = plt.subplots(figsize=(6, 4))
+
+    expression_levels = ['Housekeeping\ngenes', 'Signaling\nmolecules', 'Transcription\nfactors', 'Rare\ntranscripts']
+    counts = [10000, 100, 10, 1]
+    colors = ['#2ca02c', '#1f77b4', '#ff7f0e', '#d62728']
+
+    bars = ax.bar(expression_levels, counts, color=colors, edgecolor='white')
+    ax.set_ylabel('UMI Counts per Cell', fontweight='bold')
+    ax.set_title('C. Dynamic Range Spans Orders of Magnitude', fontweight='bold', loc='left')
+    ax.set_yscale('log')
+    ax.set_ylim(0.5, 50000)
+
+    plt.tight_layout()
+    plt.savefig(OUTPUT_DIR / '02-C-fig-single-cell-challenges.svg', format='svg')
+    plt.close()
+    print("Saved: 02-C-fig-single-cell-challenges.svg")
+
+    # Panel D: FM strategies for challenges
+    fig, ax = plt.subplots(figsize=(8, 4))
+
+    strategies = [
+        ('Sparsity', 'Rank-based\ntokenization', '#1f77b4'),
+        ('Batch Effects', 'Domain\nadaptation', '#2ca02c'),
+        ('Dynamic Range', 'Log\nnormalization', '#ff7f0e'),
+        ('Noise', 'Denoising\nobjectives', '#9467bd'),
+    ]
+
+    for i, (challenge, solution, color) in enumerate(strategies):
+        ax.add_patch(mpatches.FancyBboxPatch((i * 2 + 0.1, 0.8), 1.8, 0.8,
+                                              boxstyle='round,pad=0.02',
+                                              facecolor='#d62728', alpha=0.7,
+                                              edgecolor='white', linewidth=2))
+        ax.text(i * 2 + 1, 1.2, challenge, ha='center', va='center', fontsize=9,
+                fontweight='bold', color='white')
+
+        ax.annotate('', xy=(i * 2 + 1, 0.7), xytext=(i * 2 + 1, 0.8),
+                    arrowprops=dict(arrowstyle='->', color='#555555', lw=2))
+
+        ax.add_patch(mpatches.FancyBboxPatch((i * 2 + 0.1, -0.1), 1.8, 0.8,
+                                              boxstyle='round,pad=0.02',
+                                              facecolor=color, alpha=0.7,
+                                              edgecolor='white', linewidth=2))
+        ax.text(i * 2 + 1, 0.3, solution, ha='center', va='center', fontsize=8,
+                fontweight='bold', color='white')
+
+    ax.set_xlim(-0.2, 8.2)
+    ax.set_ylim(-0.3, 1.8)
+    ax.axis('off')
+    ax.set_title('D. Foundation Model Strategies for Challenges', fontweight='bold', loc='left')
+
+    plt.tight_layout()
+    plt.savefig(OUTPUT_DIR / '02-D-fig-single-cell-challenges.svg', format='svg')
+    plt.close()
+    print("Saved: 02-D-fig-single-cell-challenges.svg")
+
 # Fig 03 A-B: Geneformer Architecture
 def create_fig_03():
     # Panel A: Architecture
@@ -171,6 +274,54 @@ def create_fig_03():
     plt.close()
     print("Saved: 03-B-fig-geneformer-architecture.svg")
 
+    # Panel C: Attention weights as regulatory relationships
+    fig, ax = plt.subplots(figsize=(6, 5))
+    np.random.seed(42)
+
+    # Create attention matrix
+    n_genes = 6
+    gene_names = ['TP53', 'MDM2', 'CDKN1A', 'BAX', 'BCL2', 'CASP3']
+    attention = np.random.rand(n_genes, n_genes) * 0.3
+    # Add known regulatory relationships
+    attention[0, 1] = 0.9  # TP53 -> MDM2
+    attention[0, 2] = 0.85  # TP53 -> CDKN1A
+    attention[0, 3] = 0.8  # TP53 -> BAX
+    attention[1, 0] = 0.7  # MDM2 -> TP53 (feedback)
+
+    im = ax.imshow(attention, cmap='Blues', aspect='equal', vmin=0, vmax=1)
+    ax.set_xticks(range(n_genes))
+    ax.set_yticks(range(n_genes))
+    ax.set_xticklabels(gene_names, fontsize=8, rotation=45, ha='right')
+    ax.set_yticklabels(gene_names, fontsize=8)
+    ax.set_xlabel('Target Gene', fontweight='bold')
+    ax.set_ylabel('Source Gene', fontweight='bold')
+    ax.set_title('C. Attention Captures Regulatory Relationships', fontweight='bold', loc='left')
+    plt.colorbar(im, ax=ax, label='Attention Weight')
+
+    plt.tight_layout()
+    plt.savefig(OUTPUT_DIR / '03-C-fig-geneformer-architecture.svg', format='svg')
+    plt.close()
+    print("Saved: 03-C-fig-geneformer-architecture.svg")
+
+    # Panel D: Transfer learning tasks
+    fig, ax = plt.subplots(figsize=(6, 4))
+
+    tasks = ['Cell Type\nAnnotation', 'Disease\nClassification', 'Drug Target\nID', 'Batch\nCorrection']
+    performance = [0.92, 0.85, 0.78, 0.88]
+    colors = ['#1f77b4', '#2ca02c', '#ff7f0e', '#9467bd']
+
+    bars = ax.bar(tasks, performance, color=colors, edgecolor='white')
+    ax.axhline(y=0.5, color='#555555', linestyle='--', alpha=0.5)
+
+    ax.set_ylabel('Performance (F1 / Accuracy)', fontweight='bold')
+    ax.set_title('D. Transfer to Downstream Tasks', fontweight='bold', loc='left')
+    ax.set_ylim(0.4, 1)
+
+    plt.tight_layout()
+    plt.savefig(OUTPUT_DIR / '03-D-fig-geneformer-architecture.svg', format='svg')
+    plt.close()
+    print("Saved: 03-D-fig-geneformer-architecture.svg")
+
 # Fig 04 A-B: Perturbation Prediction
 def create_fig_04():
     # Panel A: Perturbation workflow
@@ -209,6 +360,42 @@ def create_fig_04():
     plt.savefig(OUTPUT_DIR / '04-B-fig-perturbation-prediction.svg', format='svg')
     plt.close()
     print("Saved: 04-B-fig-perturbation-prediction.svg")
+
+    # Panel C: Directional relationships and cascades
+    dot = graphviz.Digraph('cascade', format='svg')
+    dot.attr(rankdir='LR', splines='polyline', size='10,4!', ratio='compress')
+    dot.attr('node', fontname='Arial', fontsize='9', style='filled,rounded', penwidth='1.5')
+
+    dot.node('tf', 'Transcription\nFactor KO', fillcolor='#d62728', fontcolor='white', shape='box')
+    dot.node('direct', 'Direct\nTargets', fillcolor='#ff7f0e', shape='box')
+    dot.node('indirect', 'Indirect\nEffects', fillcolor='#ffbb78', shape='box')
+    dot.node('downstream', 'Downstream\nCascade', fillcolor='#aec7e8', shape='box')
+
+    dot.edge('tf', 'direct', label='1st order')
+    dot.edge('direct', 'indirect', label='2nd order')
+    dot.edge('indirect', 'downstream', label='3rd order')
+
+    dot.render(OUTPUT_DIR / '04-C-fig-perturbation-prediction', cleanup=True)
+    print("Saved: 04-C-fig-perturbation-prediction.svg")
+
+    # Panel D: Performance by gene characterization
+    fig, ax = plt.subplots(figsize=(6, 4))
+
+    gene_types = ['Well-\nstudied', 'Moderately\nstudied', 'Poorly\nstudied', 'Novel']
+    correlation = [0.85, 0.70, 0.50, 0.30]
+    colors = ['#2ca02c', '#1f77b4', '#ff7f0e', '#d62728']
+
+    bars = ax.bar(gene_types, correlation, color=colors, edgecolor='white')
+    ax.axhline(y=0, color='#555555', linestyle='-', alpha=0.5)
+
+    ax.set_ylabel('Prediction Correlation', fontweight='bold')
+    ax.set_title('D. Performance by Gene Characterization', fontweight='bold', loc='left')
+    ax.set_ylim(0, 1)
+
+    plt.tight_layout()
+    plt.savefig(OUTPUT_DIR / '04-D-fig-perturbation-prediction.svg', format='svg')
+    plt.close()
+    print("Saved: 04-D-fig-perturbation-prediction.svg")
 
 # Fig 05 A-B: GLUE Architecture
 def create_fig_05():
@@ -265,6 +452,29 @@ def create_fig_05():
     plt.savefig(OUTPUT_DIR / '05-B-fig-glue-architecture.svg', format='svg')
     plt.close()
     print("Saved: 05-B-fig-glue-architecture.svg")
+
+    # Panel C: Feature graph with biological prior knowledge
+    dot = graphviz.Digraph('feature_graph', format='svg')
+    dot.attr(rankdir='TB', splines='polyline', size='8,6!', ratio='compress')
+    dot.attr('node', fontname='Arial', fontsize='9', style='filled,rounded', penwidth='1.5')
+
+    # Gene nodes
+    dot.node('g1', 'Gene 1', fillcolor='#1f77b4', fontcolor='white', shape='circle')
+    dot.node('g2', 'Gene 2', fillcolor='#1f77b4', fontcolor='white', shape='circle')
+    dot.node('g3', 'Gene 3', fillcolor='#1f77b4', fontcolor='white', shape='circle')
+
+    # Peak nodes
+    dot.node('p1', 'Peak 1', fillcolor='#2ca02c', fontcolor='white', shape='circle')
+    dot.node('p2', 'Peak 2', fillcolor='#2ca02c', fontcolor='white', shape='circle')
+
+    # Prior knowledge edges
+    dot.edge('p1', 'g1', label='Promoter', color='#ff7f0e')
+    dot.edge('p1', 'g2', label='Enhancer', color='#9467bd')
+    dot.edge('p2', 'g3', label='Promoter', color='#ff7f0e')
+    dot.edge('g1', 'g2', label='Co-expression', style='dashed', color='#aec7e8')
+
+    dot.render(OUTPUT_DIR / '05-C-fig-glue-architecture', cleanup=True)
+    print("Saved: 05-C-fig-glue-architecture.svg")
 
 if __name__ == '__main__':
     create_fig_01()

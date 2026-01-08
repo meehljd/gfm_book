@@ -73,6 +73,61 @@ def create_fig_01():
     plt.close()
     print("Saved: 01-B-fig-integration-paradox.svg")
 
+    # Panel C: When integration helps
+    fig, ax = plt.subplots(figsize=(6, 4))
+
+    scenarios = ['Fully\nOverlapping', 'Partially\nComplementary', 'Orthogonal\nInformation']
+    single_mod = [0.85, 0.75, 0.65]
+    integrated = [0.85, 0.88, 0.92]
+
+    x = np.arange(len(scenarios))
+    width = 0.35
+
+    ax.bar(x - width/2, single_mod, width, label='Best Single', color='#aec7e8', edgecolor='white')
+    ax.bar(x + width/2, integrated, width, label='Integrated', color='#2ca02c', edgecolor='white')
+
+    # Highlight gain
+    for i in range(len(scenarios)):
+        gain = integrated[i] - single_mod[i]
+        if gain > 0.01:
+            ax.annotate(f'+{gain:.0%}', xy=(i + width/2, integrated[i] + 0.02),
+                        ha='center', fontsize=9, color='#2ca02c', fontweight='bold')
+
+    ax.set_ylabel('Performance', fontweight='bold')
+    ax.set_title('C. When Integration Helps: Complementary Info', fontweight='bold', loc='left')
+    ax.set_xticks(x)
+    ax.set_xticklabels(scenarios, fontsize=9)
+    ax.legend(fontsize=9)
+    ax.set_ylim(0.5, 1)
+
+    plt.tight_layout()
+    plt.savefig(OUTPUT_DIR / '01-C-fig-integration-paradox.svg', format='svg')
+    plt.close()
+    print("Saved: 01-C-fig-integration-paradox.svg")
+
+    # Panel D: When integration hurts
+    fig, ax = plt.subplots(figsize=(6, 4))
+
+    issues = ['Redundancy', 'Batch\nEffects', 'Missing\nData', 'Noise\nAmplification']
+    performance_drop = [-0.05, -0.12, -0.08, -0.10]
+    colors = ['#ff7f0e', '#d62728', '#ff7f0e', '#d62728']
+
+    bars = ax.bar(issues, performance_drop, color=colors, edgecolor='white')
+    ax.axhline(y=0, color='#555555', linewidth=1)
+
+    ax.set_ylabel('Performance Change', fontweight='bold')
+    ax.set_title('D. When Integration Hurts', fontweight='bold', loc='left')
+    ax.set_ylim(-0.15, 0.02)
+
+    for bar, drop in zip(bars, performance_drop):
+        ax.text(bar.get_x() + bar.get_width()/2, drop - 0.01,
+                f'{drop:.0%}', ha='center', fontsize=9, fontweight='bold', color='#d62728')
+
+    plt.tight_layout()
+    plt.savefig(OUTPUT_DIR / '01-D-fig-integration-paradox.svg', format='svg')
+    plt.close()
+    print("Saved: 01-D-fig-integration-paradox.svg")
+
 # Fig 02 A-C: Fusion Strategies
 def create_fig_02():
     strategies = [
@@ -185,6 +240,53 @@ def create_fig_03():
     plt.close()
     print("Saved: 03-B-fig-intermediate-fusion.svg")
 
+    # Panel C: Downstream task heads
+    dot = graphviz.Digraph('task_heads', format='svg')
+    dot.attr(rankdir='TB', splines='polyline', size='8,6!', ratio='compress')
+    dot.attr('node', fontname='Arial', fontsize='9', style='filled,rounded', penwidth='1.5')
+
+    dot.node('shared', 'Shared\nRepresentation', fillcolor='#9467bd', fontcolor='white', shape='box')
+    dot.node('classify', 'Classification\nHead', fillcolor='#1f77b4', fontcolor='white', shape='box')
+    dot.node('regress', 'Regression\nHead', fillcolor='#2ca02c', fontcolor='white', shape='box')
+    dot.node('survival', 'Survival\nHead', fillcolor='#ff7f0e', shape='box')
+
+    dot.node('label', 'Disease\nType', fillcolor='#aec7e8', shape='ellipse')
+    dot.node('score', 'Risk\nScore', fillcolor='#98df8a', shape='ellipse')
+    dot.node('time', 'Survival\nTime', fillcolor='#ffbb78', shape='ellipse')
+
+    dot.edge('shared', 'classify')
+    dot.edge('shared', 'regress')
+    dot.edge('shared', 'survival')
+    dot.edge('classify', 'label')
+    dot.edge('regress', 'score')
+    dot.edge('survival', 'time')
+
+    dot.render(OUTPUT_DIR / '03-C-fig-intermediate-fusion', cleanup=True)
+    print("Saved: 03-C-fig-intermediate-fusion.svg")
+
+    # Panel D: Missing modalities handling
+    fig, ax = plt.subplots(figsize=(6, 4))
+
+    scenarios = ['All\nModalities', 'Missing\nRNA', 'Missing\nMethyl', 'Missing\nBoth']
+    performance = [0.92, 0.85, 0.88, 0.78]
+    colors = ['#2ca02c', '#ff7f0e', '#ff7f0e', '#d62728']
+
+    bars = ax.bar(scenarios, performance, color=colors, edgecolor='white')
+    ax.axhline(y=0.92, color='#2ca02c', linestyle='--', alpha=0.5)
+
+    for bar, perf in zip(bars, performance):
+        ax.text(bar.get_x() + bar.get_width()/2, bar.get_height() + 0.02,
+                f'{perf:.0%}', ha='center', fontsize=9, fontweight='bold')
+
+    ax.set_ylabel('Performance', fontweight='bold')
+    ax.set_title('D. Graceful Degradation with Missing Modalities', fontweight='bold', loc='left')
+    ax.set_ylim(0.5, 1)
+
+    plt.tight_layout()
+    plt.savefig(OUTPUT_DIR / '03-D-fig-intermediate-fusion.svg', format='svg')
+    plt.close()
+    print("Saved: 03-D-fig-intermediate-fusion.svg")
+
 # Fig 04 A-B: Clinical Multi-Modal
 def create_fig_04():
     # Panel A: Clinical data types
@@ -241,6 +343,56 @@ def create_fig_04():
     plt.close()
     print("Saved: 04-B-fig-clinical-multimodal.svg")
 
+    # Panel C: Patient representation space
+    fig, ax = plt.subplots(figsize=(6, 5))
+    np.random.seed(42)
+
+    # Different patient groups in unified space
+    n_patients = 25
+    groups = ['Responders', 'Non-responders', 'Intermediate']
+    colors = ['#2ca02c', '#d62728', '#ff7f0e']
+    centers = [(1, 1), (-1, -1), (0, 0)]
+
+    for group, color, center in zip(groups, colors, centers):
+        x = np.random.randn(n_patients) * 0.5 + center[0]
+        y = np.random.randn(n_patients) * 0.5 + center[1]
+        ax.scatter(x, y, c=color, s=50, label=group, alpha=0.7, edgecolors='white')
+
+    ax.legend(fontsize=9, title='Treatment Response')
+    ax.set_xlabel('Unified Dimension 1', fontweight='bold')
+    ax.set_ylabel('Unified Dimension 2', fontweight='bold')
+    ax.set_title('C. Patient Space Unifies All Modalities', fontweight='bold', loc='left')
+
+    plt.tight_layout()
+    plt.savefig(OUTPUT_DIR / '04-C-fig-clinical-multimodal.svg', format='svg')
+    plt.close()
+    print("Saved: 04-C-fig-clinical-multimodal.svg")
+
+    # Panel D: Clinical prediction with missing modalities
+    fig, ax = plt.subplots(figsize=(7, 4))
+
+    tasks = ['Diagnosis', 'Prognosis', 'Treatment\nResponse', 'Survival']
+    full_data = [0.92, 0.85, 0.80, 0.78]
+    missing_handling = [0.88, 0.82, 0.75, 0.72]
+
+    x = np.arange(len(tasks))
+    width = 0.35
+
+    ax.bar(x - width/2, full_data, width, label='Full Data', color='#2ca02c', edgecolor='white')
+    ax.bar(x + width/2, missing_handling, width, label='30% Missing', color='#ff7f0e', edgecolor='white')
+
+    ax.set_ylabel('auROC', fontweight='bold')
+    ax.set_title('D. Clinical Prediction with Missing Modality Handling', fontweight='bold', loc='left')
+    ax.set_xticks(x)
+    ax.set_xticklabels(tasks, fontsize=9)
+    ax.legend(fontsize=9)
+    ax.set_ylim(0.5, 1)
+
+    plt.tight_layout()
+    plt.savefig(OUTPUT_DIR / '04-D-fig-clinical-multimodal.svg', format='svg')
+    plt.close()
+    print("Saved: 04-D-fig-clinical-multimodal.svg")
+
 # Fig 05 A-B: Information Cascade
 def create_fig_05():
     # Panel A: Central dogma cascade
@@ -289,6 +441,40 @@ def create_fig_05():
     plt.savefig(OUTPUT_DIR / '05-B-fig-information-cascade.svg', format='svg')
     plt.close()
     print("Saved: 05-B-fig-information-cascade.svg")
+
+    # Panel C: Bottleneck modalities by variant type
+    fig, ax = plt.subplots(figsize=(7, 4))
+
+    variant_types = ['Coding\nSNV', 'Regulatory\nSNV', 'CNV', 'Structural\nVariant']
+    genomics = [0.9, 0.6, 0.7, 0.8]
+    transcriptomics = [0.5, 0.9, 0.8, 0.6]
+    proteomics = [0.7, 0.5, 0.6, 0.5]
+
+    x = np.arange(len(variant_types))
+    width = 0.25
+
+    ax.bar(x - width, genomics, width, label='Genomics', color='#1f77b4', edgecolor='white')
+    ax.bar(x, transcriptomics, width, label='Transcriptomics', color='#2ca02c', edgecolor='white')
+    ax.bar(x + width, proteomics, width, label='Proteomics', color='#ff7f0e', edgecolor='white')
+
+    # Highlight bottleneck for each variant type
+    bottlenecks = [('Genomics', 0), ('Transcriptomics', 1), ('Transcriptomics', 2), ('Genomics', 3)]
+    for name, idx in bottlenecks:
+        offset = -width if name == 'Genomics' else (0 if name == 'Transcriptomics' else width)
+        val = genomics[idx] if name == 'Genomics' else (transcriptomics[idx] if name == 'Transcriptomics' else proteomics[idx])
+        ax.scatter(idx + offset, val + 0.05, marker='*', s=100, c='#d62728', zorder=5)
+
+    ax.set_ylabel('Information Content', fontweight='bold')
+    ax.set_title('C. Bottleneck Modality Varies by Variant Type', fontweight='bold', loc='left')
+    ax.set_xticks(x)
+    ax.set_xticklabels(variant_types, fontsize=9)
+    ax.legend(fontsize=8)
+    ax.set_ylim(0, 1.1)
+
+    plt.tight_layout()
+    plt.savefig(OUTPUT_DIR / '05-C-fig-information-cascade.svg', format='svg')
+    plt.close()
+    print("Saved: 05-C-fig-information-cascade.svg")
 
 if __name__ == '__main__':
     create_fig_01()

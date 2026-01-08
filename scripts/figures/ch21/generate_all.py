@@ -85,6 +85,63 @@ def create_fig_01():
     plt.close()
     print("Saved: 01-B-fig-biological-networks.svg")
 
+    # Panel C: Knowledge graphs with heterogeneous nodes/edges
+    dot = graphviz.Digraph('kg', format='svg')
+    dot.attr(rankdir='LR', splines='polyline', size='10,5!', ratio='compress')
+    dot.attr('node', fontname='Arial', fontsize='9', style='filled,rounded', penwidth='1.5')
+
+    # Different node types
+    dot.node('drug', 'Drug', fillcolor='#1f77b4', fontcolor='white', shape='box')
+    dot.node('gene', 'Gene', fillcolor='#2ca02c', fontcolor='white', shape='ellipse')
+    dot.node('disease', 'Disease', fillcolor='#d62728', fontcolor='white', shape='hexagon')
+    dot.node('protein', 'Protein', fillcolor='#ff7f0e', shape='ellipse')
+    dot.node('pathway', 'Pathway', fillcolor='#9467bd', fontcolor='white', shape='box')
+
+    # Different edge types
+    dot.edge('drug', 'protein', label='targets', color='#1f77b4')
+    dot.edge('gene', 'protein', label='encodes', color='#2ca02c')
+    dot.edge('protein', 'pathway', label='participates', color='#ff7f0e')
+    dot.edge('pathway', 'disease', label='associated', color='#9467bd')
+    dot.edge('gene', 'disease', label='causes', style='dashed', color='#d62728')
+
+    dot.render(OUTPUT_DIR / '01-C-fig-biological-networks', cleanup=True)
+    print("Saved: 01-C-fig-biological-networks.svg")
+
+    # Panel D: Spatial graphs from spatial transcriptomics
+    fig, ax = plt.subplots(figsize=(6, 5))
+    np.random.seed(42)
+
+    # Cell positions
+    n_cells = 30
+    x_pos = np.random.rand(n_cells) * 8
+    y_pos = np.random.rand(n_cells) * 8
+
+    # Cell types
+    cell_types = np.random.choice(['Tumor', 'Immune', 'Stromal'], n_cells, p=[0.5, 0.3, 0.2])
+    colors = {'Tumor': '#d62728', 'Immune': '#1f77b4', 'Stromal': '#2ca02c'}
+
+    # Draw edges for nearby cells
+    for i in range(n_cells):
+        for j in range(i+1, n_cells):
+            dist = np.sqrt((x_pos[i] - x_pos[j])**2 + (y_pos[i] - y_pos[j])**2)
+            if dist < 1.5:
+                ax.plot([x_pos[i], x_pos[j]], [y_pos[i], y_pos[j]], 'gray', alpha=0.3, linewidth=1)
+
+    # Draw cells
+    for ct in ['Tumor', 'Immune', 'Stromal']:
+        mask = cell_types == ct
+        ax.scatter(x_pos[mask], y_pos[mask], c=colors[ct], s=80, label=ct, edgecolors='white')
+
+    ax.legend(fontsize=8, title='Cell Type')
+    ax.set_xlabel('X Position', fontweight='bold')
+    ax.set_ylabel('Y Position', fontweight='bold')
+    ax.set_title('D. Spatial Graphs: Cell Proximity Network', fontweight='bold', loc='left')
+
+    plt.tight_layout()
+    plt.savefig(OUTPUT_DIR / '01-D-fig-biological-networks.svg', format='svg')
+    plt.close()
+    print("Saved: 01-D-fig-biological-networks.svg")
+
 # Fig 02 A-B: Message Passing
 def create_fig_02():
     # Panel A: GNN message passing
@@ -135,6 +192,73 @@ def create_fig_02():
     plt.close()
     print("Saved: 02-B-fig-message-passing.svg")
 
+    # Panel C: Aggregation combines neighbor information
+    fig, ax = plt.subplots(figsize=(8, 5))
+
+    # Draw nodes
+    positions = {
+        'center': (4, 2),
+        'n1': (2, 3), 'n2': (3, 3.5), 'n3': (5, 3.5), 'n4': (6, 3),
+    }
+
+    # Draw edges with messages
+    for key in ['n1', 'n2', 'n3', 'n4']:
+        ax.annotate('', xy=positions['center'], xytext=positions[key],
+                    arrowprops=dict(arrowstyle='->', color='#ff7f0e', lw=2))
+
+    # Draw nodes
+    for key, (x, y) in positions.items():
+        if key == 'center':
+            color = '#d62728'
+            label = 'Target'
+        else:
+            color = '#1f77b4'
+            label = f'h{key[-1]}'
+        ax.add_patch(mpatches.Circle((x, y), 0.4, facecolor=color, edgecolor='white', linewidth=2))
+        ax.text(x, y, label, ha='center', va='center', fontsize=9, fontweight='bold', color='white')
+
+    # Aggregation function
+    ax.add_patch(mpatches.FancyBboxPatch((3, 0.5), 2, 0.8, boxstyle='round,pad=0.02',
+                                          facecolor='#2ca02c', alpha=0.8, edgecolor='white'))
+    ax.text(4, 0.9, 'AGG()', ha='center', va='center', fontsize=10, fontweight='bold', color='white')
+    ax.annotate('', xy=(4, 1.3), xytext=(4, 1.6),
+                arrowprops=dict(arrowstyle='->', color='#555555', lw=2))
+
+    ax.set_xlim(1, 7)
+    ax.set_ylim(0, 4.2)
+    ax.axis('off')
+    ax.set_title('C. Aggregation Combines Neighbor Information', fontweight='bold', loc='left')
+
+    plt.tight_layout()
+    plt.savefig(OUTPUT_DIR / '02-C-fig-message-passing.svg', format='svg')
+    plt.close()
+    print("Saved: 02-C-fig-message-passing.svg")
+
+    # Panel D: L-hop neighborhood context
+    fig, ax = plt.subplots(figsize=(8, 4))
+
+    layers = [1, 2, 3, 4]
+    hop_context = ['Direct\nneighbors', '2-hop\nneighborhood', '3-hop\nneighborhood', 'Near-global\ncontext']
+    receptive_field = [10, 100, 500, 2000]
+    colors = ['#aec7e8', '#1f77b4', '#9467bd', '#d62728']
+
+    bars = ax.bar([str(l) for l in layers], receptive_field, color=colors, edgecolor='white')
+
+    for bar, hop in zip(bars, hop_context):
+        ax.text(bar.get_x() + bar.get_width()/2, bar.get_height() + 50,
+                hop, ha='center', fontsize=8)
+
+    ax.set_xlabel('Number of GNN Layers (L)', fontweight='bold')
+    ax.set_ylabel('Receptive Field (# nodes)', fontweight='bold')
+    ax.set_title('D. L Layers Capture L-Hop Neighborhood', fontweight='bold', loc='left')
+    ax.set_yscale('log')
+    ax.set_ylim(5, 5000)
+
+    plt.tight_layout()
+    plt.savefig(OUTPUT_DIR / '02-D-fig-message-passing.svg', format='svg')
+    plt.close()
+    print("Saved: 02-D-fig-message-passing.svg")
+
 # Fig 03 A-B: GNN Integration
 def create_fig_03():
     # Panel A: Multi-modal integration
@@ -176,6 +300,55 @@ def create_fig_03():
     plt.close()
     print("Saved: 03-B-fig-gnn-integration.svg")
 
+    # Panel C: GNNs integrate embeddings with structure
+    dot = graphviz.Digraph('gnn_integrate', format='svg')
+    dot.attr(rankdir='TB', splines='polyline', size='8,7!', ratio='compress')
+    dot.attr('node', fontname='Arial', fontsize='9', style='filled,rounded', penwidth='1.5')
+
+    dot.node('esm', 'ESM-2\nEmbeddings', fillcolor='#1f77b4', fontcolor='white', shape='box')
+    dot.node('ppi', 'PPI\nNetwork', fillcolor='#2ca02c', fontcolor='white', shape='box')
+
+    dot.node('init', 'Initialize\nNode Features', fillcolor='#aec7e8', shape='box')
+    dot.node('gnn', 'GNN\nLayers', fillcolor='#9467bd', fontcolor='white', shape='box')
+    dot.node('readout', 'Graph\nReadout', fillcolor='#ffbb78', shape='box')
+    dot.node('pred', 'Prediction', fillcolor='#98df8a', shape='box')
+
+    dot.edge('esm', 'init', label='Features')
+    dot.edge('ppi', 'gnn', label='Adjacency')
+    dot.edge('init', 'gnn')
+    dot.edge('gnn', 'readout')
+    dot.edge('readout', 'pred')
+
+    dot.render(OUTPUT_DIR / '03-C-fig-gnn-integration', cleanup=True)
+    print("Saved: 03-C-fig-gnn-integration.svg")
+
+    # Panel D: Combined capabilities
+    fig, ax = plt.subplots(figsize=(6, 4))
+
+    tasks = ['Function\nPrediction', 'PPI\nPrediction', 'Disease\nAssociation', 'Drug\nTarget']
+    sequence_only = [0.78, 0.65, 0.72, 0.68]
+    network_only = [0.70, 0.75, 0.68, 0.62]
+    combined = [0.88, 0.85, 0.85, 0.82]
+
+    x = np.arange(len(tasks))
+    width = 0.25
+
+    ax.bar(x - width, sequence_only, width, label='Sequence Only', color='#1f77b4', edgecolor='white')
+    ax.bar(x, network_only, width, label='Network Only', color='#2ca02c', edgecolor='white')
+    ax.bar(x + width, combined, width, label='GNN + Sequence', color='#9467bd', edgecolor='white')
+
+    ax.set_ylabel('Performance', fontweight='bold')
+    ax.set_title('D. Combined Exceeds Either Alone', fontweight='bold', loc='left')
+    ax.set_xticks(x)
+    ax.set_xticklabels(tasks, fontsize=9)
+    ax.legend(fontsize=8)
+    ax.set_ylim(0.5, 1)
+
+    plt.tight_layout()
+    plt.savefig(OUTPUT_DIR / '03-D-fig-gnn-integration.svg', format='svg')
+    plt.close()
+    print("Saved: 03-D-fig-gnn-integration.svg")
+
 # Fig 04 A-B: Disease Gene Prioritization
 def create_fig_04():
     # Panel A: Network propagation
@@ -214,6 +387,62 @@ def create_fig_04():
     plt.savefig(OUTPUT_DIR / '04-B-fig-disease-gene-prioritization.svg', format='svg')
     plt.close()
     print("Saved: 04-B-fig-disease-gene-prioritization.svg")
+
+    # Panel C: GNN scoring prioritizes network-connected
+    fig, ax = plt.subplots(figsize=(6, 5))
+    np.random.seed(42)
+
+    # Candidate genes
+    n_genes = 20
+    network_connectivity = np.random.rand(n_genes) * 0.8 + 0.1
+    gnn_score = network_connectivity * 0.7 + np.random.rand(n_genes) * 0.3
+    is_true = np.random.rand(n_genes) > 0.7
+
+    ax.scatter(network_connectivity[~is_true], gnn_score[~is_true],
+               c='#aec7e8', s=60, label='Non-disease', alpha=0.7)
+    ax.scatter(network_connectivity[is_true], gnn_score[is_true],
+               c='#d62728', s=80, label='True disease gene', marker='*')
+
+    ax.plot([0, 1], [0.2, 0.9], 'k--', alpha=0.5)
+    ax.set_xlabel('Network Connectivity', fontweight='bold')
+    ax.set_ylabel('GNN Prioritization Score', fontweight='bold')
+    ax.set_title('C. GNN Scores Prioritize Connected Genes', fontweight='bold', loc='left')
+    ax.legend(fontsize=9)
+
+    plt.tight_layout()
+    plt.savefig(OUTPUT_DIR / '04-C-fig-disease-gene-prioritization.svg', format='svg')
+    plt.close()
+    print("Saved: 04-C-fig-disease-gene-prioritization.svg")
+
+    # Panel D: Integration of sequence and network features
+    fig, ax = plt.subplots(figsize=(8, 4))
+
+    features = [
+        ('Sequence\nSimilarity', 'ESM-2', '#1f77b4'),
+        ('Network\nCentrality', 'Degree', '#2ca02c'),
+        ('Diffusion', 'PageRank', '#ff7f0e'),
+        ('Combined', 'GNN', '#9467bd'),
+    ]
+
+    for i, (feat_type, method, color) in enumerate(features):
+        ax.add_patch(mpatches.FancyBboxPatch((i * 2 + 0.1, 0.3), 1.8, 1.5,
+                                              boxstyle='round,pad=0.02',
+                                              facecolor=color, alpha=0.7,
+                                              edgecolor='white', linewidth=2))
+        ax.text(i * 2 + 1, 1.3, feat_type, ha='center', va='center', fontsize=9,
+                fontweight='bold', color='white')
+        ax.text(i * 2 + 1, 0.7, method, ha='center', va='center', fontsize=8,
+                color='white')
+
+    ax.set_xlim(-0.2, 8.2)
+    ax.set_ylim(-0.1, 2.2)
+    ax.axis('off')
+    ax.set_title('D. Integration of Sequence and Network Features', fontweight='bold', loc='left')
+
+    plt.tight_layout()
+    plt.savefig(OUTPUT_DIR / '04-D-fig-disease-gene-prioritization.svg', format='svg')
+    plt.close()
+    print("Saved: 04-D-fig-disease-gene-prioritization.svg")
 
 # Fig 05 A-B: Knowledge Graph Drug Repurposing
 def create_fig_05():
@@ -255,6 +484,36 @@ def create_fig_05():
     plt.savefig(OUTPUT_DIR / '05-B-fig-kg-drug-repurposing.svg', format='svg')
     plt.close()
     print("Saved: 05-B-fig-kg-drug-repurposing.svg")
+
+    # Panel C: Link prediction scores
+    fig, ax = plt.subplots(figsize=(6, 5))
+    np.random.seed(42)
+
+    # Drug-disease pairs
+    drug_names = ['Drug A', 'Drug B', 'Drug C', 'Drug D', 'Drug E']
+    disease = 'Type 2 Diabetes'
+    scores = [0.85, 0.72, 0.68, 0.45, 0.30]
+    known = [True, False, False, False, False]
+
+    colors = ['#2ca02c' if k else '#1f77b4' for k in known]
+    bars = ax.barh(drug_names, scores, color=colors, edgecolor='white')
+
+    ax.axvline(x=0.5, color='#d62728', linestyle='--', linewidth=2, alpha=0.7)
+    ax.text(0.52, 4.5, 'Threshold', fontsize=9, color='#d62728')
+
+    for bar, score, k in zip(bars, scores, known):
+        suffix = ' (Known)' if k else ' (Novel)'
+        ax.text(score + 0.02, bar.get_y() + bar.get_height()/2,
+                f'{score:.2f}{suffix}', va='center', fontsize=9)
+
+    ax.set_xlabel('Link Prediction Score', fontweight='bold')
+    ax.set_title(f'C. Candidate Drugs for {disease}', fontweight='bold', loc='left')
+    ax.set_xlim(0, 1.1)
+
+    plt.tight_layout()
+    plt.savefig(OUTPUT_DIR / '05-C-fig-kg-drug-repurposing.svg', format='svg')
+    plt.close()
+    print("Saved: 05-C-fig-kg-drug-repurposing.svg")
 
 # Fig 06: Network Bias
 def create_fig_06():
