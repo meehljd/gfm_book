@@ -171,6 +171,10 @@ Validation in UK Biobank demonstrated consistent improvement over single-trait p
 ::: {.callout-tip}
 ## Knowledge Check
 The EEPRS framework showed large improvements for cardiovascular conditions but minimal improvement for breast cancer. Before reading the explanation, can you hypothesize why? Consider what phenotype embeddings capture and how genetic architecture might differ between these conditions.
+
+:::{.callout-note collapse="true" title="Check Your Answer"}
+Cardiovascular conditions cluster together in clinical practice and share genetic architecture, allowing embeddings to capture cross-phenotype genetic correlations. Breast cancer has largely distinct genetic architecture from cardiovascular diseases, so embedding-based scores derived from cardiovascular-weighted dimensions provide no additional predictive signal for cancer risk.
+:::
 :::
 
 The pattern of improvement across traits reveals when EHR embeddings add value to polygenic prediction. Conditions that cluster together in clinical space, co-occurring in patients and sharing risk factors, benefit most. The cardiovascular cluster (coronary artery disease, ischemic stroke, peripheral artery disease, heart failure, angina, type 2 diabetes) forms a coherent group in both clinical practice and genetic architecture. Embeddings trained on EHR data capture this clustering, and GWAS on embedding dimensions identify variants associated with the shared liability across the cluster. These variants provide additional prediction signal beyond what single-trait GWAS can detect.
@@ -203,6 +207,16 @@ The *EEPRS* framework operates on GWAS summary statistics and phenotype embeddin
 Attention-based integration, graph neural networks for pathway aggregation (@sec-ch21-networks), and transformer encoders for sequence context can all incorporate EHR embeddings as additional input features. A patient's clinical embedding provides context that may modify interpretation of their genetic variants: a **variant of uncertain significance (VUS)** in a cardiovascular gene carries different implications for a patient whose clinical embedding places them in the cardiovascular risk cluster versus one with an unremarkable clinical profile. This contextualization moves beyond additive combination toward models that learn interactions between genetic and clinical risk.
 
 The combination of phenotype embeddings and foundation model features remains largely unexplored. *EEPRS* demonstrated that phenotype embeddings capture heritable variation beyond single-trait GWAS; foundation models demonstrate that sequence context improves variant effect prediction beyond simple annotations (@sec-ch14-fm-gains). Whether these approaches provide complementary signal, and whether their combination improves clinical prediction beyond either alone, represents an open research question with substantial clinical implications.
+
+::: {.callout-important title="Checkpoint: PGS Enhancement Approaches"}
+Before proceeding to temporal modeling, ensure you understand:
+
+1. Why embedding-based approaches improve some conditions (cardiovascular cluster) but not others (breast cancer)
+2. How PRS-PheWAS provides interpretability for enhanced polygenic scores
+3. What population representativeness challenges affect EHR-based embedding methods
+
+If these concepts are unclear, review the preceding sections before continuing.
+:::
 
 ## Temporal Modeling Architectures {#sec-ch27-temporal-modeling}
 
@@ -278,6 +292,20 @@ For foundation model-based tools, these analyses must demonstrate incremental va
 
 : The three pillars of clinical evaluation for risk prediction models. {#tbl-evaluation-pillars}
 
+::: {.callout-warning title="Baseline Requirements for Rigorous Evaluation"}
+Claims that foundation model-based risk tools improve upon "state-of-the-art" polygenic prediction require verification of baseline strength. The minimum baseline battery for rigorous evaluation should include:
+
+1. **LDpred2-auto** or LDpred2-grid: LD-aware Bayesian method that estimates polygenicity and heritability directly
+2. **PRS-CS** or PRS-CS-auto: Continuous shrinkage prior accommodating highly polygenic architectures
+3. **SBayesR** or SBayesRC: Mixture model approach; annotation-integrated version provides additional benchmark
+4. **Published PGS** from PGS Catalog for the specific trait, representing community-validated scores
+5. **XGBoost or random forest**: Non-deep-learning ML alternative establishing whether neural network complexity is necessary
+
+Using only clumping-and-thresholding (C+T) as baseline artificially inflates apparent foundation model gains by 16-60%. When properly tuned linear methods are included, neural networks for polygenic prediction often perform only 93-95% as well—with apparent nonlinear advantages reflecting implicit LD modeling rather than genuine epistasis detection or representation learning [@ge_polygenic_2019].
+
+The diagnostic question: does your foundation model approach outperform the best available linear method, or only weak linear methods? Incremental improvement over strong baselines justifies deployment complexity; improvement only over weak baselines does not.
+:::
+
 ### Validation Hierarchy {#sec-ch27-validation-hierarchy}
 
 Evidence strength depends critically on validation design. Internal validation through cross-validation or temporal splits within development data is useful but insufficient due to potential overfitting and subtle data leakage issues discussed in @sec-ch11-label-leakage. External validation across institutions and ancestries tests the same locked model in independent health systems and diverse populations. This step is essential for assessing whether performance reflects genuine biological signal versus idiosyncratic features of the development dataset.
@@ -309,6 +337,10 @@ Practical uncertainty quantification methods include ensemble approaches, where 
 ::: {.callout-tip}
 ## Knowledge Check
 A foundation model-based risk tool provides a prediction of 35% 10-year cardiovascular risk for a patient of Nigerian ancestry, along with a wide confidence interval of 15-55%. The model was trained primarily on European-ancestry data. Is this wide interval more likely reflecting aleatoric or epistemic uncertainty? What would you recommend the clinician do with this prediction?
+
+:::{.callout-note collapse="true" title="Check Your Answer"}
+This wide interval primarily reflects epistemic uncertainty due to distributional shift: the model has limited training data from African-ancestry populations and thus low confidence in its predictions. The clinician should interpret this prediction with caution, consider it alongside other risk factors, and potentially order additional testing rather than making treatment decisions based solely on this uncertain estimate.
+:::
 :::
 
 For foundation model-based systems, uncertainty decomposes into genomic and clinical components. Genomic uncertainty reflects confidence in variant effect predictions, fine-mapping probabilities, or embedding reliability; it increases for variants from underrepresented populations, rare variants with limited training examples, or sequences falling outside the distribution seen during pretraining. Clinical uncertainty reflects extrapolation to new care settings, practice patterns, or patient populations not represented in development data.
@@ -461,6 +493,28 @@ Rare disease diagnosis illustrates these translation principles in a particularl
 
 ::: {.callout-note}
 ## Chapter Summary
+
+:::{.callout-tip title="Test Yourself"}
+Before reviewing the summary, test your recall:
+
+1. What are the three main limitations of traditional polygenic risk scores that foundation model features aim to address?
+2. Compare early, intermediate, and late fusion architectures for integrating genomic and clinical features. When would you choose each approach?
+3. Why is calibration distinct from discrimination, and why does it matter for clinical deployment?
+4. How does bias compound through the genomic AI pipeline, from GWAS to foundation model predictions?
+5. What is the difference between analytical validity, clinical validity, and clinical utility? Give an example where a model has one but not the others.
+
+:::{.callout-note collapse="true" title="Check Your Answers"}
+1. **PRS Limitations**: Traditional polygenic scores have three main limitations: (1) they lack mechanistic insight by reducing genomes to single numbers without indicating which biological pathways drive risk, (2) they show poor cross-ancestry portability because they are derived from European-dominated GWAS data and depend on population-specific linkage disequilibrium patterns, and (3) they remain disconnected from clinical workflows by existing outside electronic health records where decisions actually happen. Foundation model embeddings address these by preserving information about which genomic regions contribute to risk, leveraging sequence-based functional priors that transfer across ancestries, and enabling integration architectures that combine genomic and clinical data within EHR systems.
+
+2. **Fusion Architectures**: Early fusion concatenates all features into a single input and trains a unified model, allowing arbitrary interactions but requiring complete data for all patients and risking dominance by the strongest signal source. Intermediate fusion trains separate encoders for each modality then combines their embeddings through attention or cross-modal transformers, offering modularity and graceful degradation while still capturing cross-modal interactions. Late fusion trains independent models per modality and combines their predictions through ensemble methods, handling missing data excellently but potentially underutilizing cross-modal structure. Choose early fusion for dense complete datasets, intermediate fusion for evolving foundation model ecosystems requiring modularity, and late fusion when data availability varies substantially across patients.
+
+3. **Calibration vs Discrimination**: Discrimination measures how well a model ranks patients by risk (whether those who develop disease score higher than those who do not), typically assessed via auROC. Calibration measures whether predicted probabilities match observed frequencies (whether patients assigned 20% risk actually experience events at 20% rate). A model can have excellent discrimination but poor calibration if it correctly ranks patients but systematically over- or underestimates absolute risk magnitudes. This matters for clinical deployment because treatment decisions depend on absolute risk thresholds: miscalibrated predictions lead to inappropriate treatment (undertreatment if risks are underestimated, overtreatment if inflated) even when patient ranking is correct.
+
+4. **Bias Compounding**: Bias accumulates at each stage of the genomic AI pipeline due to European ancestry overrepresentation in genomic datasets. GWAS discovery power is reduced for non-European populations, leading to weaker effect size estimates. Fine-mapping resolution suffers because linkage disequilibrium patterns differ across ancestries. Variant effect predictors have fewer training examples from underrepresented populations. Polygenic scores built from these components show poor portability and reduced accuracy. Foundation model embeddings trained on biased data produce less calibrated representations for non-European ancestries. Each layer inherits and potentially amplifies the biases of preceding layers, making ancestry-stratified evaluation essential at every stage rather than only at final deployment.
+
+5. **Validity Levels**: Analytical validity means the test accurately measures what it claims (e.g., genotyping array correctly calls variants). Clinical validity means the measurement associates with the clinical outcome (e.g., polygenic score correlates with disease risk). Clinical utility means using the test improves patient outcomes (e.g., knowing the score leads to interventions that reduce disease incidence). A model can have high analytical and clinical validity but no clinical utility if the resulting predictions do not change clinical decisions: for example, a perfectly accurate test for a biomarker that strongly predicts disease but for which no effective interventions exist would have excellent validity but provide no utility since knowing the result does not enable actions that improve outcomes.
+:::
+:::
 
 This chapter examined the translation of genomic foundation models into clinical risk prediction tools that can improve patient outcomes.
 

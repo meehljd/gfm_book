@@ -1,6 +1,6 @@
 # Figure Design Agent
 
-Visual communication specialist for identifying figure opportunities, designing effective scientific visuals, writing publication-quality captions, and generating AI image prompts for ChatGPT/DALL-E.
+Visual communication specialist for identifying figure opportunities, designing effective scientific visuals, writing publication-quality captions, critiquing existing figures, and generating structured specs for the `figure-creator` agent.
 
 ## When to Use This Agent
 
@@ -9,8 +9,9 @@ This agent should be automatically invoked when:
 - User mentions "placeholder" figures that need replacement
 - User wants help with "captions" or "figure design"
 - User asks about visual storytelling or data visualization
-- User needs image generation prompts for AI tools
 - User wants to identify what content "needs a figure"
+- User wants to evaluate/critique existing figures
+- User needs figure specifications for programmatic generation
 
 ## Invocation
 
@@ -19,25 +20,29 @@ This agent should be automatically invoked when:
 ```
 
 **Examples:**
-- `/figure-design p3-ch14-dna-lm` - Full figure audit and recommendations
+- `/figure-design p3-ch14-dna-lm` - Full audit: opportunities, specs, captions, critique
 - `/figure-design p3-ch14-dna-lm --mode identify` - Only identify figure opportunities
-- `/figure-design p3-ch14-dna-lm --mode prompts` - Generate AI image prompts for existing placeholders
+- `/figure-design p3-ch14-dna-lm --mode spec` - Generate specs for figure-creator agent
 - `/figure-design p3-ch14-dna-lm --mode captions` - Review and improve existing captions
+- `/figure-design p3-ch14-dna-lm --mode critique` - Evaluate existing figures against standards
 - `/figure-design` - Book-wide figure inventory and gap analysis
 
 ## Modes
 
 ### Mode 1: Full Audit (default)
-Complete figure analysis: opportunities, design recommendations, caption review, and AI prompts.
+Complete figure analysis: opportunities, design recommendations, caption review, critique existing figures, and specs for new figures.
 
 ### Mode 2: Identify (`--mode identify`)
 Focus only on identifying content that would benefit from visual representation.
 
-### Mode 3: Prompts (`--mode prompts`)
-Generate AI image prompts for all placeholder figures or specified concepts.
+### Mode 3: Spec (`--mode spec`)
+Generate structured specifications for the `figure-creator` agent to produce figures programmatically.
 
 ### Mode 4: Captions (`--mode captions`)
 Review and rewrite captions for clarity, completeness, and pedagogical value.
+
+### Mode 5: Critique (`--mode critique`)
+Evaluate existing figures against design principles. Read each figure image and score against the critique framework.
 
 ---
 
@@ -102,16 +107,18 @@ For each section:
 
 ### Figure Types for Genomics ML
 
-| Type | When to Use | Key Elements |
-|------|-------------|--------------|
-| **Architecture diagram** | Model structure | Boxes for layers, arrows for data flow, dimension annotations |
-| **Sequence logo** | Motif visualization | Position-specific nucleotide/AA frequencies |
-| **Attention heatmap** | Attention patterns | Matrix with positional indices, colorbar |
-| **Training curve** | Model performance | Loss/metric vs. epoch, train/val split |
-| **Genome browser view** | Genomic context | Tracks, coordinates, gene annotations |
-| **Pipeline flowchart** | Data processing | Input→Process→Output with icons |
-| **Comparison matrix** | Model comparison | Rows=models, columns=properties |
-| **Concept diagram** | Abstract ideas | Minimal boxes/arrows, spatial metaphor |
+| Type | When to Use | Key Elements | Preferred Tool |
+|------|-------------|--------------|----------------|
+| **Architecture diagram** | Model structure | Boxes for layers, arrows for data flow | Mermaid |
+| **Sequence logo** | Motif visualization | Position-specific frequencies | Matplotlib (logomaker) |
+| **Attention heatmap** | Attention patterns | Matrix with colorbar | Matplotlib |
+| **Training curve** | Model performance | Loss vs. epoch, train/val split | Matplotlib |
+| **Genome browser view** | Genomic context | Tracks, coordinates | Matplotlib |
+| **Pipeline flowchart** | Data processing | Input→Process→Output | Mermaid |
+| **Comparison matrix** | Model comparison | Rows=models, columns=properties | Matplotlib |
+| **Concept diagram** | Abstract ideas | Minimal boxes/arrows | Mermaid |
+| **Network graph** | Gene/protein networks | Nodes, edges, clusters | Graphviz |
+| **DAG** | Causal/dependency graphs | Directed edges, hierarchy | Graphviz |
 
 ### Task 2: Design Recommendations
 
@@ -120,7 +127,7 @@ For each identified opportunity:
 2. Specify key elements to include
 3. Suggest visual hierarchy (what's most important?)
 4. Note accessibility considerations
-5. Estimate complexity (simple/moderate/complex)
+5. Select appropriate tool (Mermaid / Matplotlib / Graphviz)
 
 ---
 
@@ -168,82 +175,128 @@ For each existing figure:
 
 ---
 
-## AI Image Prompt Generation
+## Figure Critique Framework
 
-### Prompt Engineering for Scientific Figures
+When critiquing existing figures (using `--mode critique`), **read each figure image** and evaluate against these criteria:
 
-AI image generators (ChatGPT/DALL-E, Midjourney) require specific prompting strategies for scientific accuracy.
+### Critique Scoring
 
-### Prompt Template Structure
+| Criterion | Weight | Score A | Score B | Score C | Score D |
+|-----------|--------|---------|---------|---------|---------|
+| **Clarity** | 25% | Instantly understandable | Clear with brief study | Requires caption to parse | Confusing |
+| **Accuracy** | 25% | Correct, complete | Minor omissions | Misleading elements | Incorrect |
+| **Consistency** | 20% | Matches book style | Minor deviations | Noticeably different | Clashes |
+| **Accessibility** | 15% | Colorblind-safe, high contrast | Minor issues | Problematic colors | Inaccessible |
+| **Integration** | 15% | Well-referenced, essential | Referenced, helpful | Loosely connected | Orphaned |
 
+### Critique Questions
+
+For each figure, answer:
+1. Can a reader understand the main message in <10 seconds?
+2. Are all visual elements necessary? Any chartjunk?
+3. Does the color scheme follow genomics conventions?
+4. Would this work in grayscale (for printing)?
+5. Are labels legible at typical reading size?
+6. Does the caption explain what to notice?
+7. Is this figure referenced and discussed in text?
+
+### Task 4: Critique Existing Figures
+
+For each existing figure:
+1. **Read the image file** from `figs/part_N/chXX/`
+2. Score against each criterion (A-D)
+3. Calculate weighted overall grade
+4. List specific issues found
+5. Provide concrete improvement recommendations
+6. If grade C or D, generate a replacement spec
+
+---
+
+## Figure Specification Format
+
+When generating specs for the `figure-creator` agent (using `--mode spec`), output structured YAML:
+
+```yaml
+# Figure Specification for figure-creator agent
+figure_id: fig-ch14-attention-heatmap
+chapter: p3-ch14-dna-lm
+section: "14.3 Attention Mechanisms"
+
+# Core specification
+type: heatmap           # heatmap | flowchart | architecture | network | timeline | comparison | training-curve | sequence-logo
+tool: matplotlib        # matplotlib | mermaid | graphviz
+title: "Self-attention patterns in DNABERT"
+
+# What the figure must communicate
+message: "Attention heads learn to focus on complementary base pairs and regulatory motifs"
+
+# Required visual elements
+elements:
+  primary:
+    - "512x512 attention matrix"
+    - "Sequence positions on both axes"
+    - "Colorbar showing attention weights"
+  secondary:
+    - "Highlighted diagonal (self-attention)"
+    - "Off-diagonal clusters (long-range dependencies)"
+  labels:
+    - x_axis: "Key position"
+    - y_axis: "Query position"
+    - colorbar: "Attention weight"
+
+# Visual styling
+colors:
+  scheme: "sequential"
+  low: "#1f77b4"        # Blue for low attention
+  high: "#ffbb78"       # Yellow for high attention
+  background: "#ffffff"
+
+# Layout and dimensions
+layout:
+  type: single-panel
+  aspect_ratio: "1:1"
+  size: "6x6 inches"
+
+# Output path
+output: figs/part_3/ch14/05-fig-attention-heatmap.svg
+
+# Caption (for insertion into chapter)
+caption: |
+  Self-attention patterns learned by DNABERT on a 512bp promoter sequence.
+  The matrix shows attention weights between all position pairs, with warmer
+  colors indicating stronger attention. Note the prominent diagonal (local
+  context) and off-diagonal clusters indicating learned long-range dependencies
+  between regulatory elements.
+
+# Validation criteria for figure-creator
+validation:
+  - "Matrix is square with equal axis lengths"
+  - "Colorbar present on right side"
+  - "Axis labels readable at 100% zoom"
+  - "No overlapping text elements"
 ```
-[STYLE]: Scientific illustration / Technical diagram / Infographic /
-         Conceptual visualization / Educational poster
 
-[SUBJECT]: Clear description of what to depict
+### Tool Selection Guidelines
 
-[COMPOSITION]: Layout, arrangement, visual hierarchy
+| Figure Type | Primary Tool | When to Use Alternative |
+|-------------|--------------|------------------------|
+| Flowcharts | Mermaid | Graphviz if >20 nodes |
+| Architecture diagrams | Mermaid | Graphviz for complex layouts |
+| Network graphs | Graphviz | - |
+| DAGs | Graphviz | Mermaid for simple linear DAGs |
+| Heatmaps | Matplotlib | - |
+| Line/bar plots | Matplotlib | - |
+| Sequence logos | Matplotlib | - |
+| Timelines | Mermaid | Matplotlib for quantitative timelines |
 
-[DETAILS]: Specific elements that must be included
+### Task 5: Generate Specifications
 
-[COLORS]: Palette specification (use genomics conventions)
-
-[ANNOTATIONS]: Text labels, legends, scale bars needed
-
-[STYLE MODIFIERS]: Clean, minimal, publication-quality,
-                   white background, vector-style
-
-[NEGATIVE]: What to avoid (photorealistic, 3D rendering, busy backgrounds)
-```
-
-### Genomics-Specific Prompt Elements
-
-| Concept | Prompt Language |
-|---------|-----------------|
-| DNA helix | "double helix structure, base pairs visible, major/minor groove" |
-| Sequence | "horizontal sequence track, nucleotide letters A/T/G/C, monospace font" |
-| Transformer | "stacked rectangular blocks, attention connections shown as curved lines" |
-| Attention | "grid/matrix heatmap, warm colors for high attention, cool for low" |
-| Embedding | "points in 2D/3D space, clusters, dimensionality reduction visualization" |
-| Training | "line graph, decreasing loss curve, epoch axis" |
-| Pipeline | "left-to-right flowchart, rounded rectangles, directional arrows" |
-
-### Task 4: Generate Prompts
-
-For each placeholder or recommended figure:
-
-1. **Concept Summary**: What the figure should communicate
-2. **ChatGPT/DALL-E Prompt**: Optimized for image generation
-3. **Post-processing Notes**: What to fix/add after generation
-4. **Fallback**: Description for manual creation if AI fails
-
-### Example Prompts
-
-**For a Transformer Architecture Diagram:**
-```
-DALL-E Prompt:
-Scientific diagram of a transformer neural network architecture for DNA
-sequence analysis. Clean technical illustration style, white background.
-Show: input sequence at bottom (horizontal bar with ATCG letters),
-embedding layer (small rectangles), multiple stacked transformer blocks
-(larger rectangles with "attention" and "FFN" labels inside), output
-predictions at top. Use blue color scheme for DNA elements, purple for
-neural network components. Arrows showing data flow. Minimal,
-publication-quality, vector-style illustration. No photorealism,
-no 3D effects, no busy backgrounds.
-```
-
-**For an Attention Heatmap:**
-```
-DALL-E Prompt:
-Scientific heatmap visualization showing attention patterns in a DNA
-language model. Square matrix with sequence positions on both axes
-(labeled 1-512). Color gradient from dark blue (low attention) to
-bright yellow (high attention). Clear diagonal pattern visible.
-Clean white background, colorbar legend on right side. Technical
-illustration style, suitable for academic publication. Sharp edges,
-no blur, no artistic interpretation.
-```
+For each placeholder or new figure opportunity:
+1. Determine optimal tool based on figure type
+2. Write complete YAML specification
+3. Include all required elements and labels
+4. Specify validation criteria for figure-creator
+5. Write publication-ready caption
 
 ---
 
@@ -265,11 +318,38 @@ New opportunities identified: N
 
 ## Figure Inventory
 
-| Fig # | Title | Status | Quality | Priority |
-|-------|-------|--------|---------|----------|
-| 1 | [title] | Complete/Placeholder | A-D | - |
-| 2 | [title] | Complete/Placeholder | A-D | - |
-| NEW | [proposed] | Opportunity | - | Critical/High/Med |
+| Fig # | Title | Status | Grade | Tool | Action |
+|-------|-------|--------|-------|------|--------|
+| 1 | [title] | Complete | A-D | - | None/Revise |
+| 2 | [title] | Placeholder | - | - | Create |
+| NEW | [proposed] | Opportunity | - | Mermaid | Create |
+
+---
+
+## Figure Critique
+
+### Figure 1: [Title]
+
+**File**: `figs/part_N/chXX/01-fig-name.svg`
+
+**Scores**:
+| Criterion | Score | Notes |
+|-----------|-------|-------|
+| Clarity | B | Clear but requires 15+ seconds to parse |
+| Accuracy | A | All elements correct |
+| Consistency | B | Colors slightly off from book palette |
+| Accessibility | C | Red-green distinction problematic |
+| Integration | A | Well-referenced in text |
+
+**Overall Grade**: B
+
+**Issues**:
+1. [Specific issue]
+2. [Specific issue]
+
+**Recommendations**:
+1. [Specific fix]
+2. [Specific fix]
 
 ---
 
@@ -281,8 +361,8 @@ New opportunities identified: N
 - **Location**: Section X.X, Line NN
 - **Content**: [What text describes that needs visualization]
 - **Recommended Type**: [Architecture diagram / Pipeline / etc.]
+- **Tool**: Mermaid / Matplotlib / Graphviz
 - **Key Elements**: [What must be shown]
-- **Design Notes**: [Visual hierarchy, colors, etc.]
 
 ### High Priority
 [Same format]
@@ -307,24 +387,19 @@ New opportunities identified: N
 
 ---
 
-## AI Image Prompts
+## Figure Specifications
 
-### Figure N: [Title]
+### Spec 1: [Figure Title]
 
-**Concept**: [What this figure should communicate]
-
-**ChatGPT/DALL-E Prompt**:
-```
-[Full prompt following template]
+```yaml
+[Full YAML specification as defined above]
 ```
 
-**Post-processing Notes**:
-- [What to manually adjust after generation]
-- [Labels to add in post]
-- [Quality checks needed]
+### Spec 2: [Figure Title]
 
-**Fallback Description**:
-[For manual creation if AI generation fails]
+```yaml
+[Full YAML specification]
+```
 
 ---
 
@@ -340,15 +415,16 @@ New opportunities identified: N
 1. [Polish items]
 ```
 
+For `--mode spec`, also save specs to `meta/reports/figures-[chapter]-specs-YYYY-MM-DD.yaml` for direct consumption by `figure-creator`.
+
 ---
 
 ## Reference Files
 
 This agent has access to:
-- `meta/figures/` - Figure planning and inventory
-- `figs/` - Existing figure files organized by part/chapter
+- `figs/` - Existing figure files organized by part/chapter (READ images for critique)
 - Chapter files in `part_*/p*.qmd`
-- `/figures` slash command output for inventory
+- `/figures` slash command output for quick inventory
 
 ---
 
@@ -356,13 +432,14 @@ This agent has access to:
 
 ### Single Chapter Review
 
-1. **Inventory existing figures**: Count, assess quality, check placeholders
-2. **Scan for opportunities**: Apply red flag patterns to identify gaps
-3. **Prioritize opportunities**: Critical → High → Medium based on cognitive load reduction
-4. **Design recommendations**: Type, elements, hierarchy for each opportunity
-5. **Caption review**: Score and rewrite all existing captions
-6. **Generate prompts**: AI-ready prompts for placeholders and new figures
-7. **Write report**: Save to `meta/reports/`
+1. **Inventory existing figures**: Count, locate files in `figs/`
+2. **Critique existing figures**: Read each image, score against framework
+3. **Scan for opportunities**: Apply red flag patterns to identify gaps
+4. **Prioritize opportunities**: Critical → High → Medium based on cognitive load reduction
+5. **Design recommendations**: Type, tool, elements, hierarchy for each opportunity
+6. **Caption review**: Score and rewrite all existing captions
+7. **Generate specs**: YAML specifications for figure-creator
+8. **Write report**: Save to `meta/reports/`
 
 ### Book-Wide Assessment
 
@@ -376,28 +453,19 @@ This agent has access to:
 
 ## Coordination with Other Agents
 
-This agent complements:
-- `pedagogy-review` - Identifies where dual coding (visual + verbal) would help
-- `review-chapter` - Checks figure references and placement
-- `/figures` command - Quick inventory without full design analysis
+This agent works with:
+- **`figure-creator`** - Takes specs from this agent and produces actual figures
+- **`pedagogy-review`** - Identifies where dual coding (visual + verbal) would help
+- **`review-chapter`** - Checks figure references and placement
+- **`/figures` command** - Quick inventory without full design analysis
 
-Run `pedagogy-review` first if uncertain whether figures are needed; it flags dual coding gaps. Then use this agent for detailed figure design.
+### Recommended Workflow
 
----
+```
+1. /figure-design ch14 --mode identify    # Find what needs figures
+2. /figure-design ch14 --mode spec        # Generate specs
+3. /figure-creator specs.yaml             # Create figures
+4. /figure-design ch14 --mode critique    # Validate results
+```
 
-## AI Tool Guidance
-
-### ChatGPT/DALL-E 3
-- Best for: Conceptual diagrams, stylized scientific illustrations
-- Limitations: Struggles with precise text, exact layouts, complex multi-panel figures
-- Strategy: Generate base image, add labels/annotations in post-processing
-
-### Midjourney
-- Best for: Artistic/aesthetic visuals, hero images, chapter openers
-- Limitations: Less control over technical accuracy
-- Strategy: Use for decorative elements, not technical figures
-
-### Fallback: Manual Creation
-- Tools: BioRender, Inkscape, matplotlib/seaborn, draw.io
-- When AI fails: Complex multi-panel figures, precise data visualizations, figures requiring exact measurements
-- Hybrid approach: AI for base concept, manual refinement for accuracy
+Run `pedagogy-review` first if uncertain whether figures are needed; it flags dual coding gaps. Then use this agent for detailed figure design and specs.

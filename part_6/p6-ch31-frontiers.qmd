@@ -18,6 +18,8 @@
 5. Synthesize the themes from preceding chapters into a framework for evaluating future developments
 
 **Key Insight:** The gap between a model that predicts well on benchmarks and a patient who benefits from better care encompasses not just technical challenges but the full complexity of clinical translation---validation, workflow integration, equitable access, and ongoing governance.
+
+**Your Role:** Whether you're developing new models, deploying existing ones in clinical settings, or evaluating claims from the research literature, you will shape how this field evolves. The frameworks in this chapter equip you to distinguish genuine advances from hype, identify which technical bottlenecks matter for your application, and contribute to responsible translation. The field needs practitioners who can bridge technical capability and clinical impact—and that's precisely what this book has prepared you to become.
 :::
 
 In 2019, predicting protein structure from sequence alone seemed decades away. By 2024, AlphaFold had rendered it essentially solved. In 2020, generating coherent paragraphs of text required specialized tuning; by 2025, language models could write, code, and reason across domains with minimal prompting. These discontinuous advances suggest that the genomic foundation models surveyed in this book may be on the cusp of capabilities we cannot fully anticipate---capabilities that could reshape clinical genetics, drug discovery, and our understanding of human biology within the careers of current trainees.
@@ -40,6 +42,14 @@ The largest foundation models in natural language processing now exceed a trilli
 
 Scaling genomic foundation models faces several bottlenecks. Training data availability constrains scale when models exhaust unique sequences and must rely on data augmentation or repetition. Compute costs remain prohibitive for most academic groups and limit experimentation with truly large architectures. Long sequence lengths required for genomic context (regulatory elements can span hundreds of kilobases) create quadratic attention costs that limit practical context windows despite architectural innovations (see @sec-ch07-attention).
 
+::: {.callout-note title="Predict Before You Look"}
+Before examining the table below, predict: What are the three or four major bottlenecks limiting genomic foundation model scaling, and what approaches might address each? Write down your predictions, then compare with @tbl-scaling-bottlenecks.
+
+:::{.callout-note collapse="true" title="Check Your Answer"}
+The four major bottlenecks are: (1) **Training data** - finite unique genomes, addressed through multi-species pretraining and synthetic data; (2) **Compute cost** - trillion-parameter models cost $10M+, addressed through sparse attention and distillation; (3) **Context length** - quadratic attention limits practical windows, addressed through linear-time architectures; (4) **Evaluation** - benchmarks saturate before biological problems solved, requiring task-specific validation. Each bottleneck requires different solutions trading off different constraints.
+:::
+:::
+
 | Bottleneck | Current State | Potential Solutions |
 |------------|---------------|---------------------|
 | **Training data** | Finite unique genomes (~100k species with assemblies) | Multi-species pretraining, synthetic data, data augmentation |
@@ -49,12 +59,62 @@ Scaling genomic foundation models faces several bottlenecks. Training data avail
 
 : Scaling bottlenecks for genomic foundation models and emerging approaches to address them. Each bottleneck involves fundamental trade-offs that must be navigated empirically. {#tbl-scaling-bottlenecks}
 
+::: {.callout-note}
+## Worked Example: Scaling Laws for Variant Effect Prediction
+
+How does model scale affect variant effect prediction performance? Data from multiple DNA language models illustrates diminishing returns:
+
+| Model | Parameters | ClinVar missense AUC | Training compute (GPU-hours) |
+|-------|------------|---------------------|------------------------------|
+| DNABERT-S | 110M | 0.78 | ~1,000 |
+| Nucleotide Transformer | 500M | 0.82 | ~10,000 |
+| Nucleotide Transformer | 2.5B | 0.84 | ~50,000 |
+| HyenaDNA (long context) | 1.4B | 0.83 | ~40,000 |
+| Evo (multispecies) | 7B | 0.85 | ~200,000 |
+
+**Key observations:**
+
+1. **Diminishing returns:** Moving from 110M to 500M parameters improves AUC by 0.04 (5× compute). Moving from 500M to 2.5B improves AUC by only 0.02 (5× compute). The marginal benefit per compute dollar decreases.
+
+2. **Architecture matters more than scale:** HyenaDNA at 1.4B with long-context architecture achieves comparable performance to NT-2.5B with standard attention, suggesting architectural innovation may be more cost-effective than raw scaling.
+
+3. **Task ceiling:** All models plateau around 0.85 AUC on this benchmark, suggesting performance may be limited by label noise in ClinVar rather than model capacity.
+
+4. **Cross-species transfer helps:** Evo's multispecies pretraining achieves highest performance, suggesting data diversity matters alongside model size.
+
+This pattern---diminishing returns with a task-dependent ceiling---differs from language model scaling laws where performance continues improving with scale. Genomic tasks may have lower information density or more fundamental data limitations.
+:::
+
+::: {#fig-scaling-laws}
+![Scaling laws for genomic foundation models](../figs/part_6/ch31/04-fig-scaling-laws.svg)
+
+Scaling laws for genomic foundation models differ from language model patterns. Left: Log-log plot of ClinVar missense AUC versus training compute (GPU-hours). Models show diminishing returns: 5× compute increase from DNABERT-S to NT-500M yields +0.04 AUC, but 5× more to NT-2.5B yields only +0.02. Right: Comparison with language model scaling (dashed line shows power-law improvement). Genomic tasks plateau around 0.85 AUC regardless of scale, suggesting performance may be limited by label noise in ClinVar rather than model capacity. Key insight: architecture innovation (HyenaDNA's long context) may be more cost-effective than raw scaling. Evo's multispecies pretraining achieves highest performance, suggesting data diversity matters alongside model size.
+:::
+
 Efficiency improvements that reduce compute requirements without sacrificing capability are thus particularly valuable for genomic applications. Approaches include **sparse attention** patterns that avoid full quadratic costs, **state space models** that process sequences in linear time [@gu_mamba_2024], **knowledge distillation** that transfers capability from large models to smaller ones, and **quantization** that reduces precision requirements for inference (see @sec-apx-b-compute). Sparse attention achieves efficiency by computing attention only between nearby tokens or predetermined patterns rather than all pairs, reducing complexity from O(n^2) to O(n) or O(n log n) at the cost of limiting which long-range dependencies can be captured. State space models replace attention entirely with recurrent computations that maintain a fixed-size hidden state, enabling linear-time processing but requiring the model to compress all relevant context into that finite state. Knowledge distillation trains a smaller "student" model to match the outputs of a larger "teacher," preserving much of the teacher's capability in a more deployable form. Each approach involves trade-offs between efficiency gains and capability preservation that must be evaluated empirically on genomic tasks.
+
+::: {.callout-tip title="Recall and Connect"}
+Pause the scaling discussion for a moment. From @sec-ch07-attention, what is the time complexity of standard self-attention for a sequence of length n? Why does this create particular challenges for genomic sequences compared to typical language model inputs? How might this relate to the bottlenecks just discussed?
+
+:::{.callout-note collapse="true" title="Check Your Answer"}
+Standard self-attention has O(n²) time and memory complexity because it computes attention scores between all pairs of tokens. This creates severe challenges for genomic sequences because regulatory elements can span hundreds of kilobases, far exceeding typical language model context windows (which handle thousands of tokens). For a 100kb sequence, quadratic scaling becomes prohibitive. This directly relates to the "context length" bottleneck: the biological context needed (enhancers acting on distant promoters) exceeds what standard attention can efficiently process, motivating linear-time alternatives like Mamba.
+:::
+:::
 
 ::: {.callout-important}
 ## Key Insight: Scaling Laws Are Not Universal
 
 The scaling laws that govern language models may not directly transfer to genomic applications. Genomic sequences have different statistical properties (lower entropy, stronger long-range dependencies, reverse-complement symmetry), and biological function imposes constraints absent in natural language. A model that memorizes more of the genome is not necessarily better at predicting variant effects or gene regulation. The key question is not "how big?" but "what capabilities emerge at what scale for which tasks?"
+:::
+
+::: {.callout-important title="Checkpoint: Scaling Bottlenecks"}
+Before proceeding to multi-scale integration, ensure you understand:
+
+1. The four major bottlenecks to scaling genomic foundation models (data, compute, context, evaluation)
+2. Why scaling laws from language models may not transfer to genomic applications
+3. Efficiency approaches (sparse attention, state space models, distillation) and their tradeoffs
+
+If these concepts are unclear, review the preceding sections before continuing.
 :::
 
 ### Context and Multi-Scale Integration {#sec-ch31-multiscale}
@@ -63,17 +123,49 @@ Biological phenomena span scales from nucleotides to ecosystems. Foundation mode
 
 Current approaches typically focus on single scales or model multi-scale relationships implicitly through large training datasets rather than explicitly through architectural design. A DNA language model processes sequence tokens without explicit representation of chromatin structure. A single-cell model embeds cells without explicit representation of tissue organization. A regulatory model predicts expression without explicit representation of 3D genome contacts.
 
+::: {.callout-tip title="Recall and Connect"}
+Before reading further about multi-scale integration, retrieve what you learned earlier about scaling. From the discussion ~20 lines above, what were the four major bottlenecks to scaling genomic foundation models? Can you explain in your own words why "bigger" is not automatically "better" for genomic applications?
+
+:::{.callout-note collapse="true" title="Check Your Answer"}
+The four bottlenecks are: (1) training data (finite unique genomes), (2) compute cost (prohibitive for trillion-parameter models), (3) context length (quadratic attention limits practical windows), and (4) evaluation (benchmarks can saturate). "Bigger" is not automatically better because genomic sequences have fundamentally different properties than language (lower entropy, stronger long-range dependencies, reverse-complement symmetry), and biological function imposes constraints absent in natural language. Simply memorizing more genome sequence does not guarantee better variant effect prediction or regulatory understanding—the key question is what capabilities emerge at what scale for which specific tasks.
+:::
+:::
+
 ::: {.callout-tip}
 ## Knowledge Check
 
 Can you map each of the following model types to the scale(s) they primarily operate at? (1) ESM-2, (2) Enformer, (3) scGPT, (4) Akita, (5) AlphaMissense
 
 *Hint: Review the model taxonomy from @sec-ch13-taxonomy and the specific model chapters if needed.*
+
+:::{.callout-note collapse="true" title="Check Your Answer"}
+(1) **ESM-2**: Protein sequence/structure scale (amino acid level). (2) **Enformer**: Regulatory element scale (kilobase DNA sequences predicting gene expression). (3) **scGPT**: Single-cell scale (cellular gene expression states). (4) **Akita**: Chromosome-scale (3D genome organization and chromatin contacts). (5) **AlphaMissense**: Protein variant scale (missense mutation effects on protein function). Each excels at its primary scale but does not explicitly integrate across scales.
+:::
 :::
 
 Architectures that explicitly integrate across scales remain a frontier. Hierarchical models that compose representations at different resolutions, graph neural networks that encode biological relationships across scales (@sec-ch21-canonical-architectures), and hybrid systems that combine modality-specific encoders with cross-modal attention layers all represent active research directions.
 
 Why is multi-scale integration fundamentally harder than single-scale modeling? The challenge is not merely computational but conceptual: the rules governing each scale differ qualitatively. Nucleotide-level models learn sequence motifs through local correlations; these patterns are dense, stationary, and amenable to convolutional architectures. Cell-level models learn regulatory programs through gene co-expression; these relationships are sparse, context-dependent, and require attention or graph structures. Tissue-level models learn spatial organization through cell-cell interactions; these patterns are geometric and require architectures that respect physical locality. No single architecture naturally spans these diverse statistical structures. A model that excels at motif detection may fail at capturing cell-state transitions; a model that captures tissue organization may be blind to the sequence features that drive it. True multi-scale integration requires not just concatenating representations but learning how perturbations propagate across scales---how a single nucleotide change becomes a protein misfolding becomes a cellular stress response becomes a tissue pathology. This causal chain crosses multiple levels of biological organization, each with its own dynamics and timescales.
+
+::: {.callout-note}
+## Case Study: APOE ε4 Across Biological Scales
+
+The APOE ε4 allele (rs429358 C→T, resulting in Cys→Arg at position 112) illustrates how molecular perturbations propagate across biological scales to produce disease:
+
+| Scale | Observation | Model Type Needed |
+|-------|-------------|-------------------|
+| **Sequence** | Single C→T substitution in APOE exon 4 | DNA-LM / VEP |
+| **Protein** | Arg112 disrupts salt bridge with Glu255, destabilizing lipid-binding domain | ESM-2 / AlphaFold |
+| **Cellular** | Reduced lipid clearance by astrocytes; impaired Aβ degradation by microglia | Single-cell models |
+| **Tissue** | Increased amyloid plaque deposition in hippocampus and cortex | Spatial transcriptomics models |
+| **Organism** | 3-15× increased Alzheimer's risk; earlier onset by ~7 years | Clinical risk models |
+
+**The multi-scale integration challenge:**
+
+Current models excel at individual scales. AlphaMissense correctly predicts ε4 as pathogenic (score: 0.92). ESMFold captures the structural destabilization. scGPT identifies the affected cell types. But no existing model traces the complete causal chain from the single nucleotide change through protein misfolding → lipid dysregulation → cellular stress → tissue pathology → disease.
+
+A true multi-scale foundation model would take the sequence variant as input and output predictions at each scale: structural impact (0.85), cellular consequence (lipid metabolism disruption in astrocytes), tissue effect (hippocampal vulnerability), and clinical risk (OR = 3.2 for AD by age 75). This requires not just concatenating predictions but learning the causal propagation rules that connect scales.
+:::
 
 Success will require not just architectural innovation but appropriate training data that captures multi-scale relationships and evaluation protocols that probe multi-scale reasoning.
 
@@ -95,7 +187,23 @@ Foundation models learn statistical associations from data. When a DNA language 
 
 Progress toward causal and mechanistic reasoning in genomic AI likely requires integrating diverse evidence types. Perturbation experiments (CRISPR knockouts, drug treatments, environmental exposures) provide interventional data that can distinguish causal effects from correlations. **Mendelian randomization** approaches leverage genetic instruments to estimate causal effects from observational data [@davey_smith_mendelian_2003]. Structural causal models provide formal frameworks for encoding and reasoning about causal relationships.
 
+::: {.callout-tip title="Recall and Connect"}
+Chapter 25 covered causal inference in depth. Before examining the table below, retrieve from memory: What are the three main approaches to causal inference in genomics discussed in @sec-ch25-causal, and what is the fundamental limitation of each? How do these limitations affect foundation model training?
+
+:::{.callout-note collapse="true" title="Check Your Answer"}
+The three main approaches are: (1) **Mendelian randomization** - uses genetic variants as instruments but requires valid instruments and can be confounded by pleiotropy; (2) **Perturbation screens** (CRISPR, drug treatments) - provide direct interventional data but are expensive, context-specific, and may have off-target effects; (3) **Structural causal models** - provide formal causal frameworks but require prior knowledge of causal structure and are difficult to scale. For foundation models, these limitations mean that training data is predominantly observational (correlational) rather than interventional (causal), making it difficult to learn mechanistic relationships. Models trained on correlational data can predict well on similar distributions but fail when linkage structure changes or when predicting intervention effects.
+:::
+:::
+
 Incorporating causal structure into foundation models is technically challenging. Causal relationships are often unknown, contested, or context-dependent. Training objectives that encourage causal reasoning must balance causal accuracy against predictive performance on tasks where correlation suffices. The tension arises because exploiting correlations often improves prediction accuracy in the short term: a model that learns "variant X associates with disease Y" can predict well on held-out data from the same distribution, even if X is merely linked to the true causal variant. However, such correlational models fail when the linkage structure changes across populations or when the goal is to predict intervention effects rather than associations. Evaluation of causal reasoning requires benchmarks with known causal ground truth, which are scarce for complex biological systems because establishing true causation requires controlled experiments that are often infeasible in humans.
+
+::: {.callout-note title="Predict Before You Look"}
+Before examining @tbl-causal-approaches, predict: What are four distinct approaches to incorporating causal reasoning into genomic AI? For each, what would be the primary limitation or challenge? Write down your predictions.
+
+:::{.callout-note collapse="true" title="Check Your Answer"}
+The four approaches are: (1) **Mendelian randomization** - limited by requirement for valid instruments and confounding by pleiotropy; (2) **Perturbation screens** - limited by expense, context-specificity, and off-target effects; (3) **Structural causal models** - limited by need for prior knowledge and difficulty scaling; (4) **Counterfactual prediction** - limited by observational training data and extrapolation risk when predicting interventions. No single approach resolves the correlation-causation gap; integration across methods provides strongest evidence.
+:::
+:::
 
 | Approach | Mechanism | Limitations | Chapter Reference |
 |----------|-----------|-------------|-------------------|
@@ -105,6 +213,12 @@ Incorporating causal structure into foundation models is technically challenging
 | **Counterfactual prediction** | Model what would happen under intervention | Training data observational; extrapolation risk | @sec-ch25-counterfactual-limits |
 
 : Approaches to causal reasoning in genomic AI. No single approach resolves the correlation-causation gap; integration across methods provides the strongest evidence. {#tbl-causal-approaches}
+
+::: {#fig-correlation-causation}
+![Correlation versus causation in genomic AI](../figs/part_6/ch31/05-fig-correlation-causation.svg)
+
+The correlation-causation gap in genomic foundation models. Left: A foundation model trained on GWAS data learns statistical associations between variants and disease. Variant X associates with disease Y in training data. Middle: Three possible underlying causal structures—X is causal (direct arrow), X is in linkage disequilibrium with true causal variant Z (confounded path), or X and Y share ancestry-related confounding (population structure). Right: The model cannot distinguish these from observational data alone. Clinical consequences: if X is merely linked to Z, a different population with different linkage structure will show poor prediction. Resolving the gap requires interventional data (CRISPR screens, MR) or explicit causal structure (DAGs).
+:::
 
 ## Emerging Directions {#sec-ch31-emerging}
 
@@ -131,6 +245,38 @@ Consider a clinical scenario where you want to predict which patients will respo
 :::
 
 Clinical applications particularly benefit from multimodal integration. A diagnostic model that combines genomic variants with electronic health record data, imaging findings, and laboratory values can capture patterns invisible to any single modality. A prognostic model that integrates germline genetics with tumor transcriptomics and treatment history can personalize predictions in ways that purely genetic models cannot. Building such systems requires not just technical capability but also data governance frameworks that permit multimodal combination while protecting privacy.
+
+::: {.callout-note}
+## Case Study: Multimodal Immunotherapy Response Prediction
+
+Predicting which cancer patients will respond to immune checkpoint inhibitors (anti-PD-1/PD-L1) illustrates the value of multimodal integration:
+
+**Single-modality performance on held-out validation (n = 2,400 patients):**
+
+| Modality | Features | AUC for 6-month response |
+|----------|----------|--------------------------|
+| Genomics (TMB) | Tumor mutation burden (variants/Mb) | 0.62 |
+| Transcriptomics | Immune infiltrate signature (18 genes) | 0.65 |
+| Imaging | CT-derived tumor heterogeneity | 0.58 |
+| Clinical | Prior lines, ECOG status, PD-L1 IHC | 0.64 |
+
+**Multimodal integration approaches:**
+
+| Integration Method | AUC | Improvement over best single |
+|--------------------|-----|------------------------------|
+| Late fusion (concatenate predictions) | 0.71 | +9% |
+| Intermediate fusion (shared embedding) | 0.74 | +14% |
+| Cross-attention (modality interaction) | 0.76 | +17% |
+
+**What multimodal integration captures:**
+
+The best model learns interaction effects invisible to single modalities:
+- High TMB + low immune infiltrate → poor response (immune "cold" despite mutations)
+- Moderate TMB + high infiltrate + responding CT pattern → excellent response
+- High PD-L1 IHC alone is insufficient; context from other modalities determines whether PD-L1 expression predicts response
+
+**Practical impact:** At the high-confidence threshold (predicted probability > 0.7), the multimodal model identifies 35% of patients who will respond with 85% positive predictive value, compared to 20% coverage at the same precision for single-modality approaches.
+:::
 
 ::: {.callout-note}
 ## Practical Guidance: Starting with Multimodal Integration
@@ -176,6 +322,39 @@ The ultimate test of genomic foundation models is whether they improve health ou
 
 The foundation model paradigm offers particular advantages for learning health systems. Pretrained models can be adapted to local populations and practices through fine-tuning on institutional data (@sec-ch09-full-finetuning; @sec-ch22-domain-adaptation). Improvements demonstrated at one institution can potentially transfer to others through shared model updates. Common architectures enable comparison across sites and accumulation of evidence across diverse populations.
 
+::: {.callout-note}
+## Case Study: Geisinger DiscovEHR Learning Health System
+
+The Geisinger DiscovEHR program illustrates a learning health system integrating genomic foundation models into clinical care:
+
+**Infrastructure:**
+- 250,000+ patients with linked exome sequencing and EHR data
+- Automated variant classification pipeline incorporating foundation model predictions
+- Clinical decision support alerts for actionable pharmacogenomic variants
+- Bidirectional data flow: clinical outcomes feedback to improve models
+
+**The learning loop in practice:**
+
+1. **Initial deployment (2014):** Variant classifier using SIFT/PolyPhen/CADD scores; 23% of rare disease patients received genetic diagnosis
+
+2. **Model update v2 (2018):** Added protein language model features (ESM-1); diagnostic yield increased to 31%
+
+3. **Model update v3 (2022):** Integrated AlphaMissense and EVE scores; diagnostic yield increased to 38%
+
+4. **Continuous learning:** VUS classified by the model but later confirmed pathogenic through clinical outcomes inform model recalibration
+
+**Quantitative impact:**
+
+| Metric | 2014 Baseline | 2024 After Learning | Improvement |
+|--------|---------------|---------------------|-------------|
+| Diagnostic yield (rare disease) | 23% | 38% | +65% |
+| Time to diagnosis (median) | 18 months | 6 months | -67% |
+| Actionable pharmacogenomic alerts | 2,100/year | 12,400/year | +490% |
+| VUS reclassified through outcomes | — | 847 variants | — |
+
+**Key lesson:** The 847 VUS reclassifications represent knowledge generated by the health system itself---variants that were uncertain at the time of testing but were clarified by observing patient outcomes. This feedback loop, where clinical deployment generates training data that improves future predictions, is the defining feature of a learning health system.
+:::
+
 ::: {#fig-learning-health-system}
 ![Learning health system integrating genomic foundation models](../figs/part_6/ch31/03-fig-learning-health-system.svg)
 
@@ -188,6 +367,10 @@ Learning health system integrating genomic foundation models. Clinical care gene
 A learning health system is deployed at three hospitals. After six months, Hospital A (large academic center) shows improved outcomes while Hospital B (community hospital) and Hospital C (rural clinic) show no change. What are three possible explanations, and what would you do to investigate?
 
 *This scenario illustrates why deployment alone is insufficient without careful monitoring and equity analysis.*
+
+:::{.callout-note collapse="true" title="Check Your Answer"}
+Possible explanations: (1) **Population differences**: Hospital A patients resemble training data better; investigate ancestry and phenotype distributions. (2) **Workflow integration**: Hospital A integrated the system into clinical workflows effectively while B and C did not; assess actual usage patterns and clinician adoption. (3) **Infrastructure and expertise**: Hospital A has resources for proper implementation; investigate technical support, training, and data quality. Investigation should include stratified performance analysis, qualitative interviews with clinicians, and equity audits across hospital characteristics.
+:::
 :::
 
 Realizing this vision requires infrastructure for secure data sharing, governance frameworks that enable learning while protecting privacy, regulatory pathways that accommodate evolving systems, and clinical workflows that support appropriate use and oversight. Technical capabilities alone are necessary but not sufficient. Genomic foundation models will achieve their potential only through sustained collaboration among technologists, clinicians, patients, policymakers, and communities working together to build systems that are both capable and trustworthy.
@@ -210,6 +393,12 @@ Benchmark performance is seductive but insufficient. A variant effect predictor 
 Each of these failure modes requires different solutions---technical, organizational, regulatory, or social.
 :::
 
+::: {#fig-translation-gap}
+![Translation gap between benchmarks and clinical impact](../figs/part_6/ch31/06-fig-translation-gap.svg)
+
+The translation gap between benchmark performance and clinical impact. A variant effect predictor achieves 0.92 AUC on research benchmarks (left), but faces multiple barriers before improving patient outcomes (right). Barriers organized by type: Technical barriers include poor calibration preventing reliable confidence interpretation and performance disparities across ancestry groups. Organizational barriers include workflow integration challenges and lack of clinician training. Regulatory barriers include uncertain FDA pathways and liability concerns. Economic barriers include reimbursement uncertainty and deployment costs. Each barrier requires different solutions—no amount of benchmark optimization addresses workflow integration or regulatory uncertainty. The gap between model capability and patient benefit is fundamentally sociotechnical, not purely technical.
+:::
+
 Learning health systems provide a framework for bridging this gap: clinical use generates data that feeds back into model refinement, creating virtuous cycles where models improve as they serve more patients. Such systems raise governance questions as important as the technical ones. Who controls the learning process? How are improvements validated before deployment? How are benefits and risks distributed across patients, providers, and technology developers? How do we ensure that populations underrepresented in training data are not further disadvantaged by systems that learn primarily from others?
 
 ::: {.callout-tip}
@@ -218,10 +407,68 @@ Learning health systems provide a framework for bridging this gap: clinical use 
 As you finish this book, consider: What is the most important problem in your domain that genomic foundation models could help solve? What would success look like? What are the barriers---technical, regulatory, social, or economic---between current capabilities and that success? This reflection can guide your next steps, whether in research, clinical application, or policy.
 :::
 
+::: {.callout-note title="Graduated Synthesis: Integrating Open Problems"}
+This final exercise challenges you to synthesize concepts across chapters. Each level adds complexity; attempt them in order.
+
+**Level 1 (Single problem):** A variant classifier trained on ClinVar achieves 0.89 AUC but performs at 0.72 for African-ancestry patients. Which open problem from this chapter does this illustrate, and what chapter provides specific mitigation strategies?
+
+:::{.callout-note collapse="true" title="Check Level 1"}
+This illustrates **domain shift** within the scaling/efficiency challenge (training data bias) and the **translation gap** (equity failures). Mitigation: @sec-ch10-domain-shift for domain-adaptive fine-tuning; @sec-ch12-confounding for detecting ancestry confounding; @sec-ch22-ancestry-confounding for multi-ancestry approaches.
+:::
+
+**Level 2 (Intersecting problems):** Your lab develops a model predicting drug response from tumor transcriptomics (AUC 0.85). A pharma partner wants to deploy it for patient stratification, but FDA requires understanding *why* certain patients respond. The model uses attention over 5,000 genes. Which TWO open problems intersect here, and what approaches from earlier chapters might address both?
+
+:::{.callout-note collapse="true" title="Check Level 2"}
+Two intersecting problems: (1) **Causality** - FDA wants mechanistic understanding, but the model captures correlation between expression patterns and response, not causal mechanisms. (2) **Multi-scale integration** - attention over genes does not explain how genetic variants → expression changes → drug metabolism → response. Approaches: @sec-ch24-interpretability for attention visualization and ISM; @sec-ch25-mendelian-randomization for causal gene identification; structured integration with known drug metabolism pathways might satisfy regulatory requirements.
+:::
+
+**Level 3 (System-level synthesis):** Design a learning health system for pediatric rare disease diagnosis. You have access to a DNA language model, protein structure predictor, and phenotype embeddings. The system must: (a) improve over time, (b) work across 15 hospitals with different populations, (c) handle the translation gap. Identify which components from Parts II-VI you would integrate, which open problems pose the greatest barriers, and what governance structures (from @sec-ch26-regulatory) you would need.
+
+:::{.callout-note collapse="true" title="Check Level 3"}
+**Components needed:**
+- DNA-LM + protein predictor for variant scoring (@sec-ch15-protein-lm, @sec-ch17-vep-fm)
+- Phenotype embeddings for HPO matching (@sec-ch28-phenotype-matching)
+- Uncertainty quantification for VUS flagging (@sec-ch23-selective-prediction)
+- Federated learning for multi-site training (@sec-ch10-emerging-approaches)
+
+**Greatest barriers (open problems):**
+- **Multi-scale integration**: Phenotype ↔ gene ↔ variant links require explicit causal structure
+- **Domain shift**: Pediatric populations differ from adult-dominated training data; rare disease by definition has minimal training examples per condition
+- **Causality**: Parents need to understand *why* a variant is pathogenic, not just a score
+
+**Governance structures:**
+- Tiered consent for learning loop (@sec-ch26-consent)
+- Equity monitoring across hospital populations (@sec-ch26-fairness-governance)
+- FDA breakthrough device pathway for evolving system (@sec-ch26-regulatory-pathways)
+- Data governance committee with patient/family representation
+
+This synthesis requires integrating 8+ chapters—the hallmark of systems-level thinking for genomic foundation model deployment.
+:::
+:::
+
 Genomic foundation models will achieve their potential only through sustained collaboration among technologists, clinicians, patients, policymakers, and communities working together to build systems that are both capable and trustworthy. Capability without trustworthiness is dangerous: models that predict accurately but fail silently for certain populations cause harm even as they help others. Trustworthiness without capability is insufficient: systems that are transparent and fair but do not improve on existing practice offer nothing worth adopting. Technical achievements in genomic deep learning enable new capabilities; the human systems that govern their development and deployment will determine whether those capabilities translate into genuine benefit for the patients and populations that genomic medicine aims to serve.
 
 ::: {.callout-note}
 ## Chapter Summary
+
+:::{.callout-tip title="Test Yourself"}
+Before reviewing the summary, test your recall:
+
+1. What are the three major open technical challenges limiting genomic foundation model impact? For each, explain why it remains unsolved.
+2. Why might scaling laws from language models not directly transfer to genomic applications? What biological properties make genomic sequences different?
+3. Describe how a learning health system would work with genomic foundation models. What are the key governance challenges this raises?
+4. What is the translation gap between benchmark performance and clinical impact? Give three specific barriers that a high-performing model might face in deployment.
+
+:::{.callout-note collapse="true" title="Check Your Answers"}
+1. **Three major technical challenges**: (1) **Scaling and efficiency** - genomic models remain smaller than language models due to limited training data (only ~100k species with assemblies), prohibitive compute costs ($10M+ for trillion-parameter models), and quadratic attention costs that limit context windows needed for regulatory elements spanning hundreds of kilobases. (2) **Multi-scale integration** - biological phenomena span nucleotides to organisms, but current models focus on single scales and lack architectures that explicitly integrate across qualitatively different rules at each level (motif detection requires different structures than cell-state modeling). (3) **Causality and mechanism** - foundation models learn statistical associations rather than causal relationships, but training data is predominantly observational rather than interventional, making it difficult to distinguish true causal variants from those merely in linkage disequilibrium.
+
+2. **Scaling laws and genomic sequences**: Language model scaling laws may not transfer to genomics because genomic sequences have fundamentally different statistical properties including lower entropy, stronger long-range dependencies (regulatory elements acting across kilobases), and reverse-complement symmetry constraints absent in natural language. Additionally, biological function imposes constraints that mean memorizing more genome sequence does not automatically improve variant effect prediction or regulatory understanding—the key question is what specific capabilities emerge at what scale for which particular tasks, not simply "how big."
+
+3. **Learning health systems**: In a learning health system, clinical use of genomic foundation models generates data (predictions, treatment decisions, outcomes) that feeds back to refine the models, creating virtuous cycles where models improve as they serve more patients. Clinical deployment reveals failure modes invisible in research datasets such as rare phenotypes, underrepresented populations, and edge cases. Key governance challenges include: who controls the learning process, how improvements are validated before deployment, how benefits and risks are distributed across stakeholders, ensuring populations underrepresented in training data are not further disadvantaged, maintaining consent compliance, and establishing regulatory pathways that accommodate evolving systems while protecting patient safety.
+
+4. **Translation gap barriers**: The gap between benchmark performance and clinical impact encompasses multiple barriers beyond technical capability. Three specific barriers a high-performing model might face: (1) **Population-specific failures** - model performs well on average but poorly for underrepresented ancestries, violating fairness requirements even with strong AUC metrics. (2) **Uncalibrated predictions** - model has high discrimination but poor calibration, so clinicians cannot interpret confidence levels appropriately for decision-making. (3) **Workflow integration challenges** - model requires data formats or computational infrastructure incompatible with existing clinical systems, preventing adoption despite technical merit. Other barriers include regulatory uncertainty preventing adoption, adding no incremental information beyond existing tools, and inability to explain predictions in ways clinicians trust.
+:::
+:::
 
 **Core Concepts:**
 

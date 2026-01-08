@@ -69,7 +69,7 @@ Foundation model paradigms for variant effect prediction. (A) Zero-shot scoring 
 
 ### Zero-Shot and Supervised Approaches {#sec-ch17-zeroshot-supervised}
 
-Foundation model VEP methods divide into two paradigms. Zero-shot approaches apply pretrained models directly without task-specific training: *ESM-1v* scores variants by comparing amino acid likelihoods, requiring no pathogenicity labels. The model's pretraining objective (masked token prediction) implicitly teaches which substitutions violate evolutionary constraints. Supervised approaches like *AlphaMissense* add task-specific training layers and optimize explicitly for pathogenicity prediction using labeled examples.
+Foundation model VEP methods divide into two paradigms. Zero-shot approaches apply pretrained models directly without task-specific training: *ESM-1v* scores variants by comparing amino acid likelihoods, requiring no pathogenicity labels. Think of it like a spell-checker that flags words it has never seen in well-edited text---it does not need a dictionary of "misspellings" because any word that looks unusual compared to normal usage stands out as potentially wrong. Similarly, the model's pretraining objective (masked token prediction) implicitly teaches which substitutions violate evolutionary constraints by learning what "well-edited" (evolutionarily tested) sequences look like. Supervised approaches like *AlphaMissense* add task-specific training layers and optimize explicitly for pathogenicity prediction using labeled examples.
 
 ::: {.callout-note title="Stop and Think: Zero-Shot vs. Supervised Trade-offs"}
 Before reading further, consider: If zero-shot methods avoid the biases present in labeled training data, why would anyone use supervised approaches at all? What advantages might supervised fine-tuning provide, and when might those advantages outweigh the risk of inheriting label biases?
@@ -162,6 +162,10 @@ A patient carries a missense variant in *OBSCN*, an extremely large gene encodin
 1. Would *ESM-1v* or *EVE* be more appropriate for scoring this variant? Why?
 2. What fundamental limitation does this example illustrate about alignment-based approaches?
 3. If the variant were in *BRCA1* instead (which has hundreds of homologs), would your answer change?
+
+:::{.callout-note collapse="true" title="Check Your Answer"}
+ESM-1v would be more appropriate because it works on single sequences and doesn't require a high-quality MSA. This illustrates that alignment-based methods fail for orphan proteins or those with sparse evolutionary sampling, where MSA-based approaches lack sufficient data. For BRCA1 with hundreds of homologs, EVE might perform better because the deep evolutionary sampling provides rich coevolution signals that EVE can exploit, though ESM-1v would still provide reliable predictions.
+:::
 :::
 
 ### AlphaMissense: Structure-Informed Pathogenicity Prediction {#sec-ch17-alphamissense}
@@ -432,11 +436,15 @@ Consider two variants with identical *AlphaMissense* scores of 0.65:
 1. Which variant likely has higher epistemic uncertainty? Why?
 2. For which variant might the intermediate score more likely reflect aleatoric uncertainty (genuine biological ambiguity)?
 3. How would you communicate the different confidence levels to a clinician?
+
+:::{.callout-note collapse="true" title="Check Your Answer"}
+Variant B has higher epistemic uncertainty because the model has limited training data for orphan genes with sparse evolutionary sampling. For Variant A in BRCA1, the intermediate score more likely reflects aleatoric uncertainty—genuine biological ambiguity about pathogenicity given extensive characterization data. Communication to clinicians should distinguish these: "For BRCA1, the intermediate score reflects uncertain biological effect; for the orphan gene, the score itself is uncertain due to limited data and should be interpreted cautiously."
+:::
 :::
 
 ### Uncertainty Estimation Methods {#sec-ch17-uncertainty-methods}
 
-**Ensemble methods** train multiple models on different data subsets or with different random initializations. Prediction variance across ensemble members estimates epistemic uncertainty. Large disagreement indicates that the prediction depends strongly on training specifics rather than robust learned patterns. Deep ensembles provide well-calibrated uncertainty estimates but multiply computational cost linearly with ensemble size.
+**Ensemble methods** train multiple models on different data subsets or with different random initializations. Like asking multiple doctors for second opinions on a diagnosis, if all the doctors independently reach the same conclusion, you can be more confident in the answer; if they disagree substantially, that disagreement itself is informative---the case is genuinely ambiguous. Similarly, prediction variance across ensemble members estimates epistemic uncertainty. Large disagreement indicates that the prediction depends strongly on training specifics rather than robust learned patterns. Deep ensembles provide well-calibrated uncertainty estimates but multiply computational cost linearly with ensemble size.
 
 Why does ensemble disagreement estimate uncertainty? The intuition is that if multiple models trained on slightly different data or with different random seeds all converge to similar predictions, the prediction is robust to training details and likely reflects genuine patterns in the data. Conversely, if predictions diverge substantially, each model has learned something idiosyncratic that does not generalize. For variant effect prediction, a variant where five ensemble members predict pathogenicity between 0.75 and 0.82 warrants more confidence than one where predictions range from 0.35 to 0.90. The ensemble is effectively asking: "Would I reach the same conclusion if I had seen slightly different training examples?" When the answer is no, that uncertainty should propagate to clinical interpretation.
 
@@ -635,6 +643,33 @@ Yet benchmark performance does not automatically translate to clinical utility. 
 Clinical deployment demands humility alongside enthusiasm. Foundation model VEP tools are aids to human interpretation, not autonomous classifiers. Their predictions inform rather than determine variant classification, complementing population frequency data, functional assay evidence, segregation analysis, and clinical judgment. Used appropriately, they accelerate diagnosis and reduce missed findings. Used as oracles, they create false confidence and may perpetuate existing inequities in genomic medicine. Clinical workflows (@sec-ch28-rare-disease, @sec-ch27-clinical-risk) integrate these predictions alongside uncertainty quantification (@sec-ch23-uncertainty) and interpretability methods that probe what foundation models have learned (@sec-ch24-interpretability). Variant effect prediction sits at the center of genomic medicine; foundation models have raised its ceiling while the work of achieving its potential continues.
 
 ::: {.callout-note title="Chapter Summary"}
+
+:::{.callout-tip title="Test Yourself"}
+Before reviewing the summary, test your recall:
+
+1. Explain the paradigm shift from classical feature-based VEP to foundation model-based VEP. How do foundation models perform zero-shot variant scoring without pathogenicity labels?
+
+2. Compare protein-based VEP approaches (ESM-1v, EVE, AlphaMissense) with DNA-based approaches (SpliceAI, Enformer, GPN-MSA). For each approach, identify what variant types it handles best and what biological information it leverages.
+
+3. What is model calibration and why does it matter for clinical variant interpretation? How do reliability diagrams help assess calibration quality?
+
+4. Describe three strategies for combining evidence across multiple foundation models. What is the double-counting problem and how can it be avoided when applying ACMG criteria?
+
+5. Identify three persistent challenges or limitations in foundation model-based VEP that require human judgment. For each, explain why current models struggle and what types of variants are most affected.
+
+:::{.callout-note collapse="true" title="Check Your Answers"}
+1. **Paradigm shift from classical to foundation model VEP**: Classical methods manually engineer features (conservation scores, amino acid properties, domain annotations) and train classifiers on labeled pathogenic/benign variants. Foundation models invert this: they learn representations from unlabeled sequences during pretraining (masked token prediction), discovering evolutionary constraints implicitly. Zero-shot scoring compares the likelihood of reference versus variant alleles given learned sequence context—variants that are evolutionarily unexpected (low likelihood) tend to be deleterious. This approach requires no pathogenicity labels because evolution has already conducted billions of experiments testing which variants are compatible with life.
+
+2. **Protein vs. DNA approaches comparison**: Protein approaches (*ESM-1v*, *EVE*, *AlphaMissense*) operate on amino acid sequences and excel at missense variants. *ESM-1v* uses zero-shot likelihood ratios from protein language models. *EVE* fits variational autoencoders to MSAs, capturing co-evolution. *AlphaMissense* combines sequence with AlphaFold2 structural features for state-of-the-art missense prediction. DNA approaches (*SpliceAI*, *Enformer*, *GPN-MSA*, *Evo 2*) work on nucleotide sequences and cover all variant types. *SpliceAI* specializes in splice variants using dilated convolutions. *Enformer* predicts regulatory impacts. *GPN-MSA* and *Evo 2* provide DNA language model scores genome-wide, including noncoding regions where protein models cannot operate.
+
+3. **Calibration importance and reliability diagrams**: Calibration ensures that predicted probabilities match observed frequencies—a score of 0.8 should mean 80% of variants with that score are truly pathogenic. Without calibration, scores are arbitrary and cannot guide clinical decisions. Reliability diagrams plot predicted probabilities (x-axis) against observed pathogenic proportions (y-axis). Perfect calibration falls on the diagonal. Points below indicate overconfidence (model predicts higher probabilities than reality); points above indicate underconfidence. Neural networks typically overpredict extreme probabilities and require post-hoc calibration (temperature scaling, isotonic regression) before clinical use.
+
+4. **Combining evidence strategies and double-counting**: Three strategies: (1) Modular routing—apply different models to different variant types (AlphaMissense for missense, SpliceAI for splice sites). (2) Score aggregation—combine predictions from multiple models using ensemble methods or Bayesian integration with careful weighting. (3) Tiered filtering—use fast models for initial screening, expensive models for prioritized variants. The double-counting problem arises when multiple predictors share information sources (e.g., *AlphaMissense* and *ESM-1v* both encode evolutionary constraint). Treating correlated predictions as independent evidence overweights shared signals. Solution: assess correlations, group predictors by information source, select one representative from each group for ACMG evidence, and document tool correlations in laboratory validation records.
+
+5. **Three persistent challenges**: (1) **Structural variants** (deletions, duplications, inversions)—current sequence models cannot represent architectural rearrangements; they are trained on SNVs and small indels. (2) **Combinatorial/compound effects**—models score variants independently, missing compound heterozygosity where two individually tolerable variants together cause disease, and haplotype effects where phasing determines pathogenicity. (3) **Population bias**—training data overrepresent European ancestry; models perform worse for African and Asian populations where variants are undersampled in ClinVar/gnomAD, creating systematic disparities in prediction accuracy for underrepresented groups. These limitations require human judgment to integrate additional evidence (segregation, functional assays, ancestry-appropriate interpretation).
+:::
+:::
+
 **Core concepts covered:**
 
 - **Paradigm shift:** Foundation models learn representations from unlabeled sequences, enabling variant scoring without pathogenicity labels. Evolution has already encoded functional constraints; models learn to detect when variants violate these patterns.

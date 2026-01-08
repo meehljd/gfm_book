@@ -151,6 +151,8 @@ Model calibration assessment. (A) Perfect calibration: predicted probabilities m
 
 *AlphaMissense* outputs a continuous score between 0 and 1 for each possible missense variant in the human proteome. When it reports 0.85 for a particular variant, what does this number mean? If the model is calibrated, collecting all variants scored near 0.85 and checking their true clinical status should reveal that approximately 85% are pathogenic. Perfect calibration means that predicted probabilities match observed frequencies across the entire range of model outputs: among variants scored at 0.30, roughly 30% should be pathogenic; among variants scored at 0.95, roughly 95% should be pathogenic. This alignment between stated confidence and empirical accuracy is calibration, and most foundation models fail to achieve it.
 
+Think of calibration like weather forecasts. When your weather app says "70% chance of rain," you expect that across many days with 70% forecasts, it actually rains about 70% of the time. If it only rains 40% of those days, the app is overconfident and you cannot trust its numbers to plan your week. Similarly, a pathogenicity predictor claiming 85% confidence should be right 85% of the time at that confidence level—otherwise, clinicians cannot rationally weigh its predictions against other evidence.
+
 Formally, a model $f$ mapping inputs $X$ to probability estimates $p = f(X)$ is calibrated if $P(Y = 1 \mid f(X) = p) = p$ for all $p$ in the interval from $0$ to $1$. The calibration condition requires that the model's stated confidence equals the true probability of the positive class conditional on that stated confidence. Miscalibration occurs when this equality fails: overconfident models produce predicted probabilities that exceed true frequencies (a variant scored at $0.85$ is pathogenic only $60\%$ of the time), while underconfident models produce predicted probabilities below true frequencies.
 
 Modern deep neural networks are systematically miscalibrated despite achieving high accuracy. Guo and colleagues demonstrated that contemporary architectures exhibit worse calibration than older, less accurate models [@guo_calibration_2017]. The phenomenon arises because standard training objectives like cross-entropy loss optimize for discrimination (separating positive from negative examples) rather than calibration (matching predicted probabilities to frequencies). Over-parameterized models with capacity exceeding what the data requires can achieve near-perfect training loss while producing overconfident predictions on held-out data. The softmax temperature in transformer architectures affects the sharpness of probability distributions, and default settings often produce excessively peaked outputs.
@@ -161,6 +163,10 @@ Calibration and discrimination are distinct properties. A model can achieve perf
 ## Knowledge Check
 
 A variant effect predictor achieves auROC of 0.95 on a held-out test set. A colleague concludes that "the model's probability estimates are reliable." What is wrong with this reasoning? What additional assessment would you recommend?
+
+:::{.callout-note collapse="true" title="Check Your Answer"}
+auROC measures discrimination (how well the model ranks pathogenic variants above benign ones) but says nothing about calibration (whether predicted probabilities match observed frequencies). A model can achieve perfect auROC while being arbitrarily miscalibrated—for example, by assigning 0.99 to all pathogenic variants and 0.98 to all benign variants. You should assess calibration using reliability diagrams and ECE, stratified by relevant subgroups like ancestry and variant type.
+:::
 :::
 
 ### Measuring Calibration {#sec-ch23-measuring-calibration}
@@ -407,7 +413,9 @@ The following table summarizes uncertainty quantification methods and their trad
 
 Most uncertainty quantification methods make assumptions about model behavior or data distributions that may not hold in practice. Temperature scaling assumes miscalibration follows a particular functional form. Ensembles assume that disagreement reflects epistemic uncertainty rather than artifacts of training. Bayesian methods assume specific priors over model parameters. When these assumptions fail, uncertainty estimates may be unreliable precisely when reliability matters most.
 
-**Conformal prediction** offers something stronger: finite-sample coverage guarantees that hold under minimal assumptions. Instead of outputting a point prediction, conformal methods produce a prediction set guaranteed to contain the true label with probability at least $1 - \alpha$, where $\alpha$ is a user-specified error rate. If we request $90\%$ coverage ($\alpha = 0.10$), the prediction set will contain the true label at least $90\%$ of the time, regardless of the model's accuracy or calibration. This guarantee requires only that calibration and test examples are exchangeable (a condition weaker than independent and identically distributed), making conformal prediction robust to model misspecification.
+Consider how a cautious doctor might communicate diagnostic uncertainty. Rather than saying "I am 73% confident this is condition A," they might say "Based on your symptoms and test results, I can confidently rule out conditions C, D, and E, but I cannot yet distinguish between A and B—we need more information." This approach sidesteps the difficulty of assigning precise probabilities by instead specifying which possibilities remain plausible. The size of this "plausible set" communicates uncertainty: a single remaining possibility indicates high confidence, while many remaining possibilities indicate low confidence.
+
+**Conformal prediction** formalizes this intuition and offers something stronger: finite-sample coverage guarantees that hold under minimal assumptions. Instead of outputting a point prediction, conformal methods produce a prediction set guaranteed to contain the true label with probability at least $1 - \alpha$, where $\alpha$ is a user-specified error rate. If we request $90\%$ coverage ($\alpha = 0.10$), the prediction set will contain the true label at least $90\%$ of the time, regardless of the model's accuracy or calibration. This guarantee requires only that calibration and test examples are exchangeable (a condition weaker than independent and identically distributed), making conformal prediction robust to model misspecification.
 
 :::{.callout-important}
 ## Key Insight: Prediction Sets Convey Uncertainty Without Probabilities
@@ -486,6 +494,10 @@ The confidence problem compounds OOD challenges. Neural networks often produce h
 ## Knowledge Check
 
 A protein language model is deployed to score variants in a newly discovered gene with no homologs in UniRef. The model returns high-confidence pathogenicity predictions. What concerns should you have? What additional information would help you assess whether to trust these predictions?
+
+:::{.callout-note collapse="true" title="Check Your Answer"}
+This gene is out-of-distribution relative to the model's training data—high epistemic uncertainty is expected. The confident predictions are a red flag: the model may be extrapolating unreliably beyond its training experience. You should check embedding distance to training examples, ensemble disagreement if available, and whether the model's confidence is calibrated for truly novel protein families. Experimental validation through functional assays would be essential before acting on these predictions.
+:::
 :::
 
 ### Likelihood-Based Detection and Its Failures {#sec-ch23-likelihood-ood}
@@ -637,7 +649,17 @@ The path from uncertainty quantification to clinical impact requires integrating
 
 Yet uncertainty quantification alone is insufficient. A perfectly calibrated black box remains a black box. The clinician who receives an uncertain prediction wants to understand why the model is uncertain: Is it because the variant falls in a poorly characterized gene? Because the model has never encountered this protein fold? Because the underlying biology is genuinely ambiguous? Interpretability, examined in @sec-ch24-interpretability, complements uncertainty by revealing the basis for predictions and their associated confidence. Attribution methods (@sec-ch24-attribution) identify which input features drive predictions; probing classifiers (@sec-ch24-probing) reveal what information representations encode. The conjunction of calibrated uncertainty and mechanistic understanding approaches what trustworthy clinical AI requires. Neither alone suffices; together they provide the foundation for models that clinicians can reason with rather than merely defer to.
 
-:::{.callout-note}
+:::{.callout-tip title="Test Yourself"}
+Before reviewing the summary, test your recall:
+
+1. What is the difference between epistemic and aleatoric uncertainty, and why does this distinction matter for clinical decision-making?
+2. What is model calibration, and why can a highly accurate model still be dangerously miscalibrated?
+3. Explain how temperature scaling improves calibration. What does it preserve and what does it change?
+4. How do deep ensembles quantify epistemic uncertainty, and what makes them the "gold standard" among uncertainty quantification methods?
+5. What coverage guarantee does conformal prediction provide, and why does marginal coverage differ from conditional coverage?
+:::
+
+::: {.callout-note}
 ## Chapter Summary
 
 **Key Concepts:**

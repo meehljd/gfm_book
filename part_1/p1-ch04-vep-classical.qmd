@@ -18,6 +18,10 @@
 **Key insight:** Every classical predictor measures a proxy for clinical pathogenicity, not pathogenicity itself. Conservation scores measure evolutionary fitness, not disease relevance. Protein predictors measure structural disruption, not clinical consequence. Understanding these gaps is essential for appropriate interpretation.
 :::
 
+::: {.callout-important title="Why This Matters to You"}
+Whether you're interpreting variants for clinical diagnosis, training foundation models for VEP, or evaluating new prediction tools, you will encounter classical predictors constantly—*SIFT*, *PolyPhen-2*, and *CADD* appear in nearly every clinical variant report. Understanding what these tools actually measure (and what they miss) protects you from over-trusting their outputs and helps you recognize when foundation models genuinely improve over classical baselines versus when they merely inherit the same biases. After this chapter, you'll be able to critically evaluate any variant predictor by asking: *What proxy does it measure, and where does that proxy fail?*
+:::
+
 **Conservation scores** measure evolutionary constraint, not disease relevance. Protein-level predictors estimate structural disruption, not clinical pathogenicity. Splice site algorithms identify sequence motifs, not functional consequences. Every classical variant effect predictor measures something *correlated* with what clinicians actually need to know, not the thing itself: will this variant cause disease in this patient?
 
 The gap between measurable signal and clinical question is irreducible. Evolutionary conservation reflects reproductive fitness, not human health; protein structure does not determine disease penetrance; and splice motifs do not guarantee splicing outcomes. Classical methods achieve what they achieve by combining multiple imperfect proxies, hoping that their convergence approximates clinical truth.
@@ -85,6 +89,8 @@ Evolutionary conservation as a proxy for functional importance. (A) Multiple seq
 
 ### Evolutionary Constraint Metrics {#sec-ch04-constraint-metrics}
 
+A clinical report arrives stating that a variant has "phyloP = 3.2" and "GERP = 4.5"---but what do these numbers actually mean? Without understanding the quantitative framework behind conservation scores, these values are opaque. The challenge is translating the qualitative intuition that "conservation implies function" into precise numerical values that can be compared across variants and combined with other evidence.
+
 The logic of conservation is straightforward: if a position matters for survival or reproduction, mutations there will be removed by selection before they can spread through the population. Quantifying this signal requires comparing sequences across species to identify positions where substitutions occur less frequently than expected under neutral evolution. Conservation scores translate this evolutionary signal into numerical values that can inform variant interpretation.
 
 PhyloP scores quantify the deviation of observed substitution rates from neutral expectation at individual positions [@siepel_phastcons_2005]. The score is computed by comparing the observed pattern of bases at each alignment column against a neutral evolutionary model (typically fit to ancestral repeat sequences that are assumed to evolve without selective constraint). The choice of ancestral repeats for calibrating the neutral model is deliberate: these sequences arose from transposon insertions that have lost their original function and now accumulate mutations at rates reflecting only mutation pressure, without selective filtering. This provides a baseline against which constraint at functional positions can be measured. Positive phyloP scores indicate conservation, meaning evolution is slower than expected under neutrality. Negative scores indicate acceleration, suggesting faster evolution that may reflect positive selection. A phyloP score of 2 indicates that the observed base is approximately 100-fold more conserved than expected under neutrality, providing strong evidence that mutations at this position have been systematically removed by selection.
@@ -116,10 +122,16 @@ The clinician wants to know: will this variant cause disease in my patient? Cons
 
 ::: {.callout-tip title="Knowledge Check"}
 A patient has a variant at a position with phyloP = 0.5 (weak conservation) in *BRCA1*, a well-established breast cancer gene. Another patient has a variant with phyloP = 4.0 (strong conservation) in a gene with no known disease associations. Which variant is more likely to be clinically actionable? What additional information would you need?
+
+::: {.callout-note collapse="true" title="Check Your Answer"}
+The *BRCA1* variant is more likely to be clinically actionable despite weak conservation, because gene-disease association trumps position-level constraint when making clinical decisions. Additional information needed includes: variant type (missense vs. nonsense), population frequency, other computational predictions, family history, and whether the variant has been reported in clinical databases like ClinVar.
+:::
 :::
 
 
 ### Clinical Application and Boundaries {#sec-ch04-conservation-boundaries}
+
+When should a clinical laboratory trust a conservation score, and when should they treat it with skepticism? The answer depends on understanding both where conservation signals excel and where they systematically fail. A deep intronic variant with no regulatory annotations but strong conservation demands attention; a variant in an immune gene with weak conservation may still be pathogenic. Knowing when to rely on evolutionary evidence---and when to look elsewhere---separates effective variant interpretation from mechanical score-chasing.
 
 Conservation scores prove particularly valuable for non-coding variant interpretation, where direct functional annotations are often incomplete or absent. A deeply conserved intronic position likely participates in splicing regulation, gene expression control, or other functional processes even if no explicit annotation overlaps it. Under ACMG-AMP guidelines for variant classification, strong conservation provides computational evidence (the PP3 criterion) supporting pathogenicity [@richards_standards_2015]. A variant falling at a position with phyloP greater than 2 and GERP greater than 4 carries significantly more weight than one at an unconserved position, even when no other annotation is available. These scores remain central to clinical variant interpretation workflows, as examined in @sec-ch27-clinical-risk, where they contribute evidence alongside population frequency, functional studies, and segregation data.
 
@@ -134,14 +146,12 @@ These boundaries do not diminish the value of conservation; they define where th
 ::: {#box-acmg-amp .callout-note}
 ### ACMG-AMP Variant Classification Framework
 
-The American College of Medical Genetics and Genomics and the Association for Molecular Pathology jointly established a standardized framework for clinical variant interpretation [@richards_standards_2015]. Variants are classified into five tiers: Pathogenic, Likely Pathogenic, **Variant of Uncertain Significance (VUS)**, Likely Benign, and Benign. Classification combines multiple evidence types, each assigned a strength level. Pathogenic evidence ranges from very strong (PVS) through strong (PS), moderate (PM), to supporting (PP). Benign evidence follows a parallel hierarchy: stand-alone (BA), strong (BS), and supporting (BP).
-
-Computational predictions occupy the supporting tier: PP3 when algorithms predict a damaging effect, BP4 when they predict benign impact. This placement reflects appropriate caution. Computational evidence can contribute to classification but cannot establish pathogenicity or benign status independently. Multiple computational tools showing concordant predictions may strengthen the evidence, but the framework explicitly limits their weight. Variants classified primarily on computational grounds warrant flagging for reclassification as functional or clinical evidence emerges.
+The ACMG-AMP framework classifies variants into five clinical tiers: Pathogenic, Likely Pathogenic, **Variant of Uncertain Significance (VUS)**, Likely Benign, and Benign [@richards_standards_2015]. Classification combines multiple evidence types at different strength levels (very strong through supporting). Computational predictions occupy the supporting tier through criteria PP3 (predicted damaging) and BP4 (predicted benign), meaning they can contribute to but not independently establish pathogenicity. The full evidence framework, including thresholds for upgrading computational evidence strength, is detailed in @sec-ch17-acmg-mapping.
 
 ::: {#fig-acmg-classification}
 ![ACMG-AMP five-tier classification framework](../figs/part_1/ch04/03-fig-acmg-classification.svg)
 
-The ACMG-AMP framework for clinical variant classification. Variants are classified into five tiers based on combined evidence: Pathogenic (red), Likely Pathogenic (orange), Variant of Uncertain Significance (gray), Likely Benign (light green), and Benign (green). Pathogenic evidence is categorized by strength: very strong (PVS), strong (PS), moderate (PM), and supporting (PP). Benign evidence follows a parallel structure: stand-alone (BA), strong (BS), and supporting (BP). Computational predictions occupy the supporting tier (PP3 for predicted damaging, BP4 for predicted benign), reflecting appropriate caution about their evidentiary weight. Definitive classification requires combining multiple independent lines of evidence according to specified rules.
+The ACMG-AMP framework for clinical variant classification. Variants are classified into five tiers based on combined evidence. Computational predictions (PP3/BP4) provide supporting-level evidence, reflecting appropriate caution about their evidentiary weight.
 :::
 
 :::
@@ -192,6 +202,8 @@ The method uses a **naive Bayes classifier** trained to distinguish disease-caus
 
 
 ### From Sequence to Function {#sec-ch04-sequence-to-function}
+
+A clinical report states that a variant is "probably damaging" according to PolyPhen-2 and "deleterious" according to SIFT. The patient's physician asks: "So this variant causes disease?" The answer is more complicated than the scores suggest. A "probably damaging" designation means the substitution likely impairs the protein's normal function---but whether that impairment causes the patient's disease depends on factors these tools cannot assess.
 
 *PolyPhen-2*, *SIFT*, and similar tools answer a mechanistic question: does this amino acid substitution disrupt protein function? They assess whether the new residue fits the structural context, whether the position tolerates variation across species, and whether the physicochemical change is drastic. These are genuine molecular insights. A "probably damaging" designation from *PolyPhen-2* means the substitution likely impairs the protein's normal function, but the clinical significance of that impairment requires reasoning that protein-level predictors cannot provide.
 
@@ -406,10 +418,16 @@ Diagnostic laboratories evaluating potential Mendelian disease variants face asy
 
 ::: {.callout-tip title="Knowledge Check"}
 A clinical laboratory is evaluating tools for a rare disease diagnostic pipeline. They need high specificity (few false positives) because false pathogenic calls lead to unnecessary interventions. Which of *CADD*, *REVEL*, or *M-CAP* would you recommend for their primary filter, and why?
+
+::: {.callout-note collapse="true" title="Check Your Answer"}
+*M-CAP* is the best choice for this use case because it was explicitly designed to minimize false positives (high specificity) at the cost of some sensitivity. *REVEL* offers high accuracy for missense variants but balances sensitivity and specificity equally, while *CADD* provides genome-wide coverage but may have more false positives within specific variant classes.
+:::
 :::
 
 
 ### Comparison and Selection {#sec-ch04-ensemble-comparison}
+
+A clinical laboratory must choose which computational predictors to incorporate into their diagnostic pipeline. Should they use CADD for its universal coverage, REVEL for its missense accuracy, or M-CAP for its low false-positive rate? The wrong choice can mean missing pathogenic variants or overwhelming clinical reviewers with false alarms. Understanding what each method optimizes for---and what it trades away---is essential for matching tools to clinical context.
 
 No single ensemble method dominates across all variant types and clinical contexts. *CADD* provides the broadest coverage (genome-wide, all variant types) but may sacrifice accuracy within specific variant classes to achieve this generality. *REVEL* often outperforms *CADD* on missense-only benchmarks, reflecting its focused training objective. *M-CAP* prioritizes specificity over sensitivity, appropriate for clinical settings where avoiding false positives is paramount.
 
@@ -508,6 +526,29 @@ Yet learned representations do not automatically overcome the limitations that c
 Classical methods remain valuable: as baselines that establish the performance floor modern methods must exceed, as interpretable components when understanding matters as much as prediction, and as reminders of what the field has learned about which signals carry predictive information. Foundation models have advanced variant effect prediction (@sec-ch17-vep-fm), but honest evaluation requires understanding what classical methods achieved and where all approaches, classical and modern alike, continue to struggle. The evaluation methodology required to fairly assess both classical and learned approaches is detailed in @sec-ch11-eval, with genomics-specific metric considerations in @sec-ch11-metrics-genomic-tasks.
 
 ::: {.callout-note title="Chapter Summary"}
+
+:::{.callout-tip title="Test Yourself"}
+Before reviewing the summary, test your recall:
+
+1. What do conservation scores like phyloP and GERP actually measure, and why is this different from clinical pathogenicity?
+2. How do SIFT and PolyPhen-2 assess missense variant severity, and what are the key differences in their approaches?
+3. Why did CADD use evolutionary proxy labels (observed vs. simulated variants) rather than clinical pathogenicity labels for training?
+4. What is the circularity problem between variant effect predictors and clinical databases like ClinVar?
+5. Why do classical variant effect predictors struggle with rare variants and novel mechanisms?
+
+:::{.callout-note collapse="true" title="Check Your Answers"}
+1. **Conservation scores measure evolutionary constraint, not disease relevance**: phyloP quantifies deviation from neutral evolution rates, while GERP estimates rejected substitutions across evolutionary time. These scores measure whether positions have been important for reproductive fitness across species, which differs from clinical pathogenicity because evolution cannot detect late-onset diseases, tissue-specific effects, or recently evolved human-specific functions.
+
+2. **SIFT uses sequence homology alone, while PolyPhen-2 integrates structure**: SIFT examines which amino acids appear at each position across homologous sequences and predicts that substitutions introducing amino acids not observed evolutionarily are deleterious. PolyPhen-2 extends this by incorporating protein structure features (solvent accessibility, secondary structure, proximity to functional sites) and physicochemical properties (Grantham distance, BLOSUM matrices) to assess whether substitutions are conservative or radical in their structural context.
+
+3. **Evolutionary proxy labels provided millions of training examples from unlabeled data**: Clinical pathogenicity labels were scarce (thousands of variants) and biased toward well-studied genes, while evolutionary proxy labels (observed human-derived alleles versus simulated variants) provided millions of training examples. The proxy-neutral class consists of variants that survived purifying selection, while the proxy-deleterious class represents mutations that could occur but are generally not observed at high frequency, allowing CADD to learn at scale despite measuring evolutionary tolerance rather than clinical pathogenicity directly.
+
+4. **Circularity creates a self-reinforcing loop that inflates performance**: Clinical laboratories use computational scores like CADD as evidence when classifying variants in ClinVar, then benchmarking studies evaluate those same predictors on ClinVar variants. This means predictors are tested on labels they helped create, artificially inflating their apparent performance because they influenced the ground truth labels used for evaluation.
+
+5. **Rare variants and novel mechanisms lack training examples**: Classical predictors learn from patterns observed in training data, so variants with mechanisms not represented in curated databases (gain-of-function mutations, human-specific regulatory elements, recently evolved functions) have no labeled examples to learn from. Ascertainment bias means training sets over-represent variants in well-studied genes with severe Mendelian phenotypes, while diagnostically challenging cases in rare genes or with unusual mechanisms are systematically underrepresented.
+:::
+:::
+
 **Core concepts covered:**
 
 - **Conservation scores** (phyloP, GERP, phastCons) quantify evolutionary constraint by comparing observed substitution rates to neutral expectations

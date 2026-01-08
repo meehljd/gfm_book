@@ -154,6 +154,28 @@ The analogy between gene expression and language has proven remarkably productiv
 
 : Comparison of major single-cell foundation models. All use transformer-based architectures with variations in preprocessing and training objectives. {#tbl-sc-models}
 
+::: {.callout-tip title="Knowledge Check: Which Single-Cell FM?"}
+For each scenario, which single-cell foundation model would be most appropriate?
+
+1. You need to annotate cell types in a zebrafish developmental atlas, but your training data is entirely from human and mouse.
+
+2. A drug discovery team wants to predict how knocking out gene X will change expression of genes Y and Z in hepatocytes.
+
+3. A clinical study has 500 labeled cells from a rare immune disorder and needs to classify 50,000 unlabeled patient cells.
+
+4. You're investigating whether a regulatory network identified in mouse immune cells is conserved in human.
+
+:::{.callout-note collapse="true" title="Check Your Answers"}
+1. **TranscriptFormer** - Its cross-species pretraining (spanning 1.5 billion years of evolution) enables zero-shot annotation across species without requiring labeled training data from the target species.
+
+2. **scGPT** - Its multi-objective training includes perturbation prediction capabilities. scGPT was specifically designed for perturbation response prediction, learning to predict expression changes after genetic perturbations.
+
+3. **Geneformer** - Excels at few-shot cell annotation, leveraging pretrained regulatory knowledge to classify with limited labeled examples. Its network-aware representations transfer well to rare cell types.
+
+4. **TranscriptFormer** - Cross-species training specifically enables comparison of regulatory programs across evolutionary distances. Conserved attention patterns indicate conserved regulatory relationships.
+:::
+:::
+
 Why do these innovations matter biologically? *Geneformer's* rank-based encoding discards absolute counts (which vary with technical artifacts) while preserving the relative expression patterns that define cell state. *scGPT's* multi-objective training forces the model to simultaneously predict masked genes (learning co-expression), predict expression from sequence (learning regulatory logic), and align cells across batches (learning biological identity distinct from technical variation). *TranscriptFormer's* cross-species training exploits 1.5 billion years of evolutionary divergence: regulatory programs conserved across such distances must be fundamental, while species-specific patterns reveal how cell types diversify. Each innovation addresses a specific challenge of single-cell data: technical noise, batch effects, or the need to generalize beyond training cell types.
 
 ### *Geneformer*: Learning Network Biology {#sec-ch19-geneformer}
@@ -182,6 +204,20 @@ The "sentence" for this cell becomes: [MYC, TP53, GAPDH, BRCA1, ...] ordered by 
 Pretraining uses a masked gene prediction objective analogous to BERT-style language modeling (see @sec-ch08-pretraining). A fraction of genes are masked in each cell, and the model learns to predict which genes were masked based on the remaining expression context. This forces the model to learn co-expression patterns: which genes tend to appear together at high ranks in the same cells, and which genes predict each other's presence. The objective implicitly captures regulatory modules, signaling pathways, and cell-type-specific programs.
 
 After pretraining, *Geneformer* supports diverse downstream applications through **fine-tuning** or feature extraction. Cell type annotation achieves high accuracy even with limited labeled examples, leveraging general biological knowledge acquired during pretraining. The model identified candidate therapeutic targets for cardiomyopathy by analyzing how disease-associated genes fit within learned network structure, demonstrating potential for accelerating discovery in rare diseases where large disease-specific datasets are unavailable [@theodoris_geneformer_2023].
+
+::: {.callout-note title="Stop and Think"}
+Before continuing, pause to consolidate your understanding of Geneformer's design:
+
+1. Why does rank-based encoding make models more robust to technical variation than raw counts?
+2. How does masked gene prediction capture regulatory relationships?
+3. What biological knowledge emerges in attention weights without explicit supervision?
+
+:::{.callout-note collapse="true" title="Check Your Answer"}
+1. Rank-based encoding captures relative expression (which genes are unusually high/low compared to baseline) rather than absolute counts that vary with sequencing depth, capture efficiency, and other technical factors. This preserves biological signal while discarding technical noise.
+2. Masked gene prediction forces the model to learn co-expression patterns: which genes predict each other's presence. If masking gene A makes gene B harder to predict, the model learns they co-occur in regulatory modules or pathways.
+3. Attention weights capture which genes attend to which others during prediction. These relationships often correspond to regulatory interactions (transcription factors attending to their targets) without being explicitly trained on network structure—the regulatory relationships emerge from expression patterns alone.
+:::
+:::
 
 ::: {#fig-geneformer-architecture layout-ncol=2}
 ![Rank-based encoding highlights unusually active genes](../figs/part_4/ch19/03-A-fig-geneformer-architecture.svg)
@@ -320,6 +356,20 @@ Beyond serving as an integrative readout, methylation encodes rich information a
 
 After pretraining, *CpGPT* supports several capabilities with minimal additional supervision. The model can impute methylation levels at CpG sites not directly measured on a given array platform, effectively enabling conversion between different array technologies such as EPIC and 450K. For biological age prediction, fine-tuned *CpGPT* models match or exceed purpose-built epigenetic clocks while using a more general architecture. The learned embeddings cluster by tissue type without explicit supervision during pretraining, suggesting that the model captures biologically meaningful variation. For disease-associated methylation patterns, *CpGPT* can be adapted to distinguish cases from controls across multiple disease contexts through transfer learning.
 
+::: {.callout-note title="Stop and Think"}
+Before moving to chromatin accessibility, verify your understanding of DNA methylation's role:
+
+1. What makes methylation an "integrative readout" that combines genetic, developmental, and environmental influences?
+2. Why does methylation sit "upstream" of gene expression in the regulatory hierarchy?
+3. How does *CpGPT's* architecture differ from cellular language models like *Geneformer*?
+
+:::{.callout-note collapse="true" title="Check Your Answer"}
+1. Methylation integrates: (a) genetic influences—sequence context affects which CpG sites can be methylated; (b) developmental programs—methylation landscapes are remodeled during differentiation and establish cell-type identity; (c) environmental exposures—diet, smoking, and stress leave lasting methylation signatures that persist after exposure ends.
+2. Methylation determines regulatory potential before transcription occurs by blocking transcription factor binding at silenced genes and marking accessible regulatory regions. Expression can only occur at genes where methylation patterns permit it.
+3. While both use transformer architectures with masked prediction, *CpGPT* tokenizes CpG sites with continuous methylation values (beta values 0-1) and genomic positions, whereas *Geneformer* tokenizes cells as rank-ordered gene sequences. *CpGPT* learns local correlations between neighboring CpG sites and global tissue-specific patterns; *Geneformer* learns gene co-expression and regulatory modules.
+:::
+:::
+
 ### Chromatin Accessibility Models {#sec-ch19-accessibility}
 
 Chromatin accessibility, measured by **assay for transposase-accessible chromatin sequencing** (ATAC-seq) and related assays, provides a complementary view of regulatory state. Accessible chromatin regions mark active regulatory elements: promoters, enhancers, and insulators where transcription factors can bind. The accessibility landscape varies across cell types and conditions, reflecting the regulatory programs that define cellular identity.
@@ -339,6 +389,16 @@ Before proceeding to cross-modality integration, ensure you can answer:
 2. Why does chromatin accessibility sit "upstream" of gene expression?
 3. How does *CpGPT's* tokenization strategy differ from *Geneformer's*?
 4. What makes scATAC-seq integration across datasets particularly challenging?
+
+:::{.callout-note collapse="true" title="Check Your Answer"}
+1. **Methylation encodes regulatory memory.** DNA methylation captures developmental history, environmental exposure signatures, and epigenetic age—stable regulatory states that persist independently of current expression levels. This matters because expression reflects what a cell is doing *now*, while methylation reveals where it came from developmentally and what regulatory programs are permanently silenced or primed for activation.
+
+2. **Accessibility precedes expression causally.** Chromatin accessibility determines which regulatory elements are available for transcription factor binding, establishing regulatory potential before any transcription occurs. A gene cannot be expressed if its promoter is inaccessible, making accessibility a prerequisite rather than a consequence of expression.
+
+3. **Different biological units require different tokenization.** *CpGPT* tokenizes CpG sites with their methylation values and genomic positions because methylation is measured at specific genomic loci. *Geneformer* tokenizes cells as rank-ordered sequences of genes because it treats each cell as a "document" where genes are "words." The tokenization strategy must match the biological unit being modeled.
+
+4. **Peaks lack a universal coordinate system.** scATAC-seq peak sets vary across datasets depending on peak calling procedures, creating mismatched feature spaces. Gene A in one RNA-seq dataset is the same as Gene A in another, but Peak #12345 from one ATAC dataset may have no correspondence to peaks in another dataset—forcing integration methods to learn mappings between arbitrary feature spaces rather than simply aligning common features.
+:::
 :::
 
 ## Cross-Modality Integration {#sec-ch19-integration}
@@ -465,6 +525,25 @@ Single-cell and epigenomic foundation models learn what states cells occupy, com
 The representations learned by cellular foundation models enable integration across scales and modalities. Cell embeddings serve as node features in graph-based reasoning systems (@sec-ch21-networks), connecting expression profiles to protein interaction networks and regulatory pathways. Three-dimensional genome organization (@sec-ch20-3d-genome) provides spatial context that constrains which regulatory relationships can operate. Multi-omics integration (@sec-ch22-multi-omics) extends beyond expression to proteomics, epigenomics, and clinical measurements. In each case, foundation model embeddings provide the representational substrate that downstream methods refine.
 
 The ultimate goal extends beyond prediction to explanation: models that identify the regulatory mechanisms underlying cellular state, the variants that perturb those mechanisms, and the interventions that might restore normal function. Current foundation models capture patterns in cellular data with high fidelity, enabling accurate cell type classification, perturbation response prediction, and cross-dataset integration. Whether those patterns reflect the causal structure of biological regulation, or merely correlations useful for prediction, remains open. Resolving this question requires continued integration of computational modeling with experimental validation, connecting the patterns that models learn to the mechanisms that biology employs.
+
+::: {.callout-tip title="Test Yourself"}
+Before reviewing the summary, test your recall:
+
+1. What is the key advantage of rank-based encoding (as used in Geneformer) compared to count-based encoding for single-cell foundation models?
+2. Explain why batch effects are particularly problematic for single-cell models and how they can exceed biological variation in magnitude.
+3. What is the fundamental limitation that prevents perturbation prediction models from establishing causation, even when they achieve high prediction accuracy?
+4. How does cross-modality integration (like GLUE) use biological prior knowledge to align cells profiled with different assays?
+
+:::{.callout-note collapse="true" title="Check Your Answers"}
+1. **Rank-based encoding**: Rank-based encoding emphasizes relative expression (which genes are unusually high or low compared to their typical baseline) rather than absolute counts that vary with technical factors like sequencing depth, capture efficiency, and amplification bias. This preserves biological signal (what is distinctive about this cell's state) while discarding technical noise that would confound count-based representations.
+
+2. **Batch effects**: Batch effects arise when technical variation between experiments (different processing dates, operators, reagent lots, sequencing platforms) exceeds biological variation within them. Without correction, cells cluster by when they were processed rather than what cell type they are—a T cell from batch 1 may appear more similar to a B cell from batch 1 than to a T cell from batch 2. This means models can learn to distinguish batches instead of biology, leading to poor generalization across studies.
+
+3. **Causation limitation**: From observational co-expression data alone, the statistical signature of "A causes B" is indistinguishable from "B causes A" or "C causes both A and B." No amount of observational data can determine directionality or distinguish direct causation from confounding. Even with Perturb-seq data, coverage is limited (thousands of perturbations across ~20,000 genes), leaving most regulatory relationships unobserved and requiring models to generalize beyond what they have seen experimentally validated.
+
+4. **Cross-modality integration**: GLUE uses a feature graph encoding biological prior knowledge (gene-peak relationships based on genomic proximity, transcription factor binding, chromatin conformation) to link features across modalities. This graph serves as a regulatory backbone that constrains alignment—modality-specific encoders must produce cell embeddings consistent with known regulatory relationships, preventing biologically implausible alignments based on technical artifacts while allowing discovery of new patterns within biologically plausible space.
+:::
+:::
 
 ::: {.callout-note}
 ## Chapter Summary

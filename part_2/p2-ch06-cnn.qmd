@@ -115,6 +115,10 @@ The receptive field of a convolutional network defines how much input sequence c
 
 ::: {.callout-tip title="Knowledge Check"}
 Before continuing, make sure you can answer: (1) What is a convolutional filter learning to detect? (2) Why does pooling create position invariance? (3) What determines how far a CNN can "see" in the input sequence?
+
+:::{.callout-note collapse="true" title="Check Your Answer"}
+(1) A convolutional filter learns to detect a specific sequence pattern or motif, responding strongly when that pattern appears in its receptive field. (2) Pooling creates position invariance by taking the maximum (or average) activation within a region, so the filter responds similarly whether the motif appears at position 10 or position 15 within that region. (3) The receptive field size determines how far a CNN can see, which is determined by the combination of filter width, number of layers, pooling operations, and dilation rates across the network.
+:::
 :::
 
 ## *DeepSEA*: Regulatory Prediction from Sequence {#sec-ch06-deepsea}
@@ -386,6 +390,10 @@ The receptive field ceiling of convolutional architectures. Context windows of r
 
 ::: {.callout-tip title="Knowledge Check"}
 Before proceeding, ensure you can explain: (1) Why can't a CNN learn dependencies that exceed its receptive field, even with more training data? (2) What biological phenomena require context longer than typical CNN receptive fields? (3) What architectural approaches extend receptive fields in CNNs?
+
+:::{.callout-note collapse="true" title="Check Your Answer"}
+(1) A CNN cannot learn dependencies beyond its receptive field because positions outside this window have zero gradient with respect to the output—information simply cannot flow between them, regardless of training data quantity. (2) Distal enhancer-promoter interactions (tens of kilobases), long-range chromatin loops, TAD boundary effects, and coordinated regulation across large genomic domains all require longer context than typical CNN receptive fields of 200-1000 bp. (3) Receptive fields can be extended through dilated convolutions, deeper networks with more layers, or hybrid architectures that combine CNNs with attention mechanisms.
+:::
 :::
 
 ## Sequential Approaches and Their Costs {#sec-ch06-sequential}
@@ -415,6 +423,28 @@ These gated architectures extended effective memory from tens to hundreds of pos
 
 : Comparison of sequence modeling architectures for learning long-range dependencies. Theoretical range assumes perfect gradient flow; practical range reflects empirical observations. {#tbl-rnn-comparison}
 
+::: {.callout-tip title="Knowledge Check: Which Architecture for This Task?"}
+For each genomic modeling scenario, which architecture would you choose and why?
+
+1. Predicting transcription factor binding sites within a 1 kb promoter region, where binding depends on local sequence motifs (6-12 bp).
+
+2. Predicting whether a variant 50 kb upstream of a gene disrupts an enhancer-promoter interaction and affects expression.
+
+3. Predicting whether a synonymous coding variant creates a cryptic splice site, requiring integration of branch point, donor, and acceptor signals across several hundred bases.
+
+4. Building a general-purpose sequence encoder for multiple downstream tasks including both local motif detection and long-range chromatin contact prediction.
+
+:::{.callout-note collapse="true" title="Check Your Answers"}
+1. **CNN (DeepSEA/Basset-style)**—Local motif detection within 1 kb is well within CNN receptive fields; convolutional filters directly learn position weight matrix-like patterns without needing long-range context. CNNs are also more computationally efficient for this task.
+
+2. **Attention-based (Enformer/transformer)**—The 50 kb distance between the variant and gene far exceeds CNN receptive fields; only attention mechanisms can compute direct dependencies across such distances. This task requires the long-range integration that transformers provide.
+
+3. **Dilated CNN (SpliceAI-style)**—Splice prediction requires ~10 kb context (branch point, donor, acceptor), which dilated convolutions reach efficiently. SpliceAI achieves clinical-grade performance; attention adds computational cost without clear benefit for this specific, well-defined task.
+
+4. **Hybrid (Enformer-style: CNN + attention)**—Local motif detection benefits from CNN inductive biases, while long-range tasks require attention. Hybrid architectures use convolutional layers for initial motif extraction, then attention layers to integrate across the full context, combining the strengths of both approaches.
+:::
+:::
+
 ### *DanQ*: Combining Convolutions and Recurrence {#sec-ch06-danq}
 
 The *DanQ* model represented the most influential attempt to apply recurrent architectures to regulatory genomics [@quang_danq_2016]. Rather than replacing convolutions entirely, *DanQ* combined them: convolutional layers first extracted local sequence motifs, then a bidirectional LSTM integrated these motif detections across the 1,000 base pair input window. The architecture recognized that convolutions excel at detecting local patterns while recurrence might capture their long-range relationships.
@@ -442,6 +472,15 @@ The convolutional models examined here established paradigms that persist in mod
 These principles carry forward into foundation model architectures. What CNNs could not resolve was the receptive field limitation. Genomic regulation operates across scales that exceed practical convolutional depth: enhancers modulating genes across hundreds of kilobases, topologically associating domains spanning megabases. Dilated convolutions and deeper networks extend reach but cannot fundamentally escape the constraint that convolutions aggregate local information through hierarchical composition.
 
 Yet specialization retains value even as general-purpose models advance. *SpliceAI* achieves clinical-grade splice site prediction that broader foundation models have not matched. When the prediction target is well-defined, training data abundant, and the relevant context fits within architectural constraints, task-specific models remain competitive with or superior to general-purpose approaches. This tension between specialized accuracy and general capability defines architectural choices across genomic AI. For clinical deployment requiring high reliability on specific tasks, specialized architectures may remain preferred. For discovery applications requiring broad coverage across diverse molecular mechanisms, the foundation model paradigm (see @sec-ch13-fm-principles) offers different trade-offs. Attention mechanisms provide the architectural substrate for long-range modeling while inheriting the end-to-end learning principles that convolutional networks established.
+
+::: {.callout-tip title="Test Yourself"}
+Before reviewing the summary, test your recall:
+
+1. How do convolutional filters differ from classical position weight matrices, and why does this difference matter for discovering regulatory patterns?
+2. Explain why multi-task training across 919 chromatin features helps regularization and improves generalization compared to single-task training.
+3. A CNN has three convolutional layers with kernel width 8 and pooling factor 2. Approximately what receptive field does this architecture achieve, and why does this limit regulatory modeling?
+4. Why did SpliceAI use dilated convolutions with increasing dilation rates across 32 layers, and what biological patterns required this architectural choice?
+:::
 
 ::: {.callout-note title="Chapter Summary"}
 **Key concepts covered:** Convolutional filters as learned position weight matrices, receptive fields and their architectural limits, multi-task learning for regularization, *in silico* mutagenesis for variant effect prediction, dilated convolutions for expanded context, residual connections for deep networks, the sequential bottleneck of recurrent architectures.

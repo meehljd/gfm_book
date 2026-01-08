@@ -185,13 +185,23 @@ This document tracks papers that need to be added to Zotero and exported to the 
 
 ---
 
-## Chapter 11: DNA Language Models
+## Chapter 11: Benchmarks and Evaluation
+
+### Two Cultures Sidebar (newly added)
+
+| Status | Expected Citation Key | Full Reference | Target Bib |
+|--------|----------------------|----------------|------------|
+| [x] | `breiman_statistical_2001` | Breiman L. **Statistical Modeling: The Two Cultures.** *Statistical Science.* 2001;16(3):199-231. doi:10.1214/ss/1009213726 | `bib/p2/p2-ch11.bib` |
+
+---
+
+## Chapter 14: DNA Language Models
 
 ### Missing Citations
 
 | Status | Expected Citation Key | Full Reference | Target Bib |
 |--------|----------------------|----------------|------------|
-| [ ] | `gresova_genomic-benchmarks_2023` | Grešová K, Martinek V, Čechák D, Šimeček P, Alexiou P. **Genomic benchmarks: a collection of datasets for genomic sequence classification.** *BMC Genomic Data.* 2023;24:25. doi:10.1186/s12863-023-01123-8 | `bib/p3/p3-ch11.bib` |
+| [ ] | `gresova_genomic-benchmarks_2023` | Grešová K, Martinek V, Čechák D, Šimeček P, Alexiou P. **Genomic benchmarks: a collection of datasets for genomic sequence classification.** *BMC Genomic Data.* 2023;24:25. doi:10.1186/s12863-023-01123-8 | `bib/p3/p3-ch14.bib` |
 
 ### Notes on Cross-Bib Citations
 

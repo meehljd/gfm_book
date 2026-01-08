@@ -22,7 +22,7 @@ A protein language model trained on human sequences may confidently score varian
 
 The promise of transfer learning is substantial. Foundation models trained on billions of evolutionary sequences learn representations that capture protein structure, functional constraints, and sequence grammar without task-specific supervision (see @sec-ch08-pretraining). When these representations are applied to downstream tasks with limited labeled data, they can achieve performance that would be impossible for models trained from scratch. A variant effect predictor fine-tuned from *ESM-2* can classify novel missense mutations using patterns learned from the entire protein universe, not just the handful of variants with clinical annotations. This capacity to generalize from abundant unlabeled data to rare clinical scenarios has driven much of the enthusiasm for genomic foundation models.
 
-The reality requires careful navigation. Every adaptation decision involves tradeoffs: preserving pretrained knowledge versus enabling task-specific learning, computational efficiency versus model flexibility, rapid deployment versus careful validation. Full **fine-tuning** updates all parameters, risking catastrophic forgetting of pretrained knowledge. Feature extraction freezes all pretrained parameters, limiting adaptation to task-specific patterns. Parameter-efficient methods (adapters, LoRA, prompt tuning) navigate between these extremes, but each makes different assumptions about where adaptation should occur.
+The reality requires careful navigation. Every adaptation decision involves tradeoffs: preserving pretrained knowledge versus enabling task-specific learning, computational efficiency versus model flexibility, rapid deployment versus careful validation. Like a medical student who studied general anatomy before specializing in cardiology, the question is how much to retain from broad training versus how deeply to reshape understanding for the specialty. Full **fine-tuning** updates all parameters, risking catastrophic forgetting of pretrained knowledge---akin to a specialist who forgets basic anatomy while mastering cardiac surgery. Feature extraction freezes all pretrained parameters, limiting adaptation to task-specific patterns---like applying general anatomical knowledge directly without specialty training. Parameter-efficient methods (adapters, LoRA, prompt tuning) navigate between these extremes, but each makes different assumptions about where adaptation should occur.
 
 ::: {.callout-important title="Key Insight"}
 Transfer learning involves a fundamental tension: the pretrained model learned something useful, but not necessarily what you need. Your task is to determine whether what it learned helps, hurts, or is irrelevant to your specific problem---before making predictions that others will trust.
@@ -52,7 +52,7 @@ Consider a protein language model pretrained on UniRef sequences. You want to us
 
 ### Recognizing Transfer Outcomes {#sec-ch09-transfer-outcomes}
 
-Not all transfer helps, and distinguishing outcomes requires explicit validation. **Positive transfer** accelerates learning or improves final performance beyond training from scratch. **Negative transfer** occurs when pretraining actively hurts, either because learned features conflict with task requirements or because pretrained initialization creates optimization difficulties [@wang_characterizing_2019]. Why would pretraining ever hurt? Consider a model pretrained on protein-coding sequences that learns to recognize patterns like codon usage bias, amino acid composition, and reading frame consistency. When applied to noncoding regulatory sequences, these coding-specific patterns become noise that the model must unlearn before it can capture regulatory motif patterns. The pretrained initialization points the model in a direction that conflicts with the target task, and gradient descent must first undo this initialization before making progress---wasting optimization steps and potentially never fully escaping the misleading starting point. Neutral transfer describes situations where pretraining neither helps nor hurts, wasting computational resources on pretrained models without benefit. When a cardiology team adapts a DNA language model for *KCNQ1* long QT syndrome variant classification, they must empirically verify which outcome applies to their specific task rather than assuming transfer will help because it helped elsewhere.
+Not all transfer helps, and distinguishing outcomes requires explicit validation. **Positive transfer** accelerates learning or improves final performance beyond training from scratch. **Negative transfer** occurs when pretraining actively hurts, either because learned features conflict with task requirements or because pretrained initialization creates optimization difficulties [@wang_characterizing_2019]. Why would pretraining ever hurt? Similar to how learning British English spelling conventions can interfere with American English writing---"colour" feels right even when "color" is required---prior knowledge sometimes points in the wrong direction. Consider a model pretrained on protein-coding sequences that learns to recognize patterns like codon usage bias, amino acid composition, and reading frame consistency. When applied to noncoding regulatory sequences, these coding-specific patterns become noise that the model must unlearn before it can capture regulatory motif patterns. The pretrained initialization points the model in a direction that conflicts with the target task, and gradient descent must first undo this initialization before making progress---wasting optimization steps and potentially never fully escaping the misleading starting point. Neutral transfer describes situations where pretraining neither helps nor hurts, wasting computational resources on pretrained models without benefit. When a cardiology team adapts a DNA language model for *KCNQ1* long QT syndrome variant classification, they must empirically verify which outcome applies to their specific task rather than assuming transfer will help because it helped elsewhere.
 
 | Transfer Outcome | Definition | Example | Detection Strategy |
 |-----------------|------------|---------|-------------------|
@@ -82,6 +82,10 @@ Practitioners can estimate task relatedness before committing to transfer throug
 
 ::: {.callout-tip title="Knowledge Check"}
 Before continuing, ensure you can answer: What is the difference between task relatedness based on domain (both are "genomics") versus feature alignment (both require the same learned patterns)? Why does the latter matter more for transfer success?
+
+:::{.callout-note collapse="true" title="Check Your Answer"}
+Domain relatedness refers to tasks being in the same field (both involving DNA or proteins), while feature alignment means tasks require similar learned patterns in their representations. Feature alignment matters more because transfer success depends on whether the pretrained features are actually useful for the target task, not just whether tasks share a domain label. For example, predicting gene expression and variant pathogenicity are both "genomics" but require different features, while splice site prediction and variant effect prediction both benefit from learning local sequence constraints despite different prediction targets.
+:::
 :::
 
 When task relatedness is low, three strategies may salvage transfer. Intermediate fine-tuning on a related auxiliary task can build bridge representations: a model pretrained on general DNA sequence might be fine-tuned on chromatin accessibility prediction before the final adaptation to enhancer-gene linking, because chromatin accessibility provides intermediate features more relevant to regulatory relationships than raw sequence statistics. Multi-task fine-tuning that includes the target task alongside related tasks can encourage the model to extract shared features. Alternatively, practitioners may conclude that transfer is inappropriate for this task and proceed with from-scratch training, which remains a valid choice when pretrained representations offer no advantage.
@@ -137,6 +141,18 @@ Detecting distribution shift requires comparing source and target distributions 
 
 The four factors interact in ways that preclude simple rules. High task relatedness cannot rescue transfer when target data is too limited for any adaptation; abundant data cannot overcome fundamental distribution mismatch; an expressive model provides no advantage when pretrained representations lack task-relevant features. Practitioners must evaluate all four factors jointly, using the linear probing and validation approaches described in subsequent sections to empirically determine whether transfer succeeds for their specific combination of model, task, and data.
 
+::: {#fig-four-factors layout-ncol=2}
+![Task relatedness determines feature relevance](../figs/part_2/ch09/02-A-fig-four-factors.svg)
+
+![Data quantity constrains adaptation strategy](../figs/part_2/ch09/02-B-fig-four-factors.svg)
+
+![Model expressiveness vs. overfitting risk](../figs/part_2/ch09/02-C-fig-four-factors.svg)
+
+![Distribution overlap enables knowledge transfer](../figs/part_2/ch09/02-D-fig-four-factors.svg)
+
+Four interacting factors determine transfer success. (A) Task relatedness: when source and target tasks share relevant features (motif detection, conservation patterns), pretrained knowledge transfers; when they require different features (coding vs. noncoding), transfer fails or hurts. (B) Data quantity thresholds: fewer than 500 examples limits you to linear probing; 500-5,000 enables PEFT; above 10,000 enables full fine-tuning. (C) Model expressiveness creates a double-edged sword: larger models capture richer features but risk memorizing limited target data. (D) Distribution overlap: cross-species transfer succeeds for conserved elements (housekeeping promoters) but fails for lineage-specific innovations (human-specific enhancers).
+:::
+
 The most reliable path forward is conservative escalation: establish frozen feature baselines first to assess task relatedness and distribution overlap; try parameter-efficient methods next if frozen features show promise but leave room for improvement; reserve full fine-tuning for cases where simpler methods demonstrably fail and sufficient data exists to justify the risk; and maintain from-scratch training as a valid comparison throughout. Each escalation step provides information about which factors limit transfer, guiding both immediate decisions and future model development.
 
 ::: {.callout-note title="Practical Guidance: The Conservative Escalation Protocol"}
@@ -147,6 +163,12 @@ When approaching a new transfer learning problem, follow this sequence:
 3. **Try PEFT if linear probe shows promise.** If frozen features provide reasonable accuracy but leave headroom, parameter-efficient methods can capture task-specific patterns.
 4. **Reserve full fine-tuning for abundant data.** Only with 10,000+ examples and evidence that PEFT is insufficient should full parameter updates be considered.
 5. **Always maintain a from-scratch baseline.** This reveals whether transfer actually helps or whether you are simply training on your target data.
+:::
+
+::: {#fig-conservative-escalation}
+![Conservative escalation decision flowchart](../figs/part_2/ch09/03-fig-conservative-escalation.svg)
+
+Conservative escalation protocol for transfer learning decisions. Start with linear probing on frozen embeddings (Step 1). If probe performance exceeds random baseline, pretrained features encode task-relevant information (Step 2a); proceed to PEFT if headroom remains. If probe performance matches random, question whether transfer helps (Step 2b). PEFT methods like LoRA add flexibility while constraining overfitting (Step 3). Reserve full fine-tuning for cases with abundant data (10,000+ examples) where PEFT is insufficient (Step 4). Throughout, maintain from-scratch baseline to verify transfer provides genuine benefit. Red paths indicate stopping points; green paths indicate progression.
 :::
 
 ::: {.callout-note title="Worked Example: Applying the Conservative Escalation Protocol"}
@@ -200,6 +222,12 @@ Suppose you want to classify whether a sequence contains a functional splice don
 **Step 4:** Interpret the result. The 92% accuracy suggests motif patterns learned during pretraining (the GT dinucleotide, surrounding sequence context) are preserved in the embeddings. You now have evidence that transfer works for this task.
 :::
 
+::: {#fig-linear-probing-workflow}
+![Linear probing workflow for transfer diagnostics](../figs/part_2/ch09/04-fig-linear-probing-workflow.svg)
+
+Linear probing workflow for diagnosing transfer potential. Step 1: Pass input sequences through frozen pretrained model to extract embeddings (typically [CLS] token or final layer). Step 2: Train lightweight classifier (logistic regression, small MLP) on frozen embeddings using labeled target data. Step 3: Compare probe accuracy against random embedding baseline and from-scratch training. Interpretation guide: If probe >> random, pretrained features encode task-relevant information (positive transfer likely). If probe ≈ random, pretrained features lack relevance (consider different model or from-scratch training). If probe < from-scratch, pretraining may hurt (negative transfer risk).
+:::
+
 Ji et al. demonstrated that *DNABERT* embeddings paired with linear probes achieve competitive chromatin accessibility prediction from a few hundred positive and negative examples, matching convolutional neural network baselines requiring far more labeled data [@ji_dnabert_2021]. Dalla-Torre et al. showed similar results with *Nucleotide Transformer*, where linear probes on frozen embeddings approached fine-tuned performance for promoter detection and splice site recognition [@dalla-torre_nucleotide_2023]. These successes reflect alignment between pretraining objectives (predicting masked tokens from local context) and target tasks (distinguishing sequences based on motif patterns the model already learned to recognize).
 
 ### When Linear Probing Fails {#sec-ch09-linear-probing-limits}
@@ -214,6 +242,10 @@ A linear probe on frozen protein language model embeddings achieves 85% accuracy
 1. Whether the pretrained embeddings contain pathogenicity-relevant information?
 2. Whether more complex classifiers are likely to help?
 3. What the ceiling on frozen-feature performance might be?
+
+:::{.callout-note collapse="true" title="Check Your Answer"}
+(1) Yes, the 85% accuracy with a linear probe indicates the frozen embeddings contain substantial pathogenicity-relevant information that is linearly separable. (2) No, the minimal gains from adding complexity (only 1.5% improvement with a five-layer MLP) suggest more complex classifiers won't help much - the useful information is already captured linearly. (3) The ceiling appears to be around 86-87%, indicating that further improvements likely require updating the pretrained model itself rather than just adding more classifier capacity. This pattern suggests linear probing is sufficient and parameter-efficient fine-tuning or full fine-tuning would be needed to go beyond this ceiling.
+:::
 :::
 
 ### Probing Representations {#sec-ch09-probing-representations}
@@ -241,6 +273,25 @@ The diagnostic value extends beyond predicting which adaptation strategy to use.
 Transfer learning succeeds when pretrained representations encode features relevant to downstream tasks, and fails when they do not. The four factors examined in this chapter---task relatedness, target data quantity, model expressiveness, and distribution overlap---collectively determine whether pretrained knowledge transfers productively to new applications.
 
 Feature extraction and linear probing provide the essential diagnostic tools for assessing transfer potential before committing to more complex adaptation. When linear probes on frozen representations outperform random baselines, the pretrained model has captured task-relevant structure. When probing accuracy approaches fine-tuned performance, simpler adaptation strategies may suffice. When probing fails entirely, more aggressive adaptation or alternative models may be necessary.
+
+::: {.callout-tip title="Test Yourself"}
+Before reviewing the summary, test your recall:
+
+1. Explain the four factors that determine transfer success (task relatedness, data quantity, model expressiveness, distribution overlap) and how they interact.
+2. Why can transfer learning fail silently, producing confident predictions despite learning nothing useful? What makes this particularly dangerous for clinical applications?
+3. A linear probe on frozen ESM-2 embeddings achieves 78% accuracy for pathogenicity prediction, while random embeddings achieve 52%. What does this 26-point gap reveal about the pretrained representations?
+4. When does negative transfer occur, and why would pretraining sometimes hurt performance compared to training from scratch?
+
+:::{.callout-note collapse="true" title="Check Your Answers"}
+1. **Four factors and interactions**: Task relatedness measures whether the target task requires patterns learned during pretraining (e.g., motif recognition transfers well from masked language modeling). Data quantity constrains which adaptation strategies avoid overfitting (fewer than 500 examples limits you to linear probing). Model expressiveness determines how rich the pretrained representations are, but larger models risk overfitting with limited data. Distribution overlap quantifies similarity between source and target data (human-mouse regulatory elements share patterns, enabling cross-species transfer). These factors interact: high task relatedness cannot rescue transfer with insufficient data, abundant data cannot overcome fundamental distribution mismatch, and expressive models provide no advantage when pretrained representations lack task-relevant features.
+
+2. **Silent failures in transfer learning**: Transfer learning fails silently because models produce confident predictions regardless of whether they learned relevant patterns or spurious correlations. A protein language model trained on human sequences may confidently score mouse variants based on human-specific evolutionary pressures completely irrelevant to mouse biology, but the output format looks identical to successful predictions. For clinical applications, this is particularly dangerous because confident but wrong predictions can lead to misdiagnosis, inappropriate treatment decisions, or missed pathogenic variants, with no internal signal that the model's learned features are misaligned with the clinical task.
+
+3. **Interpreting the 26-point gap**: The 26-percentage-point gap between ESM-2 embeddings (78%) and random embeddings (52%) confirms that the pretrained representations encode substantial pathogenicity-relevant information in a form that is already linearly separable. This suggests the pretraining objective (masked language modeling on evolutionary sequences) successfully captured patterns correlated with variant pathogenicity, such as evolutionary constraints, structural preferences, and functional domain information. The gap provides strong evidence that transfer learning will help this task and justifies exploring parameter-efficient methods to capture additional task-specific patterns beyond what frozen features provide.
+
+4. **Negative transfer mechanisms**: Negative transfer occurs when pretraining actively hurts performance because learned features conflict with task requirements or create optimization difficulties. For example, a model pretrained on protein-coding sequences learns patterns like codon usage bias, reading frame consistency, and amino acid composition constraints. When applied to noncoding regulatory sequences, these coding-specific patterns become noise that misleads the model or must be unlearned during fine-tuning. The pretrained initialization points gradient descent in a direction that conflicts with the target task, wasting optimization steps and potentially never fully escaping the misleading starting point, resulting in worse performance than training from scratch without these inappropriate biases.
+:::
+:::
 
 ::: {.callout-note title="Chapter Summary"}
 **Core concepts:**

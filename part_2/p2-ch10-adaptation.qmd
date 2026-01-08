@@ -22,6 +22,8 @@
 4. Recognize and mitigate domain shift across species, tissues, and populations
 5. Apply strategies for handling extreme class imbalance in variant classification
 6. Validate transfer learning claims and detect common pitfalls
+
+**Why This Matters:** When you deploy a foundation model to a new clinical population, tissue type, or prediction task, "frozen features" may underperform while "full fine-tuning" may catastrophically overfit. Knowing how to adapt models efficiently is the difference between deploying a useful tool and wasting months on failed experiments. The skills in this chapter apply to every clinical genomics project that builds on pretrained models—which, increasingly, means every project.
 :::
 
 A research hospital developing tissue-specific expression predictors faces an impossible choice. Frozen features from *Enformer* provide reasonable baselines, but full fine-tuning for each of fifty tissue types would require months of GPU time and risk overfitting the thousands of tissue-specific training examples. The team needs an intermediate approach: enough flexibility to improve over frozen features, enough constraint to prevent overfitting, enough efficiency to iterate across dozens of tissues.
@@ -30,7 +32,7 @@ A research hospital developing tissue-specific expression predictors faces an im
 
 ### Low-Rank Adaptation {#sec-ch10-lora}
 
-**Low-Rank Adaptation (LoRA)** has emerged as the dominant PEFT technique in genomic applications because it directly operationalizes this insight. Rather than updating a large weight matrix $W$ directly, LoRA introduces two smaller matrices $A$ and $B$ whose product approximates the desired weight change: $W' = W + BA$ [@hu_lora_2021]. During fine-tuning, $W$ remains frozen while only $A$ and $B$ receive gradient updates. The rank of these matrices (typically 8 to 64 for genomic models) controls adaptation expressiveness: lower ranks introduce fewer parameters and stronger implicit regularization; higher ranks enable more flexible task-specific modification at greater overfitting risk.
+**Low-Rank Adaptation (LoRA)** has emerged as the dominant PEFT technique in genomic applications because it directly operationalizes this insight. Think of it like adding a correction lens to a camera rather than rebuilding the optics from scratch: the original lens (pretrained weights) stays intact, while a small, carefully shaped addition adjusts the focus for your specific purpose. Rather than updating a large weight matrix $W$ directly, LoRA introduces two smaller matrices $A$ and $B$ whose product approximates the desired weight change: $W' = W + BA$ [@hu_lora_2021]. During fine-tuning, $W$ remains frozen while only $A$ and $B$ receive gradient updates. The rank of these matrices (typically 8 to 64 for genomic models) controls adaptation expressiveness: lower ranks introduce fewer parameters and stronger implicit regularization; higher ranks enable more flexible task-specific modification at greater overfitting risk.
 
 ::: {.callout-tip}
 ## Key Insight: Why Low-Rank Works
@@ -124,10 +126,12 @@ Decoder models trained with causal attention create fundamentally different repr
 
 The next-token prediction objective compounds this asymmetry by specializing the final layers for a specific output format. Consider what the final layer must learn: transform the current hidden state into a probability distribution over vocabulary tokens. This transformation discards information about the input sequence that is irrelevant for predicting the immediate next token. Evolutionary conservation patterns 200 positions upstream, motif co-occurrence statistics, and global sequence composition may all inform intermediate representations but contribute nothing to next-token prediction and can be safely discarded by the final layer.
 
-::: {.callout-note}
-## Knowledge Check
-
+::: {.callout-tip title="Knowledge Check"}
 A decoder model has 12 layers. You are using it for promoter classification (binary: promoter vs. non-promoter). Based on the layer hunting problem, which layers would you expect to perform best for this task, and why? What would you predict about the final layer's performance?
+
+:::{.callout-note collapse="true" title="Check Your Answer"}
+You would expect intermediate layers (roughly layers 4-8, the middle third of the network) to perform best for promoter classification. These layers contain general-purpose sequence representations before they are transformed into next-token predictions. The final layer would likely perform poorly because it has been specialized to produce token probability distributions, discarding information about global sequence properties like "is this a promoter?" that are irrelevant for predicting the immediate next token but crucial for classification.
+:::
 :::
 
 Empirically, practitioners using decoder models for classification consistently find that intermediate layers outperform final layers, often dramatically. For *HyenaDNA* on regulatory element classification, layers in the middle third of the network frequently achieve the best linear probing accuracy. For GPT-style genomic models, the optimal layer can vary by 30-50% of network depth depending on the specific downstream task. A splice site classifier might perform best with layer 4 representations while a promoter classifier using the same model achieves optimal performance at layer 8. The task-dependence of optimal layer selection adds a hyperparameter dimension that does not exist for encoder models.
@@ -213,7 +217,7 @@ Consider a 512-nucleotide sequence processed by a transformer, producing 512 emb
 
 Sequence classification requires a fixed-size representation regardless of input length. A promoter classifier must produce the same prediction format whether the input spans 200 or 2,000 nucleotides. A pathogenicity model must output a single score whether analyzing a 50-residue peptide or a 3,000-residue multidomain protein. Transformers produce per-position representations: for a 512-token input, the model generates 512 embedding vectors, one for each position. Converting these variable-length outputs into fixed-size vectors suitable for classification constitutes the **sequence aggregation** problem.
 
-The `[CLS]` token provides one solution, introduced in *BERT* and adopted widely across encoder architectures including *DNABERT* and *Nucleotide Transformer* [@devlin_bert_2019]. The approach prepends a special classification token to every input sequence before processing. This token participates in attention computations like any other position, attending to all sequence positions and being attended to by them. Unlike content tokens that represent actual nucleotides or amino acids, the `[CLS]` token carries no intrinsic meaning. Its representation emerges entirely from aggregating information across the sequence through the attention mechanism.
+The `[CLS]` token provides one solution, introduced in *BERT* and adopted widely across encoder architectures including *DNABERT* and *Nucleotide Transformer* [@devlin_bert_2019]. The approach works like a note-taker sitting at the front of a meeting: this special token attends to everything being said (all sequence positions) and distills the discussion into a summary that captures the essential points. The approach prepends a special classification token to every input sequence before processing. This token participates in attention computations like any other position, attending to all sequence positions and being attended to by them. Unlike content tokens that represent actual nucleotides or amino acids, the `[CLS]` token carries no intrinsic meaning. Its representation emerges entirely from aggregating information across the sequence through the attention mechanism.
 
 The critical insight is that training shapes the `[CLS]` representation specifically for sequence-level tasks. During *BERT*'s pretraining, the `[CLS]` token was used for next-sentence prediction, requiring it to encode information sufficient to determine whether two sentences were contiguous in the original text. This training pressure transforms the `[CLS]` position into a natural aggregation point: its final-layer representation captures sequence-level properties distilled from positional representations throughout the network. When *DNABERT* applies this architecture to genomic sequences, the `[CLS]` token learns to aggregate regulatory signals, motif patterns, and compositional features into a single vector suitable for downstream classification.
 
@@ -275,6 +279,30 @@ The following table summarizes the key tradeoffs across adaptation strategies:
 | **From scratch** | 100% of model | > 100,000 examples | Days-weeks | Task-dependent | No suitable pretrained model; abundant data |
 
 These heuristics indicate which strategies merit trying first, but empirical validation supersedes any rule. No formula reliably predicts which approach will succeed for a specific combination of model, task, and data. The conservative path is to establish frozen feature baselines first, escalate to PEFT when frozen features prove insufficient, and reserve full fine-tuning for cases where simpler methods demonstrably fail and sufficient data exists to justify the risk.
+
+::: {.callout-note title="Graduated Practice: Adaptation Strategy Selection"}
+Work through these scenarios in order. Each builds on the previous, with progressively less scaffolding.
+
+**Scenario 1 (Guided):** You have 200 labeled splice site variants and access to *Nucleotide Transformer* (encoder, 500M parameters). The pretraining objective was masked language modeling on genomic sequences.
+
+*Scaffolding:* Apply the decision framework: (1) Data quantity → 200 < 500, so linear probing. (2) Verify task alignment → splice sites involve local motifs similar to MLM patterns, good alignment. (3) Confirm: linear probing is appropriate.
+
+**Scenario 2 (Partial guidance):** You have 3,000 labeled examples for predicting enhancer-promoter interactions spanning 50kb windows. You have access to *HyenaDNA* (decoder, 1.4B parameters).
+
+*Hint:* Consider data quantity threshold, but also: What does "decoder model" imply for layer selection? What does "50kb windows" suggest about context requirements?
+
+:::{.callout-note collapse="true" title="Check Scenario 2"}
+Data quantity (3,000) puts you in LoRA range (500-5,000). However, two complications: (1) *HyenaDNA* is a decoder, so you face the layer hunting problem—budget for systematic layer probing before committing to adaptation layers. (2) Long-range interactions (50kb) may stress even long-context architectures. Strategy: LoRA with rank 16-32, applied across middle layers, with explicit layer probing experiment first. Compare against frozen features from multiple layers.
+:::
+
+**Scenario 3 (Minimal guidance):** A hospital has 50,000 pathogenicity labels for *BRCA1/BRCA2* variants. They want to deploy a classifier trained on *ESM-2* embeddings. But the hospital primarily serves an African-ancestry population, while ClinVar training data is 78% European.
+
+*Your task:* Identify the appropriate adaptation strategy AND the additional considerations that data quantity alone does not capture.
+
+:::{.callout-note collapse="true" title="Check Scenario 3"}
+Data quantity (50,000) supports full fine-tuning. However, three complications demand attention: (1) **Domain shift**: Population mismatch between training (European-dominated) and deployment (African-ancestry) means even high training accuracy may not transfer. Strategy: fine-tune with domain-adaptive techniques, not just standard fine-tuning. (2) **Validation**: Must evaluate on African-ancestry holdout specifically, not just aggregate metrics. (3) **Class imbalance**: Pathogenic variants in BRCA1/2 are rare; 50,000 labels likely means ~47,000 benign and ~3,000 pathogenic. Strategy: weighted loss, threshold calibration for deployment prevalence. The "right" answer requires addressing all three, not just selecting an adaptation strategy from the table.
+:::
+:::
 
 ::: {#fig-adaptation-decision-tree}
 ![Decision framework for adaptation strategy selection](../figs/part_2/ch10/03-fig-adaptation-decision-tree.svg)
@@ -382,10 +410,12 @@ Full fine-tuning offers the most flexibility to reshape representations for imba
 
 ### Mitigation Strategies
 
-::: {.callout-note}
-## Knowledge Check
-
+::: {.callout-tip title="Knowledge Check"}
 Consider a variant classifier trained on 10,000 benign variants and 100 pathogenic variants. The model achieves 99% accuracy on the test set. Is this model performing well? What additional information would you need to assess its clinical utility?
+
+:::{.callout-note collapse="true" title="Check Your Answer"}
+No, 99% accuracy does not indicate good performance in this imbalanced scenario. A trivial baseline that predicts "benign" for every variant would achieve 99% accuracy (10,000/10,100 correct). You would need to see: (1) sensitivity and specificity separately to know if the model actually detects pathogenic variants, (2) auPRC (not just auROC) which is sensitive to class imbalance, (3) confusion matrix showing true/false positives and negatives, and (4) performance at clinically relevant decision thresholds. The model might be achieving high accuracy by simply predicting benign for everything, making it clinically useless.
+:::
 :::
 
 Addressing class imbalance requires intervention at data, loss, and evaluation levels. No single strategy suffices; effective pipelines combine multiple approaches.
@@ -500,6 +530,28 @@ Transfer learning amplifies the value of pretrained models by connecting learned
 The risks are concrete. Domain shift between pretraining and deployment contexts causes silent failures: models trained on research cohorts may miscalibrate on clinical populations, models trained on one species may fail unpredictably on another, models trained on one assay technology may not generalize to its successor. These failures produce confident predictions that are systematically wrong, often in ways that correlate with clinically relevant subgroups. Detection through distribution divergence measures and embedding visualization can identify shift before deployment, but mitigation requires either domain-adaptive fine-tuning or acceptance that some shifts cannot be bridged.
 
 Validating transfer claims requires adversarial rigor. Test for contamination between pretraining and evaluation data through sequence-level deduplication. Implement temporal splits that respect real-world prediction scenarios. Compare against properly-tuned baselines trained from scratch with equivalent effort. Stratify performance by ancestry, variant type, and other clinically meaningful categories. The goal is establishing whether transfer provides genuine benefit under realistic deployment conditions, not optimizing for favorable benchmarks. Foundation model applications assume that transfer succeeds; the methods here determine whether that assumption holds for specific contexts.
+
+::: {.callout-tip title="Test Yourself"}
+Before reviewing the summary, test your recall:
+
+1. How does LoRA achieve parameter-efficient adaptation through low-rank decomposition, and why does constraining adaptation to low-rank subspaces provide implicit regularization?
+2. Explain the layer hunting problem for decoder models. Why do intermediate layers often outperform final layers for classification, and how does this differ from encoder models?
+3. A classifier trained on 10,000 benign variants and 100 pathogenic variants achieves 99% accuracy. Why might this model be clinically useless despite high accuracy?
+4. What is domain shift, and how does it differ from data leakage? Give an example where a model experiences distribution shift without any leakage.
+5. When should you use linear probing versus LoRA versus full fine-tuning? What data quantity thresholds guide this decision?
+
+:::{.callout-note collapse="true" title="Check Your Answers"}
+1. **Low-Rank Adaptation**: LoRA introduces two smaller matrices $A$ and $B$ whose product approximates the desired weight change: $W' = W + BA$. During fine-tuning, only $A$ and $B$ receive gradient updates while $W$ remains frozen. This reduces trainable parameters from hundreds of millions to just 2-5 million, achieving a 500-fold reduction in parameter count. The low-rank constraint provides implicit regularization because task-specific adaptations empirically lie in low-dimensional subspaces; forcing adaptation through limited dimensions prevents overfitting while capturing most required changes.
+
+2. **Layer Hunting Problem**: Decoder models are trained with next-token prediction, which specializes final layers to produce token probability distributions rather than general-purpose representations. This optimization discards information irrelevant for predicting the immediate next token but crucial for classification tasks. Intermediate layers (typically middle third of the network) contain richer general-purpose sequence representations before this specialization occurs, often outperforming final layers by 15-30%. Encoder models avoid this problem because bidirectional masked language modeling shapes all layers for general utility, making final-layer representations reliably effective for downstream tasks.
+
+3. **Class Imbalance**: With a 100:1 ratio of benign to pathogenic variants, a trivial baseline that predicts "benign" for every variant achieves 99% accuracy (10,000/10,100 correct). High accuracy masks complete failure on the clinically important minority class. The model might have zero sensitivity for pathogenic variants while achieving near-perfect specificity on benign variants, making it useless for clinical diagnosis. Proper evaluation requires sensitivity and specificity reported separately, auPRC (not just auROC), and performance at clinically relevant decision thresholds.
+
+4. **Domain Shift vs. Leakage**: Domain shift occurs when training and deployment distributions differ due to biological or technical variation (e.g., training on European-ancestry samples and deploying on African-ancestry samples, training on one tissue type and deploying on another). This creates systematic failures even when datasets are properly separated with no overlap. Data leakage, by contrast, occurs when test examples appear in training data or when future information unavailable at prediction time influences training. Example: a model trained on liver chromatin data shows poor performance on heart tissue (domain shift) even though the heart test sequences were never seen during training (no leakage).
+
+5. **Adaptation Strategy Selection**: Use linear probing with fewer than 500 labeled examples; more complex adaptation will overfit catastrophically. Between 500 and 5,000 examples, LoRA and other PEFT methods offer favorable tradeoffs between flexibility and regularization. With more than 10,000 examples, full fine-tuning becomes viable if the target task diverges substantially from pretraining. However, data quantity alone does not determine strategy; task alignment with pretraining matters equally. Always establish frozen feature baselines first, then escalate to more complex methods only when simpler approaches demonstrably fail.
+:::
+:::
 
 ::: {.callout-note}
 ## Chapter Summary

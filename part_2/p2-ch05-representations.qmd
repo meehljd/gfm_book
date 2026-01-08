@@ -25,6 +25,14 @@ The challenge is that biological structure operates at multiple scales simultane
 
 An analogy to natural language processing illuminates the fundamental tradeoffs. Training a language model on English text requires deciding how to segment the continuous character stream into discrete tokens. Character-level tokenization preserves maximum resolution but creates sequences too long for efficient processing. Word-level tokenization compresses the sequence but loses information about morphology and subword structure. Learned subword vocabularies (byte-pair encoding, SentencePiece) balance these concerns by letting corpus statistics guide segmentation. DNA presents similar choices but with critical differences: only four letters rather than dozens, no natural word boundaries, and the biological structure operating at multiple scales that language lacks. The representation strategies that genomic foundation models employ range from fixed $k$-mer vocabularies through learned tokenization schemes, each choice shaping what downstream models can learn.
 
+::: {.callout-note title="Predict Before You Look"}
+Before viewing the figure below, make a prediction: If you had to design four different ways to tokenize the DNA sequence "ACGTACGT", what tradeoffs would each approach involve? Consider:
+- How many tokens would each strategy produce?
+- Which approach would best preserve single-nucleotide resolution?
+- Which might enable the longest context windows for transformers?
+- How would each handle a single-nucleotide variant?
+:::
+
 ::: {#fig-ch05-tokenization-comparison layout-ncol=2}
 ![One-hot encoding](../figs/part_2/ch05/01-A-fig-ch05-tokenization-comparison.svg)
 
@@ -69,6 +77,10 @@ The $k$-mer vocabulary has a fixed size of $4^k$ possible tokens. For 6-mers, th
 
 ::: {.callout-tip title="Knowledge Check"}
 Consider a single-nucleotide variant (SNP) at some position in a sequence tokenized with overlapping 6-mers. How many tokens would this single nucleotide change affect? Think about which 6-mer windows would include that position.
+
+:::{.callout-note collapse="true" title="Check Your Answer"}
+A single nucleotide change affects exactly 6 tokens in overlapping 6-mer tokenization. The changed nucleotide appears in six different 6-mer windows: the one starting at that position, plus the five windows that start before but include that position. This propagation of changes across multiple tokens complicates variant effect interpretation.
+:::
 :::
 
 Subsequent analysis revealed fundamental limitations rooted in the overlapping design. *DNABERT-2* articulated these problems clearly in 2024 [@zhou_dnabert-2_2024]. Overlapping k-mers provide no sequence compression: the number of tokens equals the number of nucleotides (minus a small constant), so context window limitations persist unchanged. A 10 kb sequence still requires approximately 10,000 tokens, and the quadratic attention complexity remains prohibitive for long sequences. The very design that seemed to add biological meaning through $k$-mer structure failed to address the computational bottleneck motivating the approach.
@@ -78,7 +90,9 @@ The overlapping design creates additional complications beyond computational cos
 
 ## Byte Pair Encoding: Learning the Vocabulary {#sec-ch05-bpe}
 
-The limitations of $k$-mer tokenization raise a question: what if the vocabulary itself could be learned from data? **Byte Pair Encoding (BPE)** addresses this by constructing vocabulary through iterative discovery of frequent subsequences rather than defining tokens through a fixed rule. The algorithm, originally developed for data compression, builds vocabulary through a simple procedure. BPE initializes the vocabulary with single nucleotides: {A, C, G, T}. It then scans the training corpus to count all adjacent token pairs, identifies the most frequent pair, merges this pair into a new token added to the vocabulary, and replaces all instances in the corpus with the merged token. The process repeats through many iterations (typically thousands), building a vocabulary of variable-length tokens capturing frequently occurring sequence patterns. *[Citation Needed]*
+The limitations of $k$-mer tokenization raise a question: what if the vocabulary itself could be learned from data? Consider how a child learning to read progresses from sounding out individual letters to recognizing common letter combinations ("th," "ing," "tion") as single units. The brain naturally groups frequently co-occurring patterns into chunks, making reading faster without losing the ability to decode unfamiliar words letter-by-letter. **Byte Pair Encoding (BPE)** applies this same principle to DNA: it discovers which nucleotide combinations appear frequently together and groups them into single tokens, while rare sequences remain as individual nucleotides.
+
+BPE addresses vocabulary learning by constructing vocabulary through iterative discovery of frequent subsequences rather than defining tokens through a fixed rule. The algorithm, originally developed for data compression, builds vocabulary through a simple procedure. BPE initializes the vocabulary with single nucleotides: {A, C, G, T}. It then scans the training corpus to count all adjacent token pairs, identifies the most frequent pair, merges this pair into a new token added to the vocabulary, and replaces all instances in the corpus with the merged token. The process repeats through many iterations (typically thousands), building a vocabulary of variable-length tokens capturing frequently occurring sequence patterns. *[Citation Needed]*
 
 ::: {.callout-note title="Worked Example: BPE in Action"}
 Consider a tiny corpus consisting of a single sequence: `ACGTACGTACGT`
@@ -200,7 +214,11 @@ Emergent structure in learned DNA token embeddings. UMAP projections of token em
 
 ## From Tokens to Embeddings: Learning Representations {#sec-ch05-embeddings}
 
-A patient's genome contains a **variant of uncertain significance (VUS)** in *SCN5A*, a cardiac ion channel gene. Whether this variant affects protein function depends on subtle sequence features that determine how the protein folds, where it localizes, and how it interacts with other cellular components. The clinical question is binary (pathogenic or benign), but the biological answer emerges from continuous biophysical properties. Classical methods for variant interpretation (@sec-ch04-vep-classical) capture some of these relationships through hand-crafted features; learned embeddings offer an alternative approach where relevant patterns emerge from data. This gap between discrete genetic variation and continuous biological effect is precisely what embedding layers must bridge: transforming discrete tokens into dense numerical representations that neural networks can process and from which they can learn.
+A patient's genome contains a **variant of uncertain significance (VUS)** in *SCN5A*, a cardiac ion channel gene. Whether this variant affects protein function depends on subtle sequence features that determine how the protein folds, where it localizes, and how it interacts with other cellular components. The clinical question is binary (pathogenic or benign), but the biological answer emerges from continuous biophysical properties. Classical methods for variant interpretation (@sec-ch04-vep-classical) capture some of these relationships through hand-crafted features; learned embeddings offer an alternative approach where relevant patterns emerge from data.
+
+Think of embeddings like giving each word a GPS coordinate rather than a dictionary index. A dictionary assigns arbitrary numbers to words (apple = 47,231; orange = 89,102), revealing nothing about their relationships. GPS coordinates, by contrast, place similar items near each other: the coordinates for "apple" and "orange" would cluster in the fruit section, while "hammer" and "screwdriver" would cluster elsewhere. Embeddings work the same way for tokens---they assign coordinates in a mathematical space where similar tokens naturally end up near each other, enabling the model to generalize from one to another.
+
+This gap between discrete genetic variation and continuous biological effect is precisely what embedding layers must bridge: transforming discrete tokens into dense numerical representations that neural networks can process and from which they can learn.
 
 ::: {.callout-warning title="Mathematical Detail"}
 The following section introduces embedding mathematics. Readers unfamiliar with matrix notation can focus on the core intuition: embedding layers convert discrete tokens into continuous vectors, and through training, these vectors organize to reflect meaningful relationships---even relationships not explicitly taught.
@@ -214,6 +232,10 @@ Learned embeddings allow the model to discover such relationships from data. If 
 
 ::: {.callout-tip title="Knowledge Check"}
 In a one-hot encoding, the vectors for A, C, G, and T are all orthogonal (perpendicular) to each other. What biological relationships would you expect to emerge in a learned embedding space trained on regulatory sequence prediction? Consider which nucleotides might end up closer together and why.
+
+:::{.callout-note collapse="true" title="Check Your Answer"}
+In learned embeddings for regulatory prediction, you would expect purines (A, G) to cluster closer together and pyrimidines (C, T) to cluster closer together, reflecting their similar chemical properties and interchangeable roles in many binding motifs. Additionally, complementary base pairs (A-T and G-C) might show proximity because they appear in similar sequence contexts when models learn strand-invariant patterns.
+:::
 :::
 
 The embedding dimension $d$ controls representational capacity. Small embeddings of 32 to 64 dimensions suffice for simple tokenization schemes like single nucleotides, where only four vectors must be distinguished. Larger vocabularies require larger embeddings: *DNABERT-2's* BPE tokens use 768-dimensional embeddings, comparable to natural language models. The choice involves a tradeoff between expressiveness and efficiency, as larger embeddings increase both model capacity and computational cost. *[Citation Needed]*
@@ -226,6 +248,8 @@ The relationship between tokenization and embedding deserves emphasis. Coarse to
 
 
 ### Position in Sequence {#sec-ch05-position}
+
+A mutation at position 3 of the *HBB* gene is not equivalent to one at position 300, even if both create the same codon change. Position determines proximity to the promoter TATA box, distance from splice junctions, and location relative to regulatory elements that fine-tune expression. The canonical *HBB* promoter mutation at position -28 causes beta-thalassemia by disrupting the TATA box, while an identical sequence change elsewhere would be benign. Position is not metadata---it is biology.
 
 Tokenization converts sequence to discrete symbols, but genomic function depends on where those symbols appear. A transcription factor binding site has entirely different effects depending on whether it sits in a promoter, an enhancer, or a gene body. The same variant at position -30 relative to a transcription start site carries different implications than at position +500. Transformers are inherently permutation-invariant: shuffling token order changes nothing about how attention weights are computed. Position must be explicitly encoded.
 
@@ -260,15 +284,21 @@ The compression-resolution tradeoff in genomic tokenization. This plot positions
 
 ### Resolution Versus Compression {#sec-ch05-resolution-compression}
 
+A splice site mutation at a precise GT dinucleotide causes disease; missing it by one nucleotide means missing the diagnosis entirely. Yet understanding why that splice site is used requires seeing the branch point 20-50 nucleotides upstream, the polypyrimidine tract, and competing splice sites hundreds of bases away. Biology demands both precision and panorama simultaneously.
+
 The tension between compression and resolution represents the fundamental tradeoff. Higher compression enables longer context windows within fixed computational budgets but loses precision for identifying exactly where variants fall and how they relate to biological features. One-hot encoding and single-nucleotide tokenization provide no compression but maintain full resolution. Non-overlapping k-mers achieve approximately $k$-fold compression at the cost of $k$-nucleotide resolution. BPE provides variable compression depending on sequence repetitiveness, with correspondingly variable resolution. For variant effect prediction (@sec-ch17-vep-fm), where single nucleotide changes can have dramatic phenotypic consequences, resolution is paramount and the computational costs of long single-nucleotide sequences are often justified.
 
 
 ### Vocabulary Size and Model Capacity {#sec-ch05-vocabulary-capacity}
 
+Transcription factors recognize specific 6-12 nucleotide motifs, but these motifs come in families with degenerate positions that tolerate multiple bases. A vocabulary containing all possible 6-mers can represent each motif variant as a distinct token, potentially capturing family relationships in embedding space. A vocabulary of only four nucleotides forces the model to learn these motif patterns compositionally across layers. The question is whether richer vocabularies accelerate learning or simply shift where the learning happens.
+
 Vocabulary size affects both model capacity and efficiency in ways that interact with embedding design. Larger vocabularies require bigger embedding tables but may capture more complex patterns directly in the token representation. Smaller vocabularies are parameter-efficient but require the model to learn compositional structure through multiple layers. One-hot encoding's vocabulary of four tokens (plus special tokens) minimizes embedding parameters but maximizes the compositional learning burden. *K*-mer vocabularies scale exponentially with $k$, reaching 4,096 for 6-mers. BPE vocabularies are tunable, typically ranging from 4,096 to 32,000 tokens for genomic applications. *[Citation Needed]*
 
 
 ### Computational Efficiency {#sec-ch05-computational-efficiency}
+
+Enhancers can regulate genes from a million base pairs away, requiring models to consider vast genomic contexts. Processing such distances at single-nucleotide resolution with naive attention would require a trillion pairwise comparisons per layer---clearly impractical. Either we compress the sequence into fewer tokens, or we need architectures that scale more gently. This computational reality directly constrains which biological questions models can even attempt to answer.
 
 Computational efficiency depends on both tokenization and architecture in ways that have shifted as new architectures have emerged. For standard attention with $O(L^2)$ complexity, any compression directly reduces cost: non-overlapping k-mers reduce attention cost by a factor of $k^2$, and BPE with average compression $c$ reduces cost by $c^2$. Sub-quadratic architectures like Hyena and Mamba change this calculus entirely, making single-nucleotide tokenization computationally feasible at long contexts and eliminating the need to trade resolution for efficiency (@sec-ch07-attention).
 
@@ -296,13 +326,38 @@ Several heuristics have emerged from practical experience. Single-nucleotide tok
 
 ## Representation as Foundation {#sec-ch05-foundation}
 
+When researchers trained a model on 6-mer tokens to predict gene expression, they later discovered it could not be repurposed for splice site detection---the tokenization that compressed regulatory sequences had fragmented the critical GT-AG dinucleotides across token boundaries. The preprocessing decision made during pretraining had permanently constrained what downstream tasks were achievable.
+
 These choices propagate through every subsequent modeling decision. Position encodings in transformers must align with token boundaries. Convolutional receptive fields span tokens, not nucleotides, making effective genomic range dependent on tokenization (@sec-ch06-cnn). Transfer learning inherits the tokenization of the pretrained model, constraining how representations can be adapted to new tasks (@sec-ch09-transfer). A model pretrained with 6-mer tokenization cannot be fine-tuned for single-nucleotide variant interpretation without architectural modification.
 
 ::: {.callout-tip title="Knowledge Check"}
 A research team has pretrained a DNA language model using BPE tokenization with an average compression ratio of 4:1. They want to fine-tune it for splice site prediction, which requires identifying exact dinucleotide boundaries (GT...AG). What challenges might they face? How might they address these challenges?
+
+:::{.callout-note collapse="true" title="Check Your Answer"}
+The main challenge is that BPE tokens have variable length and may not align with the precise GT and AG dinucleotides that define splice boundaries. A token might contain part of GT plus neighboring bases, making it difficult to pinpoint the exact junction. They could address this by: (1) using single-nucleotide tokenization for the fine-tuning task despite the compression loss, (2) adding position-specific prediction heads that operate on nucleotide-level representations, or (3) using a hybrid approach where BPE captures long-range context but final predictions use nucleotide-resolution features.
+:::
 :::
 
 The field has moved from treating tokenization as fixed preprocessing to recognizing it as a fundamental design decision shaping what models can learn. Some architectures now learn tokenization jointly with prediction, discovering representations optimized for specific tasks rather than fixed in advance. As contexts extend to chromosome scale and models grow to billions of parameters, the representation problem will remain central to genomic foundation model design.
+
+::: {.callout-tip title="Test Yourself"}
+Before reviewing the summary, test your recall:
+
+1. Why does overlapping k-mer tokenization provide no sequence compression, and what problem does this create for transformers processing long genomic contexts?
+2. Explain how byte-pair encoding (BPE) learns its vocabulary from corpus statistics, and why repetitive genomic elements receive longer tokens than unique sequences.
+3. A single-nucleotide variant falls within a 6-mer token. How many different tokens does this SNP affect, and why does this complicate variant effect interpretation?
+4. What architectural innovation enabled HyenaDNA to process million-base-pair contexts at single-nucleotide resolution, escaping the compression-resolution tradeoff?
+
+:::{.callout-note collapse="true" title="Check Your Answers"}
+1. **Overlapping k-mer compression**: Overlapping k-mer tokenization generates one token per nucleotide position (minus k-1 at the end), meaning a 10 kb sequence still requires approximately 10,000 tokens. This fails to address transformers' quadratic attention complexity, which scales as O(L^2) with sequence length, making long genomic contexts computationally prohibitive despite the apparent use of multi-nucleotide tokens.
+
+2. **BPE vocabulary learning**: BPE iteratively identifies the most frequent adjacent token pair in the corpus, merges it into a new token, and repeats this process thousands of times. Repetitive genomic elements like Alu sequences appear over one million times in the human genome, causing their characteristic subsequences to be merged early into long dedicated tokens, while unique random sequences remain decomposed into shorter subunits or single nucleotides.
+
+3. **SNP effect on k-mers**: A single-nucleotide variant affects exactly k tokens (6 tokens for 6-mers) because the changed nucleotide appears in k different overlapping windows: the window starting at that position plus the k-1 windows starting before but including that position. This propagation complicates interpretation because the effect must be aggregated across multiple tokens, making it difficult to isolate which token drives the prediction and whether boundary effects influence model behavior.
+
+4. **Sub-quadratic architectures**: HyenaDNA replaced the attention mechanism with implicit long convolutions (parameterized by a small neural network) that scale sub-quadratically with sequence length. Where attention computes explicit pairwise interactions between all positions (O(L^2)), Hyena achieves similar representational power through operations whose cost grows only slightly faster than linearly, enabling 500-fold longer contexts than dense attention models while maintaining single-nucleotide resolution.
+:::
+:::
 
 ::: {.callout-note title="Chapter Summary"}
 **Key concepts:** tokenization, one-hot encoding, k-mer tokenization, byte pair encoding (BPE), single-nucleotide tokenization, biologically-informed tokenization, embeddings, positional encodings, strand handling

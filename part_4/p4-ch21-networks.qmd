@@ -39,6 +39,10 @@ Graph neural networks can only learn from relationships encoded in their input g
 
 Before examining **graph neural network** architectures, it is essential to understand what biological networks exist and where they come from. The choice of network fundamentally shapes what a model can learn, and the biases inherent in network construction propagate through all downstream analyses.
 
+:::{.callout-note title="Predict Before You Look"}
+Current protein-protein interaction databases are estimated to capture only 20-30% of true human interactions. Before reading further, predict: How might this incompleteness affect which types of proteins have more documented interactions? What factors might determine whether a protein's interactions get discovered and catalogued?
+:::
+
 Physical associations between proteins constitute perhaps the most widely used network type for GNN applications. Major databases include STRING, which integrates experimental data with computational predictions and text mining to assign confidence scores to interactions; BioGRID, which focuses on curated experimental interactions; and IntAct, which provides detailed interaction metadata from direct molecular experiments. These **protein-protein interaction networks** are incomplete (current estimates suggest only 20-30% of human PPIs are catalogued) and biased toward well-studied proteins in well-characterized pathways [@szklarczyk2023string; @oughtred2021biogrid; @orchard2014intact; @venkatesan2009protein; @hart2006completeness]. A gene involved in cancer or a common disease may have hundreds of documented interactions, while an uncharacterized protein in a specialized tissue may have none, not because it lacks interactions but because no one has looked.
 
 Transcriptional control relationships require a different network structure. Unlike PPIs, gene regulatory networks are inherently directed: a transcription factor activates or represses its targets, not vice versa. Sources include **chromatin immunoprecipitation sequencing (ChIP-seq)** experiments that identify transcription factor binding sites, **chromatin accessibility** data (assay for transposase-accessible chromatin sequencing (ATAC-seq), DNase-seq) that reveals active regulatory regions, and chromosome conformation capture (Hi-C) that maps enhancer-promoter contacts (@sec-ch20-3d-genome). Databases like ENCODE and the Roadmap Epigenomics Project provide **regulatory annotations** across cell types, though coverage varies dramatically by tissue (@sec-ch02-data). Computational methods infer regulatory edges from expression correlations or sequence motifs, but such predictions contain substantial false positives and miss context-specific interactions.
@@ -80,9 +84,21 @@ The power of knowledge graphs lies in their support for multi-hop reasoning. A q
 Spatially resolved transcriptomics and imaging data give rise to graphs capturing tissue organization invisible to bulk or even single-cell measurements (@sec-ch19-single-cell). In these **spatial and cell-cell interaction graphs**, nodes represent cells or spatial locations, while edges encode physical proximity or inferred ligand-receptor communication. Such graphs enable questions about how spatial context influences cell behavior.
 
 :::{.callout-note}
-## Stop and Think
+## Knowledge Check: Network Bias
 
-Consider a protein that has no documented interactions in STRING or BioGRID. Does this mean it truly has no binding partners? What factors might explain why some proteins have hundreds of documented interactions while others have none? How might this asymmetry affect a GNN trained on such networks?
+Consider a protein that has no documented interactions in STRING or BioGRID. Answer these questions:
+
+1. Does this mean it truly has no binding partners?
+2. What factors might explain why some proteins have hundreds of documented interactions while others have none?
+3. How might this asymmetry affect a GNN trained on such networks?
+:::
+
+:::{.callout-note collapse="true" title="Check Your Answer"}
+1. **No** - The absence of documented interactions likely reflects lack of study rather than biological truth. Most uncharacterized proteins do have binding partners.
+
+2. **Research priorities and historical focus** - Proteins involved in cancer, common diseases, or conserved pathways attract more experimental attention. High-throughput screens are biased toward abundant, easily expressed proteins. Tissue-specific or condition-specific proteins may be understudied.
+
+3. **The GNN will preferentially propagate signals toward well-connected hub genes** - This creates a rich-get-richer dynamic where well-studied genes dominate predictions, potentially missing novel biology in peripheral network regions. The model may learn to recapitulate existing knowledge rather than discover new patterns.
 :::
 
 ### Biases and Limitations {#sec-ch21-network-biases}
@@ -169,13 +185,21 @@ Before reading further, test your understanding of message passing:
 1. If a GNN has 3 message passing layers, how many hops away can information travel from any given node?
 2. Why must the aggregation function be permutation-invariant?
 3. What happens to node representations if you stack many message passing layers without any mechanism to prevent it?
+:::
 
-*Answers: (1) 3 hops; (2) Because graph neighbors have no inherent ordering, unlike sequence positions; (3) They converge (over-smoothing), losing discriminative signal.*
+:::{.callout-note collapse="true" title="Check Your Answer"}
+1. **3 hops** - Each layer extends the receptive field by one hop, so after L layers, a node has incorporated information from all nodes within L hops.
+2. **Because graph neighbors have no inherent ordering** - Unlike sequence positions or grid locations, the set of neighbors in a graph has no canonical order. The aggregation function must produce the same result regardless of how neighbors are enumerated.
+3. **They converge (over-smoothing), losing discriminative signal** - Repeated averaging causes node representations to become increasingly similar, eventually converging toward the same mean representation within connected components. This is why most practical GNNs use only 2-4 layers.
 :::
 
 ### Canonical Architectures {#sec-ch21-canonical-architectures}
 
 Several GNN architectures have become standard tools for biological applications, each with distinct design choices that reflect different tradeoffs between computational efficiency, expressive power, and scalability.
+
+:::{.callout-note title="Predict Before You Look"}
+Before reading about over-smoothing, consider this question: If you stack 10 graph convolutional layers that average neighbor representations at each step, what do you think happens to the node embeddings in a connected graph? Will they become more diverse and specialized, or more similar? Why?
+:::
 
 The simplest approach performs normalized neighborhood averaging followed by linear transformation and nonlinearity. **Graph convolutional networks (GCN)** are computationally efficient and conceptually straightforward but suffer from **over-smoothing** when stacked deeply: repeated averaging causes node representations to converge, losing the discriminative signal that distinguishes different network positions [@li2018deeper; @oono2019graph]. The mathematical reason is intuitive: averaging is a low-pass filter that removes high-frequency variation. After many rounds of averaging, all nodes in a connected component converge toward the same mean representation, much like repeatedly blurring an image eventually produces uniform gray.
 
@@ -199,6 +223,28 @@ Finally, the boundary between sequence and graph models blurs when transformer a
 | Graph Transformer | Global/structured attention | Variable | Yes | Long-range dependencies | Computational cost |
 
 : Comparison of canonical GNN architectures. The choice depends on graph size, whether inductive inference is needed, and computational budget. {#tbl-gnn-architectures}
+
+::: {.callout-tip title="Knowledge Check: Which GNN Architecture?"}
+For each biological scenario, which GNN architecture would you choose?
+
+1. Predicting function for newly characterized proteins not seen during training, using a PPI network with 2 million edges.
+
+2. A small regulatory network (500 nodes) where you suspect certain transcription factor interactions are more important than others.
+
+3. Propagating GWAS signals through pathways where causal genes may be 5+ hops from the nearest significant association.
+
+4. Real-time drug-target interaction prediction in a clinical setting requiring fast inference on patient-specific networks.
+
+:::{.callout-note collapse="true" title="Check Your Answers"}
+1. **GraphSAGE** - Inductive capability is essential for new proteins, and sampling-based aggregation scales to large graphs. GCN's transductive nature cannot handle unseen nodes.
+
+2. **GAT** - When certain edges matter more than others, attention weights learn which interactions are most informative. For small networks, GAT's computational overhead is manageable.
+
+3. **Graph Transformer** - Long-range dependencies spanning 5+ hops are difficult for standard message passing (over-smoothing). Graph transformers with global attention or positional encodings can capture distant relationships directly.
+
+4. **GCN** - Simplest and fastest inference. For real-time clinical applications, the efficiency of normalized mean aggregation outweighs the benefits of more sophisticated architectures.
+:::
+:::
 
 The expressiveness of GNNs is bounded by their ability to distinguish different graph structures. Theoretical analysis connects standard message passing to the Weisfeiler-Lehman graph isomorphism test, revealing that certain graph structures remain indistinguishable regardless of the number of layers [@xu2019how; @morris2019weisfeiler]. For most biological applications, this theoretical limitation is less constraining than practical issues of data quality, training efficiency, and **interpretability** (@sec-ch24-interpretability).
 
@@ -371,9 +417,17 @@ The foundation model integration follows the standard pattern: *scGPT* or simila
 
 ## Practical Considerations {#sec-ch21-practical}
 
+::: {.callout-tip title="Recall and Connect: Networks in Clinical Applications"}
+The network modeling principles you learn here power clinical applications in later chapters. In @sec-ch28-rare-disease, network propagation prioritizes disease genes from GWAS loci—the same message passing mechanics you've learned enable identifying which genes in a locus are most likely causal. In @sec-ch29-drug-discovery, drug-target interaction prediction combines PLM embeddings (@sec-ch15-protein-lm) with network proximity to disease genes. The ascertainment bias discussed above directly affects these applications: understudied genes appear less connected than they truly are, potentially causing prioritization methods to miss important candidates.
+:::
+
 Deploying graph neural networks on biological data requires navigating choices that profoundly affect model behavior. Graph construction determines what relationships the model can exploit. Scalability strategies determine whether training is feasible on large networks. Robustness techniques determine whether predictions generalize beyond well-characterized network regions. Interpretation methods determine whether outputs provide actionable biological insight. The following subsections address each consideration in turn.
 
 ### Graph Construction Quality {#sec-ch21-graph-construction}
+
+:::{.callout-note title="Predict Before You Look"}
+Graph construction involves a fundamental tradeoff: curated databases like BioGRID provide high-confidence interactions but limited coverage, while computational predictions from STRING are comprehensive but noisier. Before reading the discussion, predict: For disease gene prioritization, would you prefer a high-precision network (fewer edges, high confidence) or a high-recall network (more edges, lower confidence)? What would change for a safety-critical application like predicting drug side effects?
+:::
 
 The impact of graph construction choices cannot be overstated. A GNN can only learn from relationships encoded in its input graph; missing edges prevent information flow, spurious edges introduce noise, and biased edge sets propagate ascertainment artifacts.
 
@@ -425,8 +479,14 @@ Consider:
 1. How would you check if the model is simply learning node degree?
 2. How would you assess performance on understudied genes?
 3. How would you test generalization to a new disease not in training?
+:::
 
-*Take a moment to think through each question before reading on.*
+:::{.callout-note collapse="true" title="Check Your Answer"}
+1. **Compare performance to degree-only baseline** - Train a simple model using only node degree as a feature. If your GNN performs only marginally better, it may be learning degree rather than biological mechanism. Additionally, stratify test performance by degree quartiles to check if accuracy is uniform across hub and peripheral genes.
+
+2. **Stratify evaluation by publication count or study bias metrics** - Split test genes into well-characterized (many publications) versus understudied (few publications) categories. Compute AUC separately for each group. A model that performs well only on well-studied genes is recapitulating existing knowledge, not discovering new biology.
+
+3. **Temporal holdout or leave-one-disease-out cross-validation** - Train on diseases characterized before year X, test on diseases characterized after. Or use cross-validation where each fold holds out a full disease and all its genes. This tests whether the model learns generalizable disease biology rather than memorizing specific disease-gene pairs.
 :::
 
 ### Interpretation and Validation {#sec-ch21-interpretation}
@@ -494,6 +554,28 @@ Graph neural networks operate at a complementary level of abstraction to sequenc
 The central insight is that biological knowledge exists at multiple scales. Sequence encodes what individual genes and proteins can do; networks encode how they interact to produce cellular function. GNNs translate the relational structure of biological networks into learnable inductive biases, enabling disease gene prioritization through network propagation, drug target prediction through pathway context, and spatial analysis through tissue graphs. The improvements over sequence-only approaches are consistent across applications, demonstrating that relational context adds genuine information beyond what sequence representations capture.
 
 Yet network structure carries its own biases. Protein interaction databases are enriched for well-studied genes and disease-relevant pathways; less-characterized genes have fewer annotated interactions regardless of their biological importance. Correlation between genes does not imply regulatory relationship. Class imbalance between known disease genes and the genome-wide background reflects research history as much as biology. These biases propagate through GNN predictions, creating systematic patterns in what the models emphasize and what they miss. The **multi-omics** integration examined in @sec-ch22-multi-omics extends graph-based reasoning to additional modalities. Clinical applications in @sec-ch27-clinical-risk leverage network-derived features for risk stratification, while @sec-ch28-rare-disease applies network propagation to gene prioritization workflows. Both depend on understanding where network-derived predictions are trustworthy and where they inherit the limitations of their inputs, challenges that the uncertainty quantification methods in @sec-ch23-uq-methods help address.
+
+:::{.callout-tip title="Test Yourself"}
+Before reviewing the summary, test your recall:
+
+1. Explain the relationship between foundation models and graph neural networks. Do GNNs replace foundation models or complement them?
+2. What is the over-smoothing problem in GNNs, and how does it limit network depth?
+3. Why do protein interaction networks inherit study bias, and how does this affect disease gene predictions?
+4. Describe how message passing works in GNNs and what happens with each additional layer.
+5. What is the fundamental difference between edges representing association versus causation in biological networks?
+:::
+
+:::{.callout-note collapse="true" title="Check Your Answer"}
+1. **GNNs complement foundation models, not replace them** - Foundation models extract rich representations from sequence (what a protein *can* do), while GNNs add relational reasoning (what it *does* in network context). The division of labor: FMs provide node features, GNNs perform message passing to integrate neighborhood information.
+
+2. **Over-smoothing occurs when repeated averaging converges node representations** - Each GNN layer averages neighbor representations. After many layers, all nodes in a connected component converge toward similar embeddings, losing discriminative power. This is why most practical GNNs use only 2-4 layers rather than the deep stacking common in sequence models.
+
+3. **Well-studied genes have more documented interactions due to research focus** - Cancer genes, disease genes, and conserved pathway members attract experimental attention. This ascertainment bias means GNNs trained on such networks learn to propagate signals toward already-known genes, potentially missing novel biology in peripheral regions.
+
+4. **Message passing iteratively updates node representations based on neighbors** - At each layer: (1) compute messages from neighbors, (2) aggregate messages using permutation-invariant operations (sum/mean/max/attention), (3) update node representation by combining aggregated messages with current state. After L layers, each node has incorporated information from its L-hop neighborhood.
+
+5. **Association means correlation; causation means perturbation effects** - An edge in a PPI network indicates proteins bind (association) but not that perturbing one changes the other (causation). Co-expression correlations may reflect shared regulation rather than direct regulatory relationship. This matters for drug targets: correlation doesn't guarantee that modulating a gene will have the desired therapeutic effect.
+:::
 
 :::{.callout-note}
 ## Chapter Summary

@@ -42,6 +42,10 @@ The genome folds through multiple organizational levels, each with distinct func
 
 Why did cells evolve multiple organizational levels rather than a single mechanism? Each level solves a different regulatory problem at a different scale. Compartments segregate active from inactive chromatin, creating nuclear microenvironments with distinct biochemical properties—essentially partitioning the nucleus into "transcription factories" and "silencing zones." TADs constrain enhancer-promoter search: without boundaries, an enhancer might contact any gene within megabases, creating regulatory chaos; TAD boundaries limit this search to a few hundred kilobases. Loops bring specific regulatory elements into direct contact when needed. This hierarchical division of labor allows cells to achieve both genome-scale organization (compartments) and fine-scale precision (loops) using different mechanisms optimized for different tasks.
 
+::: {.callout-note title="Predict Before You Look"}
+Before examining the table below, try to rank the four organizational levels (chromosome territories, compartments, TADs, and loops) from most to least computationally tractable to predict from DNA sequence. What sequence features might make some levels easier to predict than others?
+:::
+
 The following table summarizes the key organizational levels, their scales, and the molecular mechanisms underlying each:
 
 | Level | Scale | Key Features | Molecular Mechanism | Computational Tractability |
@@ -65,11 +69,23 @@ Below the megabase scale of compartments, the genome organizes into **topologica
 
 ::: {.callout-tip title="Stop and Think"}
 Consider an enhancer located exactly at the center of a TAD. If this TAD contains three genes---one near each boundary and one near the center---which genes would you expect the enhancer to regulate? How would your prediction change if the enhancer were located near one of the TAD boundaries instead?
+
+:::{.callout-note collapse="true" title="Check Your Answer"}
+**Center-located enhancer:** All three genes within the TAD could potentially be regulated because TAD boundaries constrain contacts *between* domains, not within them. The central enhancer could contact all three genes through chromatin looping, though the nearest gene (at the center) would likely show strongest contact frequency due to proximity.
+
+**Boundary-located enhancer:** This is the more interesting case. TAD boundaries are not perfect insulators. An enhancer near a boundary might: (1) preferentially contact genes within its own TAD, (2) occasionally "leak" to contact genes in the adjacent TAD (TAD boundaries are statistical rather than absolute), or (3) if positioned at an anchor point, be involved in structural loops rather than regulatory contacts.
+
+The key insight is that TADs create *statistical preferences* for contact—enhancers within a TAD are more likely to contact genes in the same TAD, but boundary effects create gradients rather than hard walls.
+:::
 :::
 
 ### Loop Extrusion Mechanism {#sec-ch20-loop-extrusion}
 
-The molecular basis of TAD formation is now well understood through the **loop extrusion** model. The cohesin protein complex loads onto chromatin and extrudes DNA bidirectionally, progressively enlarging the extruded loop until it encounters an obstacle. The key obstacle is CTCF protein bound to DNA in a specific orientation. When cohesin encounters CTCF sites oriented toward each other (convergent orientation), extrusion halts and a stable loop forms with the convergent CTCF sites at the loop anchors *[Citation Needed]*. This model explains several key observations: TAD boundaries are enriched for CTCF binding sites; CTCF motif orientation predicts which sites will anchor loops (convergent pairs form loops while divergent pairs do not); and acute degradation of cohesin eliminates TADs within hours while leaving compartments intact *[Citation Needed]*. The distinction between compartment and TAD formation mechanisms has important implications for prediction. Models that capture CTCF binding and orientation can predict TAD boundaries; predicting compartments requires learning different sequence features associated with chromatin state.
+::: {.callout-note title="Predict Before You Look"}
+Before reading: CTCF proteins bind to DNA in a specific orientation. What do you predict happens when two CTCF sites face toward each other (convergent) versus away from each other (divergent)? Which orientation would you expect to form stable chromatin loops?
+:::
+
+The molecular basis of TAD formation is now well understood through the **loop extrusion** model. Think of cohesin as a ring sliding along a rope: once threaded, it moves along the rope, gathering slack into a growing loop. The ring slides freely until it hits a knot tied in a specific direction---only knots facing toward the ring block its progress, while knots facing away let it pass. The cohesin protein complex loads onto chromatin and extrudes DNA bidirectionally, progressively enlarging the extruded loop until it encounters an obstacle. The key obstacle is CTCF protein bound to DNA in a specific orientation. When cohesin encounters CTCF sites oriented toward each other (convergent orientation), extrusion halts and a stable loop forms with the convergent CTCF sites at the loop anchors *[Citation Needed]*. This model explains several key observations: TAD boundaries are enriched for CTCF binding sites; CTCF motif orientation predicts which sites will anchor loops (convergent pairs form loops while divergent pairs do not); and acute degradation of cohesin eliminates TADs within hours while leaving compartments intact *[Citation Needed]*. The distinction between compartment and TAD formation mechanisms has important implications for prediction. Models that capture CTCF binding and orientation can predict TAD boundaries; predicting compartments requires learning different sequence features associated with chromatin state.
 
 ::: {.callout-important title="Key Insight"}
 The **orientation rule** for CTCF is a powerful predictor: convergent CTCF pairs (pointing toward each other: $\rightarrow \leftarrow$) form stable loop anchors, while divergent pairs ($\leftarrow \rightarrow$) and tandem pairs ($\rightarrow \rightarrow$) do not. This simple rule, which arises from the loop extrusion mechanism, allows computational models to predict many TAD boundaries directly from sequence.
@@ -116,11 +132,15 @@ This section describes the biochemistry and normalization of Hi-C data. Understa
 
 Cells are crosslinked with formaldehyde to freeze chromatin contacts in place; DNA is digested with restriction enzymes; free DNA ends are ligated, preferentially joining fragments that were spatially proximate; and the ligated junctions are identified through sequencing. The frequency of junction reads between two genomic regions reflects how often those regions were in physical contact across the cell population.
 
-Hi-C extends this principle genome-wide by incorporating biotinylated nucleotides at ligation junctions, enabling purification of chimeric fragments from the entire genome *[Citation Needed]*. The output is a **contact matrix** where rows and columns represent genomic bins (typically 1 to 50 kilobases depending on sequencing depth) and values represent contact frequencies between bin pairs. Resolution depends directly on sequencing depth: achieving 1 kilobase resolution requires billions of reads, while 10 kilobase resolution requires hundreds of millions. Raw contact frequencies require extensive normalization to correct for biases from GC content, restriction site density, and mappability. The ICE (iterative correction and eigenvector decomposition) method and related approaches remove these technical artifacts while preserving biological signal *[Citation Needed]*. ICE works by assuming that all genomic regions should have roughly equal total contact frequency (visibility), then iteratively adjusting row and column sums to achieve this balance. The assumption that visibility differences are technical rather than biological is imperfect but works well in practice because the dominant technical biases (GC content affecting PCR amplification, restriction site density affecting fragmentation) would otherwise dwarf genuine biological variation. The training strategies that enable models to learn from these normalized contact matrices follow the multi-task principles introduced in @sec-ch08-multitask.
+Hi-C extends this principle genome-wide by incorporating biotinylated nucleotides at ligation junctions, enabling purification of chimeric fragments from the entire genome *[Citation Needed]*. The output is a **contact matrix**---similar to a table showing how often people from different neighborhoods meet each other in a city. Just as residents of the same neighborhood run into each other frequently while encounters between distant neighborhoods are rare, genomic regions close together contact often while distant regions rarely meet. Rows and columns represent genomic bins (typically 1 to 50 kilobases depending on sequencing depth) and values represent contact frequencies between bin pairs. Resolution depends directly on sequencing depth: achieving 1 kilobase resolution requires billions of reads, while 10 kilobase resolution requires hundreds of millions. Raw contact frequencies require extensive normalization to correct for biases from GC content, restriction site density, and mappability. The ICE (iterative correction and eigenvector decomposition) method and related approaches remove these technical artifacts while preserving biological signal *[Citation Needed]*. ICE works by assuming that all genomic regions should have roughly equal total contact frequency (visibility), then iteratively adjusting row and column sums to achieve this balance. The assumption that visibility differences are technical rather than biological is imperfect but works well in practice because the dominant technical biases (GC content affecting PCR amplification, restriction site density affecting fragmentation) would otherwise dwarf genuine biological variation. The training strategies that enable models to learn from these normalized contact matrices follow the multi-task principles introduced in @sec-ch08-multitask.
 
 The contact matrix encodes all levels of chromatin organization. Compartments appear as the checkerboard pattern when viewing megabase-scale interactions; TADs appear as triangular domains of enriched contacts along the diagonal; and loops appear as focal enrichments at specific off-diagonal positions. The matrix is dominated by the polymer effect: sequences that are close in linear distance contact each other frequently regardless of specific 3D structure, creating strong signal along the diagonal that can obscure biologically meaningful contacts at greater distances. Why does genomic distance dominate contact frequency? Chromatin behaves as a polymer: random thermal fluctuations bring nearby sequences into contact simply because they are tethered to the same chain. Two loci 10 kb apart will contact each other frequently by chance, while loci 10 Mb apart rarely meet through random motion. This distance decay follows a power law (contact frequency ~ distance^-1^), and deviations from this baseline reveal the biologically interesting contacts—TAD boundaries where contact drops faster than expected, and loops where contact is enriched above the polymer baseline.
 
 ### Resolution and Data Resources {#sec-ch20-3d-data-resources}
+
+::: {.callout-note title="Predict Before You Look"}
+Recall from @sec-ch02-functional how different sequencing technologies involve tradeoffs between throughput, resolution, and cost. Before examining the table below, predict: which 3D genome technology would you expect to have the highest resolution but lowest throughput? Which would have the opposite characteristics?
+:::
 
 Beyond standard Hi-C, several technologies address specific limitations:
 
@@ -140,6 +160,10 @@ Training data for 3D prediction models comes primarily from a small number of we
 
 ::: {.callout-tip title="Knowledge Check"}
 A researcher wants to study enhancer-promoter contacts at a specific gene locus implicated in a rare disease. The target region spans 500 kb. Given the technologies described above, which approach would you recommend, and why? What would be the key limitation of your recommended approach?
+
+:::{.callout-note collapse="true" title="Check Your Answer"}
+Capture Hi-C would be the best choice—it provides high resolution (1-5 kb) at the specific target locus, enabling identification of enhancer-promoter contacts within the 500 kb region without the cost of genome-wide sequencing. The key limitation is that it only captures contacts within the predetermined region, potentially missing long-range interactions with sequences outside the targeted 500 kb window.
+:::
 :::
 
 
@@ -149,6 +173,10 @@ Sequence-based prediction of 3D genome structure asks whether DNA sequence alone
 
 ### *Akita* and Dilated Convolutions {#sec-ch20-akita}
 
+::: {.callout-note title="Retrieval Practice"}
+Recall from @sec-ch06-cnn how dilated convolutions expand receptive fields. Why is this architectural choice particularly important for 3D genome prediction, where CTCF binding sites may be separated by hundreds of kilobases? What would happen if we used standard convolutions instead?
+:::
+
 *Akita*, introduced by Fudenberg et al. in 2020, established the paradigm for sequence-to-contact prediction [@fudenberg_predicting_2020]. The model takes approximately one megabase of DNA sequence as input and predicts Hi-C contact frequencies at 2 kilobase resolution. The architecture uses dilated convolutions to expand the receptive field without proportionally increasing parameters (an approach discussed in detail in @sec-ch06-spliceai-architecture), enabling the model to integrate information across the full input window. Dilated convolutions are essential here because TAD boundaries and loop anchors depend on sequence features (primarily CTCF motifs) that may be separated by hundreds of kilobases, far beyond what standard convolutions could capture without prohibitive parameter counts.
 
 The output is symmetric (contacts between positions *i* and *j* equal contacts between *j* and *i*), which the architecture enforces through appropriate pooling operations. This symmetry constraint is not merely a convenience but reflects the physical reality of chromatin contacts: if region A touches region B, then by definition B touches A. Enforcing this constraint in the architecture prevents the model from learning spurious asymmetric predictions that would violate physics. *Akita* achieves correlation coefficients of 0.6 to 0.8 between predicted and observed contact maps in held-out genomic regions, successfully identifying TAD boundaries and major loop anchors.
@@ -157,11 +185,19 @@ The output is symmetric (contacts between positions *i* and *j* equal contacts b
 
 *Orca* extends sequence-based prediction to multiple resolutions simultaneously [@zhou_orca_2022]. Rather than predicting a single-resolution contact map, *Orca* generates predictions at 4, 8, 16, 32, 64, 128, and 256 kilobase resolutions, capturing both fine-scale loops and large-scale compartment structure. The multiscale approach addresses a fundamental challenge: compartments span megabases while loops span kilobases, and no single resolution optimally captures both. A single-resolution model forced to compromise would either miss fine-scale loop contacts (at coarse resolution) or fail to capture compartment patterns that emerge from aggregating many weak interactions (at fine resolution).
 
+::: {.callout-note title="Predict Before You Look"}
+Think back to *Enformer* from @sec-ch16-regulatory, which uses dilated convolutions to expand its receptive field. How might *Orca's* multiscale approach differ from simply using more extreme dilation rates? What architectural advantage does explicit multi-resolution prediction provide?
+:::
+
 *Orca's* architecture processes sequence through parallel pathways tuned to different scales, then combines predictions into a coherent multiscale representation. The parallel pathways use different pooling and dilation strategies, effectively asking "what does this sequence predict at the 4kb scale?" independently from "what does it predict at the 256kb scale?" This design enables prediction of structural variants' effects across organizational levels, from disrupted loops to altered compartment boundaries.
 
 ### *C.Origami* and Cross-Cell-Type Transfer {#sec-ch20-c-origami}
 
 *C.Origami* addresses the cell-type specificity problem [@tan_corigami_2023]. While TAD boundaries are largely conserved across cell types, finer-scale contacts vary substantially. *C.Origami* incorporates CTCF ChIP-seq data alongside sequence, enabling the model to learn how cell-type-specific CTCF binding patterns shape cell-type-specific contact maps. This design enables transfer learning: train on cell types with both Hi-C and CTCF data, then predict contacts in new cell types using only CTCF ChIP-seq. The approach substantially expands the range of cell types where 3D predictions are possible, since CTCF ChIP-seq is available for many more cell types than deep Hi-C. This transfer strategy echoes the broader transfer learning principles discussed in @sec-ch09-transfer.
+
+::: {.callout-note title="Predict Before You Look"}
+Before examining the comparison table, consider the tradeoffs each model makes. Which model would you expect to have the best cross-cell-type performance? Which would be most suitable for predicting the effects of a novel structural variant in a cell type with no available Hi-C data?
+:::
 
 The following table compares these three foundational 3D prediction models:
 
@@ -177,11 +213,25 @@ The following table compares these three foundational 3D prediction models:
 
 : Comparison of sequence-based 3D structure prediction models. Each addresses different aspects of the prediction challenge. {#tbl-3d-models}
 
+::: {.callout-important title="Checkpoint: 3D Prediction Approaches"}
+Before proceeding, ensure you can explain:
+
+1. The tradeoff between sequence-only models (*Akita*) and models requiring auxiliary data (*C.Origami*)
+2. Why multiscale prediction (*Orca*) captures different structural features than fixed-resolution models
+3. When cross-cell-type transfer is possible and what data it requires
+
+If these distinctions are unclear, re-read the model descriptions and table above.
+:::
+
 ::: {.callout-tip title="Stop and Think"}
 Consider the tradeoff between *Akita's* sequence-only approach and *C.Origami's* requirement for CTCF ChIP-seq data. In what scenarios would each approach be preferred? Think about (1) predicting structural variant effects, (2) predicting contacts in a novel cell type, and (3) understanding what sequence features determine 3D structure.
 :::
 
 ### Learned Sequence Determinants {#sec-ch20-3d-interpretability}
+
+::: {.callout-note title="Retrieval Practice"}
+Before reading about what these 3D prediction models learn, recall the loop extrusion mechanism from earlier in this chapter. What sequence feature would you expect to be the strongest predictor of chromatin loop formation? Why would the orientation of this feature matter?
+:::
 
 Interpretability analysis reveals what these models learn about sequence determinants of 3D structure. Attribution methods (discussed more fully in @sec-ch24-interpretability) consistently identify CTCF motifs as the strongest predictors of contact patterns, with convergent CTCF pairs (motifs oriented toward each other) most strongly associated with loop anchors. Transcription start sites contribute to boundary predictions, consistent with the observation that active promoters often coincide with domain edges. GC content correlates with compartment identity (GC-rich regions tend toward A compartment), and repetitive element composition shows systematic associations (LINE elements with B compartment; Alu elements with A compartment) *[Citation Needed]*. The orientation rule for CTCF emerges naturally from training: models learn that CTCF motif orientation, not just presence, predicts which sites will anchor loops. This learned relationship matches the mechanistic understanding from the loop extrusion model, providing validation that models capture biologically meaningful features.
 
@@ -249,6 +299,10 @@ Single-cell RNA sequencing (@sec-ch19-single-cell) reveals cellular heterogeneit
 
 Spatial transcriptomics technologies fall into two broad categories with complementary strengths. Spot-based methods like Visium (10x Genomics) capture polyadenylated RNA at arrayed positions on a slide, providing transcriptome-wide measurement at approximately 55 micrometer resolution (typically 1 to 10 cells per spot). These methods offer comprehensive gene coverage but limited spatial resolution. Imaging-based methods like MERFISH use sequential rounds of fluorescent hybridization to identify RNA molecules *in situ*, achieving subcellular resolution but limited to pre-selected gene panels (hundreds to thousands of genes rather than transcriptome-wide) *[Citation Needed]*. Newer technologies like Stereo-seq achieve near-cellular resolution with transcriptome-wide coverage through spatial barcoding, though they remain less validated than established methods *[Citation Needed]*.
 
+::: {.callout-note title="Predict Before You Look"}
+Consider the fundamental tradeoff between spatial resolution and gene coverage. Why might this tradeoff exist at a technical level? Which approach would you choose for (1) discovering novel spatial patterns in a tissue, versus (2) mapping known cell-cell interactions at high resolution?
+:::
+
 | Approach | Resolution | Gene Coverage | Example Technologies | Best For |
 |----------|------------|---------------|---------------------|----------|
 | Spot-based | ~55 um (multi-cell) | Transcriptome-wide | Visium, Slide-seq | Discovery, whole-transcriptome |
@@ -294,6 +348,10 @@ For clinical applications, the sparse training data creates systematic blind spo
 
 ::: {.callout-tip title="Knowledge Check"}
 Summarize three distinct limitations of current 3D genome prediction models. For each limitation, identify whether it is primarily (a) a data limitation that more sequencing could address, (b) a fundamental biological challenge, or (c) a computational/algorithmic limitation. How do these limitations affect the clinical utility of 3D structure predictions?
+
+:::{.callout-note collapse="true" title="Check Your Answer"}
+Three key limitations: (1) Resolution gap (a—data): models predict at 2-10 kb but enhancer-promoter contacts require finer resolution; more sequencing could help but may hit biological ceilings. (2) Population averaging (b—biological): bulk Hi-C averages over millions of cells with different configurations; single-cell approaches are fundamentally sparse due to physical constraints. (3) Causality (b—biological): predicting contacts doesn't establish functional consequences; many contacts are permissive rather than deterministic. These severely limit clinical utility because disease-relevant cells lack training data and predicted contacts may not indicate functional effects.
+:::
 :::
 
 
@@ -308,6 +366,28 @@ Yet the functional role of 3D structure remains more modest than early enthusias
 :::
 
 This distinction shapes how 3D structure should be integrated with other modalities. Chromatin contacts become edges in gene regulatory networks (@sec-ch21-networks), providing structural priors for graph-based reasoning. Spatial expression patterns integrate with multi-omics approaches (@sec-ch22-multi-omics), adding tissue architecture alongside genomics and transcriptomics. For interpretability (@sec-ch24-interpretability), 3D structure offers mechanistic hypotheses that require experimental validation. Whether a predicted regulatory effect operates through chromatin proximity, or whether proximity merely correlates with regulation through shared causes, remains a question that computational models can motivate but not answer. The integration of 3D information into genomic AI proceeds with appropriate uncertainty about what that information contributes.
+
+::: {.callout-tip title="Test Yourself"}
+Before reviewing the summary, test your recall:
+
+1. What is the "orientation rule" for CTCF binding sites, and why does it determine which sites will anchor chromatin loops?
+2. Explain why "linear distance is not regulatory distance" in the context of enhancer-gene regulation.
+3. How does the loop extrusion mechanism create TAD boundaries?
+4. Why is 3D genome structure described as "permissive rather than deterministic" for gene regulation?
+5. What is the population averaging problem in Hi-C data, and why does it limit our understanding of gene regulation at the single-cell level?
+
+:::{.callout-note collapse="true" title="Check Your Answer"}
+1. **CTCF orientation rule**: Convergent CTCF pairs (→←) form stable loop anchors because the loop extrusion mechanism halts when cohesin encounters CTCF sites oriented toward each other. Divergent (←→) and tandem (→→) orientations do not block extrusion, so no stable loop forms.
+
+2. **Linear vs. regulatory distance**: An enhancer 500 kb away within the same TAD may regulate a gene more strongly than an enhancer 50 kb away across a TAD boundary. The 3D folding determines regulatory proximity—boundaries insulate genes from enhancers despite short linear distances, while loops bring distant elements into contact.
+
+3. **Loop extrusion and TAD boundaries**: Cohesin loads onto chromatin and extrudes DNA bidirectionally, enlarging a loop until encountering convergent CTCF sites. These CTCF-anchored loops define TAD boundaries. Multiple adjacent loops create the triangular TAD structure visible in Hi-C.
+
+4. **Permissive vs. deterministic**: 3D structure establishes which enhancer-promoter interactions *can* occur, but whether they *do* occur depends on additional factors (transcription factors, chromatin accessibility). Many TAD disruptions produce minimal expression changes, showing that contacts enable but don't command gene regulation.
+
+5. **Population averaging problem**: Bulk Hi-C averages over millions of cells, each with a different 3D configuration. Any two loci contact each other in only 5-15% of cells at any time, but Hi-C reports the average contact frequency. This obscures single-cell stochastic dynamics that may be critical for gene regulation but cannot be recovered from bulk data.
+:::
+:::
 
 ::: {.callout-note title="Chapter Summary"}
 **Key Concepts Covered:**

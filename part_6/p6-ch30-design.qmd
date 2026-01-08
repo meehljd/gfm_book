@@ -82,7 +82,23 @@ Protein design approaches. (A) Directed evolution in silico: generate variants t
 
 ### Sequence Generation from Language Model Priors {#sec-ch30-plm-generation}
 
+::: {.callout-note title="Stop and Think"}
+Before reading about protein language model generation, recall from @sec-ch08-pretraining: What is the difference between autoregressive and masked language modeling objectives? How would each approach support sequence generation differently?
+
+:::{.callout-note collapse="true" title="Check Your Answer"}
+Autoregressive models (like GPT-style) predict each token given all previous tokens, making them naturally suited for sequential generation. Masked models (like BERT-style) predict masked tokens given surrounding context bidirectionally, supporting iterative refinement by masking and resampling positions. For protein design, autoregressive models generate sequences left-to-right, while masked models enable position-specific refinement of existing sequences.
+:::
+:::
+
 Autoregressive protein language models such as *ProGen* and *ProtGPT2* generate novel protein sequences by sampling tokens sequentially from learned distributions [@madani_progen_2023; @ferruz_protgpt2_2022]. Given a partial sequence, the model predicts probability distributions over the next amino acid, enabling iterative extension until a complete protein emerges. This generation process can be unconditional (sampling from the full learned distribution) or conditional on control signals such as protein family annotations, organism of origin, or functional keywords.
+
+::: {.callout-note title="Stop and Think"}
+Consider the temperature parameter in sequence generation. If you sample at T=0 (deterministic, always picking highest-probability amino acid), what kind of sequences would you expect to generate? What about at very high temperature? What tradeoff does this create for protein design?
+
+:::{.callout-note collapse="true" title="Check Your Answer"}
+At T=0, you generate the single most probable sequence—likely a "consensus" protein similar to highly abundant natural proteins. At very high T, you sample broadly including low-probability amino acids, producing diverse but potentially nonfunctional sequences. The tradeoff: low temperature exploits known-good sequence space (safe but unoriginal), high temperature explores novel space (creative but risky). Practical workflows sample across temperatures and use downstream filters.
+:::
+:::
 
 The quality of generated sequences depends critically on how closely the sampling distribution matches functional proteins. Sequences sampled at low temperature (more deterministic) tend to resemble common protein families but may lack novelty. Sequences sampled at high temperature (more stochastic) exhibit greater diversity but risk straying into nonfunctional regions. The temperature parameter controls the entropy of the sampling distribution: at temperature T=0, the model deterministically selects the highest-probability token at each position; as T increases, lower-probability tokens become increasingly likely to be sampled. This creates a fundamental exploration-exploitation tradeoff: low temperatures exploit the model's knowledge of natural sequences but may miss novel functional solutions, while high temperatures explore more broadly but venture into regions where the model's predictions become unreliable. Practical design workflows often generate large libraries of candidates across temperature ranges, then filter using downstream oracles for structure, stability, or function.
 
@@ -131,6 +147,10 @@ The table below compares sequence-based and structure-aware approaches across ke
 ## Knowledge Check
 
 Consider a therapeutic antibody design project. List at least four properties you would need to optimize simultaneously, and explain why optimizing for just one property (e.g., binding affinity) would be insufficient for a successful therapeutic.
+
+:::{.callout-note collapse="true" title="Check Your Answer"}
+Key properties include: (1) binding affinity to target, (2) specificity to avoid off-target effects, (3) manufacturability and expression levels, (4) stability during storage, (5) solubility to prevent aggregation, and (6) low immunogenicity to minimize immune responses. Optimizing only affinity could yield an antibody that binds excellently but aggregates during manufacturing, triggers immune responses in patients, or binds unintended targets causing toxicity.
+:::
 :::
 
 Real therapeutic or industrial applications rarely optimize a single objective. A designed enzyme must not only be catalytically active but also stable at process temperatures, expressible in the production host, and resistant to proteolytic degradation. A therapeutic antibody must bind its target with high affinity while avoiding off-target interactions, maintaining solubility, and minimizing immunogenicity. These competing demands create multi-objective optimization problems where no single sequence optimizes all criteria simultaneously.
@@ -177,6 +197,14 @@ Design of splicing modulators requires particular attention to off-target effect
 
 ## mRNA Design and Optimization {#sec-ch30-mrna-design}
 
+::: {.callout-note title="Stop and Think"}
+Consider what you learned about protein design in @sec-ch30-protein-design. How does mRNA design differ fundamentally? What additional constraints does an mRNA therapeutic face compared to a designed protein?
+
+:::{.callout-note collapse="true" title="Check Your Answer"}
+Key differences: (1) mRNA must encode the *same* protein sequence (constrained by genetic code), limiting design to synonymous codon choices and UTRs; (2) mRNA faces immune recognition as a foreign nucleic acid, requiring evasion strategies; (3) mRNA degrades rapidly, requiring stability optimization; (4) mRNA must be manufactured and delivered, adding constraints proteins don't face. Protein design optimizes amino acid sequence directly; mRNA design optimizes the nucleotide encoding while keeping the protein constant.
+:::
+:::
+
 The clinical success of mRNA vaccines has intensified interest in systematic approaches to mRNA sequence design. Unlike protein or regulatory element design where the primary challenge is achieving desired function, mRNA design must simultaneously optimize translation efficiency, molecular stability, immune evasion, and manufacturing tractability. Foundation models increasingly contribute to each of these objectives.
 
 ::: {#fig-mrna-optimization}
@@ -186,6 +214,14 @@ mRNA therapeutic design optimization. Each region requires distinct consideratio
 :::
 
 ### Codon Optimization Principles {#sec-ch30-codon-optimization}
+
+::: {.callout-note title="Stop and Think"}
+Before diving into codon optimization, recall the genetic code's degeneracy. For a 100-amino-acid protein, roughly how many different mRNA sequences could encode the same protein? Why does this create both an opportunity and a challenge for mRNA design?
+
+:::{.callout-note collapse="true" title="Check Your Answer"}
+Most amino acids have 2-6 synonymous codons (Met and Trp have only 1). For 100 amino acids with ~3 average synonymous options per position, there are roughly 3^100 ≈ 10^47 possible encodings—an astronomical number. This creates opportunity because we can search for optimal encodings, but also creates a challenge because the search space is impossibly large, requiring smart optimization strategies rather than exhaustive search.
+:::
+:::
 
 The genetic code is degenerate: sixty-one sense codons encode twenty amino acids, meaning that any protein sequence can be encoded by many different mRNA sequences. These synonymous sequences differ in translation efficiency, mRNA stability, and immunogenicity despite producing identical proteins. **Codon optimization** exploits this redundancy to improve therapeutic mRNA performance.
 
@@ -201,6 +237,14 @@ Machine learning models trained on ribosome profiling data and reporter assays h
 
 ### Stability Engineering and UTR Design {#sec-ch30-utr-design}
 
+::: {.callout-note title="Stop and Think"}
+Think back to regulatory element design (@sec-ch30-regulatory-design). How is UTR design similar to enhancer/promoter design? How is it different? What properties must a 5' UTR balance that a promoter does not?
+
+:::{.callout-note collapse="true" title="Check Your Answer"}
+Similarities: Both are non-coding regulatory sequences where foundation models predict activity; both use gradient-based or generative design approaches. Key differences: (1) UTRs are transcribed into RNA (must consider RNA structure, not DNA), (2) 5' UTRs must balance ribosome recruitment (high translation) against secondary structure that blocks scanning (low translation), (3) 3' UTRs affect mRNA half-life via RNA-binding protein sites, while promoters don't face degradation. UTRs operate post-transcriptionally; promoters control transcription initiation.
+:::
+:::
+
 mRNA stability in the cytoplasm determines the duration of protein production and thus the dose required for therapeutic effect. Stability is governed by multiple sequence features: the 5' and 3' **untranslated regions (UTRs)** that flank the coding sequence, the presence of destabilizing sequence motifs recognized by RNA-binding proteins, and secondary structures that protect against or expose the molecule to nucleases.
 
 UTR engineering represents a particularly active area of foundation model application. Natural UTRs contain binding sites for regulatory proteins and microRNAs, sequences that affect ribosome recruitment, and structures that influence mRNA localization and stability. Foundation models trained on expression data across diverse UTR sequences learn which features promote stability and efficient translation. *[Citation Needed]* Design algorithms then search for synthetic UTRs that maximize these properties while avoiding sequences that trigger immune recognition or rapid degradation.
@@ -208,6 +252,14 @@ UTR engineering represents a particularly active area of foundation model applic
 Chemical modifications of mRNA (pseudouridine, N1-methylpseudouridine, and other nucleoside analogs) dramatically improve stability and reduce immunogenicity. These modifications alter the sequence-function relationship in ways that current foundation models, trained primarily on natural RNA, may not fully capture. Emerging models that incorporate modification information promise to enable joint optimization of sequence and modification patterns.
 
 ### Immunogenicity Considerations {#sec-ch30-mrna-immunogenicity}
+
+::: {.callout-note title="Stop and Think"}
+Recall multi-objective optimization from protein design (@sec-ch30-multi-objective). For an mRNA therapeutic, you need to balance: (1) high translation efficiency, (2) long mRNA half-life, (3) low immunogenicity, and (4) manufacturability. Why can't you simply maximize each property independently? What is the likely tradeoff between translation efficiency and immunogenicity?
+
+:::{.callout-note collapse="true" title="Check Your Answer"}
+These objectives create competing constraints: (1) High GC content can improve stability but increases immunogenicity via TLR recognition; (2) Rare codons reduce translation but may reduce immune detection; (3) Strong secondary structures protect from nucleases but can block ribosome scanning; (4) Chemical modifications reduce immunogenicity but increase manufacturing cost. Translation efficiency often requires features (abundant codons, specific motifs) that immune sensors recognize. Optimization must find Pareto-optimal solutions balancing these tradeoffs, not single-objective maxima.
+:::
+:::
 
 Exogenous mRNA triggers innate immune responses through pattern recognition receptors including Toll-like receptors (*TLR3*, *TLR7*, *TLR8*) and cytosolic sensors (*RIG-I*, *MDA5*). While some immune activation may be beneficial for vaccine applications, excessive inflammation limits dosing and causes adverse effects. For protein replacement therapies where repeated dosing is required, minimizing immunogenicity is essential.
 
@@ -349,6 +401,10 @@ For each of the following design scenarios, which algorithmic approach would you
 2. Designing a library of 10,000 diverse antibody variants for experimental screening
 3. Finding a sequence that maximizes binding affinity while maintaining stability above a threshold
 4. Exploring the fitness landscape around a well-characterized parental protein
+
+:::{.callout-note collapse="true" title="Check Your Answer"}
+(1) **Gradient-based optimization** - single position allows exhaustive search of 20 amino acids, or gradient methods if using soft encodings. (2) **Monte Carlo or evolutionary algorithms** - generate diverse populations naturally; avoid mode collapse. (3) **Constrained optimization or multi-objective evolutionary** - explicit constraint handling for stability threshold. (4) **Bayesian optimization** - sample-efficient exploration when starting from known good sequence; balances exploitation and exploration naturally.
+:::
 :::
 
 **Gradient-based optimization** treats foundation models as differentiable functions and computes gradients of objectives with respect to input sequence representations. Because sequences are discrete while gradients are continuous, optimization operates on relaxed representations (probability distributions over nucleotides or amino acids) that are projected back to discrete sequences for evaluation. The relaxation step is necessary because gradient descent requires continuous inputs: a "soft" one-hot encoding represents each position as a probability distribution over amino acids (e.g., 0.7 Ala, 0.2 Gly, 0.1 Ser) rather than a discrete choice, allowing gradients to flow and guide optimization. Projection to discrete sequences occurs either through argmax (selecting the highest-probability amino acid) or through stochastic sampling from the learned distribution. This approach efficiently navigates high-dimensional spaces but can produce adversarial sequences that exploit model weaknesses rather than achieving genuine biological function.
@@ -426,6 +482,40 @@ The transition from prediction to design amplifies both the potential benefits a
 
 ::: {.callout-note}
 ## Chapter Summary
+
+:::{.callout-tip title="Test Yourself"}
+Before reviewing the summary, test your recall:
+
+1. Why is the design problem fundamentally harder than the prediction problem? What changes when you invert from "sequence → function" to "function → sequence"?
+
+:::{.callout-note collapse="true" title="Check Your Answer"}
+Prediction evaluates one sequence (computable in milliseconds); design must search astronomically large spaces (20^200 for a 200-residue protein). Prediction stays near training data where models are accurate; design optimizes toward extremes where models become unreliable (distribution shift). Prediction has ground truth for validation; design creates novel sequences with unknown true function, requiring expensive experimental validation.
+:::
+
+2. Compare sequence-based protein design (using language models) with structure-aware design (using diffusion and inverse folding). What are the advantages of each approach?
+
+:::{.callout-note collapse="true" title="Check Your Answer"}
+Sequence-based (PLMs): Advantages include computational efficiency, strong priors from evolutionary data, good for variant optimization. Limitations: restricted to known fold families. Structure-aware (RFdiffusion + ProteinMPNN): Advantages include ability to generate entirely novel topologies, target specific binding geometries, design for function-first. Limitations: higher computational cost, requires structural specification. Choose PLMs for optimizing existing proteins, structure-aware for de novo creation.
+:::
+
+3. What are the four key dimensions for evaluating generative sequence models (novelty, validity, diversity, functionality)? Why is no single metric sufficient?
+
+:::{.callout-note collapse="true" title="Check Your Answer"}
+(1) Novelty: distance from training data (avoid memorization); (2) Validity: satisfies basic constraints (foldable, correct chemistry); (3) Diversity: variation among outputs (avoid mode collapse); (4) Functionality: achieves intended purpose (ultimate test). These can trade off—highly novel sequences may have lower validity. High validity doesn't guarantee function. High diversity is useless if all designs fail. Comprehensive evaluation requires assessing all dimensions.
+:::
+
+4. Describe a design-build-test-learn cycle for protein engineering. How do foundation models contribute at each stage, and where does the bottleneck typically occur?
+
+:::{.callout-note collapse="true" title="Check Your Answer"}
+Design: FM scores candidates, optimization identifies promising sequences (seconds-minutes). Build: DNA synthesis and assembly create physical constructs (days). Test: expression and functional assays measure performance (days-weeks). Learn: results update models for next cycle. FMs contribute in Design (generative priors, fitness prediction) and Learn (incorporating experimental data to improve predictions). Bottleneck: Build-Test phases (days-weeks) vs. fast Design (seconds), limiting iteration speed.
+:::
+
+5. What characteristic failure modes should you watch for in model-guided design (distribution shift, mode collapse, reward hacking)? Give an example of each.
+
+:::{.callout-note collapse="true" title="Check Your Answer"}
+Distribution shift: optimization pushes into regions where FM predictions are unreliable (e.g., designed protein with 15% identity to any training sequence—model never saw such distant sequences). Mode collapse: generative model produces minor variants of training sequences rather than novel designs (all generated antibodies are >95% identical to natural sequences in database). Reward hacking: optimization exploits model artifacts (e.g., promoter design finds sequences with spurious features correlating with high expression in training data but having no causal effect).
+:::
+:::
 
 This chapter explored how foundation models enable the transition from predicting sequence function to designing sequences with desired properties.
 

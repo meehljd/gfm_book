@@ -42,6 +42,10 @@ The opportunity is substantial but not guaranteed to succeed. Protein sequences 
 ## Stop and Think
 
 Before reading about the limitations of task-specific CNNs, consider: if you trained a model specifically to predict chromatin accessibility in one cell type, what challenges might you face when applying it to a new cell type or a different prediction task?
+
+:::{.callout-note collapse="true" title="Check Your Answer"}
+You would face three key challenges: (1) **Data dependency** - you'd need new labeled chromatin accessibility data for the new cell type, which is expensive and may not be available; (2) **Architecture mismatch** - the model's architecture was optimized for chromatin accessibility, so adapting it to a different task (like splice prediction) would require substantial re-engineering; (3) **Feature transfer failure** - patterns learned for one task (chromatin marks) don't directly transfer to unrelated tasks without retraining. This is precisely why the foundation model paradigm emerged: learn general representations once, then adapt to many tasks.
+:::
 :::
 
 The convolutional neural networks examined in @sec-ch06-cnn achieved strong performance on specific genomic prediction tasks. They faced, however, the feature ceiling limitation discussed in @sec-ch04-features-to-representations: performance bounded by what architectural choices and training data could capture. *DeepSEA* predicted chromatin marks from sequence; *SpliceAI* identified splice junctions with clinical utility; *ExPecto* estimated expression effects of variants. Each model was engineered for its particular application, with architectural choices (filter sizes, dilation patterns, pooling strategies) optimized for the task at hand.
@@ -128,6 +132,10 @@ While the *Nucleotide Transformer* demonstrated the value of scaling, the Genomi
 ## Stop and Think
 
 *GPN* learns from only eight plant genomes, yet it outperforms conservation scores derived from alignments across dozens of species. What might explain this surprising result? Consider what information is preserved versus lost in multiple sequence alignment.
+
+:::{.callout-note collapse="true" title="Check Your Answer"}
+Multiple sequence alignment preserves only positions where sequences can be reliably aligned, discarding information from insertion/deletion-rich regions and structural variants. *GPN* learns from unaligned sequences, capturing patterns in these regions that alignment-based methods miss. Additionally, *GPN* learns higher-order sequence patterns (motif combinations, spacing constraints, regulatory grammar) that phyloP and phastCons cannot represent—they only measure single-position conservation. The self-supervised objective forces *GPN* to predict nucleotides from context, requiring it to learn the sequence rules that determine "allowed" versus "disallowed" patterns. This is precisely the information needed for variant effect prediction.
+:::
 :::
 
 For variant effect prediction, *GPN* used a **likelihood ratio** approach. Given reference and alternate alleles at a position, the model computes the log-likelihood of each under the learned sequence distribution. Variants that substantially reduce sequence likelihood (relative to the reference) are inferred to be more disruptive. This scoring strategy exploits the fact that constrained positions should have confident predictions for the reference allele, while unconstrained positions allow more flexibility.
@@ -187,6 +195,10 @@ DNA is double-stranded, and any sequence can be read from either strand. The rev
 ## Knowledge Check
 
 Consider a model predicting transcription factor binding. A binding site on the forward strand (5'-GAATTC-3') has reverse complement (5'-GAATTC-3' on the reverse strand). Should a model's prediction differ based on which strand you query? Why or why not? What about for genes, which have defined orientations?
+
+:::{.callout-note collapse="true" title="Check Your Answer"}
+For transcription factor binding sites, predictions should be identical for forward and reverse complement sequences because the binding site represents the same functional element on either strand. However, for genes with defined orientations (coding sequences, promoters), strand matters biologically, so predictions can differ. The key insight is that strand symmetry applies to motifs without inherent directionality, but not to oriented features like genes where 5' to 3' direction carries functional meaning.
+:::
 :::
 
 *Caduceus* addressed this challenge by building **reverse-complement equivariance** directly into the architecture [@schiff_caduceus_2024]. The model extends the *Mamba* state space architecture (which achieves O(L) complexity) to support both bidirectional processing and strand equivariance. The BiMamba component enables information flow in both directions along the sequence, while the MambaDNA block ensures mathematically related predictions for sequences and their reverse complements.
@@ -225,20 +237,37 @@ For variant effect prediction, *Evo 2* enables zero-shot scoring through likelih
 
 The pan-species training enables cross-species applications that extend *Evo*'s prokaryotic focus to the full breadth of biology. Variant interpretation extends naturally to non-model organisms, supporting conservation genomics and agricultural breeding where labeled training data is scarce. Model representations cluster sequences by phylogenetic relationships even without explicit evolutionary modeling. Beyond discriminative tasks, *Evo 2* demonstrates generative capabilities building on *Evo*'s initial demonstrations: synthesizing plausible mitochondrial genomes, prokaryotic operons, and eukaryotic regulatory regions with coherence across kilobase to megabase scales.
 
-The following table summarizes the key characteristics of the major DNA language models discussed in this chapter:
+::: {.callout-tip}
+## Knowledge Check: Predict Before You Look
 
-| Model | Year | Context | Parameters | Architecture | Training Objective | Key Innovation |
-|-------|------|---------|------------|--------------|-------------------|----------------|
-| *DNABERT* | 2021 | ~500 bp | 110M | Transformer | Masked LM | Proof of concept |
-| *DNABERT-2* | 2024 | ~500 bp | 117M | Transformer | Masked LM | BPE tokenization |
-| *Nucleotide Transformer* | 2023 | 6 kb | 500M-2.5B | Transformer | Masked LM | Multi-species, scaling |
-| *GPN* | 2023 | 512 bp | 25M | Transformer | Masked LM | Cross-species VEP |
-| *HyenaDNA* | 2023 | 1 Mb | 1.6M-6.6M | Hyena | Next token | Sub-quadratic attention |
-| *Caduceus* | 2024 | 131 kb | 1.6M-6.6M | Mamba | Next token | RC-equivariance |
-| *Evo* | 2024 | 131 kb | 7B | StripedHyena | Next token | Prokaryotic scale |
-| *Evo 2* | 2025 | 1 Mb | 7B-40B | StripedHyena 2 | Next token | Pan-genomic, largest scale |
+Before viewing @tbl-dna-lm-comparison below, test your understanding of the architectural tradeoffs:
 
-: Major DNA language models compared by context length, architecture, and key innovations. {#tbl-dna-lm-comparison}
+1. Which models do you predict handle the longest context lengths?
+2. What architectural features enable processing beyond the quadratic attention bottleneck?
+3. Which training objective (masked LM vs. next-token prediction) do you think is more common in long-context models?
+
+:::{.callout-note collapse="true" title="Check Your Answer"}
+**Expected predictions based on earlier discussion:**
+
+1. **Longest contexts:** HyenaDNA and Evo 2 should handle 1 Mb contexts, since they use sub-quadratic architectures (Hyena operators and StripedHyena). Caduceus achieves 131 kb with linear-complexity Mamba. Standard transformers (DNABERT, Nucleotide Transformer) are limited to ≤6 kb due to quadratic attention.
+
+2. **Enabling features:** Sub-quadratic complexity is key. HyenaDNA uses implicit convolutions with O(L log L) complexity via FFT. Caduceus uses Mamba state-space models with O(L) complexity. Evo 2 uses hybrid StripedHyena combining both approaches.
+
+3. **Training objective:** Long-context models tend to use next-token (autoregressive) prediction rather than masked LM. This is because autoregressive training naturally supports generation and may provide better gradients for learning long-range dependencies. Notice in the table: all sub-quadratic models use next-token prediction.
+:::
+:::
+
+The following table highlights five landmark DNA language models representing distinct paradigms. The chapter discusses additional models including *DNABERT-2* (BPE tokenization), *GPN* (cross-species VEP), and *Evo* (prokaryotic scale).
+
+| Model | Year | Context | Parameters | Architecture | Key Innovation |
+|-------|------|---------|------------|--------------|----------------|
+| *DNABERT* | 2021 | ~500 bp | 110M | Transformer | First DNA LM, masked pretraining |
+| *Nucleotide Transformer* | 2023 | 6 kb | 500M-2.5B | Transformer | Multi-species scaling |
+| *HyenaDNA* | 2023 | 1 Mb | 1.6M-6.6M | Hyena | Sub-quadratic long context |
+| *Caduceus* | 2024 | 131 kb | 1.6M-6.6M | Mamba | RC-equivariance |
+| *Evo 2* | 2025 | 1 Mb | 7B-40B | StripedHyena 2 | Pan-genomic, largest scale |
+
+: Landmark DNA language models representing distinct architectural paradigms. {#tbl-dna-lm-comparison}
 
 
 ## Training Data and What Models Learn {#sec-ch14-training-data}
@@ -269,6 +298,10 @@ A tension exists between generality and specificity. Models trained on broader c
 ## Stop and Think
 
 If a model was trained only to predict masked nucleotides (never seeing any labels), how could we determine whether it learned to recognize splice sites, transcription factor binding sites, or gene boundaries? What experiments would reveal this?
+
+:::{.callout-note collapse="true" title="Check Your Answer"}
+Use **linear probing**: freeze the pretrained model and extract embeddings for sequences with known annotations (e.g., windows around splice sites versus random genomic positions). Train a simple linear classifier (logistic regression) on these frozen embeddings to predict the annotation. If the classifier achieves high accuracy, the embeddings must encode information distinguishing that feature—meaning the model learned to recognize it during pretraining. This works because if splice sites have different statistical patterns than non-splice sites, and the model learned to predict nucleotides accurately, it must have internalized what makes splice sites distinctive. The probing methodology is detailed in @sec-ch09-probing-representations.
+:::
 :::
 
 **Linear probing** experiments reveal what information is encoded in model representations without task-specific fine-tuning. By training simple classifiers (logistic regression, single-layer perceptrons) on frozen embeddings to predict known annotations, researchers can assess whether models have learned biologically meaningful patterns. The methodology for such probing experiments is detailed in @sec-ch09-probing-representations, with implications for interpretability examined in @sec-ch24-probing.
@@ -281,11 +314,39 @@ More complex patterns like regulatory grammar (the syntax governing how transcri
 
 ### What Models Do Not Learn {#sec-ch14-limitations-learned}
 
+::: {.callout-tip}
+## Knowledge Check: Connect to Earlier Material
+
+Recall the feature ceiling discussed in @sec-ch04-features-to-representations. How do the limitations of sequence-only DNA language models relate to that concept? Think about what information is available versus what is needed for complete predictions.
+
+:::{.callout-note collapse="true" title="Check Your Answer"}
+The feature ceiling occurs when model performance is bounded by what the input features can represent, not by model architecture or training data. DNA language models face a fundamental feature ceiling: they can only learn from sequence, but gene regulation depends on epigenetic state, 3D chromatin structure, and cellular context that sequence doesn't encode. Even with infinite parameters and perfect optimization, a sequence-only model cannot predict cell-type-specific chromatin accessibility because the information simply isn't present in DNA sequence alone. This is analogous to trying to predict splice patterns without knowing which tissues a gene is expressed in—the necessary information is missing. Breaking this ceiling requires multi-modal integration (Part IV) that incorporates functional genomics data beyond sequence.
+:::
+:::
+
 Equally important is recognizing what current DNA language models struggle to represent. Sequence-only models cannot capture epigenetic context: DNA methylation, histone modifications, and chromatin accessibility all affect gene regulation but are not encoded in primary sequence. Some models (like *GROVER*) address this by incorporating functional genomics data, but this ties them to specific cell types and experimental conditions.
 
 The three-dimensional structure of chromatin affects which regulatory elements can physically interact, but linear sequence models cannot represent folding (@sec-ch20-3d-genome). Cell-type specificity of gene regulation depends on transcription factor expression levels and chromatin state, not just sequence; models trained on sequence alone can predict potential regulatory activity but not its realization in specific contexts.
 
 Complex variant patterns beyond single nucleotide changes remain challenging. Indels, structural variants, repeat expansions, and epistatic interactions between distant loci are either not representable (depending on tokenization) or poorly predicted. Most benchmark tasks focus on SNVs, leaving multi-nucleotide effects underexplored.
+
+::: {.callout-tip}
+## Predict Before You Look
+
+Before viewing @tbl-what-models-learn below, make predictions based on what you've learned:
+
+1. What categories of biological features can sequence-only models learn?
+2. What requires information beyond DNA sequence?
+3. Where do you think the fundamental boundary lies between "learnable from sequence" and "requires additional context"?
+
+:::{.callout-note collapse="true" title="Check Your Answer"}
+**Learnable from sequence:** Features encoded in DNA sequence itself—motifs (TF binding sites, splice signals), gene structure (exon boundaries, coding regions), and evolutionary constraint (patterns conserved across species). These emerge from statistical regularities in genomic sequence.
+
+**Requires additional context:** Features dependent on cellular state—epigenetic modifications (methylation, histone marks), 3D chromatin organization (which enhancers contact which promoters), and cell-type-specific activity (whether a motif is actually bound by TFs present in that cell).
+
+**Fundamental boundary:** Sequence encodes *potential* (what *could* happen), but realization depends on *context* (what *does* happen in specific cells). A promoter sequence contains information about where transcription could initiate, but whether it actually does depends on transcription factor availability, chromatin accessibility, and regulatory signals—none of which are in the DNA sequence alone.
+:::
+:::
 
 The following table summarizes what DNA language models can and cannot learn from sequence alone:
 
@@ -315,6 +376,30 @@ Probing analysis reveals what DNA language models learn—and what they cannot. 
 
 
 ## Benchmark Performance and Evaluation {#sec-ch14-benchmarks}
+
+::: {.callout-tip}
+## Spaced Retrieval: Test Your Memory
+
+Without looking back, try to recall from @sec-ch14-task-specific-to-general:
+
+1. What were the three key limitations of task-specific CNN models that motivated the shift to foundation models?
+2. What is the core difference between the old "task-first" workflow and the new "representation-first" paradigm?
+
+:::{.callout-note collapse="true" title="Check Your Answer"}
+**Three limitations of task-specific CNNs:**
+
+1. **Data dependency:** Every new task required fresh labeled data; models couldn't transfer knowledge
+2. **Architecture rigidity:** Model architectures were tailored to specific tasks and didn't generalize
+3. **Feature isolation:** Learned features didn't transfer across tasks without re-engineering
+
+**Workflow shift:**
+
+- **Old (task-first):** Design specialized architecture for task → collect labeled data → train from scratch → repeat for each new task
+- **New (representation-first):** Pretrain general-purpose model on unlabeled sequences → extract reusable representations → adapt to any downstream task with minimal data
+
+This paradigm shift is why DNA language models can support diverse applications (regulatory classification, variant scoring, splice prediction) without task-specific retraining.
+:::
+:::
 
 Standardized benchmarks enable systematic comparison across DNA language models, though each benchmark captures only part of what we care about. Understanding benchmark construction and limitations is essential for interpreting performance claims.
 
@@ -416,6 +501,49 @@ These limitations define the complementary relationship between language models 
 
 ::: {.callout-note}
 ## Chapter Summary
+
+:::{.callout-tip title="Test Yourself"}
+Before reviewing the summary, test your recall:
+
+1. What was the key innovation of DNABERT that proved self-supervised pretraining could work for DNA sequences? What were its main limitations regarding tokenization and context length?
+
+2. Explain why standard transformer attention has quadratic complexity O(L²) and how this limits biological applications. How do HyenaDNA and Caduceus overcome this limitation?
+
+3. What is reverse-complement equivariance and why does it matter for DNA language models? Give an example of when this property should hold versus when it should not.
+
+4. Describe how DNA language models perform zero-shot variant scoring using likelihood ratios. What makes this approach work without pathogenicity training data?
+
+5. DNA language models learn representations from sequence alone. What can they capture (provide three examples) and what fundamental limitations prevent them from learning (provide three examples)?
+
+:::{.callout-note collapse="true" title="Check Your Answers"}
+1. **DNABERT innovation and limitations:**
+   - **Innovation:** Applied BERT masked language modeling to DNA using k-mer tokenization (6-mers), demonstrating that self-supervised pretraining on genomic sequence learns transferable representations for downstream tasks
+   - **Tokenization limitation:** Overlapping k-mers create positional ambiguity for variants (each nucleotide appears in multiple adjacent tokens)
+   - **Context limitation:** Limited to 512 tokens (~few hundred bp) due to quadratic attention complexity
+
+2. **Quadratic complexity and solutions:**
+   - **Why quadratic:** Standard attention computes all pairwise interactions between positions, requiring an L×L matrix. For 100kb sequence: ~10¹⁰ computations per layer
+   - **Biological limitation:** Most regulatory phenomena span >10kb (enhancer-promoter interactions: 50-200kb; TADs: ~1Mb), exceeding what quadratic attention can process
+   - **HyenaDNA solution:** Implicit convolutions with O(L log L) complexity via FFT, achieving 1 Mb context
+   - **Caduceus solution:** Mamba state-space models with O(L) linear complexity, plus reverse-complement equivariance
+
+3. **Reverse-complement equivariance:**
+   - **Definition:** Model predictions should be mathematically related for a sequence and its reverse complement
+   - **Why it matters:** DNA is double-stranded; many features (TF binding sites, motifs) are functionally identical regardless of which strand is read
+   - **Should hold:** Transcription factor binding sites (e.g., GAATTC has same binding activity on either strand)
+   - **Should not hold:** Genes with defined orientation (5'→3' direction matters for transcription; strand determines sense vs. antisense)
+   - **Impact:** Building this constraint into architecture (Caduceus) improves efficiency and correctness
+
+4. **Zero-shot variant scoring:**
+   - **Method:** (1) Compute model's log-likelihood for sequence with reference allele: log P(seq|ref); (2) Compute log-likelihood for sequence with alternate allele: log P(seq|alt); (3) Calculate likelihood ratio: Δ = log P(seq|ref) - log P(seq|alt); (4) Positive Δ means alternate reduces likelihood → inferred to be disruptive
+   - **Why it works:** Pretraining forces the model to learn what sequence patterns are "allowed" in genomes. Constrained positions have confident predictions; variants violating learned constraints get low probability. This captures evolutionary constraint without explicit pathogenicity labels
+
+5. **What DNA-LMs can and cannot learn:**
+   - **Can learn from sequence:** (a) Sequence motifs (TF binding sites, splice signals, promoter elements); (b) Gene structure (exon-intron boundaries, coding vs. noncoding regions); (c) Evolutionary constraints (conservation patterns from cross-species training)
+   - **Cannot learn (missing from sequence):** (a) Epigenetic state (DNA methylation, histone modifications, chromatin accessibility); (b) 3D chromatin structure (which enhancers contact which promoters); (c) Cell-type specificity (whether a regulatory element is active in specific tissues)
+   - **Fundamental limitation:** Sequence encodes potential, not realization in cellular context
+:::
+:::
 
 **What we covered:**
 
