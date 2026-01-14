@@ -350,11 +350,11 @@ Foundation models—large-scale pretrained neural networks like DNABERT, ESM-2, 
 - Three structured reading pathways for genomics, ML, and clinical audiences
 - Part VI covers responsible deployment (uncertainty, interpretability, fairness)
 - Part VII addresses clinical translation (risk prediction, rare disease diagnosis, drug discovery)
-- Dr. Matthew Callstrom, Mayo Clinic's Medical Director for Generative AI and Board of Governors member, has agreed to write the foreword
+- Foreword anticipated from Dr. Matthew Callstrom M.D. Ph.D., Mayo Clinic's Director for AI and Board of Trustees member
 - A web version at gfm.meehl.org demonstrates community interest
 
 **About me:**
-[Your credentials, affiliation, relevant publications]
+I'm a Senior Data Scientist in the Digital Biology group at Mayo Clinic with over 10 years in life sciences and biomedical research. I hold an M.S. from Georgia Tech and am starting a Ph.D. focused on genomic foundation models. I wrote this book because practitioners at the intersection of deep learning, genomics, and clinical medicine currently have no single resource that speaks all three languages. I wanted to build that bridge.
 
 I believe this work aligns well with MIT Press's strength in biomedical science and trade science. I would welcome the opportunity to discuss a full proposal.
 
@@ -382,11 +382,13 @@ This book provides the first comprehensive treatment of foundation models for ge
 - Foreword commitment from Mayo Clinic's AI leadership (Dr. Matthew Callstrom, Medical Director for Generative AI)
 - Companion web version live at gfm.meehl.org
 
+**About me:**
+I'm a Senior Data Scientist in the Digital Biology group at Mayo Clinic with over 10 years in life sciences and biomedical research. I hold an M.S. from Georgia Tech and am starting a Ph.D. focused on genomic foundation models. I wrote this book because practitioners at the intersection of deep learning, genomics, and clinical medicine currently have no single resource that speaks all three languages. I wanted to build that bridge.
+
 The manuscript is content-complete. I would welcome guidelines for preparing a full proposal tailored to Cambridge's requirements.
 
 Best regards,
 [Your Name]
-[Affiliation]
 [Contact information]
 
 ---
