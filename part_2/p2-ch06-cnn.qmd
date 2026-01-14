@@ -111,13 +111,30 @@ Between convolutional layers, spatial resolution must decrease while the recepti
 The following paragraph introduces the receptive field formula. If you prefer to focus on intuition, the key point is: more layers and wider filters increase how much sequence a CNN can see, but these increases are limited by computational constraints.
 :::
 
-The receptive field of a convolutional network defines how much input sequence can influence a single output prediction. For a network with kernel width $k$, pooling factor $p$, and $L$ layers, the receptive field grows with depth but remains fundamentally limited by architecture. A three-layer network with typical parameters might integrate information from 200 to 1,000 base pairs. Reaching further requires either more layers (increasing computational cost and training difficulty) or **dilated convolutions** that space filter weights to sample larger regions. When biological dependencies span tens of kilobases, this receptive field ceiling becomes the fundamental constraint that no amount of training data can overcome.
+The receptive field of a convolutional network defines how much input sequence can influence a single output prediction. For a stack of convolutional layers, the receptive field grows approximately as:
+
+$$
+\text{RF} = 1 + \sum_{l=1}^{L} (k_l - 1) \prod_{j=l+1}^{L} s_j
+$$ {#eq-06-04}
+
+where:
+
+- $L$ is the number of layers
+- $k_l$ is the kernel width at layer $l$
+- $s_j$ is the stride (or pooling factor) at layer $j$
+- With all strides $= 1$ and uniform kernel width $k$: $\text{RF} = 1 + L(k-1)$
+
+A three-layer network with typical parameters might integrate information from 200 to 1,000 base pairs. Reaching further requires either more layers (increasing computational cost and training difficulty) or **dilated convolutions** that space filter weights to sample larger regions. When biological dependencies span tens of kilobases, this receptive field ceiling becomes the fundamental constraint that no amount of training data can overcome.
 
 ::: {.callout-tip title="Knowledge Check"}
 Before continuing, make sure you can answer: (1) What is a convolutional filter learning to detect? (2) Why does pooling create position invariance? (3) What determines how far a CNN can "see" in the input sequence?
 
 :::{.callout-note collapse="true" title="Check Your Answer"}
-(1) A convolutional filter learns to detect a specific sequence pattern or motif, responding strongly when that pattern appears in its receptive field. (2) Pooling creates position invariance by taking the maximum (or average) activation within a region, so the filter responds similarly whether the motif appears at position 10 or position 15 within that region. (3) The receptive field size determines how far a CNN can see, which is determined by the combination of filter width, number of layers, pooling operations, and dilation rates across the network.
+1. A convolutional filter learns to detect a specific sequence pattern or motif, responding strongly when that pattern appears in its receptive field.
+
+2. Pooling creates position invariance by taking the maximum (or average) activation within a region, so the filter responds similarly whether the motif appears at position 10 or position 15 within that region.
+
+3. The receptive field size determines how far a CNN can see, which is determined by the combination of filter width, number of layers, pooling operations, and dilation rates across the network.
 :::
 :::
 
@@ -308,12 +325,31 @@ The following section describes residual connections and dilated convolutions. T
 *SpliceAI* employs an ultra-deep residual network with 32 convolutional layers. Residual connections address the **vanishing gradient problem** that otherwise prevents training at this depth:
 
 $$
-\text{output} = \text{input} + F(\text{input})
-$$
+h_{l+1} = h_l + F_l(h_l)
+$$ {#eq-06-01}
+
+where:
+
+- $h_l$ is the hidden representation at layer $l$
+- $F_l(\cdot)$ is the learned transformation (convolution, activation, etc.) at layer $l$
+- The identity term $h_l$ provides a "shortcut" for gradient flow during backpropagation
 
 Why does this simple reformulation enable deeper networks? During backpropagation, gradients must flow through every layer to update early parameters. In standard networks, each layer multiplies the gradient by its weight matrix; when these multiplications compound across 32 layers, gradients either explode (if weights are large) or vanish toward zero (if weights are small). Residual connections provide an alternative path: the gradient can flow directly through the identity shortcut, bypassing the learned transformation $F(\text{input})$ entirely. This means early layers receive gradient signal regardless of what intermediate layers have learned. The network can then focus on learning what to *add* to the identity mapping rather than learning the entire transformation from scratch, a substantially easier optimization problem. Skip connections from every fourth residual block feed directly to the penultimate layer, further stabilizing training dynamics by providing multiple gradient highways that bypass potential bottlenecks.
 
-Dilated convolutions expand the receptive field efficiently. A dilated convolution with rate *d* samples input positions at intervals of *d* rather than consecutively. Why use dilation rather than simply larger filters or more layers? Standard convolutions face a tradeoff: expanding the receptive field requires either wide filters (adding parameters proportionally) or deep stacking (adding parameters and gradient path length). Dilation circumvents this tradeoff by reusing the same filter weights while sampling input at wider intervals. A 3-wide filter with dilation rate 8 effectively spans 17 positions (3 samples with 8-position gaps) while using only 3 weight values. Stacking convolutions with increasing dilation rates (1, 2, 4, 8, 16, and so on) allows the network to integrate information across the full 10 kb window while maintaining sensitivity to local patterns at early layers where dilation is small. Standard convolutions with small kernels would require impractical depth to achieve equivalent receptive fields.
+Dilated convolutions expand the receptive field efficiently. A dilated convolution with rate $r$ samples input positions at intervals of $r$ rather than consecutively:
+
+$$
+\text{output}[i] = \sum_{k=0}^{K-1} w[k] \cdot \text{input}[i + k \cdot r]
+$$ {#eq-06-03}
+
+where:
+
+- $K$ is the filter (kernel) width
+- $w[k]$ are the filter weights
+- $r$ is the dilation rate (stride between sampled positions)
+- Effective span $= K + (K-1)(r-1) = Kr - r + 1$ positions using only $K$ parameters
+
+Why use dilation rather than simply larger filters or more layers? Standard convolutions face a tradeoff: expanding the receptive field requires either wide filters (adding parameters proportionally) or deep stacking (adding parameters and gradient path length). Dilation circumvents this tradeoff by reusing the same filter weights while sampling input at wider intervals. A 3-wide filter with dilation rate 8 effectively spans 17 positions (3 samples with 8-position gaps) while using only 3 weight values. Stacking convolutions with increasing dilation rates (1, 2, 4, 8, 16, and so on) allows the network to integrate information across the full 10 kb window while maintaining sensitivity to local patterns at early layers where dilation is small. Standard convolutions with small kernels would require impractical depth to achieve equivalent receptive fields.
 
 For each position in the pre-mRNA sequence, *SpliceAI* outputs three probabilities: splice acceptor, splice donor, or neither. This per-position classification enables fine-grained predictions across entire transcripts. Training used GENCODE annotations, with odd and even chromosomes split for training and testing.
 
@@ -344,7 +380,15 @@ The delta score quantifies variant effects by comparing predictions for referenc
 
 $$
 \Delta\text{score} = \max_{|p - v| \leq 50} \left| P_{\text{alt}}(p) - P_{\text{ref}}(p) \right|
-$$
+$$ {#eq-06-02}
+
+where:
+
+- $v$ is the variant position in the sequence
+- $p$ indexes positions within 50 bp of the variant
+- $P_{\text{ref}}(p)$ is the predicted splice probability at position $p$ for the reference sequence
+- $P_{\text{alt}}(p)$ is the predicted splice probability at position $p$ for the alternative (mutant) sequence
+- The max over $|p - v| \leq 50$ captures the largest effect within the local region
 
 Validation against GTEx RNA-seq showed that mutations with higher delta scores showed higher validation rates at novel splice junctions: approximately $50\%$ at $\Delta \geq 0.2$, $75\%$ at $\Delta \geq 0.5$, and $85\%$ at $\Delta \geq 0.8$. Population genetics provided orthogonal support: predicted cryptic splice variants showed $78\%$ depletion at common allele frequencies, nearly matching the depletion of frameshift and stop-gain variants. Natural selection treats these variants as deleterious, confirming their functional impact.
 
@@ -392,7 +436,11 @@ The receptive field ceiling of convolutional architectures. Context windows of r
 Before proceeding, ensure you can explain: (1) Why can't a CNN learn dependencies that exceed its receptive field, even with more training data? (2) What biological phenomena require context longer than typical CNN receptive fields? (3) What architectural approaches extend receptive fields in CNNs?
 
 :::{.callout-note collapse="true" title="Check Your Answer"}
-(1) A CNN cannot learn dependencies beyond its receptive field because positions outside this window have zero gradient with respect to the output—information simply cannot flow between them, regardless of training data quantity. (2) Distal enhancer-promoter interactions (tens of kilobases), long-range chromatin loops, TAD boundary effects, and coordinated regulation across large genomic domains all require longer context than typical CNN receptive fields of 200-1000 bp. (3) Receptive fields can be extended through dilated convolutions, deeper networks with more layers, or hybrid architectures that combine CNNs with attention mechanisms.
+1. A CNN cannot learn dependencies beyond its receptive field because positions outside this window have zero gradient with respect to the output—information simply cannot flow between them, regardless of training data quantity.
+
+2. Distal enhancer-promoter interactions (tens of kilobases), long-range chromatin loops, TAD boundary effects, and coordinated regulation across large genomic domains all require longer context than typical CNN receptive fields of 200-1000 bp.
+
+3. Receptive fields can be extended through dilated convolutions, deeper networks with more layers, or hybrid architectures that combine CNNs with attention mechanisms.
 :::
 :::
 

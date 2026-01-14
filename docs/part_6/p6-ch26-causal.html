@@ -91,6 +91,35 @@ div.csl-indent {
   }
 }</script>
 
+  <script src="https://cdnjs.cloudflare.com/polyfill/v3/polyfill.min.js?features=es6"></script>
+  <script src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-chtml-full.js" type="text/javascript"></script>
+
+<script type="text/javascript">
+const typesetMath = (el) => {
+  if (window.MathJax) {
+    // MathJax Typeset
+    window.MathJax.typeset([el]);
+  } else if (window.katex) {
+    // KaTeX Render
+    var mathElements = el.getElementsByClassName("math");
+    var macros = [];
+    for (var i = 0; i < mathElements.length; i++) {
+      var texText = mathElements[i].firstChild;
+      if (mathElements[i].tagName == "SPAN") {
+        window.katex.render(texText.data, mathElements[i], {
+          displayMode: mathElements[i].classList.contains('display'),
+          throwOnError: false,
+          macros: macros,
+          fleqn: false
+        });
+      }
+    }
+  }
+}
+window.Quarto = {
+  typesetMath
+};
+</script>
 
 <link rel="stylesheet" href="../styles.css">
 </head>
@@ -754,6 +783,17 @@ Conceptual Difficulty
 <li><strong>Independence</strong>: The variant must not be associated with confounders of the exposure-outcome relationship</li>
 <li><strong>Exclusion restriction</strong>: The variant must affect the outcome only through the exposure, not through other pathways (no <strong>horizontal pleiotropy</strong>—the situation where a genetic variant affects multiple traits through independent biological mechanisms, rather than through a single causal pathway)</li>
 </ol>
+<p>Under these assumptions, the causal effect of exposure <span class="math inline">\(X\)</span> on outcome <span class="math inline">\(Y\)</span> can be estimated via the Wald estimator:</p>
+<p><span id="eq-26-01"><span class="math display">\[
+\hat{\beta}_{X \to Y} = \frac{\text{Cov}(G, Y)}{\text{Cov}(G, X)} = \frac{\hat{\beta}_{GY}}{\hat{\beta}_{GX}}
+\tag{26.1}\]</span></span></p>
+<p>where:</p>
+<ul>
+<li><span class="math inline">\(G\)</span> is the genetic instrument (SNP or polygenic score)</li>
+<li><span class="math inline">\(\hat{\beta}_{GX}\)</span> is the variant-exposure association (from GWAS or eQTL study)</li>
+<li><span class="math inline">\(\hat{\beta}_{GY}\)</span> is the variant-outcome association</li>
+<li>The ratio isolates the causal effect by using <span class="math inline">\(G\)</span> as an instrumental variable</li>
+</ul>
 <p>Why are these three assumptions necessary? Relevance ensures the genetic variant actually affects the exposure of interest; without it, the variant provides no information about the exposure’s causal effect. Independence is why genetics provides a causal inference advantage: because alleles are randomly assigned at conception before environmental confounders arise, genetic instruments satisfy independence naturally for most confounders (though population structure can violate it). The exclusion restriction ensures we measure the exposure’s effect rather than some other effect of the variant—if a variant affects the outcome through multiple pathways, we cannot isolate which pathway matters.</p>
 <p>Violations of these assumptions, particularly pleiotropy, limit MR’s applicability. Modern MR methods address this through multiple instruments, median-based estimators, mode-based estimators, and outlier detection that are robust to some violations <span class="citation" data-cites="bowden_mendelian_2015 hartwig_robust_2017">(<a href="../bib/references.html#ref-bowden_mendelian_2015" role="doc-biblioref">Bowden, Davey Smith, and Burgess 2015</a>; <a href="../bib/references.html#ref-hartwig_robust_2017" role="doc-biblioref"><strong>hartwig_robust_2017?</strong></a>)</span>. Integration with foundation models, discussed below, offers new possibilities for instrument selection and pleiotropy detection.</p>
 </section>
@@ -882,7 +922,9 @@ Check Your Answer
 <div id="callout-10" class="callout-10-contents callout-collapse collapse">
 <div class="callout-body-container callout-body">
 <ol type="1">
-<li>Model B is more likely to learn causal relationships because interventional data (CRISPR knockouts) directly tests causation by breaking correlations with confounders. (2) X and Y co-expression in observational data could reflect: X regulates Y, Y regulates X, both are regulated by a common upstream factor, or spurious correlation from batch effects. (3) If knocking out X changes Y expression, this provides strong evidence that X causally influences Y (either directly or through intermediates), because the intervention breaks non-causal correlations.</li>
+<li><p>Model B is more likely to learn causal relationships because interventional data (CRISPR knockouts) directly tests causation by breaking correlations with confounders.</p></li>
+<li><p>X and Y co-expression in observational data could reflect: X regulates Y, Y regulates X, both are regulated by a common upstream factor, or spurious correlation from batch effects.</p></li>
+<li><p>If knocking out X changes Y expression, this provides strong evidence that X causally influences Y (either directly or through intermediates), because the intervention breaks non-causal correlations.</p></li>
 </ol>
 </div>
 </div>
@@ -1204,7 +1246,10 @@ Check Your Answer
 <div id="callout-17" class="callout-17-contents callout-collapse collapse">
 <div class="callout-body-container callout-body">
 <ol type="1">
-<li><strong>Rung 1 (Association)</strong>: P(Y|X)—observing X tells us about Y. <strong>Rung 2 (Intervention)</strong>: P(Y|do(X))—changing X affects Y. <strong>Rung 3 (Counterfactual)</strong>: What would Y have been for this individual if X were different? More data at Rung 1 cannot reach Rung 2 because observational data conflates causal and confounded associations; no amount of correlation data distinguishes causation from common causes without interventional data or causal assumptions. (2) Three causal structures: (a) Gene expression directly causes disease—treatment targeting the gene would work; (b) Disease causes gene expression—targeting the gene would not help; (c) Both are caused by an unmeasured factor—gene is a biomarker but not a therapeutic target. These distinctions are critical for choosing whether to develop therapies targeting the gene. (3) Mendelian randomization uses genetic variants as instrumental variables to infer causation. Key properties: alleles are randomly assigned at conception (independence from confounders), variants affect an exposure (relevance), and under the exclusion restriction, variants affect outcomes only through the exposure. This creates a natural experiment analogous to randomized trials. (4) Train on interventional data: CRISPR screens, drug response experiments, and other perturbation data where effects of interventions are directly observed. Models trained on observational data learn associations; models trained on interventional data learn causal effects. Closed-loop systems that iterate between prediction and experimental validation provide the strongest path.</li>
+<li><p><strong>Rung 1 (Association)</strong>: P(Y|X)—observing X tells us about Y. <strong>Rung 2 (Intervention)</strong>: P(Y|do(X))—changing X affects Y. <strong>Rung 3 (Counterfactual)</strong>: What would Y have been for this individual if X were different? More data at Rung 1 cannot reach Rung 2 because observational data conflates causal and confounded associations; no amount of correlation data distinguishes causation from common causes without interventional data or causal assumptions.</p></li>
+<li><p>Three causal structures: (a) Gene expression directly causes disease—treatment targeting the gene would work; (b) Disease causes gene expression—targeting the gene would not help; (c) Both are caused by an unmeasured factor—gene is a biomarker but not a therapeutic target. These distinctions are critical for choosing whether to develop therapies targeting the gene.</p></li>
+<li><p>Mendelian randomization uses genetic variants as instrumental variables to infer causation. Key properties: alleles are randomly assigned at conception (independence from confounders), variants affect an exposure (relevance), and under the exclusion restriction, variants affect outcomes only through the exposure. This creates a natural experiment analogous to randomized trials.</p></li>
+<li><p>Train on interventional data: CRISPR screens, drug response experiments, and other perturbation data where effects of interventions are directly observed. Models trained on observational data learn associations; models trained on interventional data learn causal effects. Closed-loop systems that iterate between prediction and experimental validation provide the strongest path.</p></li>
 </ol>
 </div>
 </div>

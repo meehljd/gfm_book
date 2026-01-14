@@ -32,7 +32,7 @@ echo "=== .qmd files ==="
     # Remove leading ./ for display and exclusion check
     f_display="${f#./}"
 
-    words=$(quarto pandoc "$f" -f markdown -t plain 2>/dev/null | wc -w)
+    words=$(pandoc "$f" -f markdown -t plain 2>/dev/null | wc -w)
     total_qmd_all=$((total_qmd_all + words))
 
     if is_excluded "$f_display"; then

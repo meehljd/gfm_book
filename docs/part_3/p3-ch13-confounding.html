@@ -858,7 +858,7 @@ Figure&nbsp;13.2: Population structure creates exploitable shortcuts in genomic 
 </figcaption>
 </figure>
 </div>
-<p>Consider a rare disease clinic serving primarily individuals of European ancestry. This clinic contributes most pathogenic variant submissions to ClinVar, while variants observed predominantly in other ancestries remain classified as variants of uncertain significance <span class="citation" data-cites="landrum_clinvar_2018">(<a href="../bib/references.html#ref-landrum_clinvar_2018" role="doc-biblioref">Landrum et al. 2018</a>)</span>.. A model trained on ClinVar may learn that European-enriched variants tend to have pathogenic labels and non-European-enriched variants tend to have uncertain or benign labels, not because of any biological difference in pathogenicity but because of differential clinical characterization. The model appears to predict pathogenicity while actually predicting ancestry-correlated ascertainment.</p>
+<p>Consider a rare disease clinic serving primarily individuals of European ancestry. This clinic contributes most pathogenic variant submissions to ClinVar, while variants observed predominantly in other ancestries remain classified as variants of uncertain significance <span class="citation" data-cites="landrum_clinvar_2018">(<a href="../bib/references.html#ref-landrum_clinvar_2018" role="doc-biblioref">Landrum et al. 2018</a>)</span>. A model trained on ClinVar may learn that European-enriched variants tend to have pathogenic labels and non-European-enriched variants tend to have uncertain or benign labels, not because of any biological difference in pathogenicity but because of differential clinical characterization. The model appears to predict pathogenicity while actually predicting ancestry-correlated ascertainment.</p>
 <p>Foundation models trained on nucleotide sequences see ancestry information directly: the distribution of k-mers and haplotypes differs by population. When such models are fine-tuned to predict disease risk or variant effects, they may leverage ancestry as a shortcut. Increasing model capacity does not solve this problem; it often makes it worse by enabling detection of increasingly subtle ancestry-linked features. The polygenic score portability literature provides stark evidence: risk scores derived from European ancestry cohorts show 40-75% reductions in prediction accuracy when applied to African ancestry individuals <span class="citation" data-cites="duncan_analysis_2019">(<a href="../bib/references.html#ref-duncan_analysis_2019" role="doc-biblioref">Duncan et al. 2019</a>)</span>. Similar patterns emerge for variant effect predictors and regulatory models, though they are often less thoroughly documented due to limited cross-ancestry evaluation.</p>
 <div class="callout callout-style-default callout-tip callout-titled">
 <div class="callout-header d-flex align-content-center">
@@ -903,7 +903,9 @@ Check Your Answer
 <div id="callout-6" class="callout-6-contents callout-collapse collapse">
 <div class="callout-body-container callout-body">
 <ol type="1">
-<li>A confounder is a variable that affects both features and labels (e.g., ancestry affects allele frequencies and disease risk through healthcare access), while data leakage occurs when test information influences training (e.g., the same variant appearing in both train and test sets). Both inflate performance, but leakage involves information that shouldn’t exist at prediction time, while confounding involves real but non-causal associations. (2) Ancestry affects genomic features through population-specific allele frequencies and haplotype structure, while simultaneously affecting disease labels through environmental factors, healthcare access, socioeconomic status, and clinical ascertainment practices—creating a spurious association pathway the model can exploit. (3) Train a confounder-only baseline using just ancestry principal components with no genomic features. If this baseline achieves performance close to your full model (e.g., 0.80 vs 0.85 auROC), ancestry confounding drives most of the signal.</li>
+<li><p>A confounder is a variable that affects both features and labels (e.g., ancestry affects allele frequencies and disease risk through healthcare access), while data leakage occurs when test information influences training (e.g., the same variant appearing in both train and test sets). Both inflate performance, but leakage involves information that shouldn’t exist at prediction time, while confounding involves real but non-causal associations.</p></li>
+<li><p>Ancestry affects genomic features through population-specific allele frequencies and haplotype structure, while simultaneously affecting disease labels through environmental factors, healthcare access, socioeconomic status, and clinical ascertainment practices—creating a spurious association pathway the model can exploit.</p></li>
+<li><p>Train a confounder-only baseline using just ancestry principal components with no genomic features. If this baseline achieves performance close to your full model (e.g., 0.80 vs 0.85 auROC), ancestry confounding drives most of the signal.</p></li>
 </ol>
 </div>
 </div>
@@ -975,7 +977,13 @@ Check Your Answer
 </div>
 <div id="callout-8" class="callout-8-contents callout-collapse collapse">
 <div class="callout-body-container callout-body">
-<p>Performance would likely collapse to near-chance levels (close to 0.50 auROC) because the model learned to distinguish sequencing centers rather than disease biology. When cases and controls are equally distributed across both centers, the batch-disease correlation disappears and the learned shortcut becomes useless. Diagnostics to run: (1) Train a classifier to predict sequencing center from the model’s learned embeddings - high accuracy confirms batch encoding. (2) Visualize embeddings colored by center and by disease status - clustering by center rather than disease reveals the problem. (3) Evaluate performance stratified by center - if within-center performance is poor, the model relies on between-center differences.</p>
+<p>Performance would likely collapse to near-chance levels (close to 0.50 auROC) because the model learned to distinguish sequencing centers rather than disease biology. When cases and controls are equally distributed across both centers, the batch-disease correlation disappears and the learned shortcut becomes useless.</p>
+<p>Diagnostics to run:</p>
+<ol type="1">
+<li><p>Train a classifier to predict sequencing center from the model’s learned embeddings—high accuracy confirms batch encoding.</p></li>
+<li><p>Visualize embeddings colored by center and by disease status—clustering by center rather than disease reveals the problem.</p></li>
+<li><p>Evaluate performance stratified by center—if within-center performance is poor, the model relies on between-center differences.</p></li>
+</ol>
 </div>
 </div>
 </div>
@@ -1273,7 +1281,19 @@ Check Your Answer
 <div id="callout-15" class="callout-15-contents callout-collapse collapse">
 <div class="callout-body-container callout-body">
 <ol type="1">
-<li>Three key diagnostics: (a) Confounder-only baseline using ancestry PCs and batch indicators, (b) Stratified performance analysis across ancestry groups and sequencing centers, (c) Split sensitivity comparing random vs.&nbsp;locus-level vs.&nbsp;temporal splits. (2) Problem indicators: (a) Baseline approaches full model performance (e.g., 0.82 vs 0.88), indicating confounding drives most signal; (b) Performance varies dramatically across subgroups (e.g., 0.90 in European ancestry but 0.60 in African ancestry), suggesting shortcuts; (c) Performance drops substantially under stricter splits (e.g., from 0.88 to 0.70 with locus-level), indicating memorization. (3) If the confounder-only baseline achieves 0.82 auROC while your full model achieves 0.88, then 0.82 of your performance comes from ancestry/batch shortcuts, and only 0.06 (the delta) comes from actual genomic features—your model has learned primarily confounders, not biology.</li>
+<li><strong>Three key diagnostics:</strong>
+<ul>
+<li>Confounder-only baseline using ancestry PCs and batch indicators</li>
+<li>Stratified performance analysis across ancestry groups and sequencing centers</li>
+<li>Split sensitivity comparing random vs.&nbsp;locus-level vs.&nbsp;temporal splits</li>
+</ul></li>
+<li><strong>Problem indicators:</strong>
+<ul>
+<li>Baseline approaches full model performance (e.g., 0.82 vs 0.88), indicating confounding drives most signal</li>
+<li>Performance varies dramatically across subgroups (e.g., 0.90 in European ancestry but 0.60 in African ancestry), suggesting shortcuts</li>
+<li>Performance drops substantially under stricter splits (e.g., from 0.88 to 0.70 with locus-level), indicating memorization</li>
+</ul></li>
+<li>If the confounder-only baseline achieves 0.82 auROC while your full model achieves 0.88, then 0.82 of your performance comes from ancestry/batch shortcuts, and only 0.06 (the delta) comes from actual genomic features—your model has learned primarily confounders, not biology.</li>
 </ol>
 </div>
 </div>
@@ -1454,7 +1474,9 @@ Check Your Answer
 <div id="callout-17" class="callout-17-contents callout-collapse collapse">
 <div class="callout-body-container callout-body">
 <ol type="1">
-<li>Major fairness concerns: the score may show 40-75% reduced accuracy in non-European populations, potentially providing inferior risk stratification to already underserved groups; differential performance could lead to missed diagnoses in minority populations or inappropriate screening recommendations. (2) Required validation: stratified performance analysis by ancestry group in the target population; calibration assessment for each ancestry group (not just discrimination); comparison to ancestry-matched baselines; sensitivity analysis to understand performance degradation mechanisms. (3) Post-deployment monitoring: track screening recommendations and cancer detection rates stratified by ancestry; monitor for disparities in false positive/negative rates; assess whether the tool improves or worsens existing outcome disparities; implement thresholds for stopping use if equity metrics deteriorate.</li>
+<li><p><strong>Major fairness concerns:</strong> The score may show 40-75% reduced accuracy in non-European populations, potentially providing inferior risk stratification to already underserved groups. Differential performance could lead to missed diagnoses in minority populations or inappropriate screening recommendations.</p></li>
+<li><p><strong>Required validation:</strong> Stratified performance analysis by ancestry group in the target population; calibration assessment for each ancestry group (not just discrimination); comparison to ancestry-matched baselines; sensitivity analysis to understand performance degradation mechanisms.</p></li>
+<li><p><strong>Post-deployment monitoring:</strong> Track screening recommendations and cancer detection rates stratified by ancestry; monitor for disparities in false positive/negative rates; assess whether the tool improves or worsens existing outcome disparities; implement thresholds for stopping use if equity metrics deteriorate.</p></li>
 </ol>
 </div>
 </div>

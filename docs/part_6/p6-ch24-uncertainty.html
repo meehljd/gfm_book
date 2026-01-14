@@ -754,7 +754,7 @@ Stop and Think
 <section id="sec-ch24-aleatoric" class="level3" data-number="24.1.3">
 <h3 data-number="24.1.3" class="anchored" data-anchor-id="sec-ch24-aleatoric"><span class="header-section-number">24.1.3</span> Aleatoric Uncertainty</h3>
 <p>Some variants are genuinely ambiguous regardless of how much data we collect. The same pathogenic variant in <em>BRCA1</em> causes breast cancer in one carrier but not another due to modifier genes, hormonal exposures, or stochastic developmental processes. Incomplete penetrance, the phenomenon where disease-associated variants do not always produce disease, creates irreducible uncertainty that no amount of training data can eliminate. This inherent randomness in the mapping from genotype to phenotype constitutes <strong>aleatoric uncertainty</strong>.</p>
-<p>Aleatoric uncertainty reflects noise or stochasticity intrinsic to the prediction problem rather than limitations of the model. Variable expressivity means that even when a variant causes disease, the severity and specific manifestations vary across individuals. Measurement noise in functional assays introduces uncertainty into the labels used for training: <strong>deep mutational scanning</strong> experiments typically exhibit 10 to 20 percent technical variation between replicates <span class="citation" data-cites="fowler_deep_2014 rubin_statistical_2017">(<a href="../bib/references.html#ref-fowler_deep_2014" role="doc-biblioref">Fowler and Fields 2014</a>; <a href="../bib/references.html#ref-rubin_statistical_2017" role="doc-biblioref">Rubin et al. 2017</a>)</span>,, creating a floor below which prediction error cannot decrease regardless of model sophistication (see <a href="../part_1/p1-ch02-data.html#sec-ch02-dms" class="quarto-xref"><span>Section 2.4.4</span></a> for a discussion of DMS data characteristics). Stochastic gene expression means that two genetically identical cells may express a gene at different levels due to random fluctuations in transcription and translation. These sources of randomness set fundamental limits on predictive accuracy.</p>
+<p>Aleatoric uncertainty reflects noise or stochasticity intrinsic to the prediction problem rather than limitations of the model. Variable expressivity means that even when a variant causes disease, the severity and specific manifestations vary across individuals. Measurement noise in functional assays introduces uncertainty into the labels used for training: <strong>deep mutational scanning</strong> experiments typically exhibit 10 to 20 percent technical variation between replicates <span class="citation" data-cites="fowler_deep_2014 rubin_statistical_2017">(<a href="../bib/references.html#ref-fowler_deep_2014" role="doc-biblioref">Fowler and Fields 2014</a>; <a href="../bib/references.html#ref-rubin_statistical_2017" role="doc-biblioref">Rubin et al. 2017</a>)</span>, creating a floor below which prediction error cannot decrease regardless of model sophistication (see <a href="../part_1/p1-ch02-data.html#sec-ch02-dms" class="quarto-xref"><span>Section 2.4.4</span></a> for a discussion of DMS data characteristics). Stochastic gene expression means that two genetically identical cells may express a gene at different levels due to random fluctuations in transcription and translation. These sources of randomness set fundamental limits on predictive accuracy.</p>
 <p>Aleatoric uncertainty often varies with the input, a property termed heteroscedasticity. Coding variants in essential genes may have relatively low aleatoric uncertainty because strong selection pressure produces consistent phenotypic effects. Regulatory variants exhibit higher aleatoric uncertainty because their effects depend on cellular context, developmental timing, and interactions with other genetic and environmental factors. A model that captures this heteroscedasticity can provide more informative uncertainty estimates by conveying that some predictions are inherently more reliable than others.</p>
 <p>The following table summarizes the key distinctions between epistemic and aleatoric uncertainty:</p>
 <div id="tbl-uncertainty-types" class="quarto-float quarto-figure quarto-figure-center anchored">
@@ -922,10 +922,14 @@ Check Your Answer
 <h3 data-number="24.2.2" class="anchored" data-anchor-id="sec-ch24-measuring-calibration"><span class="header-section-number">24.2.2</span> Measuring Calibration</h3>
 <p><strong>Reliability diagrams</strong> provide visual assessment of calibration by plotting predicted probabilities against observed frequencies. Construction involves binning predictions into intervals (commonly ten bins spanning 0 to 0.1, 0.1 to 0.2, and so forth), computing the mean predicted probability within each bin, computing the fraction of positive examples within each bin, and plotting these two quantities against each other. A perfectly calibrated model produces points along the diagonal where predicted probability equals observed frequency. Systematic deviations reveal calibration patterns: points below the diagonal indicate overconfidence (predictions exceed reality), points above indicate underconfidence, and S-shaped curves suggest nonlinear miscalibration requiring more flexible correction.</p>
 <p><strong>Expected calibration error (ECE)</strong> provides a scalar summary of calibration quality. ECE computes the weighted average absolute difference between predicted probabilities and observed frequencies across bins:</p>
-<p><span class="math display">\[
+<p><span id="eq-24-01"><span class="math display">\[
 \text{ECE} = \sum_{m=1}^{M} \frac{|B_m|}{n} \left| \text{acc}(B_m) - \text{conf}(B_m) \right|
-\]</span></p>
-<p>where <span class="math inline">\(B_m\)</span> denotes the set of examples in bin <span class="math inline">\(m\)</span>, <span class="math inline">\(|B_m|\)</span> is the number of examples in that bin, <span class="math inline">\(n\)</span> is the total number of examples, <span class="math inline">\(\text{acc}(B_m)\)</span> is the accuracy (fraction of positives) in bin <span class="math inline">\(m\)</span>, and <span class="math inline">\(\text{conf}(B_m)\)</span> is the mean predicted probability in bin <span class="math inline">\(m\)</span>. Lower ECE indicates better calibration, with zero representing perfect calibration. ECE depends on binning strategy; equal-width bins may place most examples in a few bins for models with concentrated predictions, while equal-mass bins ensure each bin contains the same number of examples but may span wide probability ranges.</p>
+\tag{24.1}\]</span></span></p>
+<p>where:</p>
+<ul>
+<li><span class="math inline">\(M\)</span> is the number of bins (typically 10-15)</li>
+<li><span class="math inline">\(B_m\)</span> denotes the set of examples in bin <span class="math inline">\(m\)</span>, <span class="math inline">\(|B_m|\)</span> is the number of examples in that bin, <span class="math inline">\(n\)</span> is the total number of examples, <span class="math inline">\(\text{acc}(B_m)\)</span> is the accuracy (fraction of positives) in bin <span class="math inline">\(m\)</span>, and <span class="math inline">\(\text{conf}(B_m)\)</span> is the mean predicted probability in bin <span class="math inline">\(m\)</span>. Lower ECE indicates better calibration, with zero representing perfect calibration. ECE depends on binning strategy; equal-width bins may place most examples in a few bins for models with concentrated predictions, while equal-mass bins ensure each bin contains the same number of examples but may span wide probability ranges.</li>
+</ul>
 <p><strong>Maximum calibration error (MCE)</strong> captures worst-case miscalibration by reporting the largest absolute gap between predicted and observed frequencies across all bins. MCE is appropriate when any severe miscalibration is unacceptable, as in high-stakes clinical applications where even rare catastrophic errors carry significant consequences.</p>
 <p><strong>Brier score</strong> decomposes into components measuring calibration and discrimination (refinement), providing a single proper scoring rule that rewards both properties. The Brier score equals the mean squared difference between predicted probabilities and binary outcomes, and its decomposition reveals whether poor scores stem from miscalibration, poor discrimination, or both.</p>
 <p>The following table summarizes these calibration metrics and their appropriate use cases:</p>
@@ -1068,8 +1072,21 @@ Stop and Think
 <h3 data-number="24.3.1" class="anchored" data-anchor-id="sec-ch24-temperature-scaling"><span class="header-section-number">24.3.1</span> Temperature Scaling</h3>
 <p>The simplest calibration fix is often the most effective. <strong>Temperature scaling</strong> applies a single learned parameter to adjust model confidence, dramatically improving calibration with minimal computational overhead and no change to model predictions’ ranking.</p>
 <p>The method modifies the softmax function by dividing logits by a temperature parameter <em>T</em> before applying softmax. The intuition is straightforward: overconfident models produce logits that are too large in magnitude, causing softmax probabilities to concentrate near 0 or 1 rather than reflecting true uncertainty. Dividing by <em>T</em> &gt; 1 shrinks these logits toward zero, which “softens” the probability distribution and reduces spurious confidence:</p>
-<p><span class="math display">\[\hat{p}_i = \frac{\exp(z_i / T)}{\sum_j \exp(z_j / T)}\]</span></p>
-<p>where <em>z_i</em> are the logits (pre-softmax outputs) and *p̂_i* are the calibrated probabilities.</p>
+<p><span id="eq-24-02"><span class="math display">\[
+\hat{p}_i = \frac{\exp(z_i / T)}{\sum_{j=1}^{K} \exp(z_j / T)}
+\tag{24.2}\]</span></span></p>
+<p>where:</p>
+<ul>
+<li><span class="math inline">\(z_i\)</span> are the logits (pre-softmax outputs) for class <span class="math inline">\(i\)</span></li>
+<li><span class="math inline">\(K\)</span> is the number of classes</li>
+<li><span class="math inline">\(T &gt; 0\)</span> is the temperature parameter:
+<ul>
+<li><span class="math inline">\(T = 1\)</span>: original softmax (no calibration)</li>
+<li><span class="math inline">\(T &gt; 1\)</span>: softer distribution (reduces overconfidence)</li>
+<li><span class="math inline">\(T &lt; 1\)</span>: sharper distribution (increases confidence)</li>
+</ul></li>
+<li><span class="math inline">\(\hat{p}_i\)</span> are the calibrated probabilities</li>
+</ul>
 <div class="callout callout-style-default callout-note callout-titled" title="Worked Example: Temperature Scaling">
 <div class="callout-header d-flex align-content-center">
 <div class="callout-icon-container">
@@ -1123,8 +1140,16 @@ Worked Example: Temperature Scaling
 <section id="sec-ch24-platt-scaling" class="level3" data-number="24.3.2">
 <h3 data-number="24.3.2" class="anchored" data-anchor-id="sec-ch24-platt-scaling"><span class="header-section-number">24.3.2</span> Platt Scaling</h3>
 <p><strong>Platt scaling</strong> fits a logistic regression model on the original model’s outputs, learning both a slope and intercept to transform scores into calibrated probabilities. For binary classification:</p>
-<p><span class="math display">\[\hat{p} = \sigma(a \cdot f(x) + b)\]</span></p>
-<p>where <span class="math inline">\(f(x)\)</span> is the original model’s output, <span class="math inline">\(\sigma\)</span> is the sigmoid function, and parameters <span class="math inline">\(a\)</span> and <span class="math inline">\(b\)</span> are learned on calibration data. The two parameters provide more flexibility than temperature scaling’s single parameter, allowing correction of both the sharpness and the location of the probability distribution.</p>
+<p><span id="eq-24-03"><span class="math display">\[
+\hat{p}(x) = \sigma(a \cdot f(x) + b) = \frac{1}{1 + \exp(-(a \cdot f(x) + b))}
+\tag{24.3}\]</span></span></p>
+<p>where:</p>
+<ul>
+<li><span class="math inline">\(f(x) \in [0, 1]\)</span> is the original model’s predicted probability for input <span class="math inline">\(x\)</span></li>
+<li><span class="math inline">\(\sigma(\cdot)\)</span> is the sigmoid function</li>
+<li><span class="math inline">\(a, b \in \mathbb{R}\)</span> are learned parameters: <span class="math inline">\(a\)</span> controls sharpness, <span class="math inline">\(b\)</span> controls the decision threshold</li>
+<li>Parameters are fit by maximizing log-likelihood on a held-out calibration set The two parameters provide more flexibility than temperature scaling’s single parameter, allowing correction of both the sharpness and the location of the probability distribution.</li>
+</ul>
 <p>Platt scaling is appropriate when miscalibration involves systematic bias (predictions consistently too high or too low) in addition to over- or underconfidence. The method assumes that a monotonic logistic transformation suffices to correct miscalibration, which may not hold for models with complex, non-monotonic calibration curves.</p>
 </section>
 <section id="sec-ch24-isotonic-regression" class="level3" data-number="24.3.3">
@@ -1269,7 +1294,17 @@ Stop and Think
 <h3 data-number="24.4.3" class="anchored" data-anchor-id="sec-ch24-heteroscedastic"><span class="header-section-number">24.4.3</span> Heteroscedastic Models</h3>
 <p>Standard regression models predict a single output value, implicitly assuming constant noise variance across all inputs. <strong>Heteroscedastic models</strong> instead predict both a mean and a variance for each input, capturing the intuition that prediction uncertainty varies depending on the input. For genomic applications, this approach naturally handles the observation that some prediction tasks are inherently noisier than others: coding variant effects may be more predictable than regulatory variant effects, constrained genes more predictable than tolerant genes.</p>
 <p>Architecture modifications are minimal. Instead of outputting a single value, the model outputs two values interpreted as the mean <span class="math inline">\(\mu(x)\)</span> and variance <span class="math inline">\(\sigma^2(x)\)</span> of a Gaussian distribution over outputs. Training uses negative log-likelihood loss under this Gaussian, which penalizes both prediction errors and miscalibrated variance estimates:</p>
-<p><span class="math display">\[\mathcal{L} = \frac{1}{2\sigma^2(x)}(y - \mu(x))^2 + \frac{1}{2}\log \sigma^2(x)\]</span></p>
+<p><span id="eq-24-04"><span class="math display">\[
+\mathcal{L}(x, y) = \frac{(y - \mu(x))^2}{2\sigma^2(x)} + \frac{1}{2}\log \sigma^2(x)
+\tag{24.4}\]</span></span></p>
+<p>where:</p>
+<ul>
+<li><span class="math inline">\(y\)</span> is the ground truth value for input <span class="math inline">\(x\)</span></li>
+<li><span class="math inline">\(\mu(x)\)</span> is the model’s predicted mean (one network output)</li>
+<li><span class="math inline">\(\sigma^2(x) = \exp(s(x))\)</span> is the predicted variance (second network output, exponentiated to ensure positivity)</li>
+<li>The first term penalizes prediction errors, weighted by inverse variance</li>
+<li>The second term prevents trivially predicting infinite variance</li>
+</ul>
 <p>Why does this loss function take this particular form? It derives from the negative log-likelihood of a Gaussian distribution: if the model predicts that the output follows a Gaussian with mean <span class="math inline">\(\mu(x)\)</span> and variance <span class="math inline">\(\sigma^2(x)\)</span>, then the probability of observing the true value <span class="math inline">\(y\)</span> is higher when <span class="math inline">\(y\)</span> is close to <span class="math inline">\(\mu\)</span> and when variance is well-matched to actual prediction error. The first term penalizes prediction errors, weighted by inverse variance so that high-variance predictions are penalized less for the same absolute error—this is mathematically necessary because a Gaussian with larger variance assigns non-negligible probability to a wider range of values. The second term prevents the model from simply predicting infinite variance to avoid all penalties; without it, the optimal strategy would be to always predict <span class="math inline">\(\sigma^2 \to \infty\)</span>, making any prediction equally likely. The balance between these terms forces the model to predict variance that actually matches the empirical noise level. The result is a model that learns to predict larger variance for inputs where training labels are noisy or inconsistent, capturing aleatoric uncertainty in an input-dependent manner.</p>
 <p>Heteroscedastic models capture aleatoric uncertainty but not epistemic uncertainty. The predicted variance reflects noise inherent in the labels, not uncertainty about model parameters. Combining heteroscedastic outputs with ensemble methods provides estimates of both uncertainty types: ensemble disagreement captures epistemic uncertainty while the predicted variance captures aleatoric uncertainty.</p>
 </section>

@@ -99,7 +99,7 @@ Before reading the next section, consider: If you have a variant in a gene with 
 
 Some variants are genuinely ambiguous regardless of how much data we collect. The same pathogenic variant in *BRCA1* causes breast cancer in one carrier but not another due to modifier genes, hormonal exposures, or stochastic developmental processes. Incomplete penetrance, the phenomenon where disease-associated variants do not always produce disease, creates irreducible uncertainty that no amount of training data can eliminate. This inherent randomness in the mapping from genotype to phenotype constitutes **aleatoric uncertainty**.
 
-Aleatoric uncertainty reflects noise or stochasticity intrinsic to the prediction problem rather than limitations of the model. Variable expressivity means that even when a variant causes disease, the severity and specific manifestations vary across individuals. Measurement noise in functional assays introduces uncertainty into the labels used for training: **deep mutational scanning** experiments typically exhibit 10 to 20 percent technical variation between replicates [@fowler_deep_2014; @rubin_statistical_2017],, creating a floor below which prediction error cannot decrease regardless of model sophistication (see @sec-ch02-dms for a discussion of DMS data characteristics). Stochastic gene expression means that two genetically identical cells may express a gene at different levels due to random fluctuations in transcription and translation. These sources of randomness set fundamental limits on predictive accuracy.
+Aleatoric uncertainty reflects noise or stochasticity intrinsic to the prediction problem rather than limitations of the model. Variable expressivity means that even when a variant causes disease, the severity and specific manifestations vary across individuals. Measurement noise in functional assays introduces uncertainty into the labels used for training: **deep mutational scanning** experiments typically exhibit 10 to 20 percent technical variation between replicates [@fowler_deep_2014; @rubin_statistical_2017], creating a floor below which prediction error cannot decrease regardless of model sophistication (see @sec-ch02-dms for a discussion of DMS data characteristics). Stochastic gene expression means that two genetically identical cells may express a gene at different levels due to random fluctuations in transcription and translation. These sources of randomness set fundamental limits on predictive accuracy.
 
 Aleatoric uncertainty often varies with the input, a property termed heteroscedasticity. Coding variants in essential genes may have relatively low aleatoric uncertainty because strong selection pressure produces consistent phenotypic effects. Regulatory variants exhibit higher aleatoric uncertainty because their effects depend on cellular context, developmental timing, and interactions with other genetic and environmental factors. A model that captures this heteroscedasticity can provide more informative uncertainty estimates by conveying that some predictions are inherently more reliable than others.
 
@@ -177,9 +177,12 @@ auROC measures discrimination (how well the model ranks pathogenic variants abov
 
 $$
 \text{ECE} = \sum_{m=1}^{M} \frac{|B_m|}{n} \left| \text{acc}(B_m) - \text{conf}(B_m) \right|
-$$
+$$ {#eq-24-01}
 
-where $B_m$ denotes the set of examples in bin $m$, $|B_m|$ is the number of examples in that bin, $n$ is the total number of examples, $\text{acc}(B_m)$ is the accuracy (fraction of positives) in bin $m$, and $\text{conf}(B_m)$ is the mean predicted probability in bin $m$. Lower ECE indicates better calibration, with zero representing perfect calibration. ECE depends on binning strategy; equal-width bins may place most examples in a few bins for models with concentrated predictions, while equal-mass bins ensure each bin contains the same number of examples but may span wide probability ranges.
+where:
+
+- $M$ is the number of bins (typically 10-15)
+- $B_m$ denotes the set of examples in bin $m$, $|B_m|$ is the number of examples in that bin, $n$ is the total number of examples, $\text{acc}(B_m)$ is the accuracy (fraction of positives) in bin $m$, and $\text{conf}(B_m)$ is the mean predicted probability in bin $m$. Lower ECE indicates better calibration, with zero representing perfect calibration. ECE depends on binning strategy; equal-width bins may place most examples in a few bins for models with concentrated predictions, while equal-mass bins ensure each bin contains the same number of examples but may span wide probability ranges.
 
 **Maximum calibration error (MCE)** captures worst-case miscalibration by reporting the largest absolute gap between predicted and observed frequencies across all bins. MCE is appropriate when any severe miscalibration is unacceptable, as in high-stakes clinical applications where even rare catastrophic errors carry significant consequences.
 
@@ -245,9 +248,19 @@ The simplest calibration fix is often the most effective. **Temperature scaling*
 
 The method modifies the softmax function by dividing logits by a temperature parameter *T* before applying softmax. The intuition is straightforward: overconfident models produce logits that are too large in magnitude, causing softmax probabilities to concentrate near 0 or 1 rather than reflecting true uncertainty. Dividing by *T* > 1 shrinks these logits toward zero, which "softens" the probability distribution and reduces spurious confidence:
 
-$$\hat{p}_i = \frac{\exp(z_i / T)}{\sum_j \exp(z_j / T)}$$
+$$
+\hat{p}_i = \frac{\exp(z_i / T)}{\sum_{j=1}^{K} \exp(z_j / T)}
+$$ {#eq-24-02}
 
-where *z_i* are the logits (pre-softmax outputs) and *p̂_i* are the calibrated probabilities.
+where:
+
+- $z_i$ are the logits (pre-softmax outputs) for class $i$
+- $K$ is the number of classes
+- $T > 0$ is the temperature parameter:
+  - $T = 1$: original softmax (no calibration)
+  - $T > 1$: softer distribution (reduces overconfidence)
+  - $T < 1$: sharper distribution (increases confidence)
+- $\hat{p}_i$ are the calibrated probabilities
 
 ::: {.callout-note title="Worked Example: Temperature Scaling"}
 A variant effect prediction model produces logits for a missense variant:
@@ -281,9 +294,16 @@ The method's simplicity (one parameter) is both strength and limitation. A singl
 
 **Platt scaling** fits a logistic regression model on the original model's outputs, learning both a slope and intercept to transform scores into calibrated probabilities. For binary classification:
 
-$$\hat{p} = \sigma(a \cdot f(x) + b)$$
+$$
+\hat{p}(x) = \sigma(a \cdot f(x) + b) = \frac{1}{1 + \exp(-(a \cdot f(x) + b))}
+$$ {#eq-24-03}
 
-where $f(x)$ is the original model's output, $\sigma$ is the sigmoid function, and parameters $a$ and $b$ are learned on calibration data. The two parameters provide more flexibility than temperature scaling's single parameter, allowing correction of both the sharpness and the location of the probability distribution.
+where:
+
+- $f(x) \in [0, 1]$ is the original model's predicted probability for input $x$
+- $\sigma(\cdot)$ is the sigmoid function
+- $a, b \in \mathbb{R}$ are learned parameters: $a$ controls sharpness, $b$ controls the decision threshold
+- Parameters are fit by maximizing log-likelihood on a held-out calibration set The two parameters provide more flexibility than temperature scaling's single parameter, allowing correction of both the sharpness and the location of the probability distribution.
 
 Platt scaling is appropriate when miscalibration involves systematic bias (predictions consistently too high or too low) in addition to over- or underconfidence. The method assumes that a monotonic logistic transformation suffices to correct miscalibration, which may not hold for models with complex, non-monotonic calibration curves.
 
@@ -372,7 +392,17 @@ Standard regression models predict a single output value, implicitly assuming co
 
 Architecture modifications are minimal. Instead of outputting a single value, the model outputs two values interpreted as the mean $\mu(x)$ and variance $\sigma^2(x)$ of a Gaussian distribution over outputs. Training uses negative log-likelihood loss under this Gaussian, which penalizes both prediction errors and miscalibrated variance estimates:
 
-$$\mathcal{L} = \frac{1}{2\sigma^2(x)}(y - \mu(x))^2 + \frac{1}{2}\log \sigma^2(x)$$
+$$
+\mathcal{L}(x, y) = \frac{(y - \mu(x))^2}{2\sigma^2(x)} + \frac{1}{2}\log \sigma^2(x)
+$$ {#eq-24-04}
+
+where:
+
+- $y$ is the ground truth value for input $x$
+- $\mu(x)$ is the model's predicted mean (one network output)
+- $\sigma^2(x) = \exp(s(x))$ is the predicted variance (second network output, exponentiated to ensure positivity)
+- The first term penalizes prediction errors, weighted by inverse variance
+- The second term prevents trivially predicting infinite variance
 
 Why does this loss function take this particular form? It derives from the negative log-likelihood of a Gaussian distribution: if the model predicts that the output follows a Gaussian with mean $\mu(x)$ and variance $\sigma^2(x)$, then the probability of observing the true value $y$ is higher when $y$ is close to $\mu$ and when variance is well-matched to actual prediction error. The first term penalizes prediction errors, weighted by inverse variance so that high-variance predictions are penalized less for the same absolute error---this is mathematically necessary because a Gaussian with larger variance assigns non-negligible probability to a wider range of values. The second term prevents the model from simply predicting infinite variance to avoid all penalties; without it, the optimal strategy would be to always predict $\sigma^2 \to \infty$, making any prediction equally likely. The balance between these terms forces the model to predict variance that actually matches the empirical noise level. The result is a model that learns to predict larger variance for inputs where training labels are noisy or inconsistent, capturing aleatoric uncertainty in an input-dependent manner.
 

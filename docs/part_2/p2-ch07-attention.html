@@ -703,9 +703,16 @@ Predict Before You Look
 </div>
 </div>
 <p>The attention mechanism computes similarity scores between each query and all keys. For position <span class="math inline">\(i\)</span>, we compute the dot product between its query <span class="math inline">\(q_i\)</span> and every key <span class="math inline">\(k_j\)</span> across all positions <span class="math inline">\(j = 1, \ldots, L\)</span>, where <span class="math inline">\(L\)</span> is sequence length. These scores are scaled by <span class="math inline">\(\sqrt{d_k}\)</span> (the square root of the key dimension) to prevent the dot products from growing large in high dimensions:</p>
-<p><span class="math display">\[
+<p><span id="eq-07-01"><span class="math display">\[
 \text{score}(q_i, k_j) = \frac{q_i \cdot k_j}{\sqrt{d_k}}
-\]</span></p>
+\tag{7.1}\]</span></span></p>
+<p>where:</p>
+<ul>
+<li><span class="math inline">\(q_i \in \mathbb{R}^{d_k}\)</span> is the query vector for position <span class="math inline">\(i\)</span>, computed as <span class="math inline">\(q_i = x_i W^Q\)</span></li>
+<li><span class="math inline">\(k_j \in \mathbb{R}^{d_k}\)</span> is the key vector for position <span class="math inline">\(j\)</span>, computed as <span class="math inline">\(k_j = x_j W^K\)</span></li>
+<li><span class="math inline">\(d_k\)</span> is the dimension of query and key vectors (typically 64 per attention head)</li>
+<li><span class="math inline">\(L\)</span> is the total sequence length, with <span class="math inline">\(j \in \{1, \ldots, L\}\)</span></li>
+</ul>
 <p>Why is this scaling necessary? The dot product between two random vectors with unit-variance components has variance proportional to the number of dimensions. In a 512-dimensional space, the dot product between typical query and key vectors will be roughly <span class="math inline">\(\sqrt{512} \approx 22\)</span> times larger than in a single dimension. Without scaling, these large values push softmax outputs toward extreme distributions where nearly all weight concentrates on a single position, effectively collapsing attention into hard selection rather than soft weighting. The gradients through such saturated softmax outputs vanish, making learning impossible. Dividing by <span class="math inline">\(\sqrt{d_k}\)</span> normalizes the variance regardless of dimension, keeping softmax in its useful operating regime where it can distribute attention across multiple relevant positions.</p>
 <div class="callout callout-style-default callout-note callout-titled" title="Worked Example: Why Scaling Matters">
 <div class="callout-header d-flex align-content-center">
@@ -745,9 +752,15 @@ Worked Example: Why Scaling Matters
 </div>
 </div>
 <p>A softmax function converts these scores into attention weights <span class="math inline">\(\alpha_{ij}\)</span> that form a probability distribution over positions:</p>
-<p><span class="math display">\[
+<p><span id="eq-07-02"><span class="math display">\[
 \alpha_{ij} = \frac{\exp(\text{score}(q_i, k_j))}{\sum_{j'=1}^L \exp(\text{score}(q_i, k_{j'}))}
-\]</span></p>
+\tag{7.2}\]</span></span></p>
+<p>where:</p>
+<ul>
+<li><span class="math inline">\(\alpha_{ij} \in [0, 1]\)</span> is the attention weight from position <span class="math inline">\(i\)</span> to position <span class="math inline">\(j\)</span></li>
+<li>The denominator sums over all <span class="math inline">\(L\)</span> positions, ensuring <span class="math inline">\(\sum_{j=1}^{L} \alpha_{ij} = 1\)</span></li>
+<li>Higher scores produce higher weights; the exponential amplifies differences between scores</li>
+</ul>
 <div class="callout callout-style-default callout-note callout-titled" title="Deep Dive: The Softmax Function">
 <div class="callout-header d-flex align-content-center">
 <div class="callout-icon-container">
@@ -781,9 +794,16 @@ Deep Dive: The Softmax Function
 </div>
 </div>
 <p>These weights determine how strongly position <span class="math inline">\(i\)</span> attends to each other position. High weight means position <span class="math inline">\(i\)</span> aggregates substantial information from position <span class="math inline">\(j\)</span>; low weight means position <span class="math inline">\(j\)</span> contributes little to the output at position <span class="math inline">\(i\)</span>. The final output at position <span class="math inline">\(i\)</span> is a weighted sum of all value vectors:</p>
-<p><span class="math display">\[
+<p><span id="eq-07-03"><span class="math display">\[
 \text{output}_i = \sum_{j=1}^L \alpha_{ij} v_j
-\]</span></p>
+\tag{7.3}\]</span></span></p>
+<p>where:</p>
+<ul>
+<li><span class="math inline">\(\text{output}_i \in \mathbb{R}^{d_v}\)</span> is the output representation for position <span class="math inline">\(i\)</span></li>
+<li><span class="math inline">\(v_j \in \mathbb{R}^{d_v}\)</span> is the value vector for position <span class="math inline">\(j\)</span>, computed as <span class="math inline">\(v_j = x_j W^V\)</span></li>
+<li><span class="math inline">\(d_v\)</span> is the value dimension (typically equal to <span class="math inline">\(d_k\)</span>)</li>
+<li><span class="math inline">\(\alpha_{ij}\)</span> are the attention weights from <a href="#eq-07-02" class="quarto-xref">Equation&nbsp;<span>7.2</span></a></li>
+</ul>
 <p>This weighted aggregation forms the core of self-attention. Each output position receives a mixture of information from across the entire sequence, with mixture proportions learned through backpropagation. For genomic sequences, this means a position near a splice site can attend to both the upstream exon and downstream intron, integrating context that determines whether splicing occurs. A position in a promoter can attend to distant enhancers, learning which distal elements influence expression at this gene. When predicting the pathogenicity of a variant in the <em>SCN5A</em> promoter (mutations in which cause Brugada syndrome and long QT syndrome, affecting approximately 1 in 2,000 individuals), the model can simultaneously consider the core promoter elements, upstream enhancers that drive cardiac-specific expression, and downstream regulatory regions that modulate expression levels.</p>
 <div class="callout callout-style-default callout-note callout-titled" title="Stop and Think: Query-Key-Value Separation">
 <div class="callout-header d-flex align-content-center">
@@ -986,12 +1006,17 @@ Mathematical Content Ahead
 </div>
 </div>
 <p>The original transformer used sinusoidal functions with different frequencies for each embedding dimension <span class="citation" data-cites="vaswani_attention_2023">(<a href="../bib/references.html#ref-vaswani_attention_2023" role="doc-biblioref">Vaswani et al. 2023</a>)</span>. For position <span class="math inline">\(pos\)</span> and dimension <span class="math inline">\(i\)</span>:</p>
-<p><span class="math display">\[
-\text{PE}(pos, 2i) = \sin\left(\frac{pos}{10000^{2i/d_\text{model}}}\right)
-\]</span></p>
-<p><span class="math display">\[
+<p><span id="eq-07-04"><span class="math display">\[
+\text{PE}(pos, 2i) = \sin\left(\frac{pos}{10000^{2i/d_\text{model}}}\right), \quad
 \text{PE}(pos, 2i+1) = \cos\left(\frac{pos}{10000^{2i/d_\text{model}}}\right)
-\]</span></p>
+\tag{7.4}\]</span></span></p>
+<p>where:</p>
+<ul>
+<li><span class="math inline">\(pos \in \{0, 1, \ldots, L-1\}\)</span> is the position index in the sequence</li>
+<li><span class="math inline">\(i \in \{0, 1, \ldots, d_\text{model}/2 - 1\}\)</span> indexes the embedding dimension pairs</li>
+<li><span class="math inline">\(d_\text{model}\)</span> is the model’s embedding dimension</li>
+<li>The factor <span class="math inline">\(10000^{2i/d_\text{model}}\)</span> creates wavelengths ranging from <span class="math inline">\(2\pi\)</span> to <span class="math inline">\(10000 \cdot 2\pi\)</span></li>
+</ul>
 <p>These fixed patterns have useful properties. They are deterministic (the same for all sequences), allow the model to learn to attend by relative positions (since <span class="math inline">\(\mathrm{PE}(pos+k)\)</span> can be expressed as a linear function of <span class="math inline">\(\mathrm{PE}(pos)\)</span>), and generalize to sequence lengths not seen during training. The different frequencies across dimensions create a unique “fingerprint” for each position: lower-frequency components capture coarse position while higher-frequency components capture fine position.</p>
 <p>Many genomic models use <strong>learned positional embeddings</strong> instead: lookup tables where each position has a learned vector added to the input embedding. <em>DNABERT</em> and <em>Nucleotide Transformer</em> both employ learned positional embeddings, allowing the model to discover position-dependent patterns specific to genomic data <span class="citation" data-cites="ji_dnabert_2021 dalla-torre_nucleotide_2023">(<a href="../bib/references.html#ref-ji_dnabert_2021" role="doc-biblioref">Ji et al. 2021</a>; <a href="../bib/references.html#ref-dalla-torre_nucleotide_2023" role="doc-biblioref">Dalla-Torre et al. 2023</a>)</span>. The trade-off is that learned embeddings do not automatically extrapolate to longer sequences. A model trained with maximum sequence length of 512 tokens has no learned embedding for position 513, creating a hard boundary on sequence length at inference time. This fixed maximum context proves particularly restrictive for genomics, where biological phenomena span scales from individual binding sites to megabase regulatory domains.</p>
 </section>
@@ -1146,7 +1171,10 @@ Check Your Answer
 <div id="callout-13" class="callout-13-contents callout-collapse collapse">
 <div class="callout-body-container callout-body">
 <ol type="1">
-<li>Multi-head attention for inter-position communication allows positions to exchange information; feed-forward network performs per-position computation to transform representations. (2) Residual connections create gradient highways that allow signals to flow directly through many layers without degradation, preventing vanishing gradients in deep networks. (3) 96 different attention patterns (12 layers × 8 heads = 96 independent attention mechanisms). (4) Pre-norm normalizes before each sublayer, providing more stable training; post-norm normalizes after, which can achieve better final performance but is harder to train.</li>
+<li><p>Multi-head attention for inter-position communication allows positions to exchange information; feed-forward network performs per-position computation to transform representations.</p></li>
+<li><p>Residual connections create gradient highways that allow signals to flow directly through many layers without degradation, preventing vanishing gradients in deep networks.</p></li>
+<li><p>96 different attention patterns (12 layers x 8 heads = 96 independent attention mechanisms).</p></li>
+<li><p>Pre-norm normalizes before each sublayer, providing more stable training; post-norm normalizes after, which can achieve better final performance but is harder to train.</p></li>
 </ol>
 </div>
 </div>
@@ -1607,7 +1635,7 @@ Chapter Summary
 
 <div id="refs" class="references csl-bib-body hanging-indent" data-entry-spacing="0" role="list" style="display: none">
 <div id="ref-avsec_enformer_2021" class="csl-entry" role="listitem">
-Avsec, Žiga, Vikram Agarwal, D. Visentin, J. Ledsam, A. Grabska-Barwinska, Kyle R. Taylor, Yannis Assael, J. Jumper, Pushmeet Kohli, and David R. Kelley. 2021. <span>“[<span>Enformer</span>] <span>Effective</span> Gene Expression Prediction from Sequence by Integrating Long-Range Interactions.”</span> <em>Nature Methods</em> 18 (October): 1196–1203. <a href="https://doi.org/10.1038/s41592-021-01252-x">https://doi.org/10.1038/s41592-021-01252-x</a>.
+Avsec, Žiga, Vikram Agarwal, Daniel Visentin, Joseph R. Ledsam, Agnieszka Grabska-Barwinska, Kyle R. Taylor, Yannis Assael, John Jumper, Pushmeet Kohli, and David R. Kelley. 2021. <span>“Effective Gene Expression Prediction from Sequence by Integrating Long-Range Interactions.”</span> <em>Nature Methods</em> 18 (10): 1196–1203. <a href="https://doi.org/10.1038/s41592-021-01252-x">https://doi.org/10.1038/s41592-021-01252-x</a>.
 </div>
 <div id="ref-brixi_evo_2025" class="csl-entry" role="listitem">
 Brixi, Garyk, Matthew G. Durrant, Jerome Ku, Michael Poli, Greg Brockman, Daniel Chang, Gabriel A. Gonzalez, et al. 2025. <span>“[<span>Evo</span> 2] <span>Genome</span> Modeling and Design Across All Domains of Life with <span>Evo</span> 2.”</span> bioRxiv. <a href="https://doi.org/10.1101/2025.02.18.638918">https://doi.org/10.1101/2025.02.18.638918</a>.

@@ -67,6 +67,7 @@ These agents provide targeted expertise when needed:
 | **`fact-checker`** | Citation Integrity Specialist | Unsupported claims, citation-claim alignment, retractions, preprint status |
 | **`figure-design`** | Visual Communication Specialist | Figure opportunities, caption quality, visual consistency |
 | **`lean-out`** | Content Efficiency Specialist | Diminishing returns content, appendix candidates, redundancy |
+| **`math-pedagogy`** | Mathematics Presentation Specialist | Equation formatting, numbering, variable definitions, identifying prose that needs formalization |
 
 ### External Consultant (Not Part of Board)
 
@@ -145,6 +146,7 @@ The Editorial Board dispatches agents in parallel where possible:
 | `fact-checker` | For chapters with citations | Skip for intro/overview chapters |
 | `figure-design` | For chapters with figures | Skip if no visual content |
 | `lean-out` | For long chapters | Skip if under target word count |
+| `math-pedagogy` | For chapters with math content | Skip for narrative chapters |
 
 ### Agent Dependencies
 
@@ -152,7 +154,9 @@ Some agents benefit from others running first:
 
 ```
 pedagogy-review  ──► course-designer (pedagogy informs curriculum)
+pedagogy-review  ──► math-pedagogy (learning science informs math decisions)
 chapter-auditor  ──► textbook-editor (structure before polish)
+math-pedagogy    ──► textbook-editor (equations affect prose flow)
 textbook-editor  ──► lean-out (polish before cuts)
 ```
 

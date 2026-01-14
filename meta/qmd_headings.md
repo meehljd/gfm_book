@@ -737,55 +737,55 @@
 ## Chapter Summary
 
 ### part_4/p4--fm-families.qmd
-# Part III: Foundation Model Families {.unnumbered}
-## Part III at a Glance
+# Part IV: Foundation Model Families {.unnumbered}
+## Part IV at a Glance
 ## Connections to Other Parts
 
 ### part_4/p4-ch14-fm-principles.qmd
 # Foundation Model Paradigm {#sec-ch14-fm-principles}
 ## Chapter Overview
-## From Task-Specific Models to Foundation Models {#sec-ch13-task-specific}
+## From Task-Specific Models to Foundation Models {#sec-ch14-task-specific}
 ## Stop and Think
-## Defining Genomic Foundation Models {#sec-ch13-defining}
-### Essential Properties {#sec-ch13-essential-properties}
-### What does not Count {#sec-ch13-what-doesnt-count}
-### Limitations of the Foundation Model Concept {#sec-ch13-concept-limitations}
+## Defining Genomic Foundation Models {#sec-ch14-defining}
+### Essential Properties {#sec-ch14-essential-properties}
+### What does not Count {#sec-ch14-what-doesnt-count}
+### Limitations of the Foundation Model Concept {#sec-ch14-concept-limitations}
 ## Key Insight: The Foundation Model Criterion
-## Scaling Laws and Compute-Optimal Training {#sec-ch13-scaling}
-### Chinchilla Framework and Genomic Constraints {#sec-ch13-scaling-framework}
+## Scaling Laws and Compute-Optimal Training {#sec-ch14-scaling}
+### Chinchilla Framework and Genomic Constraints {#sec-ch14-scaling-framework}
 ## Mathematical Content Ahead
 ## Worked Example: Applying the Chinchilla Framework
-### Empirical Scaling in Genomic Models {#sec-ch13-empirical-scaling}
+### Empirical Scaling in Genomic Models {#sec-ch14-empirical-scaling}
 ## Stop and Think
-### Emergent Capabilities {#sec-ch13-emergence}
+### Emergent Capabilities {#sec-ch14-emergence}
 ## Key Insight: Emergence Creates Capability Thresholds
-## A Taxonomy of Genomic Foundation Models {#sec-ch13-taxonomy}
-### DNA Language Models {#sec-ch13-dna-lm}
-### Sequence-to-Function Foundation Models {#sec-ch13-seq-to-func}
-### Variant Effect Prediction Models {#sec-ch13-vep-models}
+## A Taxonomy of Genomic Foundation Models {#sec-ch14-taxonomy}
+### DNA Language Models {#sec-ch14-dna-lm}
+### Sequence-to-Function Foundation Models {#sec-ch14-seq-to-func}
+### Variant Effect Prediction Models {#sec-ch14-vep-models}
 ## Knowledge Check
-### Multi-Omic Foundation Models {#sec-ch13-multi-omic}
-## Design Dimensions {#sec-ch13-design-dimensions}
-### Data Composition {#sec-ch13-data-composition}
-### Architecture Choices {#sec-ch13-architecture}
-### Context Length {#sec-ch13-context-length}
-### Tokenization {#sec-ch13-tokenization}
-## Build Versus Use Decisions {#sec-ch13-build-vs-use}
+### Multi-Omic Foundation Models {#sec-ch14-multi-omic}
+## Design Dimensions {#sec-ch14-design-dimensions}
+### Data Composition {#sec-ch14-data-composition}
+### Architecture Choices {#sec-ch14-architecture}
+### Context Length {#sec-ch14-context-length}
+### Tokenization {#sec-ch14-tokenization}
+## Build Versus Use Decisions {#sec-ch14-build-vs-use}
 ## Stop and Think
-### When to Use Existing Models {#sec-ch13-use-existing}
-### When to Adapt Existing Models {#sec-ch13-adapt-existing}
-### When to Train from Scratch {#sec-ch13-train-scratch}
-### Cost-Benefit Analysis {#sec-ch13-cost-benefit}
+### When to Use Existing Models {#sec-ch14-use-existing}
+### When to Adapt Existing Models {#sec-ch14-adapt-existing}
+### When to Train from Scratch {#sec-ch14-train-scratch}
+### Cost-Benefit Analysis {#sec-ch14-cost-benefit}
 ## Practical Guidance: The Build-vs-Use Decision
-## Evaluation Principles {#sec-ch13-evaluation}
-### Multi-Task Assessment {#sec-ch13-multi-task}
-### Transfer Versus Pretraining Performance {#sec-ch13-transfer-eval}
-## Foundation Model Ecosystem {#sec-ch13-ecosystem}
-### Model Distribution {#sec-ch13-distribution}
-### Documentation Requirements {#sec-ch13-documentation}
-### Industry and Academic Contributions {#sec-ch13-contributions}
-## Open Questions {#sec-ch13-open-questions}
-## Convergence Without Consolidation {#sec-ch13-convergence}
+## Evaluation Principles {#sec-ch14-evaluation}
+### Multi-Task Assessment {#sec-ch14-multi-task}
+### Transfer Versus Pretraining Performance {#sec-ch14-transfer-eval}
+## Foundation Model Ecosystem {#sec-ch14-ecosystem}
+### Model Distribution {#sec-ch14-distribution}
+### Documentation Requirements {#sec-ch14-documentation}
+### Industry and Academic Contributions {#sec-ch14-contributions}
+## Open Questions {#sec-ch14-open-questions}
+## Convergence Without Consolidation {#sec-ch14-convergence}
 ## Chapter Summary
 
 ### part_4/p4-ch15-dna-lm.qmd
@@ -932,8 +932,8 @@
 ## Tools for Interpretation, Not Oracles {#sec-ch18-conclusion}
 
 ### part_5/p5--cellular-context.qmd
-# Part IV: Cellular Context {.unnumbered}
-## Part IV at a Glance
+# Part V: Cellular Context {.unnumbered}
+## Part V at a Glance
 ## Connections to Other Parts
 
 ### part_5/p5-ch19-rna.qmd
@@ -1130,8 +1130,8 @@
 ## Chapter Summary
 
 ### part_6/p6--responsible-deployment.qmd
-# Part V: Evaluation and Trust {.unnumbered}
-## Part V at a Glance
+# Part VI: Responsible Deployment {.unnumbered}
+## Part VI at a Glance
 ## Essential for Clinical Applications
 ## Connections to Other Parts
 
@@ -1319,8 +1319,8 @@
 ## Chapter Summary
 
 ### part_7/p7--applications.qmd
-# Part VI: Clinical Translation {.unnumbered}
-## Part VI at a Glance
+# Part VII: Applications & Frontiers {.unnumbered}
+## Part VII at a Glance
 ## The Benchmark-Deployment Gap
 ## Connections to Other Parts
 

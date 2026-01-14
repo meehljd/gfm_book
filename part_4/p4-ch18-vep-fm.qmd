@@ -87,7 +87,16 @@ The simplest foundation model approach to missense VEP requires no task-specific
 
 *ESM-1v* operationalizes this approach using the *ESM-2* architecture fine-tuned for single-sequence variant effect prediction [@meier_esm-1v_2021]. For a variant substituting amino acid $a_\text{ref}$ with $a_\text{var}$ at position *i*, the score is computed as:
 
-$$\Delta \text{LLR} = \log P(a_\text{var} | \text{context}) - \log P(a_\text{ref} | \text{context})$$
+$$
+\Delta \text{LLR} = \log P(\text{aa}_{\text{alt}} \mid \mathbf{x}_{-i}) - \log P(\text{aa}_{\text{ref}} \mid \mathbf{x}_{-i})
+$$ {#eq-18-01}
+
+where:
+
+- $\text{aa}_{\text{ref}}$ is the reference (wild-type) amino acid at position $i$
+- $\text{aa}_{\text{alt}}$ is the variant (mutant) amino acid
+- $\mathbf{x}_{-i}$ is the protein sequence with position $i$ masked
+- Negative $\Delta\text{LLR}$ indicates the variant is evolutionarily disfavored (predicted deleterious)
 
 ::: {.callout-note title="Worked Example: Computing LLR Variant Scores"}
 Consider a missense variant in *BRCA1* that substitutes leucine (L) with proline (P) at position 1780.
@@ -116,19 +125,25 @@ Language models assign probabilities to sequences, but extracting variant effect
 
 **Masked marginal likelihood** (used by *ESM-1v*): Mask the position of interest and compute the probability of each amino acid given the unmasked context. The variant score is the log probability ratio of variant versus reference amino acid:
 
-$$\text{Score} = \log P(a_\text{var} | \mathbf{x}_{-i}) - \log P(a_\text{ref} | \mathbf{x}_{-i})$$
+$$
+\text{Score} = \log P(\text{aa}_{\text{alt}} \mid \mathbf{x}_{-i}) - \log P(\text{aa}_{\text{ref}} \mid \mathbf{x}_{-i})
+$$ {#eq-18-02}
 
-where $\mathbf{x}_{-i}$ denotes the sequence with position *i* masked. This approach requires a single forward pass per variant position. It directly measures how surprising each amino acid is given the local and global context the model learned during pretraining.
+where $\mathbf{x}_{-i}$ denotes the sequence with position $i$ masked. This approach requires a single forward pass per variant position. It directly measures how surprising each amino acid is given the local and global context the model learned during pretraining.
 
 **Pseudo-likelihood**: Sum the masked marginal log-probabilities across all positions in the sequence:
 
-$$\text{PLL}(\mathbf{x}) = \sum_{i=1}^{L} \log P(x_i | \mathbf{x}_{-i})$$
+$$
+\text{PLL}(\mathbf{x}) = \sum_{i=1}^{L} \log P(x_i \mid \mathbf{x}_{-i})
+$$ {#eq-18-03}
 
-The variant effect is the difference in pseudo-likelihood between mutant and wild-type sequences. This captures how the mutation affects sequence probability globally, not just at the mutated position, and may detect compensatory effects, but requires *L* forward passes (one per position).
+where $L$ is the sequence length and $x_i$ is the amino acid at position $i$. The variant effect is the difference in pseudo-likelihood between mutant and wild-type sequences. This captures how the mutation affects sequence probability globally, not just at the mutated position, and may detect compensatory effects, but requires *L* forward passes (one per position).
 
 **Autoregressive likelihood** (for GPT-style models): Compute the probability of generating the sequence left-to-right:
 
-$$\text{LL}(\mathbf{x}) = \sum_{i=1}^{L} \log P(x_i | x_1, \ldots, x_{i-1})$$
+$$
+\text{LL}(\mathbf{x}) = \sum_{i=1}^{L} \log P(x_i \mid x_1, \ldots, x_{i-1})
+$$ {#eq-18-04}
 
 This provides a proper generative probability but creates asymmetry: mutations early in the sequence affect more downstream predictions than mutations late in the sequence. Bidirectional models avoid this issue.
 
@@ -211,7 +226,7 @@ Splicing variants illustrate both the promise and current limitations of deep le
 
 *SpliceAI* applies the dilated convolutional architecture introduced in @sec-ch06-cnn to predict splice site usage from raw DNA sequence [@jaganathan_spliceai_2019]. The architecture processes 10,000 nucleotides of context through 32 residual blocks with dilated convolutions (dilation rates increasing from 1 to 128), enabling the **receptive field** to span several kilobases while maintaining nucleotide resolution. Output heads predict splice donor probability, splice acceptor probability, and junction usage at each position.
 
-For variant effect prediction, *SpliceAI* compares predictions between reference and alternate sequences. The delta score quantifies the change in splice site probability, with positive values indicating gained splice sites and negative values indicating lost sites. Scores exceeding 0.2 correlate with experimentally validated splicing changes; scores above 0.5 have high specificity for pathogenic splicing variants *[Citation Needed]*.
+For variant effect prediction, *SpliceAI* compares predictions between reference and alternate sequences. The delta score quantifies the change in splice site probability, with positive values indicating gained splice sites and negative values indicating lost sites. Scores exceeding 0.2 correlate with experimentally validated splicing changes; scores above 0.5 have high specificity for pathogenic splicing variants [@jaganathan_predicting_2019].
 
 Clinical deployment has validated *SpliceAI's* utility. Illumina integrated the model into their clinical interpretation pipeline, and multiple diagnostic laboratories use *SpliceAI* scores as supporting evidence for ACMG classification. The architectural innovations that enable this performance, including the dilated convolution strategy for expanding receptive fields, are detailed in @sec-ch06-spliceai. The model identifies pathogenic splicing variants missed by classical methods, particularly deep intronic variants that create novel splice sites through cryptic activation.
 
@@ -280,7 +295,7 @@ The simplest integration approach applies different models to different variant 
 
 More sophisticated integration aggregates scores across models for the same variant. A missense variant might receive both *AlphaMissense* (protein impact) and *Enformer* (regulatory impact, relevant if the codon overlaps a regulatory element) predictions. Combining these requires decisions about weighting and potential double-counting of shared information.
 
-Bayesian approaches offer principled integration. Priors encode beliefs about variant mechanism proportions; likelihoods incorporate model predictions given mechanism; posteriors combine evidence across models while respecting uncertainty. *REVEL* (Rare Exome Variant Ensemble Learner) demonstrated this approach for classical predictors *[Citation Needed]*; extending it to foundation model outputs requires careful calibration of each component score.
+Bayesian approaches offer principled integration. Priors encode beliefs about variant mechanism proportions; likelihoods incorporate model predictions given mechanism; posteriors combine evidence across models while respecting uncertainty. *REVEL* (Rare Exome Variant Ensemble Learner) demonstrated this approach for classical predictors [@ioannidis_revel_2016]; extending it to foundation model outputs requires careful calibration of each component score.
 
 ### Avoiding Double-Counting {#sec-ch18-double-counting}
 
@@ -664,9 +679,25 @@ Before reviewing the summary, test your recall:
 
 3. **Calibration importance and reliability diagrams**: Calibration ensures that predicted probabilities match observed frequencies—a score of 0.8 should mean 80% of variants with that score are truly pathogenic. Without calibration, scores are arbitrary and cannot guide clinical decisions. Reliability diagrams plot predicted probabilities (x-axis) against observed pathogenic proportions (y-axis). Perfect calibration falls on the diagonal. Points below indicate overconfidence (model predicts higher probabilities than reality); points above indicate underconfidence. Neural networks typically overpredict extreme probabilities and require post-hoc calibration (temperature scaling, isotonic regression) before clinical use.
 
-4. **Combining evidence strategies and double-counting**: Three strategies: (1) Modular routing—apply different models to different variant types (AlphaMissense for missense, SpliceAI for splice sites). (2) Score aggregation—combine predictions from multiple models using ensemble methods or Bayesian integration with careful weighting. (3) Tiered filtering—use fast models for initial screening, expensive models for prioritized variants. The double-counting problem arises when multiple predictors share information sources (e.g., *AlphaMissense* and *ESM-1v* both encode evolutionary constraint). Treating correlated predictions as independent evidence overweights shared signals. Solution: assess correlations, group predictors by information source, select one representative from each group for ACMG evidence, and document tool correlations in laboratory validation records.
+4. **Combining evidence strategies and double-counting**: Three strategies:
 
-5. **Three persistent challenges**: (1) **Structural variants** (deletions, duplications, inversions)—current sequence models cannot represent architectural rearrangements; they are trained on SNVs and small indels. (2) **Combinatorial/compound effects**—models score variants independently, missing compound heterozygosity where two individually tolerable variants together cause disease, and haplotype effects where phasing determines pathogenicity. (3) **Population bias**—training data overrepresent European ancestry; models perform worse for African and Asian populations where variants are undersampled in ClinVar/gnomAD, creating systematic disparities in prediction accuracy for underrepresented groups. These limitations require human judgment to integrate additional evidence (segregation, functional assays, ancestry-appropriate interpretation).
+   1. Modular routing—apply different models to different variant types (AlphaMissense for missense, SpliceAI for splice sites).
+
+   2. Score aggregation—combine predictions from multiple models using ensemble methods or Bayesian integration with careful weighting.
+
+   3. Tiered filtering—use fast models for initial screening, expensive models for prioritized variants.
+
+   The double-counting problem arises when multiple predictors share information sources (e.g., *AlphaMissense* and *ESM-1v* both encode evolutionary constraint). Treating correlated predictions as independent evidence overweights shared signals. Solution: assess correlations, group predictors by information source, select one representative from each group for ACMG evidence, and document tool correlations in laboratory validation records.
+
+5. **Three persistent challenges**:
+
+   1. **Structural variants** (deletions, duplications, inversions)—current sequence models cannot represent architectural rearrangements; they are trained on SNVs and small indels.
+
+   2. **Combinatorial/compound effects**—models score variants independently, missing compound heterozygosity where two individually tolerable variants together cause disease, and haplotype effects where phasing determines pathogenicity.
+
+   3. **Population bias**—training data overrepresent European ancestry; models perform worse for African and Asian populations where variants are undersampled in ClinVar/gnomAD, creating systematic disparities in prediction accuracy for underrepresented groups.
+
+   These limitations require human judgment to integrate additional evidence (segregation, functional assays, ancestry-appropriate interpretation).
 :::
 :::
 

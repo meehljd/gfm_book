@@ -776,13 +776,27 @@ Mathematical Content Ahead
 </div>
 </div>
 <p>Hoffmann et al.&nbsp;formalized the relationship between model performance and scaling factors through a power law decomposition <span class="citation" data-cites="hoffmann_training_2022">(<a href="../bib/references.html#ref-hoffmann_training_2022" role="doc-biblioref">Hoffmann et al. 2022</a>)</span>:</p>
-<p><span class="math display">\[L(N, D) = E + \frac{A}{N^\alpha} + \frac{B}{D^\beta}\]</span></p>
-<p>where <span class="math inline">\(L\)</span> represents cross-entropy loss on held-out data, <span class="math inline">\(N\)</span> denotes model parameters, <span class="math inline">\(D\)</span> indicates training tokens, and <span class="math inline">\(E\)</span>, <span class="math inline">\(A\)</span>, <span class="math inline">\(B\)</span>, <span class="math inline">\(\alpha\)</span>, <span class="math inline">\(\beta\)</span> are empirically fitted constants. For language models, the exponents <span class="math inline">\(\alpha\)</span> and <span class="math inline">\(\beta\)</span> both approximate 0.3, meaning doubling parameters or data reduces loss by roughly 20%. The constant <span class="math inline">\(E\)</span> represents irreducible loss (the entropy remaining even with infinite resources), while the parameter term <span class="math inline">\(A/N^\alpha\)</span> quantifies gains from greater model capacity and the data term <span class="math inline">\(B/D^\beta\)</span> captures gains from additional training examples.</p>
+<p><span id="eq-14-01"><span class="math display">\[
+L(N, D) = E + \frac{A}{N^\alpha} + \frac{B}{D^\beta}
+\tag{14.1}\]</span></span></p>
+<p>where:</p>
+<ul>
+<li><span class="math inline">\(L\)</span> is the cross-entropy loss on held-out data (in nats or bits)</li>
+<li><span class="math inline">\(N\)</span> is the number of model parameters</li>
+<li><span class="math inline">\(D\)</span> is the number of training tokens</li>
+<li><span class="math inline">\(E\)</span> is the irreducible loss (entropy remaining even with infinite resources)</li>
+<li><span class="math inline">\(A\)</span>, <span class="math inline">\(B\)</span> are empirically fitted scale constants</li>
+<li><span class="math inline">\(\alpha \approx \beta \approx 0.3\)</span> are the scaling exponents (fitted to data) For language models, the exponents <span class="math inline">\(\alpha\)</span> and <span class="math inline">\(\beta\)</span> both approximate 0.3, meaning doubling parameters or data reduces loss by roughly 20%. The constant <span class="math inline">\(E\)</span> represents irreducible loss (the entropy remaining even with infinite resources), while the parameter term <span class="math inline">\(A/N^\alpha\)</span> quantifies gains from greater model capacity and the data term <span class="math inline">\(B/D^\beta\)</span> captures gains from additional training examples.</li>
+</ul>
 <p>Why does this decomposition take this particular form? The power law structure reflects the diminishing returns inherent in learning: the first million parameters capture the most common patterns, while each subsequent million captures progressively rarer regularities. The exponents near 0.3 indicate that performance improvements slow considerably as scale increases—you need roughly eight times the resources to halve the gap to optimal performance. The additive structure separates distinct bottlenecks: insufficient model capacity to represent learned patterns (the <span class="math inline">\(N\)</span> term) versus insufficient data diversity to learn all relevant patterns (the <span class="math inline">\(D\)</span> term). This decomposition explains why over-parameterized models trained on limited data, or under-parameterized models trained on vast data, both underperform balanced allocations.</p>
 <p>Training cost constrains both parameters and data simultaneously through the compute budget <span class="math inline">\(C\)</span> (measured in FLOPs):</p>
-<p><span class="math display">\[C \approx 6ND\]</span></p>
-<p>This approximation holds because each training token requires roughly 6 FLOPs per parameter (one forward pass and one backward pass through the network). Optimizing this tradeoff by minimizing loss subject to the budget constraint yields:</p>
-<p><span class="math display">\[N_{\text{opt}} \propto C^{0.49}, \quad D_{\text{opt}} \propto C^{0.51}\]</span></p>
+<p><span id="eq-14-02"><span class="math display">\[
+C \approx 6ND
+\tag{14.2}\]</span></span></p>
+<p>where <span class="math inline">\(C\)</span> is measured in FLOPs (floating-point operations). This approximation holds because each training token requires roughly 6 FLOPs per parameter (one forward pass and one backward pass through the network). Optimizing this tradeoff by minimizing loss subject to the budget constraint yields:</p>
+<p><span id="eq-14-03"><span class="math display">\[
+N_{\text{opt}} \propto C^{0.49}, \quad D_{\text{opt}} \propto C^{0.51}
+\tag{14.3}\]</span></span></p>
 <p>These exponents, both near 0.5, encode the Chinchilla insight: model size and training data should scale approximately equally. Practical implementations target roughly 20 tokens per parameter for compute-optimal training.</p>
 <div class="callout callout-style-default callout-note callout-titled">
 <div class="callout-header d-flex align-content-center">
@@ -1337,7 +1351,13 @@ Check Your Answers
 <ol type="1">
 <li><p><strong>Foundation vs.&nbsp;task-specific models</strong>: Foundation models are distinguished by their ability to transfer to diverse downstream tasks through embeddings or lightweight adaptation, not by their size alone. Self-supervised pretraining enables transfer because the model must learn general features useful for reconstructing any genomic context (e.g., how motifs combine, sequence composition patterns, functional vs.&nbsp;non-functional sequence). In contrast, supervised training on narrow tasks produces features specifically optimized for that task (e.g., splice site prediction learns GT-AG consensus and branch points), which may be irrelevant or misleading for other applications.</p></li>
 <li><p><strong>Chinchilla scaling laws</strong>: The framework shows that loss <span class="math inline">\(L(N, D) = E + A/N^\alpha + B/D^\beta\)</span> where <span class="math inline">\(N\)</span> is parameters, <span class="math inline">\(D\)</span> is training tokens, and compute <span class="math inline">\(C \approx 6ND\)</span>. The key insight is that model parameters and training data should scale approximately equally—the optimal ratio is roughly 20 tokens per parameter. For a fixed compute budget, you should train a smaller model on more data rather than a larger model on less data, as undertrained large models typically underperform smaller compute-optimal models.</p></li>
-<li><p><strong>Four foundation model families</strong>: (1) DNA language models use self-supervised pretraining for general sequence representations but lack functional grounding for subtle regulatory patterns. (2) Sequence-to-function models predict molecular phenotypes with mechanistic grounding but are tied to training assays and cell types. (3) Variant effect prediction models integrate multiple information sources for clinical relevance but focus narrowly on variant interpretation. (4) Multi-omic models integrate across modalities for holistic understanding but face data engineering complexity and are still early in development.</p></li>
+<li><p><strong>Four foundation model families</strong>:</p>
+<ol type="1">
+<li><p>DNA language models use self-supervised pretraining for general sequence representations but lack functional grounding for subtle regulatory patterns.</p></li>
+<li><p>Sequence-to-function models predict molecular phenotypes with mechanistic grounding but are tied to training assays and cell types.</p></li>
+<li><p>Variant effect prediction models integrate multiple information sources for clinical relevance but focus narrowly on variant interpretation.</p></li>
+<li><p>Multi-omic models integrate across modalities for holistic understanding but face data engineering complexity and are still early in development.</p></li>
+</ol></li>
 <li><p><strong>Emergent capabilities</strong>: These are abilities that appear discontinuously at certain scale thresholds and are absent in smaller models (e.g., ESM-2’s structural understanding emerges at ~650M parameters, zero-shot variant effect prediction requires sufficient scale). This matters because attempting to fine-tune a model below the capability threshold is wasted effort—if a 100M parameter model fundamentally cannot perform a task, no amount of fine-tuning will enable it. You must verify that models of similar scale have demonstrated the required capability before attempting adaptation.</p></li>
 <li><p><strong>Build vs.&nbsp;use hierarchy</strong>: Start with frozen embeddings from existing models (hours of work, ~$10 compute, 70-90% of fine-tuned performance). Escalate to parameter-efficient adaptation like LoRA if embeddings underperform (days of work, $100-1000 compute, ~95% of full fine-tuning). Consider full fine-tuning only for high-stakes applications (weeks, $1000+). Train from scratch only when: (a) target domain differs fundamentally from existing pretraining data, (b) you have unique large-scale data, (c) timeline permits months, and (d) budget permits $100K+ compute. Most researchers never need to train from scratch.</p></li>
 </ol>
@@ -1368,7 +1388,7 @@ Check Your Answers
 
 <div id="refs" class="references csl-bib-body hanging-indent" data-entry-spacing="0" role="list" style="display: none">
 <div id="ref-avsec_enformer_2021" class="csl-entry" role="listitem">
-Avsec, Žiga, Vikram Agarwal, D. Visentin, J. Ledsam, A. Grabska-Barwinska, Kyle R. Taylor, Yannis Assael, J. Jumper, Pushmeet Kohli, and David R. Kelley. 2021. <span>“[<span>Enformer</span>] <span>Effective</span> Gene Expression Prediction from Sequence by Integrating Long-Range Interactions.”</span> <em>Nature Methods</em> 18 (October): 1196–1203. <a href="https://doi.org/10.1038/s41592-021-01252-x">https://doi.org/10.1038/s41592-021-01252-x</a>.
+Avsec, Žiga, Vikram Agarwal, Daniel Visentin, Joseph R. Ledsam, Agnieszka Grabska-Barwinska, Kyle R. Taylor, Yannis Assael, John Jumper, Pushmeet Kohli, and David R. Kelley. 2021. <span>“Effective Gene Expression Prediction from Sequence by Integrating Long-Range Interactions.”</span> <em>Nature Methods</em> 18 (10): 1196–1203. <a href="https://doi.org/10.1038/s41592-021-01252-x">https://doi.org/10.1038/s41592-021-01252-x</a>.
 </div>
 <div id="ref-chen_deepsea_2022" class="csl-entry" role="listitem">
 Chen, Kathleen M., Aaron K. Wong, Olga G. Troyanskaya, and Jian Zhou. 2022. <span>“[<span>DeepSEA</span> <span>Sei</span>] <span>A</span> Sequence-Based Global Map of Regulatory Activity for Deciphering Human Genetics.”</span> <em>Nature Genetics</em> 54 (7): 940–49. <a href="https://doi.org/10.1038/s41588-022-01102-2">https://doi.org/10.1038/s41588-022-01102-2</a>.

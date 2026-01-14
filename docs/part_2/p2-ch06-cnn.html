@@ -787,7 +787,18 @@ Mathematical Detail
 <p>The following paragraph introduces the receptive field formula. If you prefer to focus on intuition, the key point is: more layers and wider filters increase how much sequence a CNN can see, but these increases are limited by computational constraints.</p>
 </div>
 </div>
-<p>The receptive field of a convolutional network defines how much input sequence can influence a single output prediction. For a network with kernel width <span class="math inline">\(k\)</span>, pooling factor <span class="math inline">\(p\)</span>, and <span class="math inline">\(L\)</span> layers, the receptive field grows with depth but remains fundamentally limited by architecture. A three-layer network with typical parameters might integrate information from 200 to 1,000 base pairs. Reaching further requires either more layers (increasing computational cost and training difficulty) or <strong>dilated convolutions</strong> that space filter weights to sample larger regions. When biological dependencies span tens of kilobases, this receptive field ceiling becomes the fundamental constraint that no amount of training data can overcome.</p>
+<p>The receptive field of a convolutional network defines how much input sequence can influence a single output prediction. For a stack of convolutional layers, the receptive field grows approximately as:</p>
+<p><span id="eq-06-04"><span class="math display">\[
+\text{RF} = 1 + \sum_{l=1}^{L} (k_l - 1) \prod_{j=l+1}^{L} s_j
+\tag{6.1}\]</span></span></p>
+<p>where:</p>
+<ul>
+<li><span class="math inline">\(L\)</span> is the number of layers</li>
+<li><span class="math inline">\(k_l\)</span> is the kernel width at layer <span class="math inline">\(l\)</span></li>
+<li><span class="math inline">\(s_j\)</span> is the stride (or pooling factor) at layer <span class="math inline">\(j\)</span></li>
+<li>With all strides <span class="math inline">\(= 1\)</span> and uniform kernel width <span class="math inline">\(k\)</span>: <span class="math inline">\(\text{RF} = 1 + L(k-1)\)</span></li>
+</ul>
+<p>A three-layer network with typical parameters might integrate information from 200 to 1,000 base pairs. Reaching further requires either more layers (increasing computational cost and training difficulty) or <strong>dilated convolutions</strong> that space filter weights to sample larger regions. When biological dependencies span tens of kilobases, this receptive field ceiling becomes the fundamental constraint that no amount of training data can overcome.</p>
 <div class="callout callout-style-default callout-tip callout-titled" title="Knowledge Check">
 <div class="callout-header d-flex align-content-center">
 <div class="callout-icon-container">
@@ -812,7 +823,9 @@ Check Your Answer
 <div id="callout-7" class="callout-7-contents callout-collapse collapse">
 <div class="callout-body-container callout-body">
 <ol type="1">
-<li>A convolutional filter learns to detect a specific sequence pattern or motif, responding strongly when that pattern appears in its receptive field. (2) Pooling creates position invariance by taking the maximum (or average) activation within a region, so the filter responds similarly whether the motif appears at position 10 or position 15 within that region. (3) The receptive field size determines how far a CNN can see, which is determined by the combination of filter width, number of layers, pooling operations, and dilation rates across the network.</li>
+<li><p>A convolutional filter learns to detect a specific sequence pattern or motif, responding strongly when that pattern appears in its receptive field.</p></li>
+<li><p>Pooling creates position invariance by taking the maximum (or average) activation within a region, so the filter responds similarly whether the motif appears at position 10 or position 15 within that region.</p></li>
+<li><p>The receptive field size determines how far a CNN can see, which is determined by the combination of filter width, number of layers, pooling operations, and dilation rates across the network.</p></li>
 </ol>
 </div>
 </div>
@@ -1171,11 +1184,28 @@ Mathematical Detail
 </div>
 </div>
 <p><em>SpliceAI</em> employs an ultra-deep residual network with 32 convolutional layers. Residual connections address the <strong>vanishing gradient problem</strong> that otherwise prevents training at this depth:</p>
-<p><span class="math display">\[
-\text{output} = \text{input} + F(\text{input})
-\]</span></p>
+<p><span id="eq-06-01"><span class="math display">\[
+h_{l+1} = h_l + F_l(h_l)
+\tag{6.2}\]</span></span></p>
+<p>where:</p>
+<ul>
+<li><span class="math inline">\(h_l\)</span> is the hidden representation at layer <span class="math inline">\(l\)</span></li>
+<li><span class="math inline">\(F_l(\cdot)\)</span> is the learned transformation (convolution, activation, etc.) at layer <span class="math inline">\(l\)</span></li>
+<li>The identity term <span class="math inline">\(h_l\)</span> provides a “shortcut” for gradient flow during backpropagation</li>
+</ul>
 <p>Why does this simple reformulation enable deeper networks? During backpropagation, gradients must flow through every layer to update early parameters. In standard networks, each layer multiplies the gradient by its weight matrix; when these multiplications compound across 32 layers, gradients either explode (if weights are large) or vanish toward zero (if weights are small). Residual connections provide an alternative path: the gradient can flow directly through the identity shortcut, bypassing the learned transformation <span class="math inline">\(F(\text{input})\)</span> entirely. This means early layers receive gradient signal regardless of what intermediate layers have learned. The network can then focus on learning what to <em>add</em> to the identity mapping rather than learning the entire transformation from scratch, a substantially easier optimization problem. Skip connections from every fourth residual block feed directly to the penultimate layer, further stabilizing training dynamics by providing multiple gradient highways that bypass potential bottlenecks.</p>
-<p>Dilated convolutions expand the receptive field efficiently. A dilated convolution with rate <em>d</em> samples input positions at intervals of <em>d</em> rather than consecutively. Why use dilation rather than simply larger filters or more layers? Standard convolutions face a tradeoff: expanding the receptive field requires either wide filters (adding parameters proportionally) or deep stacking (adding parameters and gradient path length). Dilation circumvents this tradeoff by reusing the same filter weights while sampling input at wider intervals. A 3-wide filter with dilation rate 8 effectively spans 17 positions (3 samples with 8-position gaps) while using only 3 weight values. Stacking convolutions with increasing dilation rates (1, 2, 4, 8, 16, and so on) allows the network to integrate information across the full 10 kb window while maintaining sensitivity to local patterns at early layers where dilation is small. Standard convolutions with small kernels would require impractical depth to achieve equivalent receptive fields.</p>
+<p>Dilated convolutions expand the receptive field efficiently. A dilated convolution with rate <span class="math inline">\(r\)</span> samples input positions at intervals of <span class="math inline">\(r\)</span> rather than consecutively:</p>
+<p><span id="eq-06-03"><span class="math display">\[
+\text{output}[i] = \sum_{k=0}^{K-1} w[k] \cdot \text{input}[i + k \cdot r]
+\tag{6.3}\]</span></span></p>
+<p>where:</p>
+<ul>
+<li><span class="math inline">\(K\)</span> is the filter (kernel) width</li>
+<li><span class="math inline">\(w[k]\)</span> are the filter weights</li>
+<li><span class="math inline">\(r\)</span> is the dilation rate (stride between sampled positions)</li>
+<li>Effective span <span class="math inline">\(= K + (K-1)(r-1) = Kr - r + 1\)</span> positions using only <span class="math inline">\(K\)</span> parameters</li>
+</ul>
+<p>Why use dilation rather than simply larger filters or more layers? Standard convolutions face a tradeoff: expanding the receptive field requires either wide filters (adding parameters proportionally) or deep stacking (adding parameters and gradient path length). Dilation circumvents this tradeoff by reusing the same filter weights while sampling input at wider intervals. A 3-wide filter with dilation rate 8 effectively spans 17 positions (3 samples with 8-position gaps) while using only 3 weight values. Stacking convolutions with increasing dilation rates (1, 2, 4, 8, 16, and so on) allows the network to integrate information across the full 10 kb window while maintaining sensitivity to local patterns at early layers where dilation is small. Standard convolutions with small kernels would require impractical depth to achieve equivalent receptive fields.</p>
 <p>For each position in the pre-mRNA sequence, <em>SpliceAI</em> outputs three probabilities: splice acceptor, splice donor, or neither. This per-position classification enables fine-grained predictions across entire transcripts. Training used GENCODE annotations, with odd and even chromosomes split for training and testing.</p>
 <div id="fig-spliceai-architecture" class="quarto-layout-panel">
 <figure class="quarto-float quarto-float-fig figure">
@@ -1250,9 +1280,17 @@ Table&nbsp;6.3: <em>SpliceAI</em> performance improves substantially with contex
 </div>
 <p>This progression confirms that distal sequence features contribute meaningfully to splicing decisions. The diminishing returns above 2 kb suggest that most splicing determinants lie within this range, though the additional context still provides measurable benefit.</p>
 <p>The delta score quantifies variant effects by comparing predictions for reference and alternative sequences:</p>
-<p><span class="math display">\[
+<p><span id="eq-06-02"><span class="math display">\[
 \Delta\text{score} = \max_{|p - v| \leq 50} \left| P_{\text{alt}}(p) - P_{\text{ref}}(p) \right|
-\]</span></p>
+\tag{6.4}\]</span></span></p>
+<p>where:</p>
+<ul>
+<li><span class="math inline">\(v\)</span> is the variant position in the sequence</li>
+<li><span class="math inline">\(p\)</span> indexes positions within 50 bp of the variant</li>
+<li><span class="math inline">\(P_{\text{ref}}(p)\)</span> is the predicted splice probability at position <span class="math inline">\(p\)</span> for the reference sequence</li>
+<li><span class="math inline">\(P_{\text{alt}}(p)\)</span> is the predicted splice probability at position <span class="math inline">\(p\)</span> for the alternative (mutant) sequence</li>
+<li>The max over <span class="math inline">\(|p - v| \leq 50\)</span> captures the largest effect within the local region</li>
+</ul>
 <p>Validation against GTEx RNA-seq showed that mutations with higher delta scores showed higher validation rates at novel splice junctions: approximately <span class="math inline">\(50\%\)</span> at <span class="math inline">\(\Delta \geq 0.2\)</span>, <span class="math inline">\(75\%\)</span> at <span class="math inline">\(\Delta \geq 0.5\)</span>, and <span class="math inline">\(85\%\)</span> at <span class="math inline">\(\Delta \geq 0.8\)</span>. Population genetics provided orthogonal support: predicted cryptic splice variants showed <span class="math inline">\(78\%\)</span> depletion at common allele frequencies, nearly matching the depletion of frameshift and stop-gain variants. Natural selection treats these variants as deleterious, confirming their functional impact.</p>
 </section>
 <section id="sec-ch06-spliceai-clinical" class="level3" data-number="6.5.3">
@@ -1340,7 +1378,9 @@ Check Your Answer
 <div id="callout-19" class="callout-19-contents callout-collapse collapse">
 <div class="callout-body-container callout-body">
 <ol type="1">
-<li>A CNN cannot learn dependencies beyond its receptive field because positions outside this window have zero gradient with respect to the output—information simply cannot flow between them, regardless of training data quantity. (2) Distal enhancer-promoter interactions (tens of kilobases), long-range chromatin loops, TAD boundary effects, and coordinated regulation across large genomic domains all require longer context than typical CNN receptive fields of 200-1000 bp. (3) Receptive fields can be extended through dilated convolutions, deeper networks with more layers, or hybrid architectures that combine CNNs with attention mechanisms.</li>
+<li><p>A CNN cannot learn dependencies beyond its receptive field because positions outside this window have zero gradient with respect to the output—information simply cannot flow between them, regardless of training data quantity.</p></li>
+<li><p>Distal enhancer-promoter interactions (tens of kilobases), long-range chromatin loops, TAD boundary effects, and coordinated regulation across large genomic domains all require longer context than typical CNN receptive fields of 200-1000 bp.</p></li>
+<li><p>Receptive fields can be extended through dilated convolutions, deeper networks with more layers, or hybrid architectures that combine CNNs with attention mechanisms.</p></li>
 </ol>
 </div>
 </div>

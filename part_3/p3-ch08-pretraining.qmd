@@ -144,12 +144,20 @@ Next-token prediction represents an alternative paradigm where models learn to p
 
 For a sequence of length $T$, the model predicts token $t$ from tokens $1$ through $t-1$, maximizing the likelihood of the observed sequence under the model's learned distribution. The probability of a sequence factors as the product of conditional probabilities for each token given its predecessors—just as the probability of a week's weather is the product of each day's probability given the preceding days:
 
-$$P(x_1, x_2, \ldots, x_T) = \prod_{t=1}^{T} P(x_t \mid x_1, \ldots, x_{t-1})$$
+$$
+P(x_1, x_2, \ldots, x_T) = \prod_{t=1}^{T} P(x_t \mid x_1, \ldots, x_{t-1})
+$$ {#eq-08-01}
+
+where:
+
+- $x_t$ is the token at position $t$ in the sequence
+- $T$ is the total sequence length
+- $P(x_t \mid x_1, \ldots, x_{t-1})$ is the conditional probability of token $t$ given all preceding tokens
 
 ::: {.callout-warning}
 ## Mathematical Detail
 
-The autoregressive factorization above is exact by the chain rule of probability. However, it requires choosing an ordering over tokens. For natural language, left-to-right reading order provides a natural choice. For DNA, there is no inherent directionality, which presents a challenge discussed below.
+The autoregressive factorization in @eq-08-01 is exact by the chain rule of probability. However, it requires choosing an ordering over tokens. For natural language, left-to-right reading order provides a natural choice. For DNA, there is no inherent directionality, which presents a challenge discussed below.
 :::
 
 Algorithmically, next-token prediction requires **causal masking** in the attention mechanism. Each position attends only to earlier positions, ensuring predictions at position $t$ depend exclusively on positions $1$ through $t-1$. Why enforce this restriction during training when we have access to the full sequence? The constraint ensures that the model learns exactly the conditional distributions it will use during generation. If training allowed each position to peek at future tokens, the model would learn different representations than what it needs when generating novel sequences where future tokens do not yet exist. This alignment between training and inference is what makes autoregressive generation principled rather than *ad hoc*. The loss function is cross-entropy over the vocabulary, computed at every position rather than only at masked locations. During training, **teacher forcing** allows efficient parallel computation: the model predicts all positions simultaneously by feeding in the ground truth sequence shifted by one position. Generation at inference time is inherently sequential, predicting one token at a time and conditioning each prediction on all previous outputs.
@@ -276,10 +284,18 @@ The algorithmic framework constructs **positive pairs** and **negative samples**
 **InfoNCE loss** is the most common contrastive objective [@oord_representation_2019]. The intuition is like a matching game: given a photo of a person (the anchor), you must identify which of several voice recordings belongs to the same person (the positive) among many strangers' voices (the negatives). The loss function rewards correctly matching anchor to positive while distinguishing them from negatives. For an anchor embedding $z_i$ and positive embedding $z_i^{+}$, InfoNCE maximizes:
 
 $$
-\mathcal{L} = -\log \frac{\exp\!\left(z_i \cdot z_i^{+} / \tau\right)}{\sum_{j} \exp\!\left(z_i \cdot z_{j} / \tau\right)}
-$$
+\mathcal{L}_{\text{InfoNCE}} = -\log \frac{\exp\!\left(z_i \cdot z_i^{+} / \tau\right)}{\sum_{j=1}^{N} \exp\!\left(z_i \cdot z_{j} / \tau\right)}
+$$ {#eq-08-02}
 
-where the sum runs over the positive and all negative samples, and $\tau$ is a temperature parameter controlling the sharpness of the distribution. Why take this particular mathematical form? The objective frames contrastive learning as a classification problem: given the anchor, identify which of the many candidates is the true positive pair. The softmax structure ensures the model can only increase the score for the positive pair by simultaneously decreasing scores for negatives, forcing it to learn discriminative features rather than simply inflating all similarity scores. The temperature $\tau$ controls how harshly the model is penalized for near-misses. Lower temperatures make the model more discriminative, requiring cleaner separation between positives and negatives; a low temperature means that even small differences in similarity are amplified into large differences in the loss. The objective is equivalent to classifying the positive pair among all possible pairs, and the model learns representations that make this classification easy.
+where:
+
+- $z_i \in \mathbb{R}^d$ is the embedding of the anchor sequence
+- $z_i^{+} \in \mathbb{R}^d$ is the embedding of the positive (augmented) pair
+- $z_j$ represents embeddings of all $N$ sequences in the batch (including the positive and $N-1$ negatives)
+- $\tau > 0$ is the temperature parameter controlling distribution sharpness
+- $z_i \cdot z_j$ denotes the dot product (or cosine similarity when embeddings are normalized)
+
+The sum runs over all $N$ samples in the batch, and $\tau$ controls the sharpness of the distribution. Why take this particular mathematical form? The objective frames contrastive learning as a classification problem: given the anchor, identify which of the many candidates is the true positive pair. The softmax structure ensures the model can only increase the score for the positive pair by simultaneously decreasing scores for negatives, forcing it to learn discriminative features rather than simply inflating all similarity scores. The temperature $\tau$ controls how harshly the model is penalized for near-misses. Lower temperatures make the model more discriminative, requiring cleaner separation between positives and negatives; a low temperature means that even small differences in similarity are amplified into large differences in the loss. The objective is equivalent to classifying the positive pair among all possible pairs, and the model learns representations that make this classification easy.
 
 ### Augmentation Design for Genomic Sequences {#sec-ch08-augmentation}
 
@@ -344,9 +360,17 @@ Once tasks are selected, their relative contributions to the total loss must be 
 
 With $\mathcal{L}_1, \ldots, \mathcal{L}_K$ representing individual task losses, the multi-task loss combines them:
 
-$$\mathcal{L}_{\text{total}} = \sum_{k=1}^K w_k \mathcal{L}_k$$
+$$
+\mathcal{L}_{\text{total}} = \sum_{k=1}^K w_k \mathcal{L}_k
+$$ {#eq-08-03}
 
-where *w_k* are task weights. Why not simply sum losses with equal weights? Different tasks operate at fundamentally different scales. A regression task predicting gene expression might have losses in the range of 0.1-1.0, while a classification task predicting binary binding states might have losses ranging from 0.01-0.1 depending on class balance. Without weighting, the high-loss task dominates gradient updates, effectively ignoring the signal from other tasks. Even with similar loss scales, tasks differ in how quickly they are learned. If one task converges rapidly while another requires extended training, equal weighting means the converged task continues providing gradient signal that may interfere with learning the harder task. Dynamic weighting approaches address this by adjusting weights during training based on learning progress, using uncertainty estimation, gradient norms, or task-specific validation performance as signals for rebalancing. Uncertainty-based weighting learns task weights as parameters, treating high-loss tasks as inherently more uncertain and down-weighting their contribution. Gradient-based methods normalize gradients across tasks to prevent any single task from dominating updates.
+where:
+
+- $K$ is the number of tasks
+- $\mathcal{L}_k$ is the loss for task $k$ (e.g., cross-entropy for classification, MSE for regression)
+- $w_k > 0$ are task weights controlling each task's contribution to the gradient
+
+The task weights $w_k$ are critical. Why not simply sum losses with equal weights? Different tasks operate at fundamentally different scales. A regression task predicting gene expression might have losses in the range of 0.1-1.0, while a classification task predicting binary binding states might have losses ranging from 0.01-0.1 depending on class balance. Without weighting, the high-loss task dominates gradient updates, effectively ignoring the signal from other tasks. Even with similar loss scales, tasks differ in how quickly they are learned. If one task converges rapidly while another requires extended training, equal weighting means the converged task continues providing gradient signal that may interfere with learning the harder task. Dynamic weighting approaches address this by adjusting weights during training based on learning progress, using uncertainty estimation, gradient norms, or task-specific validation performance as signals for rebalancing. Uncertainty-based weighting learns task weights as parameters, treating high-loss tasks as inherently more uncertain and down-weighting their contribution. Gradient-based methods normalize gradients across tasks to prevent any single task from dominating updates.
 
 ### Large-Scale Multi-Task Examples {#sec-ch08-multitask-examples}
 
@@ -545,7 +569,13 @@ For each scenario below, identify the most appropriate pretraining objective and
 4. Predicting splice-altering variants in rare disease patients
 
 :::{.callout-note collapse="true" title="Check Your Answer"}
-(1) MLM - predicting binding disruption requires bidirectional context to assess how the variant affects the motif and flanking regions. (2) Autoregressive/next-token prediction - designing new sequences requires generation capabilities that sample coherent proteins respecting learned sequence grammar. (3) Contrastive learning - robustness across populations benefits from pretraining that learns invariance to genetic variation through contrastive objectives on variant pairs. (4) MLM - splice site prediction needs to assess how variants affect both donor and acceptor sites with full bidirectional context around the junction.
+1. MLM - predicting binding disruption requires bidirectional context to assess how the variant affects the motif and flanking regions.
+
+2. Autoregressive/next-token prediction - designing new sequences requires generation capabilities that sample coherent proteins respecting learned sequence grammar.
+
+3. Contrastive learning - robustness across populations benefits from pretraining that learns invariance to genetic variation through contrastive objectives on variant pairs.
+
+4. MLM - splice site prediction needs to assess how variants affect both donor and acceptor sites with full bidirectional context around the junction.
 :::
 :::
 

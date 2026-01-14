@@ -131,19 +131,32 @@ The following subsection presents the mathematical formulation of scaling laws. 
 
 Hoffmann et al. formalized the relationship between model performance and scaling factors through a power law decomposition [@hoffmann_training_2022]:
 
-$$L(N, D) = E + \frac{A}{N^\alpha} + \frac{B}{D^\beta}$$
+$$
+L(N, D) = E + \frac{A}{N^\alpha} + \frac{B}{D^\beta}
+$$ {#eq-14-01}
 
-where $L$ represents cross-entropy loss on held-out data, $N$ denotes model parameters, $D$ indicates training tokens, and $E$, $A$, $B$, $\alpha$, $\beta$ are empirically fitted constants. For language models, the exponents $\alpha$ and $\beta$ both approximate 0.3, meaning doubling parameters or data reduces loss by roughly 20%. The constant $E$ represents irreducible loss (the entropy remaining even with infinite resources), while the parameter term $A/N^\alpha$ quantifies gains from greater model capacity and the data term $B/D^\beta$ captures gains from additional training examples.
+where:
+
+- $L$ is the cross-entropy loss on held-out data (in nats or bits)
+- $N$ is the number of model parameters
+- $D$ is the number of training tokens
+- $E$ is the irreducible loss (entropy remaining even with infinite resources)
+- $A$, $B$ are empirically fitted scale constants
+- $\alpha \approx \beta \approx 0.3$ are the scaling exponents (fitted to data) For language models, the exponents $\alpha$ and $\beta$ both approximate 0.3, meaning doubling parameters or data reduces loss by roughly 20%. The constant $E$ represents irreducible loss (the entropy remaining even with infinite resources), while the parameter term $A/N^\alpha$ quantifies gains from greater model capacity and the data term $B/D^\beta$ captures gains from additional training examples.
 
 Why does this decomposition take this particular form? The power law structure reflects the diminishing returns inherent in learning: the first million parameters capture the most common patterns, while each subsequent million captures progressively rarer regularities. The exponents near 0.3 indicate that performance improvements slow considerably as scale increases---you need roughly eight times the resources to halve the gap to optimal performance. The additive structure separates distinct bottlenecks: insufficient model capacity to represent learned patterns (the $N$ term) versus insufficient data diversity to learn all relevant patterns (the $D$ term). This decomposition explains why over-parameterized models trained on limited data, or under-parameterized models trained on vast data, both underperform balanced allocations.
 
 Training cost constrains both parameters and data simultaneously through the compute budget $C$ (measured in FLOPs):
 
-$$C \approx 6ND$$
+$$
+C \approx 6ND
+$$ {#eq-14-02}
 
-This approximation holds because each training token requires roughly 6 FLOPs per parameter (one forward pass and one backward pass through the network). Optimizing this tradeoff by minimizing loss subject to the budget constraint yields:
+where $C$ is measured in FLOPs (floating-point operations). This approximation holds because each training token requires roughly 6 FLOPs per parameter (one forward pass and one backward pass through the network). Optimizing this tradeoff by minimizing loss subject to the budget constraint yields:
 
-$$N_{\text{opt}} \propto C^{0.49}, \quad D_{\text{opt}} \propto C^{0.51}$$
+$$
+N_{\text{opt}} \propto C^{0.49}, \quad D_{\text{opt}} \propto C^{0.51}
+$$ {#eq-14-03}
 
 These exponents, both near 0.5, encode the Chinchilla insight: model size and training data should scale approximately equally. Practical implementations target roughly 20 tokens per parameter for compute-optimal training.
 
@@ -509,7 +522,15 @@ Before reviewing the summary, test your recall:
 
 2. **Chinchilla scaling laws**: The framework shows that loss $L(N, D) = E + A/N^\alpha + B/D^\beta$ where $N$ is parameters, $D$ is training tokens, and compute $C \approx 6ND$. The key insight is that model parameters and training data should scale approximately equally—the optimal ratio is roughly 20 tokens per parameter. For a fixed compute budget, you should train a smaller model on more data rather than a larger model on less data, as undertrained large models typically underperform smaller compute-optimal models.
 
-3. **Four foundation model families**: (1) DNA language models use self-supervised pretraining for general sequence representations but lack functional grounding for subtle regulatory patterns. (2) Sequence-to-function models predict molecular phenotypes with mechanistic grounding but are tied to training assays and cell types. (3) Variant effect prediction models integrate multiple information sources for clinical relevance but focus narrowly on variant interpretation. (4) Multi-omic models integrate across modalities for holistic understanding but face data engineering complexity and are still early in development.
+3. **Four foundation model families**:
+
+   1. DNA language models use self-supervised pretraining for general sequence representations but lack functional grounding for subtle regulatory patterns.
+
+   2. Sequence-to-function models predict molecular phenotypes with mechanistic grounding but are tied to training assays and cell types.
+
+   3. Variant effect prediction models integrate multiple information sources for clinical relevance but focus narrowly on variant interpretation.
+
+   4. Multi-omic models integrate across modalities for holistic understanding but face data engineering complexity and are still early in development.
 
 4. **Emergent capabilities**: These are abilities that appear discontinuously at certain scale thresholds and are absent in smaller models (e.g., ESM-2's structural understanding emerges at ~650M parameters, zero-shot variant effect prediction requires sufficient scale). This matters because attempting to fine-tune a model below the capability threshold is wasted effort—if a 100M parameter model fundamentally cannot perform a task, no amount of fine-tuning will enable it. You must verify that models of similar scale have demonstrated the required capability before attempting adaptation.
 

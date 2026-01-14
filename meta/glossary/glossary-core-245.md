@@ -133,6 +133,8 @@ Domain tags:
 
 **Distribution shift** [Statistics]: A mismatch between the data distribution seen during training and the distribution at deployment. Can degrade variant scoring when moving across ancestries, assays, tissues, or sequencing technologies. See also: **out-of-distribution detection**.
 
+**DMS (Deep mutational scanning)** [Genomics]: A high-throughput experimental technique that systematically introduces all possible single amino acid substitutions in a protein and measures their functional effects in parallel. DMS datasets provide comprehensive variant effect measurements that serve as ground truth for training and evaluating variant effect prediction models. See also: **MPRA**, **variant effect prediction**.
+
 **DNA language model (DNA LM)** [ML]: A language model trained on DNA sequences to learn general-purpose representations or likelihoods, often using masked or autoregressive objectives. Can be adapted to tasks like regulatory prediction or variant effect scoring. See also: **tokenization**.
 
 **Doublet** [Genomics]: An artifact where two cells are captured together and profiled as one, producing mixed expression. Doublets can form spurious clusters if not detected and filtered.
@@ -309,6 +311,8 @@ Domain tags:
 
 **Motif** [Genomics]: A short recurring sequence pattern that is biologically meaningful, often representing a transcription factor binding preference. CNN kernels and attention heads can learn motif-like detectors; see also: **transcription factor**.
 
+**MPRA (Massively parallel reporter assay)** [Genomics]: A high-throughput experimental technique that tests thousands of DNA sequences for regulatory activity in parallel by coupling each sequence to a unique barcode and measuring reporter expression. MPRAs provide functional labels for training regulatory sequence models and validating model predictions. See also: **DMS**, **enhancer**.
+
 **Multiome (scRNA+scATAC)** [Genomics]: Single-cell protocols that measure transcriptome and chromatin accessibility in the same cell. Supports direct regulatory-to-expression linking and improved cell-state resolution.
 
 **Mutual nearest neighbors (MNN)** [ML]: An integration idea that matches cells across datasets by identifying pairs that are nearest neighbors of each other in embedding space. Helps align batches or modalities while preserving local structure.
@@ -418,6 +422,8 @@ Domain tags:
 **SaMD change control** [Clinical]: A governance process managing software updates that might affect clinical performance. Important for maintaining compliance and safety when models are updated.
 
 **Scaling laws** [ML]: Empirical relationships showing how model performance changes with model size, dataset size, and compute, often following power laws. Used to plan compute-optimal training and forecast returns from scaling.
+
+**Shortcut learning** [ML]: When a model achieves high performance by exploiting spurious correlations or artifacts in the training data rather than learning the intended causal relationship. In genomics, models may learn shortcuts based on batch effects, ancestry structure, or sequence composition biases that do not generalize to new data. See also: **confounder**, **distribution shift**.
 
 **scATAC-seq (single-cell ATAC-seq)** [Genomics]: Single-cell assay that measures chromatin accessibility per cell. Complements scRNA-seq by reflecting regulatory potential and transcription factor activity.
 
