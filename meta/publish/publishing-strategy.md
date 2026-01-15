@@ -41,7 +41,7 @@
 
 1. **First comprehensive textbook** on genomic foundation models
 2. **Cross-disciplinary bridge** - accessible to both ML and genomics researchers
-3. **Production-aligned** - paired with genomic-foundation-platform reference implementation
+3. **Production-aligned** - paired with gfm-platform reference implementation
 4. **Clinically grounded** - Part VII addresses real deployment challenges
 
 ---
@@ -250,7 +250,7 @@ If traditional publishers decline or impose unacceptable terms:
 - Course adoption outreach to computational biology programs
 - Workshop/tutorial versions of selected chapters
 - Companion GitHub repository with code examples
-- Integration with genomic-foundation-platform for hands-on learning
+- Integration with gfm-platform for hands-on learning
 
 ---
 
