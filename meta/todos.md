@@ -68,12 +68,12 @@ Note that a lot of these are old, so a given comment may be outdated if the rele
 #### Practical Constraints {#sec-ch11-practical-constraints}
 ### Systematic Gaps in Current Benchmarks {#sec-ch11-systematic-gaps}
 ### The Proxy Problem {#sec-ch11-proxy-problem}
-### Chapter Summary
+#### Chapter Summary
 
 #### part_3/p3-ch12-evaluation.qmd
 ## 12 (was 22) Evaluation Methods {#sec-ch12-eval}
 ### Chapter Overview
-### Difficulty Warning: Methodological Rigor
+##### Difficulty Warning: Methodological Rigor
 ### Why Random Splits Fail {#sec-ch12-random-splits-fail}
 ##### Key Insight: The Independence Assumption
 ### Homology-Aware Splitting {#sec-ch12-homology-aware-splitting}
@@ -146,7 +146,7 @@ Note that a lot of these are old, so a given comment may be outdated if the rele
 ### Putting It All Together {#sec-ch12-putting-together}
 ### Practical Guidance: Evaluation Design Checklist
 ### The Question Behind the Metric {#sec-ch12-question-behind-metric}
-### Chapter Summary
+#### Chapter Summary
 
 #### part_3/p3-ch13-confounding.qmd
 ## 13 (was 23) Confounding and Data Leakage {#sec-ch13-confounding}
@@ -219,7 +219,7 @@ Note that a lot of these are old, so a given comment may be outdated if the rele
 ### A Practical Checklist {#sec-ch13-checklist}
 ### Practical Guidance: Using This Checklist
 ### Rigor as Response {#sec-ch13-rigor}
-### Chapter Summary
+#### Chapter Summary
 
 #### part_4/p4--fm-families.qmd
 
@@ -332,7 +332,7 @@ Note that a lot of these are old, so a given comment may be outdated if the rele
 #### Causality and Mechanism {#sec-ch20-causality}
 ### Practical Guidance: Responsible Use of Single-Cell Foundation Models
 ### From Sequence to State {#sec-ch20-conclusion}
-### Chapter Summary
+#### Chapter Summary
 
 #### part_5/p5-ch21-3d-genome.qmd
 ## 21 (was 17) 3D Genome Organization {#sec-ch21-3d-genome}
@@ -389,7 +389,7 @@ Note that a lot of these are old, so a given comment may be outdated if the rele
 #### Canonical Architectures {#sec-ch22-canonical-architectures}
  - Explain this test:
   > The expressiveness of GNNs is bounded by their ability to distinguish different graph structures. Theoretical analysis connects standard message passing to the Weisfeiler-Lehman graph isomorphism test, revealing that certain graph structures remain indistinguishable regardless of the number of layers  
-### Difficulty Warning: Over-Smoothing
+##### Difficulty Warning: Over-Smoothing
 ### Foundation Model Embeddings as Node Features {#sec-ch22-fm-embeddings}
 #### Integration Principle {#sec-ch22-integration-principle}
 ##### Stop and Think
@@ -418,7 +418,7 @@ Note that a lot of these are old, so a given comment may be outdated if the rele
 #### Negative Data and Class Imbalance {#sec-ch22-negative-data}
 #### Distribution Shift {#sec-ch22-distribution-shift}
 ### Sequence Encodes, Structure Connects {#sec-ch22-conclusion}
-### Chapter Summary
+#### Chapter Summary
 
 #### part_5/p5-ch23-multi-omics.qmd
 ## 23 (was 19) Multi-Omics Integration {#sec-ch23-multi-omics}
@@ -467,14 +467,15 @@ Note that a lot of these are old, so a given comment may be outdated if the rele
 #### Evaluation Complexity {#sec-ch23-evaluation}
 ##### Knowledge Check
 ### Integration as Means, Not End {#sec-ch23-conclusion}
-### Chapter Summary
+#### Chapter Summary
 
 #### part_6/p6--responsible-deployment.qmd
 
 
 # Part VI: Responsible Deployment {.unnumbered}
 
-## 24 Uncertainty Quantification {#sec-ch24-uncertainty}
+## 24 Uncertainty Quantification {#sec-ch24-uncertainty} 
+ - the reading times for all chapters are way too fast.  Acount for this being a textbook, time to take notes, ruminate on ideas, etc.
  - epitaph: fix with pedagogy agent.  It sounds more silly than profound.
    > A pathogenicity score of 0.73 means nothing unless we know what 0.73 means.
 ### Chapter Overview
@@ -487,41 +488,60 @@ Note that a lot of these are old, so a given comment may be outdated if the rele
 #### Aleatoric Uncertainty {#sec-ch24-aleatoric}
  - relate to bayers error rate, irreducible error, replciate convergance of assay, etc.  See @sec-ch11-saturation
  - valitate use of heteroscedacitity.
- - this "irreducible error" concept seems too black-and-white.  Let's discuss practical items as well, such as process/tech improvent, imploved label qc, etc.  This can reduce aleatoric uncertainty in practice, so it is not truely "irreducible".
+ - this "irreducible error" concept seems too black-and-whit and is only irreducible from a data scaling point of view.  Let's discuss practical items as well, such as process/tech improvent, imploved label qc, etc.  This can reduce aleatoric uncertainty in practice, so it is not truely "irreducible".
+ - introduce stochastic processes in biology function and lab processes as a sidebar.
 #### Decomposing Total Uncertainty {#sec-ch24-decomposition}
  - Let's add some math equations here for variance decomposition.
  - We touch on Heteroscedastisc neural networks, but we should expand this a bit.  Def add a citation or two.
-### Difficulty Warning
+##### Difficulty Warning
 ### Calibration and Confidence Interpretation {#sec-ch24-calibration}
  - "This Chapter", "you", etc.  Let's try and avoid meta commentary.
  - Figure 24.2 has the old C&D diagrams. I thought we added the new ones?  Verify and fix across all figures with >2 panels.
 #### The Calibration Problem {#sec-ch24-calibration-problem}
  - for example of perfect calibration and absolute no prediction, use example of predicting all variants as 0.5 pathogenicity, not 0.49 pos and 0.51 neg.  This is more clear cut.
+ - add in-line formulas as equation block.
 ##### Knowledge Check
 #### Measuring Calibration {#sec-ch24-measuring-calibration}
+ - just state decile bins commonly used instead of this long-winded explinations:
+   > Construction involves binning predictions into intervals (commonly ten bins spanning 0 to 0.1, 0.1 to 0.2, and so forth), computing the mean predicted probability within each bin, computing the fraction of positive examples within each bin, and plotting these two quantities against each other. 
+ - add equations for MCE, Briar
 #### Why Foundation Models Are Often Miscalibrated {#sec-ch24-fm-miscalibration}
 #### Calibration Across Subgroups {#sec-ch24-subgroup-calibration}
+ - The European vs African ancestry example is used extensively throughout the book.  Can we change some of these to include more diverse examples, including rare groups within continental groups, challenges with admixtures, etc.
+ - include concept of post-stratification (also include in 24.3 Host-hoc calibration methods?)
 ##### Key Insight: Hidden Calibration Disparities
+ - this repeats some of the primary text.  Remove primary text overlap.
 ### Post-Hoc Calibration Methods {#sec-ch24-post-hoc-calibration}
+ - for Figure 24.5, need before and after of calibration cuvres with methods applied, not a flowchart.
+ - incude citaitons for temperature, platt, and isotonic methods
 ##### Stop and Think
 #### Temperature Scaling {#sec-ch24-temperature-scaling}
+ - LaTex broken here
+ - in worked example, we use the term "confidence" when I was think "probability".  If we don't already, we should include a sidebar somewhere in hte book (probably the uncertainty chapter and x-ref elsewhere) on prediction terms like "confidence", "probability", "likelihood", "score", and "not probabalistically interpretable 0-1 values".  I want to make sure we are procise with these terms when applied to prediction.  Audit terms across the book.
 #### Platt Scaling {#sec-ch24-platt-scaling}
 #### Isotonic Regression {#sec-ch24-isotonic-regression}
 #### Calibrating Foundation Model Outputs {#sec-ch24-calibrating-fm}
 ### Practical Guidance: Calibration Workflow
 ### Uncertainty Quantification Methods for Foundation Models {#sec-ch24-uq-methods}
 #### Deep Ensembles {#sec-ch24-deep-ensembles}
+ - This is a random thought not tied to this section, but in our learning and scaling laws, we dicuss statistical learning theory.  Would information theory also apply here?
+ - The reasoning for why this is epistemic uncertainty isn't very clear.  We should have intuitive explinations, like given enough data, all models will converge to the same point estimate, which is the mean of the aleotoric uncertainty.  Throughout the types of uncertainty discussions and above, and quantification methods below, frame it clearly with point estimates, drawing samples from a distribution, etc.  We should also show nice figure somewhere showing epistemic uncertainty collapsing with data, and aleotoric being invariant, but with a distribution that samples draw from.
+ - Instead of the ESM2 example, use ESM-1v, which is actually an ensemble of 5 randomly seeded models.
 #### Monte Carlo Dropout {#sec-ch24-mc-dropout}
 ##### Stop and Think
 #### Heteroscedastic Models {#sec-ch24-heteroscedastic}
+ - somewhere else in the book off-handedly calls out heteroscedastic models (maybe eval chapter).  X-ref it to here.
 #### Evidential Deep Learning {#sec-ch24-evidential}
+ - exaplain a Dirichlet distribution, only advantced statiticians would know this.
 #### Selecting Uncertainty Quantification Methods {#sec-ch24-selecting-uq}
 ### Conformal Prediction: Distribution-Free Guarantees {#sec-ch24-conformal}
 ##### Key Insight: Prediction Sets Convey Uncertainty Without Probabilities
 #### Split Conformal Prediction {#sec-ch24-split-conformal}
-### Difficulty Warning
+##### Difficulty Warning
 #### Conformal Prediction for Variant Classification {#sec-ch24-conformal-variant}
 #### Limitations and Practical Considerations {#sec-ch24-conformal-limitations}
+   - better explain these terms of "finite-sample" and "asymptotic calibration".  Maybe a sidebar?
+      > The coverage guarantee is finite-sample: it holds exactly for any sample size, not just asymptotically. For clinical genomics applications where individual predictions carry significant consequences, this finite-sample property provides assurance that cannot be obtained from asymptotic calibration arguments.
 #### Integration with Clinical Workflows {#sec-ch24-conformal-clinical}
 ### Out-of-Distribution Detection {#sec-ch24-ood-detection}
 #### Out-of-Distribution Problem {#sec-ch24-ood-problem}
@@ -533,18 +553,26 @@ Note that a lot of these are old, so a given comment may be outdated if the rele
 ### Selective Prediction and Abstention {#sec-ch24-selective-prediction}
 #### When to Abstain {#sec-ch24-when-abstain}
 #### Selective Prediction Methods {#sec-ch24-selective-methods}
+ - add equation and fix in-line latex.
+ - add citation.
+ 
 #### Evaluating Selective Prediction {#sec-ch24-selective-eval}
+ - can you rephrase this to sound more scientific and less "business"-like?
+   > Reporting full risk-coverage curves enables stakeholders to select operating points appropriate to their cost structures.
 ### Uncertainty for Specific Genomic Tasks {#sec-ch24-genomic-uq}
 #### Variant Effect Prediction Uncertainty {#sec-ch24-vep-uncertainty}
+ - x-ref the clinvar laber drift/circularity items
 #### Regulatory Variant Uncertainty {#sec-ch24-regulatory-uncertainty}
 #### Uncertainty Across Populations {#sec-ch24-population-uncertainty}
+ - random thought, but check that the equity chapter covers the "non-equivalance problem/paradox" of equality metrics.
 ### Communicating Uncertainty to End Users {#sec-ch24-communication}
 #### Communication Challenge {#sec-ch24-communication-challenge}
 #### Categorical Reporting {#sec-ch24-categorical-reporting}
 #### Visual Communication {#sec-ch24-visual-communication}
 #### Decision-Theoretic Framing {#sec-ch24-decision-framing}
 ### Necessary but Insufficient {#sec-ch24-conclusion}
-### Chapter Summary
+ - de we have any topics on decision theory or decision science in the book? That seems to be a good topic for a sidebar.
+#### Chapter Summary
 
 #### part_6/p6-ch25-interpretability.qmd
 ## 25 Interpretability {#sec-ch25-interpretability}
@@ -586,7 +614,7 @@ Note that a lot of these are old, so a given comment may be outdated if the rele
 ### Practical Guidance: Communicating Interpretability in Clinical Reports
 ### Practical Approaches for Foundation Model Analysis {#sec-ch25-practical}
 ### Plausibility Is Not Faithfulness {#sec-ch25-conclusion}
-### Chapter Summary
+#### Chapter Summary
 
 #### part_6/p6-ch26-causal.qmd
 ## 26 Causality {#sec-ch26-causal}
@@ -625,7 +653,7 @@ Note that a lot of these are old, so a given comment may be outdated if the rele
 ### Practical Guidance: Communicating Causal Claims
 #### Regulatory Requirements for Causal Claims {#sec-ch26-regulatory-requirements}
 ### Looking Forward {#sec-ch26-conclusion}
-### Chapter Summary
+#### Chapter Summary
 
 #### part_6/p6-ch27-regulatory.qmd
 ## 27 Regulatory and Governance {#sec-ch27-regulatory}
@@ -641,7 +669,7 @@ Note that a lot of these are old, so a given comment may be outdated if the rele
 ##### Worked Example: Regulatory Submission for AlphaMissense
 ### Data Governance and Consent {#sec-ch27-governance}
 #### Consent Problem at Scale {#sec-ch27-consent}
-### Difficulty Warning
+##### Difficulty Warning
 #### Biobank Governance Models {#sec-ch27-biobanks}
 ##### Stop and Think
 #### Secondary Use and Data Futures {#sec-ch27-secondary-use}
@@ -663,9 +691,9 @@ Note that a lot of these are old, so a given comment may be outdated if the rele
 ##### Stop and Think
 ### Dual Use and Biosecurity {#sec-ch27-biosecurity}
 #### Generative Models and Pathogen Enhancement {#sec-ch27-pathogen}
-### Difficulty Warning
+##### Difficulty Warning
 #### Access Controls and Responsible Release {#sec-ch27-access}
-### Chapter Summary
+#### Chapter Summary
 
 #### part_7/p7--applications.qmd
 
@@ -711,7 +739,7 @@ Note that a lot of these are old, so a given comment may be outdated if the rele
 #### Oncology Prognosis {#sec-ch28-case-oncology}
 #### Pharmacogenomic Adverse Event Prediction {#sec-ch28-case-pharmacogenomics}
 ### Translation as the Test {#sec-ch28-translation-test}
-### Chapter Summary
+#### Chapter Summary
 
 #### part_7/p7-ch29-rare-disease.qmd
 ## 29 Rare Disease Diagnosis {#sec-ch29-rare-disease}
@@ -752,7 +780,7 @@ Note that a lot of these are old, so a given comment may be outdated if the rele
 #### Regulatory and Ethical Considerations {#sec-ch29-regulatory}
 ##### Key Insight: Equity in Computational Predictions
 ### Interpretive Partnership {#sec-ch29-partnership}
-### Chapter Summary
+#### Chapter Summary
 
 #### part_7/p7-ch30-drug-discovery.qmd
 ## 30 Drug Discovery {#sec-ch30-drug-discovery}
@@ -805,7 +833,7 @@ Note that a lot of these are old, so a given comment may be outdated if the rele
 #### From Prediction to Validation {#sec-ch30-prediction-validation}
 ### Connections to Molecular Design {#sec-ch30-molecular-design}
 ### Prioritization, Not Automation {#sec-ch30-conclusion}
-### Chapter Summary
+#### Chapter Summary
 
 #### part_7/p7-ch31-design.qmd
 ## 31 Sequence Design {#sec-ch31-design}
@@ -850,7 +878,7 @@ Note that a lot of these are old, so a given comment may be outdated if the rele
 #### Functional Assessment {#sec-ch31-functional-assessment}
 #### Benchmarking Generative Models {#sec-ch31-generative-benchmarks}
 ### From Understanding to Creating {#sec-ch31-conclusion}
-### Chapter Summary
+#### Chapter Summary
 
 #### part_7/p7-ch32-frontiers.qmd
 ## 32 Frontiers and Synthesis {#sec-ch32-frontiers}
@@ -878,5 +906,5 @@ Note that a lot of these are old, so a given comment may be outdated if the rele
 ### Work Ahead {#sec-ch32-conclusion}
 ##### Key Insight: The Translation Gap
 ##### Stop and Think
-### Chapter Summary
+#### Chapter Summary
 
