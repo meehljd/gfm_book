@@ -56,6 +56,21 @@ The practical architecture of a foundation model-enabled risk system typically i
 
 : Comparison of polygenic risk approaches: traditional polygenic scores versus foundation model-enhanced methods. {#tbl-prs-vs-fm}
 
+### Non-Linear and Deep Learning PRS Approaches {#sec-ch28-nonlinear-prs}
+
+Recent work has explored whether deep learning can capture genetic interactions missed by linear PRS. @dibaeinia_prsformer_2025 introduce *PRSformer*, a transformer-based architecture designed to model variant interactions directly, potentially capturing epistatic effects that linear methods cannot represent.
+
+| Method Class | Architecture | Captures Epistasis? | Interpretability | Computational Cost |
+|--------------|--------------|---------------------|------------------|-------------------|
+| Linear PRS (LDpred2, PRS-CS) | Weighted sum | No | High (weights) | Low |
+| Non-linear ML (XGBoost) | Decision trees | Limited (pairwise) | Moderate (SHAP) | Moderate |
+| Deep learning (PRSformer) | Transformer | Potentially | Low | High |
+
+: Comparison of linear versus non-linear approaches to polygenic prediction. The trade-off between modeling complexity and interpretability remains a key consideration for clinical deployment. {#tbl-linear-vs-nonlinear}
+
+However, rigorous comparison with well-tuned linear methods is essential before concluding that deep learning adds value (@sec-ch12-baseline-selection). @elgart_non-linear_2022 systematically compared linear and non-linear PRS approaches across multiple phenotypes, finding that non-linear models can provide modest but consistent improvements (typically 2-5% AUC gain) for phenotypes with complex genetic architectures, while establishing that improvements from deep learning must exceed well-tuned linear baselines to justify increased complexity. As discussed in baseline requirements, apparent advantages of complex models may reflect improper comparison rather than genuine epistatic signal.
+
+
 ## Defining Clinical Risk Prediction {#sec-ch28-defining-risk}
 
 A risk prediction model is only as useful as the decision it informs. Effective clinical risk prediction requires precise specification of four elements: the outcome being predicted, the time horizon over which prediction applies, the target population for whom the model is intended, and the clinical action the prediction will trigger.
@@ -182,6 +197,8 @@ The pattern of improvement across traits reveals when EHR embeddings add value t
 Conversely, conditions with distinct genetic architectures that do not cluster with other phenotypes show minimal improvement. Breast cancer and coronary artery disease, despite both being common conditions well-represented in biobanks, did not benefit from embedding integration in external validation. Their genetic architectures are largely distinct; embedding-based scores derived from cardiovascular-weighted dimensions provide no additional signal for cancer prediction.
 
 This selectivity has important implications for clinical deployment. *EEPRS* offers greatest value for conditions where conventional polygenic scores remain underpowered despite adequate GWAS sample sizes. Heart failure, peripheral artery disease, and asthma showed substantial improvements precisely because their polygenic scores have historically underperformed relative to heritability estimates. Embedding integration effectively borrows strength across genetically correlated phenotypes, amplifying signal that single-trait analyses struggle to detect.
+
+Beyond diagnostic code embeddings, clinical measurements themselves can be embedded for improved prediction. @yun_regle_2023 introduce *REGLE*, which learns embeddings from raw clinical data such as spirograms and electrocardiograms rather than from ICD codes. These physiological embeddings capture aspects of phenotype not reflected in diagnostic labels, potentially enabling transfer learning across related conditions and improving prediction for phenotypes with limited direct training data.
 
 ### PRS-PheWAS for Clinical Interpretation {#sec-ch28-prs-phewas}
 
@@ -477,7 +494,7 @@ A 45-year-old man with newly diagnosed epilepsy requires anticonvulsant therapy.
 
 This established pharmacogenomic association illustrates both the potential and limitations of current approaches. Single-variant associations with high effect sizes enable straightforward clinical implementation, but they cover a small fraction of drug-gene interactions. Many patients who do not carry *HLA-B*15:02* still experience adverse reactions, suggesting additional genetic (and non-genetic) risk factors that single-variant testing misses.
 
-Foundation models could extend pharmacogenomic prediction beyond established single-gene associations. Variant effect scores across HLA genes, drug metabolism enzymes, and immune-related loci provide features reflecting the patient's overall pharmacogenetic landscape (@sec-ch02-pharmacogenomics). These features aggregate into a polygenic adverse event risk score that captures contributions from many variants rather than relying on individual high-effect alleles. Combined with clinical features (renal function affecting drug clearance, concomitant medications with interaction potential, prior adverse reaction history), the model predicts adverse event probability specific to the proposed drug.
+Foundation models could extend pharmacogenomic prediction beyond established single-gene associations. Resources like PharmGKB [@whirl-carrillo_pharmacogenomics_2012] provide curated drug-gene-variant associations that serve as ground truth for model development and validation, though coverage remains incomplete for many drug classes. Variant effect scores across HLA genes, drug metabolism enzymes, and immune-related loci provide features reflecting the patient's overall pharmacogenetic landscape (@sec-ch02-pharmacogenomics). These features aggregate into a polygenic adverse event risk score that captures contributions from many variants rather than relying on individual high-effect alleles. Combined with clinical features (renal function affecting drug clearance, concomitant medications with interaction potential, prior adverse reaction history), the model predicts adverse event probability specific to the proposed drug.
 
 The validation challenge is severe. Serious adverse drug reactions are rare, making endpoint ascertainment difficult and underpowered. Case-control designs enriched for adverse events may overestimate model performance compared to prospective deployment. Multi-site validation across healthcare systems with different prescribing patterns and population ancestry compositions is essential.
 

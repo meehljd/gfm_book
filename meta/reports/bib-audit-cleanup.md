@@ -177,7 +177,7 @@ Removed citations:
 
 Removed citations:
 - `avsec_enformer_2021`
-- `jaganathan_spliceai_2019`
+- `jaganathan_predicting_2019`
 - `ji_dnabert_2021`
 - `nguyen_hyenadna_2023`
 - `zhou_deepsea_2015`
@@ -189,7 +189,7 @@ Removed citations:
 
 Removed citations:
 - `avsec_enformer_2021`
-- `jaganathan_spliceai_2019`
+- `jaganathan_predicting_2019`
 - `ji_dnabert_2021`
 - `nguyen_hyenadna_2023`
 - `zhou_deepsea_2015`

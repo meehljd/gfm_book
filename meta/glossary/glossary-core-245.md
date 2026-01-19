@@ -47,6 +47,8 @@ Domain tags:
 
 **Benchmark suite** [Computation]: A curated collection of datasets, tasks, and scoring rules used to evaluate models consistently. A good suite documents data provenance, splits, metrics, and known failure modes.
 
+**Benchmark circularity** [Statistics]: A fundamental problem in model evaluation where test labels were derived using methods that share information sources or features with evaluated models, inflating apparent performance differences. In variant effect prediction, benchmarks using SIFT/PolyPhen-derived labels can advantage methods with similar conservation features. Circularity includes label overlap (circular features), temporal issues (training on post-development classifications), and genetic overlap (variants in same genes as training data). Always verify label provenance and independence before accepting benchmark rankings. See also: **contamination (data leakage)**.
+
 **Binary Alignment/Map (BAM)** [Computation]: A compressed binary format for storing aligned sequencing reads and their metadata. Typically produced from **FASTQ** reads after **alignment** and used as input for **variant calling**.
 
 **Brier score** [Statistics]: A proper scoring rule that measures the mean squared error between predicted probabilities and binary outcomes. Commonly used to quantify probabilistic calibration. See also: **calibration**.
@@ -97,7 +99,7 @@ Domain tags:
 
 **Contamination** [Clinical]: Unintended mixing of DNA from different samples, leading to incorrect genotypes and false variants. Detected during **sample-level QC** and can severely distort downstream analyses.
 
-**Contamination (data leakage)** [Statistics]: Accidental overlap between training and test information, such as shared individuals, highly similar sequences, or duplicated labels. Leakage can yield unrealistically high benchmark performance.
+**Contamination (data leakage)** [Statistics]: Accidental overlap between training and test information, such as shared individuals, highly similar sequences, or duplicated labels. Forms include temporal leakage (training on post-deployment data), gene-level leakage (variants from the same gene as training examples), and label leakage (test labels derived from training features). Leakage can yield unrealistically high benchmark performance. See also: **benchmark circularity**.
 
 **Context length** [ML]: The maximum sequence length a model can process in one forward pass. In genomics, longer context enables modeling distal regulatory interactions and haplotype-level effects.
 
