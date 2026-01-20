@@ -74,6 +74,39 @@ The following table clarifies the distinctions between these related but distinc
 The critical question for any genomic model is: *Does the association between features and labels flow through the biological mechanism I care about, or through a confounding pathway?* A model predicting variant pathogenicity from sequence might learn that certain haplotype backgrounds correlate with pathogenic labels, but if that correlation exists because of ancestry-biased ascertainment rather than biological causation, the model has learned a shortcut that will fail when applied to differently ascertained populations.
 :::
 
+:::{.callout-note}
+## Mathematical Detail: Directed Acyclic Graphs for Confounding
+
+Causal diagrams (DAGs) provide rigorous notation for reasoning about confounding. Key structures:
+
+**Fork (Common Cause):**
+```
+    Z
+   / \
+  X   Y
+```
+$Z$ confounds the $X \to Y$ relationship. Example: Ancestry ($Z$) affects both variant frequency ($X$) and disease prevalence ($Y$), creating spurious variant-disease association.
+
+**Chain (Mediation):**
+```
+X → M → Y
+```
+$M$ mediates the effect of $X$ on $Y$. Controlling for $M$ blocks the causal path. Example: Variant ($X$) affects protein function ($M$) which affects phenotype ($Y$).
+
+**Collider (Selection Bias):**
+```
+X → Z ← Y
+```
+Conditioning on collider $Z$ *induces* association between $X$ and $Y$ even if none exists. Example: Selecting variants that are either pathogenic ($X$) or frequently studied ($Y$) into ClinVar ($Z$) creates spurious correlation.
+
+**d-Separation.** Variables $X$ and $Y$ are *d-separated* by set $Z$ (and thus conditionally independent given $Z$) if every path between them is blocked. A path is blocked if it:
+
+1. Contains a chain or fork whose middle node is in $Z$, OR
+2. Contains a collider whose middle node (and descendants) is NOT in $Z$
+
+These graphical criteria formalize when adjustment for a variable eliminates confounding versus when it introduces new bias.
+:::
+
 For foundation models, these risks are magnified. Genomes encode ancestry, relatedness, and assay conditions in thousands of subtle features, even when those labels are never explicitly provided. Large transformers find shortcuts that smaller models would miss if those shortcuts improve the training objective. Complex training regimes involving pretraining on biobank-scale data, fine-tuning on curated labels, and evaluation on community benchmarks create many opportunities for direct and indirect leakage.
 
 

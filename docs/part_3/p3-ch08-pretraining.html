@@ -493,6 +493,12 @@ window.Quarto = {
  <span class="menu-text"><span class="chapter-number">F</span>&nbsp; <span class="chapter-title">Glossary</span></span></a>
   </div>
 </li>
+          <li class="sidebar-item">
+  <div class="sidebar-item-container"> 
+  <a href="../appendix/app-g-learning-theory.html" class="sidebar-item-text sidebar-link">
+ <span class="menu-text"><span class="chapter-number">G</span>&nbsp; <span class="chapter-title">Statistical Learning Theory Primer</span></span></a>
+  </div>
+</li>
       </ul>
   </li>
     </ul>
@@ -877,6 +883,29 @@ Stop and Think
 </div>
 </div>
 <p>MLM also captures evolutionary conservation patterns implicitly, and this has direct relevance for clinical variant interpretation. Conserved sequences are constrained because mutations would disrupt function. By learning to predict conserved patterns from surrounding context, models encode which sequence features are under selection. This knowledge transfers to variant effect prediction, where the model recognizes when a mutation disrupts a learned conserved pattern. A variant that replaces a highly predictable position (one the model confidently fills in during MLM) is more likely to be damaging than one at a position where the model is uncertain. The connection between pretraining on raw sequence and downstream variant interpretation illustrates how self-supervised objectives capture biologically meaningful structure without explicit functional labels. The variant effect prediction approaches in <a href="../part_4/p4-ch18-vep-fm.html" class="quarto-xref"><span>Chapter 18</span></a> use these learned patterns directly, while probing methods (<a href="p3-ch09-transfer.html#sec-ch09-feature-extraction" class="quarto-xref"><span>Section 9.3</span></a>) reveal what specific patterns models have captured.</p>
+<div class="callout callout-style-default callout-tip callout-titled">
+<div class="callout-header d-flex align-content-center">
+<div class="callout-icon-container">
+<i class="callout-icon"></i>
+</div>
+<div class="callout-title-container flex-fill">
+Key Insight: Masked Language Modeling as Entropy Estimation
+</div>
+</div>
+<div class="callout-body-container callout-body">
+<p>Masked language modeling has a precise information-theoretic interpretation that explains <em>what</em> the model learns and <em>why</em> it transfers.</p>
+<p><strong>Conditional Entropy Minimization.</strong> When training MLM, we minimize:</p>
+<p><span class="math display">\[\mathcal{L}_{MLM} = -\mathbb{E}[\log p_\theta(x_i | x_{\setminus i})]\]</span></p>
+<p>This is equivalent to estimating the <em>conditional entropy</em> <span class="math inline">\(H(X_i | X_{\setminus i})\)</span>—the uncertainty about a position given its context. A well-trained MLM learns <span class="math inline">\(p_\theta(x_i | x_{\setminus i}) \approx p_{data}(x_i | x_{\setminus i})\)</span>.</p>
+<p><strong>What Low Entropy Reveals.</strong> Positions with low conditional entropy are <em>highly constrained</em> by context—they carry biological signal:</p>
+<ul>
+<li>Splice donor sites: Given surrounding context, GT is nearly deterministic</li>
+<li>Codon wobble positions: First two bases strongly predict the third</li>
+<li>TFBS cores: Flanking sequence predicts the binding motif</li>
+</ul>
+<p><strong>Why Transfer Works.</strong> The model’s internal representations must capture the <em>mutual information</em> <span class="math inline">\(I(X_i; X_{\setminus i})\)</span> to achieve low loss. This mutual information encodes local motif patterns (short-range), grammatical constraints like reading frame (medium-range), and regulatory element co-occurrence (long-range). These learned correlations transfer to downstream tasks because biological function <em>creates</em> the correlations—splicing machinery <em>causes</em> conserved splice sites, so learning splice site patterns implicitly learns about splicing.</p>
+</div>
+</div>
 </section>
 </section>
 <section id="sec-ch08-autoregressive" class="level2" data-number="8.2">
@@ -958,7 +987,7 @@ Knowledge Check
 <div class="callout-body-container callout-body">
 <p>A researcher wants to predict whether a missense variant in the middle of a protein domain is pathogenic. They need to assess how the variant disrupts interactions with residues both before and after it in the sequence. Which pretraining objective would provide better representations for this task, and why?</p>
 <div class="callout callout-style-default callout-note callout-titled" title="Check Your Answer">
-<div class="callout-header d-flex align-content-center" data-bs-toggle="collapse" data-bs-target=".callout-9-contents" aria-controls="callout-9" aria-expanded="false" aria-label="Toggle callout">
+<div class="callout-header d-flex align-content-center" data-bs-toggle="collapse" data-bs-target=".callout-10-contents" aria-controls="callout-10" aria-expanded="false" aria-label="Toggle callout">
 <div class="callout-icon-container">
 <i class="callout-icon"></i>
 </div>
@@ -967,7 +996,7 @@ Check Your Answer
 </div>
 <div class="callout-btn-toggle d-inline-block border-0 py-1 ps-1 pe-0 float-end"><i class="callout-toggle"></i></div>
 </div>
-<div id="callout-9" class="callout-9-contents callout-collapse collapse">
+<div id="callout-10" class="callout-10-contents callout-collapse collapse">
 <div class="callout-body-container callout-body">
 <p>Masked language modeling (MLM) would provide better representations for this task. MLM uses bidirectional attention, allowing the model to integrate information from both upstream and downstream residues when evaluating the variant’s impact. Since pathogenicity depends on how the variant disrupts interactions with the entire domain (both before and after the mutation), having access to full sequence context produces richer representations than autoregressive models, which only see preceding residues.</p>
 </div>
@@ -1133,6 +1162,28 @@ Stop and Think
 <li><span class="math inline">\(z_i \cdot z_j\)</span> denotes the dot product (or cosine similarity when embeddings are normalized)</li>
 </ul>
 <p>The sum runs over all <span class="math inline">\(N\)</span> samples in the batch, and <span class="math inline">\(\tau\)</span> controls the sharpness of the distribution. Why take this particular mathematical form? The objective frames contrastive learning as a classification problem: given the anchor, identify which of the many candidates is the true positive pair. The softmax structure ensures the model can only increase the score for the positive pair by simultaneously decreasing scores for negatives, forcing it to learn discriminative features rather than simply inflating all similarity scores. The temperature <span class="math inline">\(\tau\)</span> controls how harshly the model is penalized for near-misses. Lower temperatures make the model more discriminative, requiring cleaner separation between positives and negatives; a low temperature means that even small differences in similarity are amplified into large differences in the loss. The objective is equivalent to classifying the positive pair among all possible pairs, and the model learns representations that make this classification easy.</p>
+<div class="callout callout-style-default callout-note callout-titled">
+<div class="callout-header d-flex align-content-center">
+<div class="callout-icon-container">
+<i class="callout-icon"></i>
+</div>
+<div class="callout-title-container flex-fill">
+Mathematical Detail: InfoNCE and Mutual Information
+</div>
+</div>
+<div class="callout-body-container callout-body">
+<p>Contrastive losses like InfoNCE have a precise connection to mutual information that explains their effectiveness.</p>
+<p><strong>Information-Theoretic Bound.</strong> The InfoNCE loss provides a lower bound on mutual information between anchor and positive views:</p>
+<p><span class="math display">\[I(X; X^+) \geq \log(K+1) - \mathcal{L}_{\text{InfoNCE}}\]</span></p>
+<p>As the number of negative samples <span class="math inline">\(K \to \infty\)</span>, the bound tightens. This means minimizing InfoNCE <em>maximizes a lower bound on mutual information</em> between augmented views.</p>
+<p><strong>Implications for Genomic Augmentation:</strong></p>
+<ul>
+<li>Augmentations that preserve biological function (reverse complement, synonymous mutations) create views with high <span class="math inline">\(I(X; X^+)\)</span></li>
+<li>Augmentations that destroy function (random shuffle) have low <span class="math inline">\(I(X; X^+)\)</span></li>
+<li>The model learns representations where <span class="math inline">\(I(Z; Y)\)</span> is high for downstream labels <span class="math inline">\(Y\)</span> that correlate with the augmentation-invariant information</li>
+</ul>
+</div>
+</div>
 <section id="sec-ch08-augmentation" class="level3" data-number="8.5.1">
 <h3 data-number="8.5.1" class="anchored" data-anchor-id="sec-ch08-augmentation"><span class="header-section-number">8.5.1</span> Augmentation Design for Genomic Sequences</h3>
 <p>If you pair a sequence with its reverse complement and call them “similar,” the model learns strand symmetry. If you pair a sequence with itself plus a common SNP and call them “similar,” the model learns robustness to population variation. The augmentations you choose define what “similarity” means, and therefore what invariances your model acquires. Choosing the wrong augmentations teaches the model to ignore differences that actually matter.</p>
@@ -1466,7 +1517,7 @@ Knowledge Check
 <li>Predicting splice-altering variants in rare disease patients</li>
 </ol>
 <div class="callout callout-style-default callout-note callout-titled" title="Check Your Answer">
-<div class="callout-header d-flex align-content-center" data-bs-toggle="collapse" data-bs-target=".callout-18-contents" aria-controls="callout-18" aria-expanded="false" aria-label="Toggle callout">
+<div class="callout-header d-flex align-content-center" data-bs-toggle="collapse" data-bs-target=".callout-20-contents" aria-controls="callout-20" aria-expanded="false" aria-label="Toggle callout">
 <div class="callout-icon-container">
 <i class="callout-icon"></i>
 </div>
@@ -1475,7 +1526,7 @@ Check Your Answer
 </div>
 <div class="callout-btn-toggle d-inline-block border-0 py-1 ps-1 pe-0 float-end"><i class="callout-toggle"></i></div>
 </div>
-<div id="callout-18" class="callout-18-contents callout-collapse collapse">
+<div id="callout-20" class="callout-20-contents callout-collapse collapse">
 <div class="callout-body-container callout-body">
 <ol type="1">
 <li><p>MLM - predicting binding disruption requires bidirectional context to assess how the variant affects the motif and flanking regions.</p></li>
@@ -1637,7 +1688,7 @@ Test Yourself
 <li>Why does context length curriculum (training first on short sequences, then progressively extending) improve optimization stability compared to training directly on long contexts?</li>
 </ol>
 <div class="callout callout-style-default callout-note callout-titled" title="Check Your Answers">
-<div class="callout-header d-flex align-content-center" data-bs-toggle="collapse" data-bs-target=".callout-21-contents" aria-controls="callout-21" aria-expanded="false" aria-label="Toggle callout">
+<div class="callout-header d-flex align-content-center" data-bs-toggle="collapse" data-bs-target=".callout-23-contents" aria-controls="callout-23" aria-expanded="false" aria-label="Toggle callout">
 <div class="callout-icon-container">
 <i class="callout-icon"></i>
 </div>
@@ -1646,7 +1697,7 @@ Check Your Answers
 </div>
 <div class="callout-btn-toggle d-inline-block border-0 py-1 ps-1 pe-0 float-end"><i class="callout-toggle"></i></div>
 </div>
-<div id="callout-21" class="callout-21-contents callout-collapse collapse">
+<div id="callout-23" class="callout-23-contents callout-collapse collapse">
 <div class="callout-body-container callout-body">
 <ol type="1">
 <li><p>MLM uses bidirectional attention, allowing each position to integrate information from the entire sequence. During prediction of a masked token, the model sees both upstream and downstream context. For variant effect prediction, pathogenicity often depends on how a variant disrupts interactions with residues or motifs on both sides, making bidirectional context essential. Autoregressive models only see preceding tokens, missing critical downstream information.</p></li>

@@ -464,6 +464,12 @@ div.csl-indent {
  <span class="menu-text"><span class="chapter-number">F</span>&nbsp; <span class="chapter-title">Glossary</span></span></a>
   </div>
 </li>
+          <li class="sidebar-item">
+  <div class="sidebar-item-container"> 
+  <a href="../appendix/app-g-learning-theory.html" class="sidebar-item-text sidebar-link">
+ <span class="menu-text"><span class="chapter-number">G</span>&nbsp; <span class="chapter-title">Statistical Learning Theory Primer</span></span></a>
+  </div>
+</li>
       </ul>
   </li>
     </ul>
@@ -552,7 +558,7 @@ Chapter Overview
 </div>
 </div>
 <div class="callout-body-container callout-body">
-<p><strong>Prerequisites:</strong> This chapter assumes familiarity with variant effect prediction (<a href="../part_4/p4-ch18-vep-fm.html" class="quarto-xref"><span>Chapter 18</span></a>), uncertainty quantification (<a href="../part_6/p6-ch24-uncertainty.html#sec-ch24-calibration" class="quarto-xref"><span>Section 24.2</span></a>), and basic concepts of Mendelian inheritance. Readers should understand how foundation models like <em>AlphaMissense</em> and <em>Enformer</em> generate variant scores.</p>
+<p><strong>Prerequisites:</strong> This chapter assumes familiarity with variant effect prediction (<a href="../part_4/p4-ch18-vep-fm.html" class="quarto-xref"><span>Chapter 18</span></a>), uncertainty quantification (<a href="../part_6/p6-ch24-uncertainty.html#sec-ch24-calibration" class="quarto-xref"><span>Section 24.3</span></a>), and basic concepts of Mendelian inheritance. Readers should understand how foundation models like <em>AlphaMissense</em> and <em>Enformer</em> generate variant scores.</p>
 <p><strong>Learning Objectives:</strong> After completing this chapter, you will be able to:</p>
 <ol type="1">
 <li>Describe the variant prioritization funnel and identify where foundation models contribute most</li>
@@ -669,7 +675,7 @@ Figure&nbsp;29.1: Variant filtering pipeline for rare disease diagnosis. Startin
 </div>
 <section id="sec-ch29-quality-filters" class="level3" data-number="29.1.1">
 <h3 data-number="29.1.1" class="anchored" data-anchor-id="sec-ch29-quality-filters"><span class="header-section-number">29.1.1</span> Quality and Technical Filters</h3>
-<p>The first filter removes variants that are likely technical artifacts rather than true biological variation. Sequencing depth below 20x, strand bias exceeding established thresholds, and clustering of variants in repetitive regions all raise suspicion of false positives. The 20x depth threshold exists because variant calling requires sufficient reads to distinguish true heterozygous variants (expected ~50% alternate allele frequency) from sequencing errors (typically &lt;1% per position); below this threshold, stochastic sampling fluctuations make reliable genotyping impossible. Strand bias indicates that a variant appears predominantly on reads from one DNA strand, suggesting it arose from damage or amplification artifacts during library preparation rather than existing in the original genomic DNA. Variant clustering in repetitive regions reflects the fundamental challenge of short-read alignment: when a read could map to multiple genomic locations, misalignment creates apparent variants that do not exist in the sample. Variant calling pipelines like <code>GATK</code> and <em>DeepVariant</em> (see <a href="../part_1/p1-ch01-ngs.html#sec-ch01-deepvariant" class="quarto-xref"><span>Section 1.8</span></a>) produce quality scores that guide this initial triage. As discussed in <a href="../part_6/p6-ch24-uncertainty.html#sec-ch24-calibration" class="quarto-xref"><span>Section 24.2</span></a>, these confidence estimates require careful calibration; systematic miscalibration in specific genomic contexts propagates directly into interpretation, creating blind spots where uncertain calls masquerade as confident ones or vice versa. Variants failing quality thresholds are removed before any biological interpretation begins.</p>
+<p>The first filter removes variants that are likely technical artifacts rather than true biological variation. Sequencing depth below 20x, strand bias exceeding established thresholds, and clustering of variants in repetitive regions all raise suspicion of false positives. The 20x depth threshold exists because variant calling requires sufficient reads to distinguish true heterozygous variants (expected ~50% alternate allele frequency) from sequencing errors (typically &lt;1% per position); below this threshold, stochastic sampling fluctuations make reliable genotyping impossible. Strand bias indicates that a variant appears predominantly on reads from one DNA strand, suggesting it arose from damage or amplification artifacts during library preparation rather than existing in the original genomic DNA. Variant clustering in repetitive regions reflects the fundamental challenge of short-read alignment: when a read could map to multiple genomic locations, misalignment creates apparent variants that do not exist in the sample. Variant calling pipelines like <code>GATK</code> and <em>DeepVariant</em> (see <a href="../part_1/p1-ch01-ngs.html#sec-ch01-deepvariant" class="quarto-xref"><span>Section 1.8</span></a>) produce quality scores that guide this initial triage. As discussed in <a href="../part_6/p6-ch24-uncertainty.html#sec-ch24-calibration" class="quarto-xref"><span>Section 24.3</span></a>, these confidence estimates require careful calibration; systematic miscalibration in specific genomic contexts propagates directly into interpretation, creating blind spots where uncertain calls masquerade as confident ones or vice versa. Variants failing quality thresholds are removed before any biological interpretation begins.</p>
 <p>For trio analysis (proband plus both parents), Mendelian inheritance consistency provides an additional quality check. A variant called heterozygous in the child should appear in at least one parent unless it arose <em>de novo</em>. Widespread Mendelian inconsistencies indicate sample swaps, contamination, or systematic calling errors that must be resolved before interpretation proceeds.</p>
 <div class="callout callout-style-default callout-note callout-titled" title="Deep Dive: Trio Analysis in Clinical Genetics">
 <div class="callout-header d-flex align-content-center">
@@ -943,7 +949,7 @@ Challenging Concept: Evidence Strength Calibration
 </section>
 <section id="sec-ch29-calibration" class="level3" data-number="29.2.3">
 <h3 data-number="29.2.3" class="anchored" data-anchor-id="sec-ch29-calibration"><span class="header-section-number">29.2.3</span> Calibrating Predictions to Evidence Strength</h3>
-<p>Mapping continuous foundation model scores to discrete ACMG evidence strengths requires calibration against the odds ratios established by ClinGen <span class="citation" data-cites="tavtigian_modeling_2018">(<a href="../bib/references.html#ref-tavtigian_modeling_2018" role="doc-biblioref">Tavtigian et al. 2018</a>)</span>. The calibration framework, detailed in <a href="../part_4/p4-ch18-vep-fm.html#sec-ch18-calibration" class="quarto-xref"><span>Section 18.5</span></a> and <a href="../part_6/p6-ch24-uncertainty.html#sec-ch24-post-hoc-calibration" class="quarto-xref"><span>Section 24.3</span></a>, defines thresholds where supporting evidence requires ~2:1 odds, moderate ~4:1, and strong ~18:1. For computational predictors to warrant evidence strength upgrades, their predictions must demonstrably achieve these odds ratios in validation datasets.</p>
+<p>Mapping continuous foundation model scores to discrete ACMG evidence strengths requires calibration against the odds ratios established by ClinGen <span class="citation" data-cites="tavtigian_modeling_2018">(<a href="../bib/references.html#ref-tavtigian_modeling_2018" role="doc-biblioref">Tavtigian et al. 2018</a>)</span>. The calibration framework, detailed in <a href="../part_4/p4-ch18-vep-fm.html#sec-ch18-calibration" class="quarto-xref"><span>Section 18.5</span></a> and <a href="../part_6/p6-ch24-uncertainty.html#sec-ch24-post-hoc-calibration" class="quarto-xref"><span>Section 24.4</span></a>, defines thresholds where supporting evidence requires ~2:1 odds, moderate ~4:1, and strong ~18:1. For computational predictors to warrant evidence strength upgrades, their predictions must demonstrably achieve these odds ratios in validation datasets.</p>
 <div id="tbl-evidence-odds" class="quarto-float quarto-figure quarto-figure-center anchored">
 <figure class="quarto-float quarto-float-tbl figure">
 <figcaption class="quarto-float-caption-top quarto-float-caption quarto-float-tbl" id="tbl-evidence-odds-caption-0ceaefa1-69ba-4598-a22c-09a6ac19f8ca">
@@ -1478,7 +1484,7 @@ Check Your Answers
 <p><strong>Connections to Other Chapters:</strong></p>
 <ul>
 <li>Variant effect prediction models: <a href="../part_4/p4-ch18-vep-fm.html" class="quarto-xref"><span>Chapter 18</span></a></li>
-<li>Calibration and uncertainty: <a href="../part_6/p6-ch24-uncertainty.html#sec-ch24-calibration" class="quarto-xref"><span>Section 24.2</span></a></li>
+<li>Calibration and uncertainty: <a href="../part_6/p6-ch24-uncertainty.html#sec-ch24-calibration" class="quarto-xref"><span>Section 24.3</span></a></li>
 <li>Regulatory and ethical frameworks: <a href="../part_6/p6-ch27-regulatory.html#sec-ch27-regulatory" class="quarto-xref"><span>Section 27.1</span></a></li>
 <li>Ancestry and fairness considerations: <a href="../part_3/p3-ch13-confounding.html#sec-ch13-ancestry-confounding" class="quarto-xref"><span>Section 13.2.1</span></a></li>
 </ul>

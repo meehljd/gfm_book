@@ -493,6 +493,12 @@ window.Quarto = {
  <span class="menu-text"><span class="chapter-number">F</span>&nbsp; <span class="chapter-title">Glossary</span></span></a>
   </div>
 </li>
+          <li class="sidebar-item">
+  <div class="sidebar-item-container"> 
+  <a href="../appendix/app-g-learning-theory.html" class="sidebar-item-text sidebar-link">
+ <span class="menu-text"><span class="chapter-number">G</span>&nbsp; <span class="chapter-title">Statistical Learning Theory Primer</span></span></a>
+  </div>
+</li>
       </ul>
   </li>
     </ul>
@@ -724,6 +730,36 @@ Key Insight: The Confounder-Mechanism Distinction
 <p>The critical question for any genomic model is: <em>Does the association between features and labels flow through the biological mechanism I care about, or through a confounding pathway?</em> A model predicting variant pathogenicity from sequence might learn that certain haplotype backgrounds correlate with pathogenic labels, but if that correlation exists because of ancestry-biased ascertainment rather than biological causation, the model has learned a shortcut that will fail when applied to differently ascertained populations.</p>
 </div>
 </div>
+<div class="callout callout-style-default callout-note callout-titled">
+<div class="callout-header d-flex align-content-center">
+<div class="callout-icon-container">
+<i class="callout-icon"></i>
+</div>
+<div class="callout-title-container flex-fill">
+Mathematical Detail: Directed Acyclic Graphs for Confounding
+</div>
+</div>
+<div class="callout-body-container callout-body">
+<p>Causal diagrams (DAGs) provide rigorous notation for reasoning about confounding. Key structures:</p>
+<p><strong>Fork (Common Cause):</strong></p>
+<pre><code>    Z
+   / \
+  X   Y</code></pre>
+<p><span class="math inline">\(Z\)</span> confounds the <span class="math inline">\(X \to Y\)</span> relationship. Example: Ancestry (<span class="math inline">\(Z\)</span>) affects both variant frequency (<span class="math inline">\(X\)</span>) and disease prevalence (<span class="math inline">\(Y\)</span>), creating spurious variant-disease association.</p>
+<p><strong>Chain (Mediation):</strong></p>
+<pre><code>X → M → Y</code></pre>
+<p><span class="math inline">\(M\)</span> mediates the effect of <span class="math inline">\(X\)</span> on <span class="math inline">\(Y\)</span>. Controlling for <span class="math inline">\(M\)</span> blocks the causal path. Example: Variant (<span class="math inline">\(X\)</span>) affects protein function (<span class="math inline">\(M\)</span>) which affects phenotype (<span class="math inline">\(Y\)</span>).</p>
+<p><strong>Collider (Selection Bias):</strong></p>
+<pre><code>X → Z ← Y</code></pre>
+<p>Conditioning on collider <span class="math inline">\(Z\)</span> <em>induces</em> association between <span class="math inline">\(X\)</span> and <span class="math inline">\(Y\)</span> even if none exists. Example: Selecting variants that are either pathogenic (<span class="math inline">\(X\)</span>) or frequently studied (<span class="math inline">\(Y\)</span>) into ClinVar (<span class="math inline">\(Z\)</span>) creates spurious correlation.</p>
+<p><strong>d-Separation.</strong> Variables <span class="math inline">\(X\)</span> and <span class="math inline">\(Y\)</span> are <em>d-separated</em> by set <span class="math inline">\(Z\)</span> (and thus conditionally independent given <span class="math inline">\(Z\)</span>) if every path between them is blocked. A path is blocked if it:</p>
+<ol type="1">
+<li>Contains a chain or fork whose middle node is in <span class="math inline">\(Z\)</span>, OR</li>
+<li>Contains a collider whose middle node (and descendants) is NOT in <span class="math inline">\(Z\)</span></li>
+</ol>
+<p>These graphical criteria formalize when adjustment for a variable eliminates confounding versus when it introduces new bias.</p>
+</div>
+</div>
 <p>For foundation models, these risks are magnified. Genomes encode ancestry, relatedness, and assay conditions in thousands of subtle features, even when those labels are never explicitly provided. Large transformers find shortcuts that smaller models would miss if those shortcuts improve the training objective. Complex training regimes involving pretraining on biobank-scale data, fine-tuning on curated labels, and evaluation on community benchmarks create many opportunities for direct and indirect leakage.</p>
 </section>
 <section id="sec-ch13-sources" class="level2" data-number="13.2">
@@ -927,7 +963,7 @@ Knowledge Check: Recall Key Concepts
 <li>What diagnostic would reveal that your model’s 0.85 auROC primarily reflects ancestry rather than biological mechanism?</li>
 </ol>
 <div class="callout callout-style-default callout-note callout-titled" title="Check Your Answer">
-<div class="callout-header d-flex align-content-center" data-bs-toggle="collapse" data-bs-target=".callout-6-contents" aria-controls="callout-6" aria-expanded="false" aria-label="Toggle callout">
+<div class="callout-header d-flex align-content-center" data-bs-toggle="collapse" data-bs-target=".callout-7-contents" aria-controls="callout-7" aria-expanded="false" aria-label="Toggle callout">
 <div class="callout-icon-container">
 <i class="callout-icon"></i>
 </div>
@@ -936,7 +972,7 @@ Check Your Answer
 </div>
 <div class="callout-btn-toggle d-inline-block border-0 py-1 ps-1 pe-0 float-end"><i class="callout-toggle"></i></div>
 </div>
-<div id="callout-6" class="callout-6-contents callout-collapse collapse">
+<div id="callout-7" class="callout-7-contents callout-collapse collapse">
 <div class="callout-body-container callout-body">
 <ol type="1">
 <li><p>A confounder is a variable that affects both features and labels (e.g., ancestry affects allele frequencies and disease risk through healthcare access), while data leakage occurs when test information influences training (e.g., the same variant appearing in both train and test sets). Both inflate performance, but leakage involves information that should not exist at prediction time, while confounding involves real but non-causal associations.</p></li>
@@ -1003,7 +1039,7 @@ Knowledge Check
 <div class="callout-body-container callout-body">
 <p>A model achieves 0.88 auROC predicting disease status from whole-genome sequences. You discover that case samples were sequenced at Center A using Illumina NovaSeq, while control samples were sequenced at Center B using HiSeq. What would you predict about performance on a new cohort where cases and controls are equally distributed across both centers? What diagnostic would you run to test for batch confounding?</p>
 <div class="callout callout-style-default callout-note callout-titled" title="Check Your Answer">
-<div class="callout-header d-flex align-content-center" data-bs-toggle="collapse" data-bs-target=".callout-8-contents" aria-controls="callout-8" aria-expanded="false" aria-label="Toggle callout">
+<div class="callout-header d-flex align-content-center" data-bs-toggle="collapse" data-bs-target=".callout-9-contents" aria-controls="callout-9" aria-expanded="false" aria-label="Toggle callout">
 <div class="callout-icon-container">
 <i class="callout-icon"></i>
 </div>
@@ -1012,7 +1048,7 @@ Check Your Answer
 </div>
 <div class="callout-btn-toggle d-inline-block border-0 py-1 ps-1 pe-0 float-end"><i class="callout-toggle"></i></div>
 </div>
-<div id="callout-8" class="callout-8-contents callout-collapse collapse">
+<div id="callout-9" class="callout-9-contents callout-collapse collapse">
 <div class="callout-body-container callout-body">
 <p>Performance would likely collapse to near-chance levels (close to 0.50 auROC) because the model learned to distinguish sequencing centers rather than disease biology. When cases and controls are equally distributed across both centers, the batch-disease correlation disappears and the learned shortcut becomes useless.</p>
 <p>Diagnostics to run:</p>
@@ -1306,7 +1342,7 @@ Knowledge Check: Apply Detection Methods
 <li>If your confounder-only baseline achieves 0.82 auROC, what does this tell you about your model?</li>
 </ol>
 <div class="callout callout-style-default callout-note callout-titled" title="Check Your Answer">
-<div class="callout-header d-flex align-content-center" data-bs-toggle="collapse" data-bs-target=".callout-15-contents" aria-controls="callout-15" aria-expanded="false" aria-label="Toggle callout">
+<div class="callout-header d-flex align-content-center" data-bs-toggle="collapse" data-bs-target=".callout-16-contents" aria-controls="callout-16" aria-expanded="false" aria-label="Toggle callout">
 <div class="callout-icon-container">
 <i class="callout-icon"></i>
 </div>
@@ -1315,7 +1351,7 @@ Check Your Answer
 </div>
 <div class="callout-btn-toggle d-inline-block border-0 py-1 ps-1 pe-0 float-end"><i class="callout-toggle"></i></div>
 </div>
-<div id="callout-15" class="callout-15-contents callout-collapse collapse">
+<div id="callout-16" class="callout-16-contents callout-collapse collapse">
 <div class="callout-body-container callout-body">
 <ol type="1">
 <li><strong>Three key diagnostics:</strong>
@@ -1500,7 +1536,7 @@ Knowledge Check
 <li>What monitoring should be implemented post-deployment?</li>
 </ol>
 <div class="callout callout-style-default callout-note callout-titled" title="Check Your Answer">
-<div class="callout-header d-flex align-content-center" data-bs-toggle="collapse" data-bs-target=".callout-17-contents" aria-controls="callout-17" aria-expanded="false" aria-label="Toggle callout">
+<div class="callout-header d-flex align-content-center" data-bs-toggle="collapse" data-bs-target=".callout-18-contents" aria-controls="callout-18" aria-expanded="false" aria-label="Toggle callout">
 <div class="callout-icon-container">
 <i class="callout-icon"></i>
 </div>
@@ -1509,7 +1545,7 @@ Check Your Answer
 </div>
 <div class="callout-btn-toggle d-inline-block border-0 py-1 ps-1 pe-0 float-end"><i class="callout-toggle"></i></div>
 </div>
-<div id="callout-17" class="callout-17-contents callout-collapse collapse">
+<div id="callout-18" class="callout-18-contents callout-collapse collapse">
 <div class="callout-body-container callout-body">
 <ol type="1">
 <li><p><strong>Major fairness concerns:</strong> The score may show 40-75% reduced accuracy in non-European populations, potentially providing inferior risk stratification to already underserved groups. Differential performance could lead to missed diagnoses in minority populations or inappropriate screening recommendations.</p></li>
@@ -1521,7 +1557,7 @@ Check Your Answer
 </div>
 </div>
 </div>
-<p>The <strong>uncertainty quantification</strong> approaches discussed in <a href="../part_6/p6-ch24-uncertainty.html" class="quarto-xref"><span>Chapter 24</span></a> provide partial mitigation: models that report high uncertainty for under-represented populations at least flag predictions that should not be trusted. Out-of-distribution detection methods (<a href="../part_6/p6-ch24-uncertainty.html#sec-ch24-ood-detection" class="quarto-xref"><span>Section 24.6</span></a>) specifically address when inputs fall outside the training distribution. The <strong>interpretability</strong> methods in <a href="../part_6/p6-ch25-interpretability.html" class="quarto-xref"><span>Chapter 25</span></a> can reveal when models rely on ancestry-correlated features, with attribution analysis (<a href="../part_6/p6-ch25-interpretability.html#sec-ch25-attribution" class="quarto-xref"><span>Section 25.1</span></a>) identifying which input features drive ancestry-dependent predictions. Yet technical solutions alone are insufficient. Addressing fairness requires intentional data collection that prioritizes under-represented populations, evaluation protocols that mandate subgroup analysis, and deployment decisions that consider equity alongside aggregate accuracy.</p>
+<p>The <strong>uncertainty quantification</strong> approaches discussed in <a href="../part_6/p6-ch24-uncertainty.html" class="quarto-xref"><span>Chapter 24</span></a> provide partial mitigation: models that report high uncertainty for under-represented populations at least flag predictions that should not be trusted. Out-of-distribution detection methods (<a href="../part_6/p6-ch24-uncertainty.html#sec-ch24-ood-detection" class="quarto-xref"><span>Section 24.7</span></a>) specifically address when inputs fall outside the training distribution. The <strong>interpretability</strong> methods in <a href="../part_6/p6-ch25-interpretability.html" class="quarto-xref"><span>Chapter 25</span></a> can reveal when models rely on ancestry-correlated features, with attribution analysis (<a href="../part_6/p6-ch25-interpretability.html#sec-ch25-attribution" class="quarto-xref"><span>Section 25.1</span></a>) identifying which input features drive ancestry-dependent predictions. Yet technical solutions alone are insufficient. Addressing fairness requires intentional data collection that prioritizes under-represented populations, evaluation protocols that mandate subgroup analysis, and deployment decisions that consider equity alongside aggregate accuracy.</p>
 <p>External validity asks whether a model’s performance in one setting predicts its performance in another. Confounding and distribution shift often cause dramatic external validity failures. A model that achieves excellent metrics in the development cohort may fail when deployed at a different institution, in a different healthcare system, or in a different country. The clinical risk prediction frameworks in <a href="../part_7/p7-ch28-clinical-risk.html#sec-ch28-clinical-integration" class="quarto-xref"><span>Section 28.9</span></a> emphasize multi-site validation precisely because single-site performance frequently fails to generalize.</p>
 <p>The fairness implications of confounding extend beyond technical model performance into questions of justice in healthcare resource allocation, diagnostic equity, and the distribution of benefits from genomic medicine. Governance frameworks for addressing these structural challenges are examined in <a href="../part_6/p6-ch27-regulatory.html#sec-ch27-governance" class="quarto-xref"><span>Section 27.2</span></a>.</p>
 </section>
@@ -1553,7 +1589,7 @@ Practical Guidance: Using This Checklist
 <h2 data-number="13.12" class="anchored" data-anchor-id="sec-ch13-rigor"><span class="header-section-number">13.12</span> Rigor as Response</h2>
 <p>These confounding and bias problems are not reasons for despair. They are reasons for rigor. The same expressive capacity that enables foundation models to discover subtle shortcuts also enables them to learn complex biological patterns when training data and evaluation protocols are designed appropriately. The goal is not to abandon powerful models but to create conditions under which their power serves biological discovery rather than benchmark gaming.</p>
 <p>Several trends support progress. Multi-ancestry biobanks and international collaborations expand the diversity of available training data. Benchmark developers implement stricter splitting protocols and require subgroup analyses. Pretraining strategies that explicitly promote invariance to technical factors are emerging. Uncertainty quantification methods (<a href="../part_6/p6-ch24-uncertainty.html" class="quarto-xref"><span>Chapter 24</span></a>) provide mechanisms for models to express appropriate caution when inputs fall outside their training distribution. The problem of confounding is tractable with sustained attention to data provenance, evaluation design, and deployment monitoring. The benchmark catalog in <a href="p3-ch11-benchmarks.html" class="quarto-xref"><span>Chapter 11</span></a> identifies which evaluation resources are most susceptible to particular confounders, while the evaluation methodology in <a href="p3-ch12-evaluation.html" class="quarto-xref"><span>Chapter 12</span></a> provides protocols for detecting leakage before it inflates reported performance.</p>
-<p>Yet vigilance remains essential. New datasets bring new confounders. Novel architectures create new opportunities for shortcut learning. Community benchmarks accumulate indirect leakage as resources are reused across studies. Treating confounding as a first-order concern throughout model development, rather than an afterthought addressed only when reviewers complain, distinguishes models that actually work from models that merely perform well on convenient benchmarks. The interpretability methods in <a href="../part_6/p6-ch25-interpretability.html" class="quarto-xref"><span>Chapter 25</span></a> provide tools for distinguishing genuine regulatory insight from sophisticated pattern matching, with mechanistic interpretability (<a href="../part_6/p6-ch25-interpretability.html#sec-ch25-mechanistic" class="quarto-xref"><span>Section 25.7</span></a>) offering the strongest evidence about what models have actually learned. The uncertainty quantification approaches in <a href="../part_6/p6-ch24-uncertainty.html" class="quarto-xref"><span>Chapter 24</span></a> enable models to communicate when their predictions should not be trusted, with selective prediction (<a href="../part_6/p6-ch24-uncertainty.html#sec-ch24-selective-prediction" class="quarto-xref"><span>Section 24.7</span></a>) providing operational frameworks for routing uncertain cases to human review. Together with rigorous evaluation, these capabilities move the field toward models that reveal genuine biology and behave reliably across the diverse clinical and scientific settings where they will be deployed.</p>
+<p>Yet vigilance remains essential. New datasets bring new confounders. Novel architectures create new opportunities for shortcut learning. Community benchmarks accumulate indirect leakage as resources are reused across studies. Treating confounding as a first-order concern throughout model development, rather than an afterthought addressed only when reviewers complain, distinguishes models that actually work from models that merely perform well on convenient benchmarks. The interpretability methods in <a href="../part_6/p6-ch25-interpretability.html" class="quarto-xref"><span>Chapter 25</span></a> provide tools for distinguishing genuine regulatory insight from sophisticated pattern matching, with mechanistic interpretability (<a href="../part_6/p6-ch25-interpretability.html#sec-ch25-mechanistic" class="quarto-xref"><span>Section 25.7</span></a>) offering the strongest evidence about what models have actually learned. The uncertainty quantification approaches in <a href="../part_6/p6-ch24-uncertainty.html" class="quarto-xref"><span>Chapter 24</span></a> enable models to communicate when their predictions should not be trusted, with selective prediction (<a href="../part_6/p6-ch24-uncertainty.html#sec-ch24-selective-prediction" class="quarto-xref"><span>Section 24.8</span></a>) providing operational frameworks for routing uncertain cases to human review. Together with rigorous evaluation, these capabilities move the field toward models that reveal genuine biology and behave reliably across the diverse clinical and scientific settings where they will be deployed.</p>
 <div class="callout callout-style-default callout-tip callout-titled" title="Test Yourself">
 <div class="callout-header d-flex align-content-center">
 <div class="callout-icon-container">
@@ -1573,7 +1609,7 @@ Test Yourself
 <li>What splitting strategies address different types of leakage (individual overlap, family structure, position memorization, temporal drift)?</li>
 </ol>
 <div class="callout callout-style-default callout-note callout-titled" title="Check Your Answers">
-<div class="callout-header d-flex align-content-center" data-bs-toggle="collapse" data-bs-target=".callout-20-contents" aria-controls="callout-20" aria-expanded="false" aria-label="Toggle callout">
+<div class="callout-header d-flex align-content-center" data-bs-toggle="collapse" data-bs-target=".callout-21-contents" aria-controls="callout-21" aria-expanded="false" aria-label="Toggle callout">
 <div class="callout-icon-container">
 <i class="callout-icon"></i>
 </div>
@@ -1582,7 +1618,7 @@ Check Your Answers
 </div>
 <div class="callout-btn-toggle d-inline-block border-0 py-1 ps-1 pe-0 float-end"><i class="callout-toggle"></i></div>
 </div>
-<div id="callout-20" class="callout-20-contents callout-collapse collapse">
+<div id="callout-21" class="callout-21-contents callout-collapse collapse">
 <div class="callout-body-container callout-body">
 <ol type="1">
 <li><p><strong>Confounding, bias, leakage, and distribution shift</strong>: Confounding occurs when a variable affects both features and labels (example: ancestry influences allele frequencies through population history and disease risk through healthcare access pathways). Bias is systematic deviation from the target quantity (example: training on 50% disease prevalence but deploying at 5% prevalence causes systematic over-prediction). Data leakage occurs when test information influences training (example: the same variant appearing in both training and test sets, or ClinVar labels being influenced by CADD scores that later become training features). Distribution shift is mismatch between training and deployment distributions (example: a model trained on one hospital’s coding practices failing at a different institution with different documentation standards).</p></li>

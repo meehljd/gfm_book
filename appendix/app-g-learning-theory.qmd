@@ -1,0 +1,118 @@
+# Statistical Learning Theory Primer {#sec-apx-g-learning-theory}
+
+This appendix provides the theoretical foundation for understanding why machine learning models—and foundation models in particular—generalize from training data to new examples.
+
+## The Generalization Problem {#sec-apx-g-generalization}
+
+**Setup.** We observe training data $(x_i, y_i)$ drawn i.i.d. from unknown distribution $P$. We fit model $\hat{f}$ to minimize training error:
+
+$$\hat{R}_{train}(\hat{f}) = \frac{1}{n} \sum_{i=1}^n L(y_i, \hat{f}(x_i))$$
+
+**Goal.** Bound the *generalization error*:
+
+$$R(\hat{f}) = \mathbb{E}_{(x,y) \sim P}[L(y, \hat{f}(x))]$$
+
+The *generalization gap* is $R(\hat{f}) - \hat{R}_{train}(\hat{f})$.
+
+## VC Dimension and Capacity {#sec-apx-g-vc}
+
+The Vapnik-Chervonenkis (VC) dimension measures a hypothesis class's complexity.
+
+**Definition.** A hypothesis class $\mathcal{H}$ *shatters* a set of points $\{x_1, \ldots, x_m\}$ if for every labeling $(y_1, \ldots, y_m) \in \{0,1\}^m$, there exists $h \in \mathcal{H}$ with $h(x_i) = y_i$ for all $i$.
+
+The **VC dimension** $d_{VC}(\mathcal{H})$ is the largest $m$ such that some set of $m$ points can be shattered.
+
+**Examples:**
+
+| Hypothesis Class | VC Dimension |
+|------------------|--------------|
+| Linear classifiers in $\mathbb{R}^d$ | $d + 1$ |
+| Axis-aligned rectangles in $\mathbb{R}^2$ | 4 |
+| Circles in $\mathbb{R}^2$ | 3 |
+| Neural network with $W$ weights | $O(W \log W)$ |
+
+## Classical Generalization Bounds {#sec-apx-g-classical-bounds}
+
+**VC Bound.** With probability at least $1 - \delta$:
+
+$$R(\hat{f}) \leq \hat{R}_{train}(\hat{f}) + \sqrt{\frac{d_{VC} (\log(2n/d_{VC}) + 1) + \log(4/\delta)}{n}}$$
+
+**Interpretation:**
+
+- Generalization gap scales as $O(\sqrt{d_{VC}/n})$
+- More capacity → larger gap
+- More data → smaller gap
+
+**Rademacher Complexity.** A data-dependent measure of capacity:
+
+$$\mathfrak{R}_n(\mathcal{H}) = \mathbb{E}\left[\sup_{h \in \mathcal{H}} \frac{1}{n} \sum_{i=1}^n \sigma_i h(x_i)\right]$$
+
+where $\sigma_i \in \{-1, +1\}$ are random signs.
+
+With probability $1 - \delta$:
+$$R(\hat{f}) \leq \hat{R}_{train}(\hat{f}) + 2\mathfrak{R}_n(\mathcal{H}) + \sqrt{\frac{\log(1/\delta)}{2n}}$$
+
+## Why Classical Theory Fails for Deep Learning {#sec-apx-g-modern}
+
+A neural network with 1B parameters has VC dimension $O(10^{10})$. Classical bounds predict no generalization is possible. Yet these models work. Why?
+
+### Implicit Regularization {#sec-apx-g-implicit}
+
+Gradient descent on overparameterized models converges to solutions with special properties:
+
+**Minimum Norm.** Among all solutions fitting the data, SGD finds (approximately) the one with minimum $\ell_2$ norm.
+
+**Flat Minima.** Solutions found by SGD tend to lie in "flat" regions of the loss landscape—small perturbations don't increase loss much. These correlate with good generalization.
+
+**Simplicity Bias.** Networks learn simple functions first (low-frequency Fourier components), only fitting complex patterns with extended training.
+
+### Benign Overfitting {#sec-apx-g-benign}
+
+In high dimensions, models can *interpolate* training data (zero training error) yet generalize:
+
+**Double Descent.** Test error follows a U-shape as model capacity increases, but then *decreases again* past the interpolation threshold.
+
+**Conditions for Benign Overfitting:**
+
+1. Covariance spectrum decays (signal in few directions)
+2. Signal-to-noise ratio is large in signal directions
+3. Model's implicit bias aligns with signal directions
+
+### PAC-Bayes Bounds {#sec-apx-g-pac-bayes}
+
+Tighter bounds that account for the *distribution* over hypotheses:
+
+$$R(\hat{f}) \leq \hat{R}_{train}(\hat{f}) + \sqrt{\frac{KL(Q || P) + \log(n/\delta)}{2n}}$$
+
+where $Q$ is the posterior over models and $P$ is the prior.
+
+**For neural networks:** The prior is implicit (initialization distribution), and the posterior concentrates near found solutions. If training moves parameters only slightly, $KL$ is small and generalization is good.
+
+## Scaling Laws {#sec-apx-g-scaling}
+
+Empirical scaling laws capture foundation model generalization:
+
+**Chinchilla Law:**
+$$L(N, D) = A \cdot N^{-\alpha} + B \cdot D^{-\beta} + L_\infty$$
+
+where $N$ = parameters, $D$ = data tokens, $\alpha \approx 0.34$, $\beta \approx 0.28$.
+
+**Implications:**
+
+- Test loss decreases as power law in both data and parameters
+- Compute-optimal allocation: $N \propto D$ (equal investment)
+- No evidence of "diminishing returns" within studied regimes
+
+## Implications for Genomic Foundation Models {#sec-apx-g-genomic}
+
+1. **Pretraining provides implicit regularization** that constrains the effective hypothesis space
+2. **Transfer learning works** because pretrained representations have low effective dimension—the "usable" capacity is much smaller than parameter count
+3. **Benchmark overfitting is possible** even for models that generalize well to new data—small test sets have high variance
+4. **Scale helps** within current regimes, but theoretical understanding of *why* remains incomplete
+
+## Further Reading {#sec-apx-g-further}
+
+- Shalev-Shwartz & Ben-David (2014). *Understanding Machine Learning: From Theory to Algorithms* for comprehensive foundations
+- Mohri, Rostamizadeh & Talwalkar (2018). *Foundations of Machine Learning* for mathematical treatment
+- @belkin_reconciling_2019 for double descent and interpolation
+- @hoffmann_training_2022 for scaling laws

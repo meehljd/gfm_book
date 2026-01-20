@@ -409,6 +409,64 @@ Deep learning models should be compared against strong non-deep alternatives. Gr
 This comparison is especially important for clinical deployment, where simpler models may be preferred for interpretability, computational efficiency, or regulatory approval. Demonstrating that deep learning provides substantial gains over strong non-deep baselines strengthens the case for adoption.
 
 
+## Experimental Design Principles {#sec-ch12-experimental-design}
+
+Rigorous evaluation requires applying principles from the *design of experiments* (DoE)—a statistical framework for extracting maximum information from limited experimental resources.
+
+### Factorial Thinking for Ablations {#sec-ch12-factorial}
+
+When evaluating model components, researchers often vary one factor at a time. This misses *interaction effects* that can dominate performance.
+
+**Full Factorial Design.** To study $k$ binary factors (e.g., "use pretrained weights," "use data augmentation"), a full factorial requires $2^k$ experiments but reveals all interactions.
+
+**Example: Evaluating DNA Language Model Adaptation**
+
+| Pretrained | LoRA | Augmentation | Performance |
+|------------|------|--------------|-------------|
+| No | No | No | 0.72 |
+| Yes | No | No | 0.81 |
+| No | Yes | No | 0.73 |
+| No | No | Yes | 0.75 |
+| Yes | Yes | No | 0.84 |
+| Yes | No | Yes | 0.83 |
+| No | Yes | Yes | 0.76 |
+| Yes | Yes | Yes | 0.89 |
+
+: Full factorial design revealing interaction effects. Main effects: Pretrained (+0.09), LoRA (+0.02), Augmentation (+0.03). Interaction: Pretrained × Augmentation (+0.04)—augmentation helps more with pretrained weights. {#tbl-factorial-example}
+
+Without factorial design, testing only the "default" configuration misses the synergy between pretraining and augmentation.
+
+### Fractional Factorial for Efficiency {#sec-ch12-fractional}
+
+When full factorial is too expensive (e.g., $2^{10} = 1024$ experiments for 10 hyperparameters), *fractional factorial* designs test a strategic subset.
+
+**Resolution III designs** (e.g., $2^{10-6} = 16$ experiments) estimate main effects but confound them with two-way interactions. Use when screening many hyperparameters, interactions are expected to be small, or computational budget is severely limited.
+
+### Blocking and Confounding Control {#sec-ch12-blocking}
+
+*Blocking* groups experiments to control known sources of variation:
+
+**Example: Multi-GPU Training**
+
+- **Confound:** Different GPUs have different memory/speed characteristics
+- **Block:** Ensure each model variant runs on each GPU type
+- **Analyze:** Use GPU as a blocking factor in statistical analysis
+
+**Example: Random Seed Variation**
+
+- **Confound:** Training stochasticity affects results
+- **Block:** Run each configuration with multiple seeds (typically 3-5)
+- **Report:** Mean ± standard deviation across seeds
+
+:::{.callout-warning}
+## Common Aliasing Trap
+
+If you test "pretraining" and "larger model" together (both on or both off), you cannot determine which factor caused improvement. The design *aliases* these main effects.
+
+Always verify your experimental design does not alias effects you need to distinguish.
+:::
+
+
 ## Ablation Studies {#sec-ch12-ablation-studies}
 
 Ablation studies systematically remove or modify model components to understand their contributions. Where baselines compare across methods, ablations investigate within a method, revealing which design choices actually matter.
@@ -464,7 +522,35 @@ The cultures are not opposed. Mendelian randomization (@sec-ch26-mendelian-rando
 
 For classification metrics, significance tests ask whether observed differences exceed what would be expected from sampling variation. **Bootstrap** confidence intervals resample the test set with replacement, recompute metrics on each resample, and report the distribution of metric values. Non-overlapping 95% confidence intervals suggest significant differences. **Permutation tests** shuffle predictions between models and measure how often shuffled differences exceed observed differences.
 
-For comparing multiple models across multiple benchmarks, correction for multiple testing becomes important. Without correction, 20 pairwise comparisons will produce an expected one false positive at the 0.05 level even when all models perform equally. The **Bonferroni correction** divides the significance threshold by the number of tests; the **Benjamini-Hochberg procedure** controls false discovery rate with more power than Bonferroni [@benjamini_controlling_1995].
+### Multiple Testing Corrections {#sec-ch12-multiple-testing}
+
+When comparing models across multiple benchmarks or testing multiple hypotheses, naive p-value thresholds inflate false positive rates.
+
+**The Problem.** Testing $m$ independent hypotheses at $\alpha = 0.05$ yields:
+
+$$P(\text{at least one false positive}) = 1 - (1-\alpha)^m \approx 1 - e^{-m\alpha}$$
+
+For $m = 20$ benchmarks: approximately 64% chance of at least one false positive.
+
+**Bonferroni Correction.** The simplest fix divides the significance threshold by the number of tests: use $\alpha/m$ as threshold.
+
+- *Pros:* Controls family-wise error rate (FWER)
+- *Cons:* Very conservative, high false negative rate
+
+**Benjamini-Hochberg (BH) Procedure.** Controls *false discovery rate* (FDR), the expected proportion of false positives among rejections [@benjamini_controlling_1995]:
+
+1. Order p-values: $p_{(1)} \leq p_{(2)} \leq \cdots \leq p_{(m)}$
+2. Find largest $k$ where $p_{(k)} \leq \frac{k}{m} \cdot \alpha$
+3. Reject hypotheses $1, \ldots, k$
+
+BH is less conservative than Bonferroni and appropriate when some false positives are tolerable (typical in benchmark comparisons).
+
+**Practical Recommendations:**
+
+- **Few comparisons (≤5):** Bonferroni is acceptable
+- **Many comparisons (>5):** Use BH with FDR = 0.05 or 0.10
+- **Dependent tests:** Use Benjamini-Yekutieli (BY) procedure
+- **Always report:** Number of tests performed and correction method
 
 ### Effect Sizes {#sec-ch12-effect-sizes}
 
@@ -475,6 +561,49 @@ Reporting both significance tests and effect sizes provides complete information
 ### Confidence Intervals on Metrics {#sec-ch12-confidence-intervals}
 
 Point estimates of auROC or correlation should be accompanied by confidence intervals. DeLong's method provides analytical confidence intervals for auROC [@delong_comparing_1988]; bootstrap methods provide distribution-free intervals for any metric. Reporting "auROC = $0.85$ (95% CI: $0.82$--$0.88$)" is more informative than "auROC = $0.85$" alone.
+
+### Power Analysis: How Many Samples? {#sec-ch12-power-analysis}
+
+Before running expensive experiments, *power analysis* determines whether you have enough data to detect meaningful effects.
+
+**Key Quantities:**
+
+- **Effect size ($d$):** Standardized difference you want to detect
+- **Power ($1-\beta$):** Probability of detecting a true effect (typically 0.80)
+- **Significance level ($\alpha$):** False positive rate (typically 0.05)
+- **Sample size ($n$):** Number of test examples or experimental runs
+
+**For Paired Model Comparison** (same test set, comparing model A vs B):
+
+Using a paired t-test, required sample size for detecting effect size $d$:
+
+$$n \approx \frac{2(z_{1-\alpha/2} + z_{1-\beta})^2}{d^2}$$
+
+| Effect Size | Interpretation | Required $n$ (power=0.80) |
+|-------------|----------------|---------------------------|
+| 0.2 (small) | ~1% AUC difference | ~400 |
+| 0.5 (medium) | ~3% AUC difference | ~64 |
+| 0.8 (large) | ~5% AUC difference | ~26 |
+
+: Required sample sizes for detecting performance differences of various effect sizes at 80% power. Small improvements require substantially larger test sets. {#tbl-power-requirements}
+
+**Implications for Genomic Benchmarks:**
+
+- Detecting small improvements requires large test sets
+- With only 100 test variants, you can reliably detect only large effects
+- Stratified analysis (by variant type, gene) reduces effective sample size
+
+:::{.callout-tip}
+## Practical Guidance: Power Calculations
+
+Before claiming "Model A outperforms Model B":
+
+1. Estimate the effect size from your results
+2. Calculate post-hoc power given your test set size
+3. If power < 0.80, conclusions are unreliable—get more data or report as "suggestive but underpowered"
+
+Tools: `statsmodels.stats.power` (Python), `pwr` package (R)
+:::
 
 ### Variance Across Random Seeds {#sec-ch12-variance-random-seeds}
 

@@ -184,6 +184,44 @@ In practice, ensemble methods approximate epistemic uncertainty through disagree
 These decompositions depend on modeling assumptions and provide approximations rather than exact separations. Ensemble disagreement may underestimate epistemic uncertainty if all members share similar biases from common training data. Heteroscedastic models may confound aleatoric and epistemic uncertainty if the training data is too sparse to reliably estimate noise levels. Despite these limitations, approximate decomposition provides actionable information: variants flagged for high epistemic uncertainty warrant additional data collection or expert review, while variants with high aleatoric uncertainty may require acceptance of irreducible limits on predictive confidence.
 
 
+## Bayesian Uncertainty Quantification {#sec-ch24-bayesian}
+
+Bayesian methods provide a principled framework for uncertainty that naturally distinguishes epistemic from aleatoric sources. Rather than learning point estimates of model parameters, Bayesian approaches maintain distributions over parameters, propagating uncertainty through predictions.
+
+### Bayesian Framework {#sec-ch24-bayesian-framework}
+
+**Core Idea.** Instead of point estimates $\hat{\theta}$, maintain a *distribution* over parameters $p(\theta | D)$:
+
+$$p(\theta | D) = \frac{p(D | \theta) p(\theta)}{p(D)}$$ {#eq-24-bayes}
+
+where the **prior** $p(\theta)$ encodes beliefs before seeing data, the **likelihood** $p(D|\theta)$ measures how well parameters explain data, and the **posterior** $p(\theta|D)$ represents updated beliefs after observing data.
+
+**Predictive Distribution.** For new input $x^*$:
+
+$$p(y^* | x^*, D) = \int p(y^* | x^*, \theta) p(\theta | D) d\theta$$ {#eq-24-predictive}
+
+This integral *marginalizes* over parameter uncertainty—predictions account for not knowing the "true" parameters.
+
+### Approximate Bayesian Inference for Neural Networks {#sec-ch24-approx-bayesian}
+
+Full Bayesian inference is computationally prohibitive for large neural networks. Practical approximations include:
+
+**MC Dropout.** Dropout at test time approximates variational inference with Bernoulli posterior over weights [@gal_dropout_2016]. Multiple forward passes with dropout enabled yield a distribution of predictions; disagreement indicates epistemic uncertainty.
+
+**Deep Ensembles as Posterior Samples.** Training $M$ networks from different initializations can be viewed as sampling from an implicit posterior. Ensemble disagreement estimates epistemic uncertainty without explicit Bayesian computation.
+
+**Variational Inference.** Approximate the posterior with a tractable family $q_\phi(\theta)$ by maximizing the evidence lower bound (ELBO). Mean-field VI assumes independent posteriors per parameter—scales to large networks but may underestimate uncertainty.
+
+:::{.callout-tip}
+## Practical Guidance: Bayesian UQ Workflow
+
+1. Start with deep ensemble (simple, parallelizable)
+2. If ensemble disagrees significantly, flag for review
+3. For high-stakes decisions, consider full MCMC on ensemble predictions
+4. Report credible intervals, not just point predictions
+:::
+
+
 ## Calibration and Confidence Interpretation {#sec-ch24-calibration}
 
 **Calibration** determines whether model outputs can be interpreted as probabilities. A score of 0.85 from a pathogenicity predictor should mean that 85% of variants receiving similar scores are truly pathogenic; only then can clinicians rationally weight computational evidence against other diagnostic criteria. The following sections provide a comprehensive treatment of calibration theory and methods, serving as the formal foundation for calibration discussions in applied contexts such as variant effect prediction (@sec-ch18-calibration) and evaluation methodology (@sec-ch12-eval).

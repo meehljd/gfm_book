@@ -266,6 +266,23 @@ Genomic coordinates carry information absent from raw sequence. The position *ch
 
 Multiple sequence inputs arise frequently in genomic applications. Variant effect prediction requires comparing reference and alternate alleles. Comparative genomics involves aligned sequences from multiple species. Some regulatory predictions require input from multiple genomic regions, such as promoter plus enhancer. Representation schemes must accommodate these multi-sequence inputs through concatenation, paired encoding, or specialized architectures processing multiple sequences jointly.
 
+:::{.callout-tip}
+## Key Insight: Embeddings as Lossy Compression
+
+From an information-theoretic perspective, token embeddings perform *lossy compression* of discrete symbols into continuous vectors. This view illuminates fundamental tradeoffs in tokenization design.
+
+**Rate-Distortion Framework.** Consider a tokenizer as a channel that maps input sequences $X$ to discrete tokens $T$. The *rate* $R = H(T)$ measures the bits per position (vocabulary size determines upper bound: $R \leq \log_2 |V|$). The *distortion* $D$ measures information lost about downstream tasks.
+
+For genomic sequences:
+
+- **High rate (large vocabulary):** BPE with 32k tokens preserves more sequence detail but requires larger embedding tables
+- **Low rate (small vocabulary):** Single-nucleotide (4 tokens) maximizes compression but embedding layers must learn richer representations
+
+**Mutual Information Principle.** An effective embedding $E(t)$ maximizes mutual information $I(E(T); Y)$ with task labels $Y$ while the tokenizer controls $I(X; T)$. This explains why k-mer tokenization can outperform single-nucleotide for some tasks (overlapping k-mers preserve local context that single tokens lose), and why BPE struggles with rare variants (tokens optimized for corpus frequency may split clinically important but rare motifs).
+
+The embedding dimension $d$ sets a *capacity bottleneck*: $I(E(T); Y) \leq d \cdot C$ where $C$ depends on activation precision. This motivates the empirical finding that larger embedding dimensions help until task complexity saturates.
+:::
+
 
 ## Tradeoffs and Practical Guidance {#sec-ch05-tradeoffs}
 
@@ -289,7 +306,21 @@ The tension between compression and resolution represents the fundamental tradeo
 
 Transcription factors recognize specific 6-12 nucleotide motifs, but these motifs come in families with degenerate positions that tolerate multiple bases. A vocabulary containing all possible 6-mers can represent each motif variant as a distinct token, potentially capturing family relationships in embedding space. A vocabulary of only four nucleotides forces the model to learn these motif patterns compositionally across layers. The question is whether richer vocabularies accelerate learning or simply shift where the learning happens.
 
-Vocabulary size affects both model capacity and efficiency in ways that interact with embedding design. Larger vocabularies require bigger embedding tables but may capture more complex patterns directly in the token representation. Smaller vocabularies are parameter-efficient but require the model to learn compositional structure through multiple layers. One-hot encoding's vocabulary of four tokens (plus special tokens) minimizes embedding parameters but maximizes the compositional learning burden. *K*-mer vocabularies scale exponentially with $k$, reaching 4,096 for 6-mers. BPE vocabularies are tunable, typically ranging from 4,096 to 32,000 tokens for genomic applications. 
+Vocabulary size affects both model capacity and efficiency in ways that interact with embedding design. Larger vocabularies require bigger embedding tables but may capture more complex patterns directly in the token representation. Smaller vocabularies are parameter-efficient but require the model to learn compositional structure through multiple layers. One-hot encoding's vocabulary of four tokens (plus special tokens) minimizes embedding parameters but maximizes the compositional learning burden. *K*-mer vocabularies scale exponentially with $k$, reaching 4,096 for 6-mers. BPE vocabularies are tunable, typically ranging from 4,096 to 32,000 tokens for genomic applications.
+
+:::{.callout-note}
+## Mathematical Detail: Entropy Bounds on Vocabulary
+
+The entropy of a tokenizer's output distribution bounds the information available to downstream layers. For a vocabulary $V$ with token frequencies $p_i$:
+
+$$H(T) = -\sum_{i=1}^{|V|} p_i \log_2 p_i$$
+
+**Uniform baseline:** If all tokens equally likely, $H_{max} = \log_2 |V|$
+
+**Empirical observation:** Genomic tokenizers typically achieve $H(T) \approx 0.7 \cdot H_{max}$ due to GC content bias and repeat elements, meaning approximately 30% of vocabulary capacity is "wasted" on redundant encodings.
+
+This motivates *adaptive tokenization* strategies that allocate vocabulary to high-information regions (coding sequences, regulatory elements) rather than repetitive sequence.
+:::
 
 ### Computational Efficiency {#sec-ch05-computational-efficiency}
 

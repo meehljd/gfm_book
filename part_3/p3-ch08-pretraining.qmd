@@ -135,6 +135,26 @@ Pause and recall: What are the three main levels of sequence organization that M
 
 MLM also captures evolutionary conservation patterns implicitly, and this has direct relevance for clinical variant interpretation. Conserved sequences are constrained because mutations would disrupt function. By learning to predict conserved patterns from surrounding context, models encode which sequence features are under selection. This knowledge transfers to variant effect prediction, where the model recognizes when a mutation disrupts a learned conserved pattern. A variant that replaces a highly predictable position (one the model confidently fills in during MLM) is more likely to be damaging than one at a position where the model is uncertain. The connection between pretraining on raw sequence and downstream variant interpretation illustrates how self-supervised objectives capture biologically meaningful structure without explicit functional labels. The variant effect prediction approaches in @sec-ch18-vep-fm use these learned patterns directly, while probing methods (@sec-ch09-feature-extraction) reveal what specific patterns models have captured.
 
+:::{.callout-tip}
+## Key Insight: Masked Language Modeling as Entropy Estimation
+
+Masked language modeling has a precise information-theoretic interpretation that explains *what* the model learns and *why* it transfers.
+
+**Conditional Entropy Minimization.** When training MLM, we minimize:
+
+$$\mathcal{L}_{MLM} = -\mathbb{E}[\log p_\theta(x_i | x_{\setminus i})]$$
+
+This is equivalent to estimating the *conditional entropy* $H(X_i | X_{\setminus i})$—the uncertainty about a position given its context. A well-trained MLM learns $p_\theta(x_i | x_{\setminus i}) \approx p_{data}(x_i | x_{\setminus i})$.
+
+**What Low Entropy Reveals.** Positions with low conditional entropy are *highly constrained* by context—they carry biological signal:
+
+- Splice donor sites: Given surrounding context, GT is nearly deterministic
+- Codon wobble positions: First two bases strongly predict the third
+- TFBS cores: Flanking sequence predicts the binding motif
+
+**Why Transfer Works.** The model's internal representations must capture the *mutual information* $I(X_i; X_{\setminus i})$ to achieve low loss. This mutual information encodes local motif patterns (short-range), grammatical constraints like reading frame (medium-range), and regulatory element co-occurrence (long-range). These learned correlations transfer to downstream tasks because biological function *creates* the correlations—splicing machinery *causes* conserved splice sites, so learning splice site patterns implicitly learns about splicing.
+:::
+
 
 ## Next-Token Prediction {#sec-ch08-autoregressive}
 
@@ -296,6 +316,24 @@ where:
 - $z_i \cdot z_j$ denotes the dot product (or cosine similarity when embeddings are normalized)
 
 The sum runs over all $N$ samples in the batch, and $\tau$ controls the sharpness of the distribution. Why take this particular mathematical form? The objective frames contrastive learning as a classification problem: given the anchor, identify which of the many candidates is the true positive pair. The softmax structure ensures the model can only increase the score for the positive pair by simultaneously decreasing scores for negatives, forcing it to learn discriminative features rather than simply inflating all similarity scores. The temperature $\tau$ controls how harshly the model is penalized for near-misses. Lower temperatures make the model more discriminative, requiring cleaner separation between positives and negatives; a low temperature means that even small differences in similarity are amplified into large differences in the loss. The objective is equivalent to classifying the positive pair among all possible pairs, and the model learns representations that make this classification easy.
+
+:::{.callout-note}
+## Mathematical Detail: InfoNCE and Mutual Information
+
+Contrastive losses like InfoNCE have a precise connection to mutual information that explains their effectiveness.
+
+**Information-Theoretic Bound.** The InfoNCE loss provides a lower bound on mutual information between anchor and positive views:
+
+$$I(X; X^+) \geq \log(K+1) - \mathcal{L}_{\text{InfoNCE}}$$
+
+As the number of negative samples $K \to \infty$, the bound tightens. This means minimizing InfoNCE *maximizes a lower bound on mutual information* between augmented views.
+
+**Implications for Genomic Augmentation:**
+
+- Augmentations that preserve biological function (reverse complement, synonymous mutations) create views with high $I(X; X^+)$
+- Augmentations that destroy function (random shuffle) have low $I(X; X^+)$
+- The model learns representations where $I(Z; Y)$ is high for downstream labels $Y$ that correlate with the augmentation-invariant information
+:::
 
 ### Augmentation Design for Genomic Sequences {#sec-ch08-augmentation}
 

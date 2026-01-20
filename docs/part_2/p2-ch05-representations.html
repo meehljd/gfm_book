@@ -493,6 +493,12 @@ window.Quarto = {
  <span class="menu-text"><span class="chapter-number">F</span>&nbsp; <span class="chapter-title">Glossary</span></span></a>
   </div>
 </li>
+          <li class="sidebar-item">
+  <div class="sidebar-item-container"> 
+  <a href="../appendix/app-g-learning-theory.html" class="sidebar-item-text sidebar-link">
+ <span class="menu-text"><span class="chapter-number">G</span>&nbsp; <span class="chapter-title">Statistical Learning Theory Primer</span></span></a>
+  </div>
+</li>
       </ul>
   </li>
     </ul>
@@ -975,6 +981,27 @@ Check Your Answer
 <p>The <em>Nucleotide Transformer</em> addressed strand by including both orientations during training, using data augmentation to ensure the model sees sequences from both directions <span class="citation" data-cites="dalla-torre_nucleotide_2023">(<a href="../bib/references.html#ref-dalla-torre_nucleotide_2023" role="doc-biblioref">Dalla-Torre et al. 2023</a>)</span>. <em>Caduceus</em> introduced a more elegant solution in 2024: a bidirectional architecture processing forward and reverse complement strands simultaneously through shared computation <span class="citation" data-cites="schiff_caduceus_2024">(<a href="../bib/references.html#ref-schiff_caduceus_2024" role="doc-biblioref">Schiff et al. 2024</a>)</span>. The model outputs are equivariant to reverse complementation (reversing and complementing the input produces correspondingly transformed outputs). This inductive bias ensures consistent treatment of strand without requiring augmentation or doubling computational cost.</p>
 <p>Circular genomes present another topological consideration. Bacterial chromosomes and plasmids, mitochondrial DNA, and many viral genomes are circular, with no natural start or end position. Linear position encodings impose arbitrary boundaries on these sequences. Some models address this through circular position encodings that wrap around at sequence boundaries, while others process circular genomes as linear sequences with the understanding that boundary effects may introduce artifacts. Genomic coordinates carry information absent from raw sequence. The position <em>chr17:41,276,045</em> refers to a specific location in the <em>BRCA1</em> gene, and variants at this position have been extensively studied. Knowing the genomic coordinate enables lookup of prior knowledge: population frequencies from gnomAD, clinical interpretations from ClinVar, functional annotations from ENCODE. Some representation schemes incorporate coordinate information explicitly, enabling models to learn position-specific patterns and integrate with external databases. Others deliberately exclude coordinates to force models to learn purely from sequence, trading prior knowledge for generalization to novel sequences or other species.</p>
 <p>Multiple sequence inputs arise frequently in genomic applications. Variant effect prediction requires comparing reference and alternate alleles. Comparative genomics involves aligned sequences from multiple species. Some regulatory predictions require input from multiple genomic regions, such as promoter plus enhancer. Representation schemes must accommodate these multi-sequence inputs through concatenation, paired encoding, or specialized architectures processing multiple sequences jointly.</p>
+<div class="callout callout-style-default callout-tip callout-titled">
+<div class="callout-header d-flex align-content-center">
+<div class="callout-icon-container">
+<i class="callout-icon"></i>
+</div>
+<div class="callout-title-container flex-fill">
+Key Insight: Embeddings as Lossy Compression
+</div>
+</div>
+<div class="callout-body-container callout-body">
+<p>From an information-theoretic perspective, token embeddings perform <em>lossy compression</em> of discrete symbols into continuous vectors. This view illuminates fundamental tradeoffs in tokenization design.</p>
+<p><strong>Rate-Distortion Framework.</strong> Consider a tokenizer as a channel that maps input sequences <span class="math inline">\(X\)</span> to discrete tokens <span class="math inline">\(T\)</span>. The <em>rate</em> <span class="math inline">\(R = H(T)\)</span> measures the bits per position (vocabulary size determines upper bound: <span class="math inline">\(R \leq \log_2 |V|\)</span>). The <em>distortion</em> <span class="math inline">\(D\)</span> measures information lost about downstream tasks.</p>
+<p>For genomic sequences:</p>
+<ul>
+<li><strong>High rate (large vocabulary):</strong> BPE with 32k tokens preserves more sequence detail but requires larger embedding tables</li>
+<li><strong>Low rate (small vocabulary):</strong> Single-nucleotide (4 tokens) maximizes compression but embedding layers must learn richer representations</li>
+</ul>
+<p><strong>Mutual Information Principle.</strong> An effective embedding <span class="math inline">\(E(t)\)</span> maximizes mutual information <span class="math inline">\(I(E(T); Y)\)</span> with task labels <span class="math inline">\(Y\)</span> while the tokenizer controls <span class="math inline">\(I(X; T)\)</span>. This explains why k-mer tokenization can outperform single-nucleotide for some tasks (overlapping k-mers preserve local context that single tokens lose), and why BPE struggles with rare variants (tokens optimized for corpus frequency may split clinically important but rare motifs).</p>
+<p>The embedding dimension <span class="math inline">\(d\)</span> sets a <em>capacity bottleneck</em>: <span class="math inline">\(I(E(T); Y) \leq d \cdot C\)</span> where <span class="math inline">\(C\)</span> depends on activation precision. This motivates the empirical finding that larger embedding dimensions help until task complexity saturates.</p>
+</div>
+</div>
 </section>
 <section id="sec-ch05-tradeoffs" class="level2" data-number="5.8">
 <h2 data-number="5.8" class="anchored" data-anchor-id="sec-ch05-tradeoffs"><span class="header-section-number">5.8</span> Tradeoffs and Practical Guidance</h2>
@@ -1003,6 +1030,23 @@ Figure&nbsp;5.4: The compression-resolution tradeoff in genomic tokenization. Th
 <h3 data-number="5.8.2" class="anchored" data-anchor-id="sec-ch05-vocabulary-capacity"><span class="header-section-number">5.8.2</span> Vocabulary Size and Model Capacity</h3>
 <p>Transcription factors recognize specific 6-12 nucleotide motifs, but these motifs come in families with degenerate positions that tolerate multiple bases. A vocabulary containing all possible 6-mers can represent each motif variant as a distinct token, potentially capturing family relationships in embedding space. A vocabulary of only four nucleotides forces the model to learn these motif patterns compositionally across layers. The question is whether richer vocabularies accelerate learning or simply shift where the learning happens.</p>
 <p>Vocabulary size affects both model capacity and efficiency in ways that interact with embedding design. Larger vocabularies require bigger embedding tables but may capture more complex patterns directly in the token representation. Smaller vocabularies are parameter-efficient but require the model to learn compositional structure through multiple layers. One-hot encoding’s vocabulary of four tokens (plus special tokens) minimizes embedding parameters but maximizes the compositional learning burden. <em>K</em>-mer vocabularies scale exponentially with <span class="math inline">\(k\)</span>, reaching 4,096 for 6-mers. BPE vocabularies are tunable, typically ranging from 4,096 to 32,000 tokens for genomic applications.</p>
+<div class="callout callout-style-default callout-note callout-titled">
+<div class="callout-header d-flex align-content-center">
+<div class="callout-icon-container">
+<i class="callout-icon"></i>
+</div>
+<div class="callout-title-container flex-fill">
+Mathematical Detail: Entropy Bounds on Vocabulary
+</div>
+</div>
+<div class="callout-body-container callout-body">
+<p>The entropy of a tokenizer’s output distribution bounds the information available to downstream layers. For a vocabulary <span class="math inline">\(V\)</span> with token frequencies <span class="math inline">\(p_i\)</span>:</p>
+<p><span class="math display">\[H(T) = -\sum_{i=1}^{|V|} p_i \log_2 p_i\]</span></p>
+<p><strong>Uniform baseline:</strong> If all tokens equally likely, <span class="math inline">\(H_{max} = \log_2 |V|\)</span></p>
+<p><strong>Empirical observation:</strong> Genomic tokenizers typically achieve <span class="math inline">\(H(T) \approx 0.7 \cdot H_{max}\)</span> due to GC content bias and repeat elements, meaning approximately 30% of vocabulary capacity is “wasted” on redundant encodings.</p>
+<p>This motivates <em>adaptive tokenization</em> strategies that allocate vocabulary to high-information regions (coding sequences, regulatory elements) rather than repetitive sequence.</p>
+</div>
+</div>
 </section>
 <section id="sec-ch05-computational-efficiency" class="level3" data-number="5.8.3">
 <h3 data-number="5.8.3" class="anchored" data-anchor-id="sec-ch05-computational-efficiency"><span class="header-section-number">5.8.3</span> Computational Efficiency</h3>
@@ -1051,7 +1095,7 @@ Knowledge Check
 <div class="callout-body-container callout-body">
 <p>A research team has pretrained a DNA language model using BPE tokenization with an average compression ratio of 4:1. They want to fine-tune it for splice site prediction, which requires identifying exact dinucleotide boundaries (GT…AG). What challenges might they face? How might they address these challenges?</p>
 <div class="callout callout-style-default callout-note callout-titled" title="Check Your Answer">
-<div class="callout-header d-flex align-content-center" data-bs-toggle="collapse" data-bs-target=".callout-15-contents" aria-controls="callout-15" aria-expanded="false" aria-label="Toggle callout">
+<div class="callout-header d-flex align-content-center" data-bs-toggle="collapse" data-bs-target=".callout-17-contents" aria-controls="callout-17" aria-expanded="false" aria-label="Toggle callout">
 <div class="callout-icon-container">
 <i class="callout-icon"></i>
 </div>
@@ -1060,7 +1104,7 @@ Check Your Answer
 </div>
 <div class="callout-btn-toggle d-inline-block border-0 py-1 ps-1 pe-0 float-end"><i class="callout-toggle"></i></div>
 </div>
-<div id="callout-15" class="callout-15-contents callout-collapse collapse">
+<div id="callout-17" class="callout-17-contents callout-collapse collapse">
 <div class="callout-body-container callout-body">
 <p>The main challenge is that BPE tokens have variable length and may not align with the precise GT and AG dinucleotides that define splice boundaries. A token might contain part of GT plus neighboring bases, making it difficult to pinpoint the exact junction. They could address this by:</p>
 <ol type="1">
@@ -1092,7 +1136,7 @@ Test Yourself
 <li>What architectural innovation enabled HyenaDNA to process million-base-pair contexts at single-nucleotide resolution, escaping the compression-resolution tradeoff?</li>
 </ol>
 <div class="callout callout-style-default callout-note callout-titled" title="Check Your Answers">
-<div class="callout-header d-flex align-content-center" data-bs-toggle="collapse" data-bs-target=".callout-17-contents" aria-controls="callout-17" aria-expanded="false" aria-label="Toggle callout">
+<div class="callout-header d-flex align-content-center" data-bs-toggle="collapse" data-bs-target=".callout-19-contents" aria-controls="callout-19" aria-expanded="false" aria-label="Toggle callout">
 <div class="callout-icon-container">
 <i class="callout-icon"></i>
 </div>
@@ -1101,7 +1145,7 @@ Check Your Answers
 </div>
 <div class="callout-btn-toggle d-inline-block border-0 py-1 ps-1 pe-0 float-end"><i class="callout-toggle"></i></div>
 </div>
-<div id="callout-17" class="callout-17-contents callout-collapse collapse">
+<div id="callout-19" class="callout-19-contents callout-collapse collapse">
 <div class="callout-body-container callout-body">
 <ol type="1">
 <li><p><strong>Overlapping k-mer compression</strong>: Overlapping k-mer tokenization generates one token per nucleotide position (minus k-1 at the end), meaning a 10 kb sequence still requires approximately 10,000 tokens. This fails to address transformers’ quadratic attention complexity, which scales as O(L^2) with sequence length, making long genomic contexts computationally prohibitive despite the apparent use of multi-nucleotide tokens.</p></li>
