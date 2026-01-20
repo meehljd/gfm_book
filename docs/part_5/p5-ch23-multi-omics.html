@@ -646,7 +646,7 @@ Figure&nbsp;23.1: The multi-omics integration paradox. (A) Promise: each modalit
 <section id="sec-ch23-limits" class="level2" data-number="23.1">
 <h2 data-number="23.1" class="anchored" data-anchor-id="sec-ch23-limits"><span class="header-section-number">23.1</span> Limits of Single-Modality Models</h2>
 <p>Each molecular layer tells an incomplete story. DNA sequence is static; it encodes potential but not state. A variant’s presence says nothing about whether the gene is expressed, whether the protein is active, or whether the pathway is perturbed. Transcriptomic data captures expression state but misses post-transcriptional regulation, protein modifications, and metabolic flux. Proteomic measurements reveal protein abundance but not necessarily activity or localization. Methylation profiles indicate epigenetic state but require expression data to understand functional consequences.</p>
-<p>The incompleteness becomes concrete when modeling complex traits. Genome-wide association studies explain perhaps 10-20% of <strong>heritability</strong> for most common diseases through identified variants . Adding <strong>expression quantitative trait loci (eQTLs)</strong> improves <strong>fine-mapping</strong> by suggesting which variants affect gene expression (see <a href="../part_1/p1-ch03-gwas.html#sec-ch03-fine-mapping" class="quarto-xref"><span>Section 3.4</span></a>), but many causal mechanisms operate through splicing, translation, or post-translational modification rather than expression level. <strong>Single-cell RNA sequencing</strong> reveals cellular heterogeneity invisible to bulk measurements, but the same cell cannot simultaneously undergo RNA-seq and <strong>assay for transposase-accessible chromatin sequencing (ATAC-seq)</strong>, forcing computational integration across modalities measured in different cells (see <a href="p5-ch20-single-cell.html" class="quarto-xref"><span>Chapter 20</span></a> for approaches to this challenge).</p>
+<p>The incompleteness becomes concrete when modeling complex traits. Genome-wide association studies (see <a href="../part_1/p1-ch03-gwas.html" class="quarto-xref"><span>Chapter 3</span></a> for GWAS methodology) explain a fraction of total <strong>heritability</strong> for most common diseases through currently identified variants, with the gap between explained and estimated heritability forming the <strong>missing heritability problem</strong> <span class="citation" data-cites="manolio_finding_2009">(<a href="../bib/references.html#ref-manolio_finding_2009" role="doc-biblioref">Manolio et al. 2009</a>)</span>. Adding <strong>expression quantitative trait loci (eQTLs)</strong> improves <strong>fine-mapping</strong> by suggesting which variants affect gene expression (see <a href="../part_1/p1-ch03-gwas.html#sec-ch03-fine-mapping" class="quarto-xref"><span>Section 3.4</span></a>), but many causal mechanisms operate through splicing, translation, or post-translational modification rather than expression level. <strong>Single-cell RNA sequencing</strong> reveals cellular heterogeneity invisible to bulk measurements, but the same cell cannot simultaneously undergo RNA-seq and <strong>assay for transposase-accessible chromatin sequencing (ATAC-seq)</strong>, forcing computational integration across modalities measured in different cells (see <a href="p5-ch20-single-cell.html" class="quarto-xref"><span>Chapter 20</span></a> for approaches to this challenge).</p>
 <div class="callout callout-style-default callout-tip callout-titled">
 <div class="callout-header d-flex align-content-center">
 <div class="callout-icon-container">
@@ -716,7 +716,20 @@ Figure&nbsp;23.2: Multi-omics fusion strategies. (A) Early fusion: concatenate f
 <section id="sec-ch23-late-fusion" class="level3" data-number="23.2.2">
 <h3 data-number="23.2.2" class="anchored" data-anchor-id="sec-ch23-late-fusion"><span class="header-section-number">23.2.2</span> Late Fusion</h3>
 <p>What if each modality truly provides independent information, like separate witnesses to the same event? Late fusion bets that combining final verdicts outperforms forcing witnesses to deliberate together from the start. This independence assumption buys you robustness to missing data but costs you the ability to detect when witnesses are describing the same thing from different angles.</p>
-<p>Late fusion trains separate models for each modality and combines their predictions at the output level. A genomics model produces a risk score; a transcriptomics model produces another risk score; an ensemble method or meta-learner combines these modality-specific predictions into a final output.</p>
+<p>Late fusion trains separate models for each modality and combines their predictions at the output level. A genomics model produces a risk score; a transcriptomics model produces another risk score; these modality-specific predictions are then combined into a final output.</p>
+<div class="callout callout-style-default callout-note callout-titled">
+<div class="callout-header d-flex align-content-center">
+<div class="callout-icon-container">
+<i class="callout-icon"></i>
+</div>
+<div class="callout-title-container flex-fill">
+Late Fusion vs.&nbsp;Ensemble Learning
+</div>
+</div>
+<div class="callout-body-container callout-body">
+<p>Late fusion is related to but distinct from <strong>ensemble learning</strong>. Traditional ensembles combine multiple models trained on the <em>same</em> data to reduce variance and improve robustness: bagging averages diverse trees, boosting sequences weak learners, and stacking learns optimal combination weights. Late fusion, by contrast, combines models trained on <em>different</em> data modalities. Each model sees fundamentally different features (genomic variants vs.&nbsp;expression levels vs.&nbsp;protein abundance), not just different views or subsets of the same features. The modality-specific models may themselves be ensembles, and the combination layer may use ensemble techniques (weighted averaging, stacking), but the defining characteristic of late fusion is the separation of modalities during model training. This distinction matters because ensemble theory (bias-variance decomposition, diversity requirements) does not directly transfer: late fusion’s value comes from information complementarity across modalities rather than from variance reduction through model diversity.</p>
+</div>
+</div>
 <p>This approach handles missing modalities gracefully. If a patient lacks proteomic data, the proteomics model simply does not contribute to the ensemble. Sample sizes for each modality-specific model can differ, since training requires only samples with that modality rather than complete multi-omics profiles. Each modality can use whatever architecture works best for its data type: deep networks for imaging, gradient boosting for tabular omics, convolutional architectures for sequence.</p>
 <p>Late fusion cannot capture cross-modal interactions at the feature level. If a variant’s effect on disease depends on expression level of a regulatory gene, neither the genomics model nor the transcriptomics model alone can detect this interaction. The ensemble sees only the modality-specific predictions, not the underlying features. This limitation is fundamental: late fusion assumes that each modality provides independent signal that can be additively combined. Mathematically, if the true risk depends on an interaction term like <span class="math inline">\(\text{variant} \times \text{expression}\)</span>, late fusion can only approximate this with <span class="math inline">\(f_1(\text{variant}) + f_2(\text{expression})\)</span>, which cannot capture the non-additive structure regardless of how sophisticated the individual models become.</p>
 <p>The assumption of independence often fails in biological systems. Gene expression depends on genetic variants through eQTLs. Protein levels depend on both transcription and post-transcriptional regulation. Methylation states influence and are influenced by transcription. The molecular layers are not independent information sources but coupled components of a dynamic system. Late fusion ignores this coupling.</p>
@@ -904,7 +917,7 @@ Knowledge Check
 <li>What advantage does the Bayesian approach provide over simply training a regression from RNA to protein?</li>
 </ol>
 <div class="callout callout-style-default callout-note callout-titled" title="Check Your Answer">
-<div class="callout-header d-flex align-content-center" data-bs-toggle="collapse" data-bs-target=".callout-6-contents" aria-controls="callout-6" aria-expanded="false" aria-label="Toggle callout">
+<div class="callout-header d-flex align-content-center" data-bs-toggle="collapse" data-bs-target=".callout-7-contents" aria-controls="callout-7" aria-expanded="false" aria-label="Toggle callout">
 <div class="callout-icon-container">
 <i class="callout-icon"></i>
 </div>
@@ -913,7 +926,7 @@ Check Your Answer
 </div>
 <div class="callout-btn-toggle d-inline-block border-0 py-1 ps-1 pe-0 float-end"><i class="callout-toggle"></i></div>
 </div>
-<div id="callout-6" class="callout-6-contents callout-collapse collapse">
+<div id="callout-7" class="callout-7-contents callout-collapse collapse">
 <div class="callout-body-container callout-body">
 <ol type="1">
 <li><p>RNA-seq suffers from technical dropout where transcripts fail to be captured despite being present (requiring zero-inflation), while protein measurements from antibody-based methods have background binding noise but less zero-inflation. Using the correct likelihood prevents the model from distorting its latent space to accommodate systematic errors.</p></li>
@@ -963,6 +976,24 @@ Research Opportunity
 <p>Electronic health records contain decades of longitudinal observations for millions of patients: diagnoses, procedures, medications, laboratory values, vital signs, clinical notes. This wealth of phenotypic information complements molecular data by capturing disease manifestation rather than molecular mechanism.</p>
 <p>Integrating EHR with genomics poses distinct challenges. The data types differ fundamentally: structured codes, continuous lab values, free-text notes, and time-stamped events versus static or slowly-changing molecular measurements. Temporal structure matters: the sequence of diagnoses and treatments contains prognostic information that static snapshots miss. Missingness is informative: the absence of a laboratory test may indicate that a clinician deemed it unnecessary, which itself conveys information about patient state (<a href="../part_1/p1-ch02-data.html#sec-ch02-ehr" class="quarto-xref"><span>Section 2.7.2</span></a>). The phenotype quality challenges introduced there cascade through multi-omics integration, where EHR-derived labels may introduce systematic biases that <a href="../part_3/p3-ch13-confounding.html#sec-ch13-label-bias" class="quarto-xref"><span>Section 13.2.4</span></a> examines in detail.</p>
 <p>Foundation models for EHR data learn representations from the longitudinal event sequences. These models, often based on transformer architectures that process sequences of medical codes (see <a href="../part_2/p2-ch07-attention.html" class="quarto-xref"><span>Chapter 7</span></a>), capture temporal dependencies and co-occurrence patterns in clinical trajectories. The resulting patient embeddings encode disease state and prognosis in a form amenable to integration with molecular data.</p>
+<div class="callout callout-style-default callout-note callout-titled">
+<div class="callout-header d-flex align-content-center">
+<div class="callout-icon-container">
+<i class="callout-icon"></i>
+</div>
+<div class="callout-title-container flex-fill">
+Handling the Time Series Nature of EHR Data
+</div>
+</div>
+<div class="callout-body-container callout-body">
+<p>EHR data presents distinct time series challenges that affect multi-omics integration:</p>
+<p><strong>Irregular sampling.</strong> Clinical events occur at irregular intervals driven by patient visits, not a fixed measurement schedule. Lab values might be measured daily during hospitalization, monthly during stable periods, and not at all when patients feel healthy. Standard time series methods assuming regular intervals require adaptation.</p>
+<p><strong>Event sequences vs.&nbsp;continuous signals.</strong> EHR contains both discrete events (diagnoses, procedures) and continuous measurements (vital signs, lab values). Effective architectures must handle both: transformers that process event sequences, recurrent networks that interpolate continuous signals, or hybrid approaches.</p>
+<p><strong>Variable-length histories.</strong> Patients have clinical histories spanning days to decades. Encoding must handle this variability, whether through truncation to recent windows, hierarchical summarization, or attention mechanisms that learn which distant events remain relevant.</p>
+<p><strong>Censoring and outcome timing.</strong> For survival analysis and risk prediction, the timing of outcome events matters as much as their occurrence. Integration with molecular data requires careful alignment: when was the molecular sample collected relative to the clinical trajectory? Predictions should not use future clinical events that post-date the molecular measurement.</p>
+<p>For specialized EHR modeling architectures including BEHRT, Med-BERT, and clinical transformer variants, see the clinical risk modeling discussion in <a href="../part_7/p7-ch28-clinical-risk.html#sec-ch28-ehr-integration" class="quarto-xref"><span>Section 28.4</span></a>.</p>
+</div>
+</div>
 <div class="callout callout-style-default callout-important callout-titled">
 <div class="callout-header d-flex align-content-center">
 <div class="callout-icon-container">
@@ -1149,6 +1180,7 @@ Key Insight
 <section id="sec-ch23-causal-correlational" class="level3" data-number="23.5.3">
 <h3 data-number="23.5.3" class="anchored" data-anchor-id="sec-ch23-causal-correlational"><span class="header-section-number">23.5.3</span> Causal vs.&nbsp;Correlational Integration</h3>
 <p>Multi-omics data are pervasively correlated. Genes in the same pathway have correlated expression. Methylation and expression are anti-correlated at many promoters. Clinical variables cluster by disease category. These correlations can improve prediction even without causal understanding.</p>
+<p>When integrating high-dimensional multi-omics features, controlling false discoveries becomes critical. <strong>Model-X knockoffs</strong> provide a framework for variable selection with false discovery rate (FDR) control, applicable to any covariate matrix regardless of the response type <span class="citation" data-cites="candes_panning_2018">(<a href="../bib/references.html#ref-candes_panning_2018" role="doc-biblioref">Candès et al. 2018</a>)</span>. The approach constructs synthetic “knockoff” variables that mimic the correlation structure of original features without containing signal, then selects only features whose importance exceeds their knockoffs. This is particularly valuable for multi-omics integration where thousands of correlated features across modalities could generate spurious associations. For genomics specifically, knockoffs have been applied to fine-mapping, identifying causal variants with FDR guarantees. The statistical foundations and genomic applications are discussed in <a href="../part_6/p6-ch26-causal.html#sec-ch26-knockoffs" class="quarto-xref"><span>Section 26.2.2</span></a>.</p>
 <p>Causal integration seeks to identify the mechanistic relationships between molecular layers. If a variant causes reduced expression, which causes protein deficiency, which causes metabolic dysfunction, this causal chain suggests intervention targets: expression restoration or enzyme supplementation might address the downstream effects. Correlational integration might achieve the same predictive performance without identifying this chain, since all layers correlate with the phenotype.</p>
 <p>Distinguishing causal from correlational relationships requires experimental perturbation or careful causal inference from observational data. Mendelian randomization uses genetic variants as instruments to infer causal effects of expression on outcomes (see <a href="../part_1/p1-ch03-gwas.html#sec-ch03-mechanism" class="quarto-xref"><span>Section 3.9</span></a> for integration of GWAS with mechanism). CRISPR screens directly perturb gene function and measure consequences. Multi-omics integration methods increasingly incorporate causal assumptions or validation against perturbation data.</p>
 <p>The distinction matters for interpretation and intervention. A predictive model based on correlations may fail when the data distribution shifts (see <a href="../part_3/p3-ch13-confounding.html" class="quarto-xref"><span>Chapter 13</span></a>) or when interventions alter the causal structure. A causally informed model captures mechanism that persists across contexts.</p>
@@ -1235,7 +1267,7 @@ Knowledge Check
 <li>How might the fusion strategy choice (early, late, intermediate) affect robustness to this kind of distribution shift?</li>
 </ol>
 <div class="callout callout-style-default callout-note callout-titled" title="Check Your Answer">
-<div class="callout-header d-flex align-content-center" data-bs-toggle="collapse" data-bs-target=".callout-14-contents" aria-controls="callout-14" aria-expanded="false" aria-label="Toggle callout">
+<div class="callout-header d-flex align-content-center" data-bs-toggle="collapse" data-bs-target=".callout-16-contents" aria-controls="callout-16" aria-expanded="false" aria-label="Toggle callout">
 <div class="callout-icon-container">
 <i class="callout-icon"></i>
 </div>
@@ -1244,7 +1276,7 @@ Check Your Answer
 </div>
 <div class="callout-btn-toggle d-inline-block border-0 py-1 ps-1 pe-0 float-end"><i class="callout-toggle"></i></div>
 </div>
-<div id="callout-14" class="callout-14-contents callout-collapse collapse">
+<div id="callout-16" class="callout-16-contents callout-collapse collapse">
 <div class="callout-body-container callout-body">
 <ol type="1">
 <li><p>Three likely reasons: batch effects differing between hospitals (different sequencing platforms, sample processing), population differences (ancestry, age distribution, disease subtypes), or the model memorizing hospital-specific technical artifacts rather than biological signal.</p></li>
@@ -1282,7 +1314,7 @@ Test Yourself
 <li>Explain the difference between causal and correlational integration, and why this distinction matters for clinical interventions.</li>
 </ol>
 <div class="callout callout-style-default callout-note callout-titled" title="Check Your Answers">
-<div class="callout-header d-flex align-content-center" data-bs-toggle="collapse" data-bs-target=".callout-16-contents" aria-controls="callout-16" aria-expanded="false" aria-label="Toggle callout">
+<div class="callout-header d-flex align-content-center" data-bs-toggle="collapse" data-bs-target=".callout-18-contents" aria-controls="callout-18" aria-expanded="false" aria-label="Toggle callout">
 <div class="callout-icon-container">
 <i class="callout-icon"></i>
 </div>
@@ -1291,7 +1323,7 @@ Check Your Answers
 </div>
 <div class="callout-btn-toggle d-inline-block border-0 py-1 ps-1 pe-0 float-end"><i class="callout-toggle"></i></div>
 </div>
-<div id="callout-16" class="callout-16-contents callout-collapse collapse">
+<div id="callout-18" class="callout-18-contents callout-collapse collapse">
 <div class="callout-body-container callout-body">
 <ol type="1">
 <li><p><strong>Integration Paradox</strong>: The paradox is that naive concatenation of multi-omics features often degrades performance relative to single-modality models. This occurs because noise from uninformative features overwhelms signal from informative ones, batch effects between modalities create spurious correlations that models exploit, and the curse of dimensionality intensifies when features from multiple assays are stacked without principled integration, resulting in more parameters to estimate than training samples can constrain.</p></li>
@@ -1351,11 +1383,17 @@ Argelaguet, Ricard, Britta Velten, Damien Arnol, Sascha Dietrich, Thorsten Zenz,
 <div id="ref-ashuach_multivi_2023" class="csl-entry" role="listitem">
 Ashuach, Tal, Mariano I. Gabitto, Michael I. Koodber, Valentine Svensson, Michael I. Jordan, and Nir Yosef. 2023. <span>“<span>MultiVI</span>: Deep Generative Model for the Integration of Multimodal Data.”</span> <em>Nature Methods</em> 20 (8): 1232–40. <a href="https://doi.org/10.1038/s41592-023-01909-9">https://doi.org/10.1038/s41592-023-01909-9</a>.
 </div>
+<div id="ref-candes_panning_2018" class="csl-entry" role="listitem">
+Candès, Emmanuel, Yingying Fan, Lucas Janson, and Jinchi Lv. 2018. <span>“Panning for <span>Gold</span>: <span>‘<span>Model</span>-<span>X</span>’</span> <span>Knockoffs</span> for <span>High</span> <span>Dimensional</span> <span>Controlled</span> <span>Variable</span> <span>Selection</span>.”</span> <em>Journal of the Royal Statistical Society Series B: Statistical Methodology</em> 80 (3): 551–77. <a href="https://doi.org/10.1111/rssb.12265">https://doi.org/10.1111/rssb.12265</a>.
+</div>
 <div id="ref-gayoso_joint_2021" class="csl-entry" role="listitem">
 Gayoso, Adam, Zoë Steier, Romain Lopez, Jeffrey Regier, Kristopher L. Nazor, Aaron Streets, and Nir Yosef. 2021. <span>“Joint Probabilistic Modeling of Single-Cell Multi-Omic Data with <span class="nocase">totalVI</span>.”</span> <em>Nature Methods</em> 18 (3): 272–82. <a href="https://doi.org/10.1038/s41592-020-01050-x">https://doi.org/10.1038/s41592-020-01050-x</a>.
 </div>
 <div id="ref-hwang_glm_2024" class="csl-entry" role="listitem">
 Hwang, Yunha, Andre L. Cornman, Elizabeth H. Kellogg, Sergey Ovchinnikov, and Peter R. Girguis. 2024. <span>“Genomic Language Model Predicts Protein Co-Regulation and Function.”</span> <em>Nature Communications</em> 15 (1): 2880. <a href="https://doi.org/10.1038/s41467-024-46947-9">https://doi.org/10.1038/s41467-024-46947-9</a>.
+</div>
+<div id="ref-manolio_finding_2009" class="csl-entry" role="listitem">
+Manolio, Teri A., Francis S. Collins, Nancy J. Cox, David B. Goldstein, Lucia A. Hindorff, David J. Hunter, Mark I. McCarthy, et al. 2009. <span>“Finding the Missing Heritability of Complex Diseases.”</span> <em>Nature</em> 461 (7265): 747–53. <a href="https://doi.org/10.1038/nature08494">https://doi.org/10.1038/nature08494</a>.
 </div>
 <div id="ref-radford_learning_2021" class="csl-entry" role="listitem">
 Radford, Alec, Jong Wook Kim, Chris Hallacy, Aditya Ramesh, Gabriel Goh, Sandhini Agarwal, Girish Sastry, et al. 2021. <span>“Learning <span>Transferable</span> <span>Visual</span> <span>Models</span> <span>From</span> <span>Natural</span> <span>Language</span> <span>Supervision</span>.”</span> In <em>Proceedings of the 38th <span>International</span> <span>Conference</span> on <span>Machine</span> <span>Learning</span></em>, 8748–63.

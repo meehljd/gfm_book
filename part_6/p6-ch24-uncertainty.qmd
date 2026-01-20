@@ -1,6 +1,6 @@
 # Uncertainty Quantification {#sec-ch24-uncertainty}
 
-> A pathogenicity score of 0.73 means nothing unless we know what 0.73 means.
+> The question is not whether our predictions are uncertain; they always are. The question is whether we have the honesty to say so.
 
 :::{.callout-note}
 ## Chapter Overview
@@ -99,9 +99,38 @@ Before reading the next section, consider: If you have a variant in a gene with 
 
 Some variants are genuinely ambiguous regardless of how much data we collect. The same pathogenic variant in *BRCA1* causes breast cancer in one carrier but not another due to modifier genes, hormonal exposures, or stochastic developmental processes. Incomplete penetrance, the phenomenon where disease-associated variants do not always produce disease, creates irreducible uncertainty that no amount of training data can eliminate. This inherent randomness in the mapping from genotype to phenotype constitutes **aleatoric uncertainty**.
 
-Aleatoric uncertainty reflects noise or stochasticity intrinsic to the prediction problem rather than limitations of the model. Variable expressivity means that even when a variant causes disease, the severity and specific manifestations vary across individuals. Measurement noise in functional assays introduces uncertainty into the labels used for training: **deep mutational scanning** experiments typically exhibit 10 to 20 percent technical variation between replicates [@fowler_deep_2014; @rubin_statistical_2017], creating a floor below which prediction error cannot decrease regardless of model sophistication (see @sec-ch02-dms for a discussion of DMS data characteristics). Stochastic gene expression means that two genetically identical cells may express a gene at different levels due to random fluctuations in transcription and translation. These sources of randomness set fundamental limits on predictive accuracy.
+Aleatoric uncertainty reflects noise or stochasticity intrinsic to the prediction problem rather than limitations of the model. In statistical learning theory, this concept connects directly to the **Bayes error rate**---the minimum achievable error for any classifier given the inherent overlap between class distributions. Even an optimal classifier with access to the true data-generating distribution cannot achieve zero error when biological variability causes the same genotype to produce different phenotypes. This represents the **irreducible error** component in the bias-variance decomposition: total error = bias + variance + irreducible error. The irreducible term persists regardless of model complexity or data quantity.
 
-Aleatoric uncertainty often varies with the input, a property termed heteroscedasticity. Coding variants in essential genes may have relatively low aleatoric uncertainty because strong selection pressure produces consistent phenotypic effects. Regulatory variants exhibit higher aleatoric uncertainty because their effects depend on cellular context, developmental timing, and interactions with other genetic and environmental factors. A model that captures this heteroscedasticity can provide more informative uncertainty estimates by conveying that some predictions are inherently more reliable than others.
+Variable expressivity means that even when a variant causes disease, the severity and specific manifestations vary across individuals. Measurement noise in functional assays introduces uncertainty into the labels used for training: **deep mutational scanning** experiments typically exhibit 10 to 20 percent technical variation between replicates [@fowler_deep_2014; @rubin_statistical_2017], creating a floor below which prediction error cannot decrease regardless of model sophistication (see @sec-ch02-dms for a discussion of DMS data characteristics). Replicate convergence analysis provides a practical estimate of this floor: when averaging across increasing numbers of experimental replicates yields diminishing returns, the residual variance approximates aleatoric uncertainty. Stochastic gene expression means that two genetically identical cells may express a gene at different levels due to random fluctuations in transcription and translation. These sources of randomness set fundamental limits on predictive accuracy.
+
+::: {.callout-note}
+## Stochastic Processes in Molecular Biology
+
+Biology is inherently stochastic at the molecular level. Gene expression involves probabilistic events: transcription factor binding follows mass-action kinetics with random association and dissociation; RNA polymerase initiation occurs stochastically; mRNA molecules degrade with exponential waiting times; translation initiation is probabilistic. These molecular fluctuations propagate to cellular phenotypes.
+
+Key stochastic phenomena relevant to genomic prediction include:
+
+- **Transcriptional bursting**: Genes transcribe in discrete pulses rather than continuously, creating cell-to-cell variability even among genetically identical cells [@raj_nature_2008]
+- **Allelic imbalance**: Random monoallelic expression and X-chromosome inactivation introduce stochastic differences between cells
+- **Developmental noise**: Random fluctuations during embryogenesis can amplify small initial differences, contributing to incomplete penetrance
+- **Epigenetic bistability**: Some regulatory circuits exhibit bistable dynamics where stochastic fluctuations can flip cells between states
+
+These processes explain why identical genotypes can produce variable phenotypes, and why this variability represents a fundamental limit on predictive accuracy rather than a failure of modeling.
+:::
+
+::: {.callout-important}
+## "Irreducible" Is Relative to the Measurement
+
+The term "irreducible" in aleatoric uncertainty requires careful interpretation. From the perspective of scaling training data alone, this uncertainty cannot be reduced. However, process improvements can shrink what appeared irreducible:
+
+- **Better phenotyping**: Finer-grained outcome measurements may resolve apparent stochasticity (distinguishing subtypes of disease previously grouped together)
+- **Additional covariates**: Measuring modifier genes, environmental exposures, or epigenetic state can explain previously random variation
+- **Improved assays**: Reducing technical noise in functional experiments lowers the measurement component of aleatoric uncertainty
+
+What counts as "irreducible" depends on the information available. Today's aleatoric uncertainty may become tomorrow's explained variance through richer data collection, though some genuine biological stochasticity will always remain.
+:::
+
+Aleatoric uncertainty often varies with the input, a property termed **heteroscedasticity** (from Greek: "different scatter"). This statistical term describes situations where the variance of residuals differs across the range of predictor values, in contrast to homoscedasticity where variance remains constant. In genomic prediction, heteroscedasticity is the norm rather than the exception. Coding variants in essential genes may have relatively low aleatoric uncertainty because strong selection pressure produces consistent phenotypic effects. Regulatory variants exhibit higher aleatoric uncertainty because their effects depend on cellular context, developmental timing, and interactions with other genetic and environmental factors. A model that captures this heteroscedasticity can provide more informative uncertainty estimates by conveying that some predictions are inherently more reliable than others.
 
 The following table summarizes the key distinctions between epistemic and aleatoric uncertainty:
 
@@ -126,14 +155,38 @@ Total predictive uncertainty combines epistemic and aleatoric components, and di
 The following mathematical framework for uncertainty decomposition requires comfort with variance and conditional probability. If these concepts are unfamiliar, focus on the intuition: ensemble disagreement measures epistemic uncertainty, while within-model variance measures aleatoric uncertainty. The key insight is that total uncertainty can be partitioned into "uncertainty we can reduce" and "uncertainty we cannot."
 :::
 
-The law of total variance provides a mathematical framework for decomposition. Total variance in predictions equals the sum of variance due to model uncertainty (epistemic) and variance inherent in the data-generating process (aleatoric). In practice, ensemble methods approximate epistemic uncertainty through disagreement between members: if five independently trained models produce predictions of 0.65, 0.68, 0.70, 0.72, and 0.75, the spread reflects epistemic uncertainty, while the residual variance within each model's predictions reflects aleatoric uncertainty. Heteroscedastic neural networks, which output both a predicted mean and a predicted variance, can estimate aleatoric uncertainty by learning input-dependent noise levels.
+The **law of total variance** provides a mathematical framework for this decomposition. For a prediction $Y$ given input $x$ and model parameters $\theta$:
+
+$$
+\underbrace{\text{Var}[Y \mid x]}_{\text{Total uncertainty}} = \underbrace{\mathbb{E}_\theta[\text{Var}[Y \mid x, \theta]]}_{\text{Aleatoric (expected variance)}} + \underbrace{\text{Var}_\theta[\mathbb{E}[Y \mid x, \theta]]}_{\text{Epistemic (variance of means)}}
+$$ {#eq-24-variance-decomp}
+
+In words:
+
+- **Total uncertainty** = uncertainty in predictions for input $x$
+- **Aleatoric component** = average variance across different models (inherent noise that persists regardless of which model parameters we have)
+- **Epistemic component** = variance of the mean predictions across models (disagreement about what the prediction should be)
+
+For an ensemble of $M$ models, this decomposition can be estimated empirically:
+
+$$
+\hat{\sigma}^2_{\text{epistemic}}(x) = \frac{1}{M} \sum_{m=1}^{M} \left( \hat{y}_m(x) - \bar{y}(x) \right)^2
+$$ {#eq-24-epistemic-est}
+
+$$
+\hat{\sigma}^2_{\text{aleatoric}}(x) = \frac{1}{M} \sum_{m=1}^{M} \hat{\sigma}^2_m(x)
+$$ {#eq-24-aleatoric-est}
+
+where $\hat{y}_m(x)$ is model $m$'s prediction, $\bar{y}(x) = \frac{1}{M}\sum_m \hat{y}_m(x)$ is the ensemble mean, and $\hat{\sigma}^2_m(x)$ is model $m$'s predicted variance (for heteroscedastic models).
+
+In practice, ensemble methods approximate epistemic uncertainty through disagreement between members: if five independently trained models produce predictions of 0.65, 0.68, 0.70, 0.72, and 0.75, the spread reflects epistemic uncertainty, while the residual variance within each model's predictions reflects aleatoric uncertainty. Heteroscedastic neural networks, which output both a predicted mean and a predicted variance, can estimate aleatoric uncertainty by learning input-dependent noise levels.
 
 These decompositions depend on modeling assumptions and provide approximations rather than exact separations. Ensemble disagreement may underestimate epistemic uncertainty if all members share similar biases from common training data. Heteroscedastic models may confound aleatoric and epistemic uncertainty if the training data is too sparse to reliably estimate noise levels. Despite these limitations, approximate decomposition provides actionable information: variants flagged for high epistemic uncertainty warrant additional data collection or expert review, while variants with high aleatoric uncertainty may require acceptance of irreducible limits on predictive confidence.
 
 
 ## Calibration and Confidence Interpretation {#sec-ch24-calibration}
 
-**Calibration** determines whether model outputs can be interpreted as probabilities. A score of 0.85 from a pathogenicity predictor should mean that 85% of variants receiving similar scores are truly pathogenic; only then can clinicians rationally weight computational evidence against other diagnostic criteria. This chapter provides the comprehensive treatment of calibration theory and methods. Readers encountering calibration in applied contexts, whether variant effect prediction (@sec-ch18-calibration) or evaluation methodology (@sec-ch12-eval), are referred here for the formal foundations and complete methodological catalog.
+**Calibration** determines whether model outputs can be interpreted as probabilities. A score of 0.85 from a pathogenicity predictor should mean that 85% of variants receiving similar scores are truly pathogenic; only then can clinicians rationally weight computational evidence against other diagnostic criteria. The following sections provide a comprehensive treatment of calibration theory and methods, serving as the formal foundation for calibration discussions in applied contexts such as variant effect prediction (@sec-ch18-calibration) and evaluation methodology (@sec-ch12-eval).
 
 ::: {#fig-calibration-diagrams layout-ncol=2}
 ![Perfect calibration: predictions match observed frequencies](../figs/part_6/ch24/02-A-fig-calibration-diagrams.svg)
@@ -151,13 +204,13 @@ Model calibration assessment. (A) Perfect calibration: predicted probabilities m
 
 *AlphaMissense* outputs a continuous score between 0 and 1 for each possible missense variant in the human proteome. When it reports 0.85 for a particular variant, what does this number mean? If the model is calibrated, collecting all variants scored near 0.85 and checking their true clinical status should reveal that approximately 85% are pathogenic. Perfect calibration means that predicted probabilities match observed frequencies across the entire range of model outputs: among variants scored at 0.30, roughly 30% should be pathogenic; among variants scored at 0.95, roughly 95% should be pathogenic. This alignment between stated confidence and empirical accuracy is calibration, and most foundation models fail to achieve it.
 
-Think of calibration like weather forecasts. When your weather app says "70% chance of rain," you expect that across many days with 70% forecasts, it actually rains about 70% of the time. If it only rains 40% of those days, the app is overconfident and you cannot trust its numbers to plan your week. Similarly, a pathogenicity predictor claiming 85% confidence should be right 85% of the time at that confidence level; otherwise, clinicians cannot rationally weigh its predictions against other evidence.
+A familiar analogy clarifies the concept: weather forecasts. When a weather app reports "70% chance of rain," that prediction is calibrated if, across many days receiving 70% forecasts, it actually rains about 70% of the time. If rain occurs on only 40% of those days, the app is overconfident, and its numerical predictions cannot reliably inform planning. Similarly, a pathogenicity predictor claiming 85% confidence should be correct 85% of the time at that confidence level; otherwise, clinicians cannot rationally weigh its predictions against other evidence.
 
 Formally, a model $f$ mapping inputs $X$ to probability estimates $p = f(X)$ is calibrated if $P(Y = 1 \mid f(X) = p) = p$ for all $p$ in the interval from $0$ to $1$. The calibration condition requires that the model's stated confidence equals the true probability of the positive class conditional on that stated confidence. Miscalibration occurs when this equality fails: overconfident models produce predicted probabilities that exceed true frequencies (a variant scored at $0.85$ is pathogenic only $60\%$ of the time), while underconfident models produce predicted probabilities below true frequencies.
 
 Modern deep neural networks are systematically miscalibrated despite achieving high accuracy. Guo and colleagues demonstrated that contemporary architectures exhibit worse calibration than older, less accurate models [@guo_calibration_2017]. The phenomenon arises because standard training objectives like cross-entropy loss optimize for discrimination (separating positive from negative examples) rather than calibration (matching predicted probabilities to frequencies). Over-parameterized models with capacity exceeding what the data requires can achieve near-perfect training loss while producing overconfident predictions on held-out data. The softmax temperature in transformer architectures affects the sharpness of probability distributions, and default settings often produce excessively peaked outputs.
 
-Calibration and discrimination are distinct properties. A model can achieve perfect **area under the receiver operating characteristic curve (auROC)**, correctly ranking all positive examples above all negative examples, while being arbitrarily miscalibrated. If a classifier assigns probability 0.99 to all positive examples and 0.98 to all negative examples, it ranks perfectly but provides useless probability estimates. Conversely, a calibrated model that assigns 0.51 to positives and 0.49 to negatives would be calibrated but nearly useless for discrimination. Clinical applications typically require both: accurate ranking to identify high-risk variants and accurate probabilities to inform decision-making.
+Calibration and discrimination are distinct properties. A model can achieve perfect **area under the receiver operating characteristic curve (auROC)**, correctly ranking all positive examples above all negative examples, while being arbitrarily miscalibrated. If a classifier assigns probability 0.99 to all positive examples and 0.98 to all negative examples, it ranks perfectly but provides useless probability estimates. Conversely, a calibrated model that assigns probability 0.5 to every variant would be perfectly calibrated if half of all variants are truly pathogenic, but such a model would be useless for discrimination since it provides no information about which variants are which. Clinical applications typically require both: accurate ranking to identify high-risk variants and accurate probabilities to inform decision-making.
 
 :::{.callout-tip}
 ## Knowledge Check
@@ -165,13 +218,29 @@ Calibration and discrimination are distinct properties. A model can achieve perf
 A variant effect predictor achieves auROC of 0.95 on a held-out test set. A colleague concludes that "the model's probability estimates are reliable." What is wrong with this reasoning? What additional assessment would you recommend?
 
 :::{.callout-note collapse="true" title="Check Your Answer"}
-auROC measures discrimination (how well the model ranks pathogenic variants above benign ones) but says nothing about calibration (whether predicted probabilities match observed frequencies). A model can achieve perfect auROC while being arbitrarily miscalibrated (for example, by assigning 0.99 to all pathogenic variants and 0.98 to all benign variants). You should assess calibration using reliability diagrams and ECE, stratified by relevant subgroups like ancestry and variant type.
+auROC measures discrimination (how well the model ranks pathogenic variants above benign ones) but says nothing about calibration (whether predicted probabilities match observed frequencies). A model can achieve perfect auROC while being arbitrarily miscalibrated (for example, by assigning 0.99 to all pathogenic variants and 0.98 to all benign variants). Proper assessment requires reliability diagrams and ECE, stratified by relevant subgroups like ancestry and variant type.
 :::
+:::
+
+::: {.callout-note}
+## Terminology: Score, Confidence, Probability, and Likelihood
+
+These terms are often used loosely in machine learning, but they have distinct meanings that matter for clinical interpretation:
+
+**Score**: A generic term for any numerical output from a model. Scores may be unbounded (like logits), bounded (like sigmoid outputs), or transformed in various ways. A score carries no inherent probabilistic interpretation; it is simply a number that the model uses to rank or classify inputs.
+
+**Confidence**: In machine learning, typically refers to the model's internal certainty about a prediction, often operationalized as the maximum softmax probability. A model reporting "95% confidence" means its highest class probability is 0.95. However, confidence can be miscalibrated: a model may express high confidence while being frequently wrong.
+
+**Probability**: A calibrated estimate that can be interpreted as a true frequency. When a model reports "probability 0.7 of pathogenicity," this should mean that 70% of variants receiving this score are actually pathogenic. Probability requires calibration; raw model outputs rarely achieve this interpretation.
+
+**Likelihood**: In statistics, likelihood refers specifically to $P(\text{data} \mid \text{parameters})$---the probability of observing the data given specific model parameters. This is distinct from probability of the hypothesis given the data. Language models compute likelihoods (probability of a sequence given the model), which can be converted to variant effect scores but are not pathogenicity probabilities without calibration.
+
+**Clinical implication**: When communicating with clinicians, clarify whether a number is a raw score (useful only for ranking), a confidence (the model's internal certainty, which may be miscalibrated), or a calibrated probability (a true frequency estimate suitable for decision-making).
 :::
 
 ### Measuring Calibration {#sec-ch24-measuring-calibration}
 
-**Reliability diagrams** provide visual assessment of calibration by plotting predicted probabilities against observed frequencies. Construction involves binning predictions into intervals (commonly ten bins spanning 0 to 0.1, 0.1 to 0.2, and so forth), computing the mean predicted probability within each bin, computing the fraction of positive examples within each bin, and plotting these two quantities against each other. A perfectly calibrated model produces points along the diagonal where predicted probability equals observed frequency. Systematic deviations reveal calibration patterns: points below the diagonal indicate overconfidence (predictions exceed reality), points above indicate underconfidence, and S-shaped curves suggest nonlinear miscalibration requiring more flexible correction.
+**Reliability diagrams** provide visual assessment of calibration by plotting predicted probabilities against observed frequencies. Predictions are binned into intervals (commonly using decile bins: 0-0.1, 0.1-0.2, ..., 0.9-1.0), and for each bin, the mean predicted probability is plotted against the observed fraction of positive examples. A perfectly calibrated model produces points along the diagonal where predicted probability equals observed frequency. Systematic deviations reveal calibration patterns: points below the diagonal indicate overconfidence (predictions exceed reality), points above indicate underconfidence, and S-shaped curves suggest nonlinear miscalibration requiring more flexible correction.
 
 **Expected calibration error (ECE)** provides a scalar summary of calibration quality. ECE computes the weighted average absolute difference between predicted probabilities and observed frequencies across bins:
 
@@ -211,7 +280,21 @@ Zero-shot approaches present particular calibration challenges. *ESM-1v* log-lik
 
 ### Calibration Across Subgroups {#sec-ch24-subgroup-calibration}
 
-Aggregate calibration metrics can mask severe miscalibration in clinically important subgroups. A model might achieve low ECE overall while being dramatically overconfident for variants in African-ancestry individuals and underconfident for European-ancestry individuals, with opposite errors canceling in aggregate statistics. Subgroup-stratified calibration assessment is essential for any model intended for diverse populations.
+Aggregate calibration metrics can mask severe miscalibration in clinically important subgroups. A model might achieve low ECE overall while being systematically miscalibrated for specific populations, with opposite errors canceling in aggregate statistics. For example, overconfidence in one ancestry group and underconfidence in another can produce near-zero average calibration error despite poor performance for both. Subgroup-stratified calibration assessment is essential for any model intended for diverse populations.
+
+::: {.callout-note}
+## Beyond Binary Ancestry Comparisons
+
+While European versus African ancestry comparisons appear frequently in genomic literature (reflecting the populations most represented and most underrepresented in training data, respectively), calibration disparities extend across the full spectrum of human genetic diversity. Consider also:
+
+- **Admixed populations**: Individuals with mixed ancestry may experience calibration errors that average between their component populations or show unique patterns not captured by any single-ancestry model
+- **Rare and isolated populations**: Indigenous populations, genetic isolates (e.g., Ashkenazi Jewish, Finnish, Amish), and island populations often harbor unique variants absent from reference databases
+- **South Asian and Middle Eastern populations**: These groups are frequently underrepresented in both training data and evaluation benchmarks
+- **Within-continent diversity**: "African ancestry" encompasses tremendous genetic diversity; models calibrated on East African populations may miscalibrate for West or Southern African individuals
+
+Calibration assessment should examine as many ancestry groups as evaluation data permit, not just the most common comparison.
+:::
+
 
 :::{.callout-important}
 ## Key Insight: Hidden Calibration Disparities
@@ -246,7 +329,7 @@ Before learning about calibration methods, consider: If a model consistently ass
 
 The simplest calibration fix is often the most effective. **Temperature scaling** applies a single learned parameter to adjust model confidence, dramatically improving calibration with minimal computational overhead and no change to model predictions' ranking.
 
-The method modifies the softmax function by dividing logits by a temperature parameter *T* before applying softmax. The intuition is straightforward: overconfident models produce logits that are too large in magnitude, causing softmax probabilities to concentrate near 0 or 1 rather than reflecting true uncertainty. Dividing by *T* > 1 shrinks these logits toward zero, which "softens" the probability distribution and reduces spurious confidence:
+The method modifies the softmax function by dividing logits by a temperature parameter $T$ before applying softmax. The intuition is straightforward: overconfident models produce logits that are too large in magnitude, causing softmax probabilities to concentrate near 0 or 1 rather than reflecting true uncertainty. Dividing by $T > 1$ shrinks these logits toward zero, which "softens" the probability distribution and reduces spurious confidence:
 
 $$
 \hat{p}_i = \frac{\exp(z_i / T)}{\sum_{j=1}^{K} \exp(z_j / T)}
@@ -273,7 +356,7 @@ A variant effect prediction model produces logits for a missense variant:
 **After calibration (T = 2.0, learned from calibration set):**
 - Scaled logits: $z/T = [1.25, -0.6]$
 - Softmax: $p = [\frac{e^{1.25}}{e^{1.25} + e^{-0.6}}, \frac{e^{-0.6}}{e^{1.25} + e^{-0.6}}] = [0.86, 0.14]$
-- Now the model reports 86% confidence---still favoring pathogenic, but acknowledging greater uncertainty
+- Now the model reports 86% confidence, still favoring pathogenic, but acknowledging greater uncertainty
 
 | Temperature | P(pathogenic) | P(benign) | Interpretation |
 |-------------|---------------|-----------|----------------|
@@ -284,7 +367,7 @@ A variant effect prediction model produces logits for a missense variant:
 Note that the ranking is preserved: pathogenic remains more likely than benign. Only the magnitude of confidence changes.
 :::
 
-When *T* > 1, the distribution becomes softer (more uniform), reducing overconfidence. When *T* < 1, the distribution becomes sharper, increasing confidence. The optimal temperature is learned by minimizing negative log-likelihood on a held-out calibration set, typically yielding *T* between 1.5 and 3 for overconfident deep networks.
+When $T > 1$, the distribution becomes softer (more uniform), reducing overconfidence. When $T < 1$, the distribution becomes sharper, increasing confidence. The optimal temperature is learned by minimizing negative log-likelihood on a held-out calibration set, typically yielding $T$ between 1.5 and 3 for overconfident deep networks.
 
 Temperature scaling preserves the model's ranking because dividing all logits by the same constant does not change their relative ordering. A variant ranked as more likely pathogenic than another remains more likely after temperature scaling; only the magnitudes of probability estimates change. This preservation of discrimination while improving calibration makes temperature scaling particularly attractive: calibration improves without sacrificing the model's hard-won ability to distinguish pathogenic from benign variants.
 
@@ -366,7 +449,9 @@ If one model expresses uncertainty about a prediction, querying multiple models 
 
 Why do ensembles work for uncertainty estimation? The key insight is that ensemble disagreement reveals where the data underdetermines the model. The theoretical basis for ensemble uncertainty estimation rests on the observation that disagreement between models reflects regions of input space where the training data provides insufficient constraint. Where training examples are dense, gradient descent from different initializations converges to similar solutions, producing agreement. Where training examples are sparse or conflicting, different initializations find different local optima, producing disagreement. This interpretation connects ensembles to Bayesian model averaging, where predictions are averaged over the posterior distribution of model parameters.
 
-For foundation models with billions of parameters, training full ensembles becomes prohibitively expensive. Training five copies of *ESM-2* requires approximately five times the compute of a single model, potentially millions of dollars in cloud computing costs. Several practical alternatives reduce this burden. Last-layer ensembles freeze the pretrained backbone and train only an ensemble of prediction heads, reducing cost by orders of magnitude while still capturing uncertainty from the fine-tuning process. Snapshot ensembles save model checkpoints at various points during optimization and use these snapshots as ensemble members, requiring only single-model training time. Multi-seed fine-tuning trains the same architecture from multiple random seeds on the fine-tuning task, which is far cheaper than multi-seed pretraining. The broader considerations of fine-tuning and adaptation strategies are discussed in @sec-ch09-transfer.
+For foundation models with billions of parameters, training full ensembles becomes prohibitively expensive. Training five copies of a large protein language model requires approximately five times the compute of a single model, potentially millions of dollars in cloud computing costs. However, some foundation models are released as ensembles by design. *ESM-1v* [@meier_language_2021] exemplifies this approach: the original release includes five models trained with different random seeds, explicitly enabling ensemble-based uncertainty quantification for variant effect prediction. Ensemble disagreement among the five ESM-1v models provides a principled measure of epistemic uncertainty, and variants where all five models agree warrant higher confidence than variants where predictions diverge.
+
+For models not released as ensembles, several practical alternatives reduce the computational burden. Last-layer ensembles freeze the pretrained backbone and train only an ensemble of prediction heads, reducing cost by orders of magnitude while still capturing uncertainty from the fine-tuning process. Snapshot ensembles save model checkpoints at various points during optimization and use these snapshots as ensemble members, requiring only single-model training time. Multi-seed fine-tuning trains the same architecture from multiple random seeds on the fine-tuning task, which is far cheaper than multi-seed pretraining. The broader considerations of fine-tuning and adaptation strategies are discussed in @sec-ch09-transfer.
 
 ### Monte Carlo Dropout {#sec-ch24-mc-dropout}
 
@@ -404,13 +489,31 @@ where:
 - The first term penalizes prediction errors, weighted by inverse variance
 - The second term prevents trivially predicting infinite variance
 
-Why does this loss function take this particular form? It derives from the negative log-likelihood of a Gaussian distribution: if the model predicts that the output follows a Gaussian with mean $\mu(x)$ and variance $\sigma^2(x)$, then the probability of observing the true value $y$ is higher when $y$ is close to $\mu$ and when variance is well-matched to actual prediction error. The first term penalizes prediction errors, weighted by inverse variance so that high-variance predictions are penalized less for the same absolute error---this is mathematically necessary because a Gaussian with larger variance assigns non-negligible probability to a wider range of values. The second term prevents the model from simply predicting infinite variance to avoid all penalties; without it, the optimal strategy would be to always predict $\sigma^2 \to \infty$, making any prediction equally likely. The balance between these terms forces the model to predict variance that actually matches the empirical noise level. The result is a model that learns to predict larger variance for inputs where training labels are noisy or inconsistent, capturing aleatoric uncertainty in an input-dependent manner.
+Why does this loss function take this particular form? It derives from the negative log-likelihood of a Gaussian distribution: if the model predicts that the output follows a Gaussian with mean $\mu(x)$ and variance $\sigma^2(x)$, then the probability of observing the true value $y$ is higher when $y$ is close to $\mu$ and when variance is well-matched to actual prediction error. The first term penalizes prediction errors, weighted by inverse variance so that high-variance predictions are penalized less for the same absolute error; this is mathematically necessary because a Gaussian with larger variance assigns non-negligible probability to a wider range of values. The second term prevents the model from simply predicting infinite variance to avoid all penalties; without it, the optimal strategy would be to always predict $\sigma^2 \to \infty$, making any prediction equally likely. The balance between these terms forces the model to predict variance that actually matches the empirical noise level. The result is a model that learns to predict larger variance for inputs where training labels are noisy or inconsistent, capturing aleatoric uncertainty in an input-dependent manner.
 
 Heteroscedastic models capture aleatoric uncertainty but not epistemic uncertainty. The predicted variance reflects noise inherent in the labels, not uncertainty about model parameters. Combining heteroscedastic outputs with ensemble methods provides estimates of both uncertainty types: ensemble disagreement captures epistemic uncertainty while the predicted variance captures aleatoric uncertainty.
 
 ### Evidential Deep Learning {#sec-ch24-evidential}
 
 **Evidential deep learning** places a prior distribution over the class probabilities themselves rather than directly predicting probabilities. For classification, the model outputs parameters of a Dirichlet distribution, which serves as a prior over the simplex of class probabilities. The concentration parameters of this Dirichlet encode both the predicted class probabilities (via their relative magnitudes) and the model's uncertainty (via their absolute magnitudes).
+
+::: {.callout-note}
+## The Dirichlet Distribution: A Prior Over Probabilities
+
+The **Dirichlet distribution** is a probability distribution whose samples are themselves probability distributions. For readers unfamiliar with this concept, an intuitive explanation helps.
+
+**The simplex constraint**: For a $K$-class classification problem, any valid probability distribution must have $K$ values that are non-negative and sum to 1. Geometrically, this defines a simplex: for $K=3$, valid probability vectors $(p_1, p_2, p_3)$ form a triangle where each corner represents certainty in one class.
+
+**What the Dirichlet does**: The Dirichlet distribution places a probability density over this simplex. Its parameters $\boldsymbol{\alpha} = (\alpha_1, \alpha_2, \ldots, \alpha_K)$, called concentration parameters, control where probability mass concentrates:
+
+- **High $\alpha_i$ values** (e.g., $\alpha = (10, 10, 10)$): Samples cluster near the center of the simplex, representing uncertainty about which class is correct but confidence that probabilities should be roughly equal
+- **Low $\alpha_i$ values** (e.g., $\alpha = (0.1, 0.1, 0.1)$): Samples cluster near the corners, representing uncertainty about which class but confidence that one class dominates
+- **Asymmetric values** (e.g., $\alpha = (100, 2, 2)$): Samples cluster near the corner for class 1, representing confident prediction of class 1
+
+**Total evidence**: The sum $\sum_i \alpha_i$ represents total "evidence" or confidence. Higher totals mean tighter clustering (more certainty), regardless of which class is favored. This is how evidential deep learning encodes uncertainty: low total concentration = high epistemic uncertainty.
+
+**Example**: A model predicting pathogenicity might output $\alpha = (15, 3)$ for [pathogenic, benign]. The expected probability is $(15/18, 3/18) = (0.83, 0.17)$, favoring pathogenic. The total concentration of 18 indicates moderate confidence. Compare to $\alpha = (150, 30)$: same expected probability but much higher confidence, or $\alpha = (1.5, 0.3)$: same expected probability but very low confidence.
+:::
 
 Low total concentration indicates high uncertainty: the model is unsure which class is correct. High total concentration with one dominant class indicates confident prediction. This framework provides a principled way to separate epistemic uncertainty (low concentration) from confident predictions (high concentration), all from a single forward pass without ensembling or MC sampling.
 

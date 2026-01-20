@@ -15,14 +15,35 @@
 4. Evaluate when foundation model predictions support causal versus merely correlational conclusions
 5. Design validation strategies that test causal rather than predictive claims
 
-**Key Insight**: Foundation models excel at learning associations from observational data, but clinical intervention requires causal reasoning. The gap between prediction (what do we observe?) and causation (what happens if we intervene?) is not a matter of model scale or data quantity---it reflects fundamentally different types of knowledge.
+**Key Insight**: Foundation models excel at learning associations from observational data, but clinical intervention requires causal reasoning. The gap between prediction (what do we observe?) and causation (what happens if we intervene?) is not a matter of model scale or data quantity: it reflects fundamentally different types of knowledge.
 :::
 
-This question separates prediction from causation. A model can accurately predict that patients with a particular variant have worse outcomes without telling you whether correcting that variant would help them. The variant might cause disease, or it might merely correlate with ancestry, environment, or another genetic factor that actually causes disease. Predictive accuracy---even exceptional predictive accuracy---cannot distinguish between these possibilities.
+This question separates prediction from causation. A model can accurately predict that patients with a particular variant have worse outcomes without telling you whether correcting that variant would help them. The variant might cause disease, or it might merely correlate with ancestry, environment, or another genetic factor that actually causes disease. Predictive accuracy, even exceptional predictive accuracy, cannot distinguish between these possibilities.
 
 The preceding chapters addressed how to trust model predictions: calibrated uncertainty tells us when models are confident (@sec-ch24-uncertainty), and interpretability reveals what patterns drive predictions (@sec-ch25-interpretability). But clinical action requires more. It requires knowing that intervening on a predicted target will produce the intended effect.
 
 ## Prediction vs. Causation {#sec-ch26-prediction-vs-causation}
+
+::: {.callout-warning}
+## Clinical Causal Misadventure: The Hormone Replacement Therapy Reversal
+
+For decades, observational studies consistently showed that women taking hormone replacement therapy (HRT) had lower rates of cardiovascular disease. The association was strong, replicated across studies, and biologically plausible: estrogen appeared cardioprotective. Clinicians recommended HRT to millions of postmenopausal women partly on this basis.
+
+Then came the Women's Health Initiative randomized trial (2002). The intervention arm was stopped early because HRT *increased* cardiovascular events. How could such consistent observational predictions be so wrong?
+
+The answer lies in **confounding** and **backdoor paths** [@mcelreath_statistical_2020]. Women who chose HRT were systematically different from those who did not: they were wealthier, more health-conscious, had better access to healthcare, and engaged in other protective behaviors. These unmeasured factors (socioeconomic status, health awareness) created a **backdoor path** from HRT to cardiovascular outcomes that mimicked a causal effect:
+
+```
+                    Health Awareness
+                    /              \
+                   v                v
+              HRT Choice  --->  CV Outcomes
+```
+
+The association was real but non-causal. Intervening on HRT (prescribing it to random women) did not produce the benefit that observational associations predicted, because the intervention broke the correlation with the confounders that actually drove the protective association.
+
+This $50+ billion medical reversal illustrates why causal reasoning matters: a foundation model trained on observational health records would have made the same mistake. Predictive accuracy on observational data provides no protection against confounding when that prediction is used to guide intervention.
+:::
 
 ### The Ladder of Causation {#sec-ch26-ladder}
 
@@ -40,10 +61,40 @@ Judea Pearl's "ladder of causation" provides a framework for understanding the g
 
 Most machine learning, including foundation models, operates at rung 1. Models learn associations from training data and predict outcomes for new inputs. Moving to rung 2 requires additional structure, typically assumptions about causal relationships encoded in directed acyclic graphs (DAGs) or identified through experimental interventions. Rung 3 remains largely out of reach for current methods outside carefully controlled settings.
 
+::: {.callout-note}
+## Clinical Examples at Each Rung
+
+**Rung 1 (Association):** "Patients with elevated CRP have higher cardiovascular risk." This observational fact enables risk stratification: flag high-CRP patients for closer monitoring. But it does not tell you whether lowering CRP will reduce risk.
+
+**Rung 2 (Intervention):** "Lowering LDL cholesterol with statins reduces cardiovascular events." Randomized trials showed that *doing* something (prescribing statins) produces the predicted effect. This supports treatment decisions, not just risk prediction.
+
+**Rung 3 (Counterfactual):** "If this 55-year-old patient who died of MI had taken statins for the past 10 years, would she have survived?" This individual-level counterfactual cannot be answered from trial data (which provides population averages) without strong assumptions about how this patient's response relates to the trial population.
+
+**The clinical stakes:** Rung 1 associations suffice for screening and prognosis. Rung 2 causal knowledge is required for treatment selection. Rung 3 counterfactuals are needed for individual liability assessment (malpractice, compensation) but remain fundamentally unknowable for specific patients. A model that excels at Rung 1 prediction may be useless, or harmful, when deployed for Rung 2 treatment decisions.
+:::
+
 ::: {#fig-ladder-causation}
 ![Pearl's ladder of causation applied to genomics](../figs/part_6/ch26/01-fig-ladder-causation.svg)
 
 Pearl's ladder of causation applied to genomics. **Rung 1 (Association)**: Foundation models learn P(Y|X): observing variant V, predict phenotype P. **Rung 2 (Intervention)**: P(Y|do(X)): if we edit V, what happens to P? Requires causal structure, not just correlations. **Rung 3 (Counterfactual)**: For this specific patient, what would have happened under alternative conditions? The gaps are qualitative: predictive accuracy at Rung 1 provides no guarantee of accuracy at Rungs 2-3.
+:::
+
+::: {.callout-note}
+## Probability Concepts for Causal Reasoning
+
+Understanding the notation in causal inference requires distinguishing three types of probability:
+
+**Marginal probability** $P(Y)$: The probability of outcome $Y$ without conditioning on anything else. "What fraction of patients develop diabetes?" This ignores all other variables.
+
+**Joint probability** $P(X, Y)$: The probability that both $X$ and $Y$ occur together. "What fraction of patients both carry the variant AND develop diabetes?" This captures co-occurrence but not direction.
+
+**Conditional probability** $P(Y|X)$: The probability of $Y$ given that we have *observed* $X$. "Among patients who carry the variant, what fraction develop diabetes?" This is what foundation models learn: patterns in data where $X$ has a certain value.
+
+**Interventional probability** $P(Y|\text{do}(X))$: The probability of $Y$ if we *set* $X$ to a value by intervention. "If we edit the genome to introduce the variant, what fraction develop diabetes?" This is fundamentally different from conditional probability because intervention breaks correlations with confounders.
+
+**The key distinction:** $P(Y|X)$ and $P(Y|\text{do}(X))$ are only equal when there are no confounders of the $X \to Y$ relationship. In the presence of confounding (which is ubiquitous in observational genomic data), they differ, often dramatically.
+
+**Example:** $P(\text{lung cancer} | \text{yellow fingers}) \neq P(\text{lung cancer} | \text{do(yellow fingers)})$. Observing yellow fingers predicts lung cancer (because smoking causes both). But painting your fingers yellow (intervention) does not cause lung cancer.
 :::
 
 ::: {.callout-tip}
@@ -97,7 +148,7 @@ The table below summarizes when association versus causation matters for differe
 
 ## Causal Methods in Genomics {#sec-ch26-causal-methods}
 
-Genomics has developed specialized methods for causal inference that leverage the unique properties of genetic data. Unlike typical observational studies where confounding is ubiquitous, genetic variants are assigned at conception through meiosis---a natural randomization process that makes genetics uniquely suited for certain causal inference approaches.
+Genomics has developed specialized methods for causal inference that leverage the unique properties of genetic data. Unlike typical observational studies where confounding is ubiquitous, genetic variants are assigned at conception through meiosis, a natural randomization process that makes genetics uniquely suited for certain causal inference approaches.
 
 ::: {.callout-tip title="Recall and Connect"}
 **From @sec-ch13-confounding**: We learned that population structure creates spurious associations in GWAS. Before reading about Mendelian randomization, consider: How might the random assignment of alleles at conception help overcome confounding? What makes genetic variants different from environmental exposures?
@@ -113,15 +164,17 @@ Mendelian randomization involves subtle causal reasoning. If the three core assu
 
 **Mendelian randomization (MR)** exploits the random assortment of alleles during meiosis to create natural experiments [@davey_smith_mendelian_2003; @lawlor_mendelian_2008]. If a genetic variant affects an exposure (e.g., gene expression, protein level, metabolite concentration), and that variant is associated with an outcome, then under certain assumptions we can infer that the exposure causally affects the outcome.
 
-Think of the genetic variant as a randomly assigned ticket at birth. Imagine a lottery where some people receive tickets that increase their coffee consumption (a variant affecting caffeine metabolism). If ticket holders---who drink more coffee by chance of genetics, not by lifestyle choice---also have different heart disease rates, we have evidence that coffee consumption itself affects heart disease, not just that coffee drinkers happen to live differently in other ways. The "ticket" (genetic variant) was assigned before any confounders could arise, isolating the effect of the exposure.
+Think of the genetic variant as a randomly assigned ticket at birth. Consider **LDL cholesterol and cardiovascular disease**: variants in the *PCSK9* gene that reduce LDL cholesterol levels are associated with reduced cardiovascular events. People who inherit LDL-lowering *PCSK9* variants have lower heart disease risk not because of lifestyle choices but because of their randomly assigned genotype. This provides causal evidence that LDL itself drives cardiovascular disease, evidence that supported development of PCSK9 inhibitor drugs. The genetic "ticket" was assigned at conception before diet, exercise, or other confounders could arise, isolating the effect of LDL on heart disease.
 
-The logic parallels randomized controlled trials. In an RCT, random treatment assignment ensures that treatment groups differ only in treatment received, not in confounders. In MR, random allele assignment at conception ensures that genotype groups differ only in genotype-driven exposure levels, not in confounders. The genetic variant acts as an "instrumental variable" that isolates the causal effect of the exposure.
+A contrasting example illustrates how pleiotropy can mislead. **Hypertriglyceridemia and pancreatitis**: some genetic variants that raise triglyceride levels also increase pancreatitis risk, suggesting triglycerides cause pancreatitis. But some of these variants (e.g., in *LPL*) affect both triglyceride metabolism and lipoprotein remnant clearance through independent mechanisms (**horizontal pleiotropy**). The variant affects pancreatitis through remnant accumulation, not through triglycerides per se. Drugs that lower triglycerides without affecting remnants might fail to prevent pancreatitis. MR can detect such pleiotropy when multiple genetic instruments give inconsistent causal estimates.
+
+The logic parallels randomized controlled trials. In an RCT, random treatment assignment ensures that treatment groups differ only in treatment received, not in confounders. In MR, random allele assignment at conception ensures that genotype groups differ only in genotype-driven exposure levels, not in confounders. The genetic variant acts as an **instrumental variable** that isolates the causal effect of the exposure.
 
 MR relies on three core assumptions:
 
 1. **Relevance**: The genetic variant must be associated with the exposure
 2. **Independence**: The variant must not be associated with confounders of the exposure-outcome relationship
-3. **Exclusion restriction**: The variant must affect the outcome only through the exposure, not through other pathways (no **horizontal pleiotropy**---the situation where a genetic variant affects multiple traits through independent biological mechanisms, rather than through a single causal pathway)
+3. **Exclusion restriction**: The variant must affect the outcome only through the exposure, not through other pathways (no **horizontal pleiotropy**, the situation where a genetic variant affects multiple traits through independent biological mechanisms, rather than through a single causal pathway)
 
 Under these assumptions, the causal effect of exposure $X$ on outcome $Y$ can be estimated via the Wald estimator:
 
@@ -136,7 +189,7 @@ where:
 - $\hat{\beta}_{GY}$ is the variant-outcome association
 - The ratio isolates the causal effect by using $G$ as an instrumental variable
 
-Why are these three assumptions necessary? Relevance ensures the genetic variant actually affects the exposure of interest; without it, the variant provides no information about the exposure's causal effect. Independence is why genetics provides a causal inference advantage: because alleles are randomly assigned at conception before environmental confounders arise, genetic instruments satisfy independence naturally for most confounders (though population structure can violate it). The exclusion restriction ensures we measure the exposure's effect rather than some other effect of the variant---if a variant affects the outcome through multiple pathways, we cannot isolate which pathway matters.
+Why are these three assumptions necessary? Relevance ensures the genetic variant actually affects the exposure of interest; without it, the variant provides no information about the exposure's causal effect. Independence is why genetics provides a causal inference advantage: because alleles are randomly assigned at conception before environmental confounders arise, genetic instruments satisfy independence naturally for most confounders (though population structure can violate it). The exclusion restriction ensures we measure the exposure's effect rather than some other effect of the variant: if a variant affects the outcome through multiple pathways, we cannot isolate which pathway matters.
 
 Violations of these assumptions, particularly pleiotropy, limit MR's applicability. Modern MR methods address this through multiple instruments, median-based estimators, mode-based estimators, and outlier detection that are robust to some violations [@bowden_mendelian_2015; @hartwig_robust_2017]. Integration with foundation models, discussed below, offers new possibilities for instrument selection and pleiotropy detection.
 
@@ -248,13 +301,11 @@ You want to know if editing a regulatory element will increase expression of a t
 
 **In-silico perturbation prediction** uses foundation models to predict effects of genetic or molecular changes without performing experiments. This directly addresses rung 2 of the causal ladder: "What happens if we change X?"
 
-Several approaches exist:
+Several approaches exist at different levels of biological abstraction. At the sequence level, DNA and RNA foundation models predict effects of mutations on molecular phenotypes like chromatin accessibility, transcription factor binding, and splicing (@sec-ch18-vep-fm). These predictions are inherently counterfactual: the model compares predicted output for reference versus alternate allele. When validated against experimental perturbations, such predictions can support causal reasoning about regulatory mechanisms.
 
-**Sequence-level perturbation**: DNA and RNA foundation models can predict effects of sequence mutations on molecular phenotypes like chromatin accessibility, transcription factor binding, and splicing (@sec-ch18-vep-fm). These predictions are inherently counterfactual: the model compares predicted output for reference vs. alternate allele. When validated against experimental perturbations, such predictions can support causal reasoning about regulatory mechanisms.
+At the gene level, single-cell foundation models trained on expression data can be prompted with in-silico knockouts or overexpression, generating predictions of downstream expression changes [@theodoris_geneformer_2023]. These predictions extrapolate from patterns learned in observational data, with accuracy depending on whether observational patterns reflect causal regulation.
 
-**Gene-level perturbation**: Single-cell foundation models trained on expression data can be prompted with in-silico gene knockouts or overexpression, generating predictions of downstream expression changes [@theodoris_geneformer_2023]. These predictions extrapolate from patterns learned in observational data, with accuracy depending on whether observational patterns reflect causal regulation.
-
-**Embedding-space perturbation**: Models that embed cells, genes, or sequences in latent spaces enable perturbation by arithmetic operations on embeddings. Subtracting a "disease" direction and adding a "healthy" direction generates predictions of therapeutic effects. Such approaches assume linear structure in embedding space that may not hold.
+At the embedding level, models that embed cells, genes, or sequences in latent spaces enable perturbation by arithmetic operations on embeddings. Subtracting a "disease" direction and adding a "healthy" direction generates predictions of therapeutic effects. Such approaches assume linear structure in embedding space that may not hold.
 
 All in-silico perturbation methods face a fundamental limitation: they cannot validate their own causal accuracy. A model that predicts X causes Y might be correct (X causes Y), might be learning reverse causation (Y causes X, so perturbing X in the model disrupts learned correlations), or might be learning confounded correlations (neither causes the other). External validation through experimental perturbation is necessary to establish causal accuracy.
 
@@ -262,32 +313,26 @@ The table below compares different in-silico perturbation approaches:
 
 | Approach | Input | Output | Causal Validity | Validation Required |
 |----------|-------|--------|-----------------|---------------------|
-| Sequence-level (e.g., Enformer) | Reference vs. alternate allele | Predicted molecular phenotype change | Moderate---predicts direct sequence effects | MPRA, allelic expression |
-| Gene-level (e.g., Geneformer) | In-silico knockout | Predicted expression changes | Low---extrapolates from correlations | Perturb-seq, CRISPR screens |
-| Embedding arithmetic | Vector operations in latent space | Transformed cell state | Low---assumes linear embedding structure | Experimental perturbation |
+| Sequence-level (e.g., Enformer) | Reference vs. alternate allele | Predicted molecular phenotype change | Moderate: predicts direct sequence effects | MPRA, allelic expression |
+| Gene-level (e.g., Geneformer) | In-silico knockout | Predicted expression changes | Low: extrapolates from correlations | Perturb-seq, CRISPR screens |
+| Embedding arithmetic | Vector operations in latent space | Transformed cell state | Low: assumes linear embedding structure | Experimental perturbation |
 
 : Comparison of in-silico perturbation methods. Validation against experimental interventions is essential for all approaches. {#tbl-perturbation-methods}
 
 ### Counterfactual Reasoning Limitations {#sec-ch26-counterfactual-limits}
 
-A patient received drug A and her tumor progressed. Her oncologist wonders: would drug B have worked better? This is not a question about average treatment effects in a population---it is about what *would have happened* to this specific patient under a different treatment. No dataset contains this answer because it requires observing the same patient under two mutually exclusive conditions simultaneously. This is the counterfactual problem, and it represents a fundamental barrier even for the most sophisticated models.
+A patient received drug A and her tumor progressed. Her oncologist wonders: would drug B have worked better? This is not a question about average treatment effects in a population; it is about what *would have happened* to this specific patient under a different treatment. No dataset contains this answer because it requires observing the same patient under two mutually exclusive conditions simultaneously. This is the counterfactual problem, and it represents a fundamental barrier even for the most sophisticated models.
 
-Counterfactual reasoning---rung 3 of the causal ladder---asks what would have happened under alternative circumstances for a specific individual or instance. This is qualitatively harder than intervention reasoning, which asks about population-level effects of interventions.
+Counterfactual reasoning, rung 3 of the causal ladder, asks what would have happened under alternative circumstances for a specific individual or instance. This is qualitatively harder than intervention reasoning, which asks about population-level effects of interventions.
 
-Foundation models face fundamental barriers to counterfactual reasoning:
-
-**Identifiability**: Counterfactual quantities are often not identifiable from observational data even with perfect knowledge of the joint distribution. Learning from data cannot overcome this barrier.
-
-**Individual-level noise**: Counterfactuals require reasoning about stochastic processes at the individual level. What would this specific cell's expression have been if a specific gene were knocked out? The answer depends on molecular noise that models cannot capture from population-level training.
-
-**Temporal specificity**: Counterfactuals often involve specific timepoints and histories. "What would this patient's outcome have been if treatment started earlier?" requires reasoning about patient-specific trajectories that models trained on cross-sectional data cannot address.
+Foundation models face fundamental barriers to counterfactual reasoning. First, there is an identifiability problem: counterfactual quantities are often not identifiable from observational data even with perfect knowledge of the joint distribution, and learning from data cannot overcome this barrier. Second, counterfactuals require reasoning about stochastic processes at the individual level. What would this specific cell's expression have been if a specific gene were knocked out? The answer depends on molecular noise that models cannot capture from population-level training. Third, counterfactuals often involve specific timepoints and histories. The question "What would this patient's outcome have been if treatment started earlier?" requires reasoning about patient-specific trajectories that models trained on cross-sectional data cannot address.
 
 These limitations suggest that foundation models can at best approximate counterfactual reasoning for population-level interventions but cannot provide reliable individual-level counterfactuals without additional assumptions or data. Clinical applications requiring individual counterfactual reasoning (e.g., precision treatment optimization) must acknowledge this fundamental limitation.
 
 ::: {.callout-tip}
 ## Key Insight: The Counterfactual Barrier
 
-Individual counterfactuals ("What would have happened to this patient if...?") require information that does not exist in any dataset: the outcome under the path not taken. This is not a data limitation that more training can overcome---it is a logical impossibility. Foundation models can estimate population-average treatment effects (how do patients like this one respond on average?) but cannot answer individual counterfactuals without additional structural assumptions. Clinical systems claiming to provide personalized counterfactual predictions should be scrutinized for what assumptions they make to bridge this logical gap.
+Individual counterfactuals ("What would have happened to this patient if...?") require information that does not exist in any dataset: the outcome under the path not taken. This is not a data limitation that more training can overcome; it is a logical impossibility. Foundation models can estimate population-average treatment effects (how do patients like this one respond on average?) but cannot answer individual counterfactuals without additional structural assumptions. Clinical systems claiming to provide personalized counterfactual predictions should be scrutinized for what assumptions they make to bridge this logical gap.
 :::
 
 ## Intervention Prediction {#sec-ch26-intervention-prediction}
@@ -298,33 +343,19 @@ Despite the limitations above, foundation models can contribute substantially to
 
 You have run a genome-wide CRISPR screen and identified 200 genes whose knockout affects cancer cell viability. But which of these are direct drivers versus downstream consequences? Which hits will replicate in patients rather than just in cell lines? And for the thousands of genes you could not include in this screen, can you predict which would have shown effects?
 
-CRISPR screens provide large-scale interventional data: systematic gene knockouts or knockdowns across cells, with readouts including viability, expression, and phenotype [@shalem_genome-scale_2014; @adamson_multiplexed_2016]. This data is inherently causal---it captures effects of interventions rather than mere associations. Foundation models can help interpret, extend, and transfer insights from these screens.
+CRISPR screens provide large-scale interventional data: systematic gene knockouts or knockdowns across cells, with readouts including viability, expression, and phenotype [@shalem_genome-scale_2014; @adamson_multiplexed_2016]. This data is inherently causal: it captures effects of interventions rather than mere associations. Foundation models can help interpret, extend, and transfer insights from these screens.
 
-Foundation models enhance CRISPR screen analysis in several ways:
-
-**Screen design**: Models can predict which guide RNAs will effectively perturb target genes, improving screen efficiency. Expression foundation models can predict baseline expression levels that affect perturbation detectability.
-
-**Hit interpretation**: When screens identify genes whose perturbation affects a phenotype, foundation models help interpret mechanism. Which regulatory networks are affected? What downstream targets change? Integration with interaction networks (@sec-ch22-canonical-architectures) contextualizes screen hits.
-
-**Transfer and extrapolation**: Foundation models trained on screens in one context (cell type, condition) can predict perturbation effects in new contexts. This transfer capability enables virtual screens that guide experimental prioritization.
-
-**Combination effects**: Predicting effects of multi-gene perturbations from single-gene data is a key challenge. Foundation models that learn gene-gene relationships from expression data can model epistatic interactions, though prediction accuracy for combinations remains limited.
+Foundation models enhance CRISPR screen analysis in several ways. For screen design, models can predict which guide RNAs will effectively perturb target genes, improving screen efficiency, while expression foundation models can predict baseline expression levels that affect perturbation detectability. For hit interpretation, when screens identify genes whose perturbation affects a phenotype, foundation models help interpret mechanism by revealing which regulatory networks are affected and what downstream targets change; integration with interaction networks (@sec-ch22-canonical-architectures) contextualizes screen hits. Foundation models also enable transfer and extrapolation: models trained on screens in one context (cell type, condition) can predict perturbation effects in new contexts, enabling virtual screens that guide experimental prioritization. Finally, predicting effects of multi-gene perturbations from single-gene data remains a key challenge; foundation models that learn gene-gene relationships from expression data can model epistatic interactions, though prediction accuracy for combinations remains limited.
 
 Importantly, foundation models trained on CRISPR screen data acquire interventional rather than merely associational patterns. This provides a path toward causal prediction capability: train on interventional data to learn interventional structure.
 
 ### Drug Response Prediction {#sec-ch26-drug-response}
 
-A patient has a tumor with an unusual mutation profile. Several drugs might work, but which one? Testing all options experimentally would take months the patient may not have. If you could predict which drugs the tumor would respond to based on its molecular profile, you could prioritize the most promising option first. But here lies the challenge: observed correlations between tumor features and drug response might reflect the drugs actually used (selection bias), patient characteristics that affect both tumor biology and outcomes (confounding), or genuine causal sensitivity---and only the last matters for choosing therapy.
+A patient has a tumor with an unusual mutation profile. Several drugs might work, but which one? Testing all options experimentally would take months the patient may not have. If you could predict which drugs the tumor would respond to based on its molecular profile, you could prioritize the most promising option first. But here lies the challenge: observed correlations between tumor features and drug response might reflect the drugs actually used (selection bias), patient characteristics that affect both tumor biology and outcomes (confounding), or genuine causal sensitivity, and only the last matters for choosing therapy.
 
 Predicting how patients or tumors will respond to drugs is a central challenge in precision oncology and pharmacogenomics. Drug response has clear causal structure: the drug causes the response. Foundation models can contribute to response prediction by learning patterns that generalize across drugs, cell lines, and patients.
 
-Approaches include:
-
-**Chemical-biological foundation models**: Models that jointly embed drug structures and biological contexts (gene expression, mutations) can predict response to drugs not seen during training [@zitnik_modeling_2018]. Transfer from chemical structure to biological effect leverages foundation model representations of both domains.
-
-**Expression-based response models**: Single-cell foundation models can predict expression changes induced by drug treatment, enabling in-silico drug screening. The accuracy of these predictions depends on whether training data captures the relevant drug-gene relationships.
-
-**Genomic response predictors**: Foundation models pretrained on DNA sequence can be fine-tuned to predict drug response from tumor genomes, learning patterns of sensitivity-conferring and resistance-conferring mutations.
+Several approaches leverage foundation models for drug response prediction. Chemical-biological foundation models jointly embed drug structures and biological contexts (gene expression, mutations) to predict response to drugs not seen during training [@zitnik_modeling_2018], with transfer from chemical structure to biological effect leveraging foundation model representations of both domains. Expression-based response models use single-cell foundation models to predict expression changes induced by drug treatment, enabling in-silico drug screening; their accuracy depends on whether training data captures the relevant drug-gene relationships. Genomic response predictors fine-tune foundation models pretrained on DNA sequence to predict drug response from tumor genomes, learning patterns of sensitivity-conferring and resistance-conferring mutations.
 
 Drug response prediction illustrates both the promise and limitations of foundation models for causal tasks. Models can learn generalizable patterns of drug-gene interaction, but validation requires clinical trials that are expensive and slow. The gap between in-silico prediction and validated clinical utility remains substantial (@sec-ch30-drug-discovery).
 
@@ -351,7 +382,7 @@ The most powerful paradigm for developing causally accurate foundation models is
 
 This design-build-test-learn (DBTL) cycle is discussed extensively in @sec-ch31-dbtl for sequence design applications. The same framework applies to causal learning: by iterating between prediction and experimental validation, models can accumulate interventional data that supports increasingly accurate causal predictions.
 
-Closed-loop systems face practical challenges: experimental throughput limits iteration speed, costs constrain scale, and defining informative interventions requires balancing exploration and exploitation. But the fundamental advantage---learning from interventional rather than observational data---addresses the core limitation of standard foundation model training.
+Closed-loop systems face practical challenges: experimental throughput limits iteration speed, costs constrain scale, and defining informative interventions requires balancing exploration and exploitation. But the fundamental advantage, learning from interventional rather than observational data, addresses the core limitation of standard foundation model training.
 
 ::: {#fig-closed-loop-causal}
 ![Closed-loop causal learning for foundation models](../figs/part_6/ch26/03-fig-closed-loop-causal.svg)
@@ -361,25 +392,19 @@ Closed-loop causal learning for foundation models. The cycle iterates between: (
 
 ## Causal Discovery {#sec-ch26-causal-discovery}
 
-Suppose you measure expression of 20,000 genes across thousands of cells and find that genes A and B are correlated. Does A regulate B? Does B regulate A? Are both controlled by an upstream regulator C that you did not measure? Without perturbation experiments---which are expensive and cannot test all 400 million possible pairwise relationships---how would you even begin to answer this question?
+Suppose you measure expression of 20,000 genes across thousands of cells and find that genes A and B are correlated. Does A regulate B? Does B regulate A? Are both controlled by an upstream regulator C that you did not measure? Without perturbation experiments (which are expensive and cannot test all 400 million possible pairwise relationships), how would you even begin to answer this question?
 
 **Causal discovery** aims to learn causal structure itself from observational data: which variables cause which others? In genomics, this includes learning regulatory networks, identifying driver mutations, and discovering mechanistic relationships. The challenge is extracting directional, causal information from data that only shows correlation.
 
 ### Learning Regulatory Networks {#sec-ch26-regulatory-networks}
 
-A cancer researcher identifies a transcription factor that is consistently overexpressed in aggressive tumors. Is this factor driving tumor progression, or is it merely a downstream consequence of some other oncogenic program? If you could reconstruct the regulatory network---the web of cause-and-effect relationships among genes---you could trace the chain of causation and identify the true driver. But how do you learn such a network from expression data alone?
+A cancer researcher identifies a transcription factor that is consistently overexpressed in aggressive tumors. Is this factor driving tumor progression, or is it merely a downstream consequence of some other oncogenic program? If you could reconstruct the regulatory network, the web of cause-and-effect relationships among genes, you could trace the chain of causation and identify the true driver. But how do you learn such a network from expression data alone?
 
-Gene regulatory networks describe causal relationships among genes: transcription factors regulate targets, signaling molecules activate pathways, metabolic enzymes control flux. Learning these networks from data is a foundational problem in systems biology---one where foundation models offer new approaches but also face fundamental limitations.
+Gene regulatory networks describe causal relationships among genes: transcription factors regulate targets, signaling molecules activate pathways, metabolic enzymes control flux. Learning these networks from data is a foundational problem in systems biology, one where foundation models offer new approaches but also face fundamental limitations.
 
 Classical approaches infer networks from expression correlation, mutual information, or regression-based methods like GENIE3 [@huynh-thu_inferring_2010]. These methods identify associations but struggle to distinguish causal direction and are confounded by common regulators.
 
-Foundation models offer new approaches to regulatory network inference:
-
-**Attention-based structure learning**: Transformer foundation models learn attention patterns over genes. These attention weights can be interpreted as soft regulatory relationships, with attention from gene A to gene B suggesting A influences B's representation. However, attention weights reflect model computation, not necessarily biological causation [@jain_attention_2019].
-
-**Perturbation-guided learning**: Training foundation models on perturbation data (e.g., Perturb-seq, which combines CRISPR perturbation with single-cell RNA-seq) enables learning of directed regulatory relationships. If knocking out A changes B, A to B is supported. Foundation models scale this reasoning across thousands of perturbations.
-
-**Multi-task learning**: Models trained to simultaneously predict multiple molecular phenotypes (expression, chromatin state, binding) may learn shared structure reflecting underlying regulatory networks.
+Foundation models offer new approaches to regulatory network inference. Transformer foundation models learn attention patterns over genes, and these attention weights can be interpreted as soft regulatory relationships, with attention from gene A to gene B suggesting A influences B's representation; however, attention weights reflect model computation, not necessarily biological causation [@jain_attention_2019]. Training foundation models on perturbation data (e.g., Perturb-seq, which combines CRISPR perturbation with single-cell RNA-seq) enables learning of directed regulatory relationships: if knocking out A changes B, the edge A to B is supported, and foundation models scale this reasoning across thousands of perturbations. Models trained to simultaneously predict multiple molecular phenotypes (expression, chromatin state, binding) may also learn shared structure reflecting underlying regulatory networks through implicit multi-task learning.
 
 Network inference from foundation models remains an active research area. Validation against gold-standard regulatory relationships (e.g., ChIP-seq, perturbation experiments) is essential for assessing accuracy.
 
@@ -389,13 +414,13 @@ Network inference from foundation models remains an active research area. Valida
 
 ### Temporal Causality {#sec-ch26-temporal-causality}
 
-You observe that in differentiating stem cells, transcription factor A rises before gene B is expressed. Does A activate B? Or do both respond to an earlier signal, with A simply responding faster? In cross-sectional snapshots, you cannot tell---both scenarios produce identical correlations. But in time-series data, the ordering matters: if A consistently rises *before* B changes across many conditions, this temporal precedence provides evidence for causal direction that pure correlation cannot.
+You observe that in differentiating stem cells, transcription factor A rises before gene B is expressed. Does A activate B? Or do both respond to an earlier signal, with A simply responding faster? In cross-sectional snapshots, you cannot tell: both scenarios produce identical correlations. But in time-series data, the ordering matters: if A consistently rises *before* B changes across many conditions, this temporal precedence provides evidence for causal direction that pure correlation cannot.
 
-Time provides a strong constraint on causal direction: causes precede effects. Time-series data in genomics---developmental trajectories, drug response time courses, circadian cycles---enable causal inference approaches that exploit temporal structure.
+Time provides a strong constraint on causal direction: causes precede effects. Time-series data in genomics (developmental trajectories, drug response time courses, circadian cycles) enable causal inference approaches that exploit temporal structure.
 
-**Granger causality** tests whether past values of X improve prediction of future Y beyond what past Y alone provides [@granger_investigating_1969]. The underlying logic is that causes must precede their effects---like how dark clouds appear before rain, not after. If you can better predict tomorrow's rain by knowing today's cloud patterns than by knowing only yesterday's rain, clouds are "Granger-causing" rain. In genomics, this approach identifies genes whose expression changes precede changes in other genes: if knowing gene A's expression at time 1 helps predict gene B's expression at time 2 (beyond what B's own history provides), this suggests A may regulate B.
+**Granger causality** tests whether past values of X improve prediction of future Y beyond what past Y alone provides [@granger_investigating_1969]. The underlying logic is that causes must precede their effects, like how dark clouds appear before rain, not after. If you can better predict tomorrow's rain by knowing today's cloud patterns than by knowing only yesterday's rain, clouds are "Granger-causing" rain. In genomics, this approach identifies genes whose expression changes precede changes in other genes: if knowing gene A's expression at time 1 helps predict gene B's expression at time 2 (beyond what B's own history provides), this suggests A may regulate B.
 
-**Dynamical foundation models** trained on time-series single-cell data (e.g., RNA velocity measurements) learn temporal dynamics and can be queried for causal relationships [@la_manno_rna_2018]. By modeling how expression states evolve, these models implicitly learn which genes drive transitions.
+**Dynamical foundation models** trained on time-series single-cell data (e.g., RNA velocity measurements) capture temporal dynamics and can be queried for potential causal relationships [@la_manno_rna_2018]. By modeling how expression states evolve, these models may identify genes that correlate with state transitions, though distinguishing drivers from passengers requires additional evidence.
 
 **Structural causal models with temporal constraints** encode the assumption that causes precede effects, enabling stronger causal conclusions from time-series observational data. Foundation models can be trained with temporal structure as an architectural prior.
 
@@ -403,7 +428,7 @@ Temporal approaches require appropriate data: longitudinal measurements, develop
 
 ### Multi-Omics Causal Structure {#sec-ch26-multi-omics-causal}
 
-A genetic variant associates with both mRNA levels of gene X and disease risk. Does the variant cause disease by altering X's expression? Or does it affect disease through some other pathway entirely, with the mRNA association being a red herring? If you also measure protein levels and find the variant affects mRNA but *not* protein---perhaps due to post-transcriptional regulation---you have learned something crucial: the mRNA association cannot explain the disease effect, and you should look elsewhere.
+A genetic variant associates with both mRNA levels of gene X and disease risk. Does the variant cause disease by altering X's expression? Or does it affect disease through some other pathway entirely, with the mRNA association being a red herring? If you also measure protein levels and find the variant affects mRNA but *not* protein (perhaps due to post-transcriptional regulation), you have learned something important: the mRNA association cannot explain the disease effect, and you should look elsewhere.
 
 Different molecular modalities (DNA, RNA, protein, metabolite) are linked by known causal relationships: DNA encodes RNA, RNA is translated to protein, proteins catalyze metabolic reactions. Multi-omics data that measures multiple modalities simultaneously enables causal inference that leverages this structure.
 
@@ -427,19 +452,13 @@ The central dogma (DNA to RNA to protein) provides causal direction: genetic var
 
 ### Drug Target Validation Evidence Hierarchy {#sec-ch26-target-validation}
 
-Your foundation model identifies protein X as strongly associated with disease progression. Should you invest $50 million to develop a drug targeting X? Association alone cannot answer this question. What if X is merely a biomarker of aggressive disease, not a driver? What if inhibiting X has no effect---or makes things worse? Before committing to expensive clinical development, you need to climb from association toward causal evidence.
+Your foundation model identifies protein X as strongly associated with disease progression. Should you invest $50 million to develop a drug targeting X? Association alone cannot answer this question. What if X is merely a biomarker of aggressive disease, not a driver? What if inhibiting X has no effect, or makes things worse? Before committing to expensive clinical development, you need to climb from association toward causal evidence.
 
-Drug development requires confidence that a target is causally involved in disease---that modulating the target will affect disease outcomes. Foundation model predictions contribute to this evidence base but sit within a broader hierarchy of target validation evidence:
+Drug development requires confidence that a target is causally involved in disease: that modulating the target will affect disease outcomes. Foundation model predictions contribute to this evidence base but sit within a broader hierarchy of target validation evidence.
 
-**Weakest evidence**: Association. The target's expression or activity correlates with disease in observational data. Foundation models excel at identifying such associations but cannot distinguish causal from confounded relationships.
+At the weakest level, association evidence shows that the target's expression or activity correlates with disease in observational data. Foundation models excel at identifying such associations but cannot distinguish causal from confounded relationships. Moderate evidence comes from Mendelian randomization, where genetic instruments affecting the target causally affect disease risk; this provides human in-vivo evidence of causation but may reflect effects of lifetime exposure rather than therapeutic intervention. Strong evidence requires perturbation experiments: knocking out or modulating the target in cellular or animal models affects disease-relevant phenotypes, and foundation models trained on perturbation data can predict such effects but require experimental validation. The strongest evidence comes from clinical intervention, where drugs targeting the mechanism show efficacy in clinical trials, the ultimate validation but one that comes late in development.
 
-**Moderate evidence**: Mendelian randomization. Genetic instruments affecting the target causally affect disease risk. This provides human in-vivo evidence of causation but may reflect effects of lifetime exposure rather than therapeutic intervention.
-
-**Strong evidence**: Perturbation experiments. Knocking out or modulating the target in cellular or animal models affects disease-relevant phenotypes. Foundation models trained on perturbation data can predict such effects but require experimental validation.
-
-**Strongest evidence**: Clinical intervention. Drugs targeting the mechanism show efficacy in clinical trials. This is the ultimate validation but comes late in development.
-
-Foundation models can accelerate target validation by integrating across evidence types: identifying associations, predicting perturbation effects, and prioritizing candidates for experimental validation (@sec-ch30-drug-discovery). But they cannot substitute for experimental and clinical evidence---they can only prioritize which targets receive experimental investment.
+Foundation models can accelerate target validation by integrating across evidence types: identifying associations, predicting perturbation effects, and prioritizing candidates for experimental validation (@sec-ch30-drug-discovery). But they cannot substitute for experimental and clinical evidence; they can only prioritize which targets receive experimental investment.
 
 ::: {#fig-evidence-hierarchy}
 ![Evidence hierarchy for drug target validation](../figs/part_6/ch26/04-fig-evidence-hierarchy.svg)
@@ -477,15 +496,9 @@ Developers of foundation model systems should consider intended use carefully. C
 
 ## Looking Forward {#sec-ch26-conclusion}
 
-Causal inference remains one of the deepest challenges in genomic foundation models. The gap between prediction (rung 1) and intervention (rung 2) is not merely a matter of scale or compute---it reflects fundamental differences in what can be learned from observational vs. interventional data. Foundation models trained on observational genomic sequences can achieve remarkable predictive accuracy while remaining unreliable for causal reasoning.
+Causal inference remains one of the deepest challenges in genomic foundation models. The gap between prediction (rung 1) and intervention (rung 2) is not merely a matter of scale or compute; it reflects fundamental differences in what can be learned from observational vs. interventional data. Foundation models trained on observational genomic sequences can achieve remarkable predictive accuracy while remaining unreliable for causal reasoning.
 
-Three paths forward seem most promising:
-
-**Training on interventional data**: Foundation models trained on CRISPR screens, drug response data, and other perturbation experiments acquire interventional rather than merely associational patterns. As high-throughput perturbation platforms generate more data, foundation models trained on this data will become increasingly capable of causal prediction.
-
-**Integration with causal inference methods**: Combining foundation model predictions with established causal inference frameworks (Mendelian randomization, fine-mapping, structural causal models) leverages the complementary strengths of each approach. Foundation models provide scale and pattern recognition; causal frameworks provide principled reasoning about intervention.
-
-**Closed-loop experimental systems**: Iterating between foundation model prediction and experimental validation creates feedback loops that progressively improve causal accuracy. Such systems require infrastructure investment but offer a path to causally validated foundation models.
+Three paths forward seem most promising. First, training on interventional data: foundation models trained on CRISPR screens, drug response data, and other perturbation experiments acquire interventional rather than merely associational patterns, and as high-throughput perturbation platforms generate more data, foundation models trained on this data will become increasingly capable of causal prediction. Second, integration with causal inference methods: combining foundation model predictions with established causal inference frameworks (Mendelian randomization, fine-mapping, structural causal models) leverages the complementary strengths of each approach, with foundation models providing scale and pattern recognition while causal frameworks provide principled reasoning about intervention. Third, closed-loop experimental systems: iterating between foundation model prediction and experimental validation creates feedback loops that progressively improve causal accuracy, and while such systems require infrastructure investment, they offer a path to causally validated foundation models.
 
 The frontier challenges in causal reasoning are examined further in @sec-ch32-causality. For now, practitioners should approach foundation model predictions with appropriate epistemic humility: impressive predictive accuracy does not imply causal validity, and clinical interventions require causal rather than merely correlational evidence.
 
@@ -521,7 +534,7 @@ This chapter examined the gap between association (what we observe) and causatio
 
 3. **Genomics offers unique causal inference tools**. Mendelian randomization exploits genetic randomization at conception; fine-mapping localizes causal variants; multi-omic QTL analysis traces causal chains across molecular layers.
 
-4. **Foundation models can contribute to causal inference** through in-silico perturbation prediction, CRISPR screen analysis, and drug response modeling---but only when combined with appropriate validation against experimental ground truth.
+4. **Foundation models can contribute to causal inference** through in-silico perturbation prediction, CRISPR screen analysis, and drug response modeling, but only when combined with appropriate validation against experimental ground truth.
 
 5. **Clinical stakes are high**. Association-based predictions support screening and stratification. Causal claims support intervention. Confusing the two leads to ineffective treatments and potential patient harm.
 

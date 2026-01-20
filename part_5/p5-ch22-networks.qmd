@@ -1,6 +1,6 @@
 # Graph and Network Models {#sec-ch22-networks}
 
-> Sequence models learn what molecules can do. Network models learn what they actually do together.
+> Sequence models encode what molecules can do. Network models encode what they do together.
 
 :::{.callout-note}
 ## Chapter Overview
@@ -18,6 +18,22 @@
 **Estimated Reading Time:** 45-55 minutes
 :::
 
+::: {.callout-note}
+## Graph Topology Basics
+
+**Graph topology** refers to the structural arrangement and connectivity patterns in a network. Key concepts include:
+
+- **Nodes (vertices):** The entities in a graph (e.g., proteins, genes, cells)
+- **Edges (links):** Connections between nodes representing relationships (e.g., physical binding, regulation)
+- **Degree:** The number of edges connected to a node; high-degree nodes are called **hubs**
+- **Path:** A sequence of edges connecting two nodes; **path length** counts the edges traversed
+- **Neighborhood (k-hop):** All nodes reachable within k edges from a given node
+- **Connected component:** A subgraph where any node can reach any other through some path
+- **Directed vs. undirected:** Whether edges have direction (A → B differs from B → A) or not
+
+These structural properties determine how information flows through networks and what patterns GNNs can learn. Unlike sequences (linear) or images (grid), graphs have **irregular topology**: variable node degrees, no inherent ordering, and arbitrary connectivity.
+:::
+
 Graph neural networks are not alternatives to foundation models; they are consumers of them. Foundation models produce rich representations of individual biological entities: protein language models encode evolutionary constraint and structural propensity (@sec-ch16-protein-lm), DNA models capture regulatory grammar (@sec-ch17-regulatory), RNA models represent transcript-level features (@sec-ch19-rna). These representations are powerful but operate on isolated sequences. A protein embedding captures what *ESM* learned about that protein's sequence; it says nothing about which other proteins it binds, which pathways it participates in, or which disease phenotypes result from its disruption. Graph neural networks operate at a higher level of abstraction, taking foundation model representations as node features and learning to propagate information across relational structure. The combination yields capabilities that neither approach achieves alone.
 
 This architectural relationship reflects a biological reality: organisms are not collections of independent molecules but systems of interacting components. A **transcription factor** affects its target genes through regulatory edges. Proteins assemble into functional complexes through physical binding. Signaling cascades propagate perturbations across cellular networks. These relationships exist at a level of abstraction above sequence, requiring a different mathematical framework to represent. Graphs provide precisely this framework. In a protein-protein interaction network, proteins become nodes and physical binding creates edges. In a **gene regulatory network**, directed edges connect transcription factors to their targets. In spatial transcriptomics data, cells become nodes with edges capturing physical proximity. Each graph encodes relational structure that sequence models cannot directly capture.
@@ -26,6 +42,23 @@ This architectural relationship reflects a biological reality: organisms are not
 ## Key Insight: The Division of Labor
 
 Think of the relationship between foundation models and GNNs as a division of labor: foundation models answer "What can this protein do?" based on its sequence, while GNNs answer "What does this protein do in context?" based on its network neighborhood. Neither question subsumes the other. A transcription factor's DNA-binding properties (captured by sequence models) matter, but so does which genes it actually regulates in a given cell type (captured by network structure).
+:::
+
+::: {.callout-note}
+## Types of Graph Prediction Tasks
+
+Graph machine learning encompasses several distinct prediction paradigms:
+
+- **Node-level prediction:** Classify or regress properties of individual nodes (e.g., predicting whether a gene is disease-associated)
+- **Edge-level prediction (link prediction):** Predict whether edges exist or their properties (e.g., drug-target binding affinity)
+- **Graph-level prediction:** Classify or regress properties of entire graphs (e.g., predicting molecular toxicity from a chemical structure graph)
+
+Underlying these tasks are two learning paradigms:
+
+- **Representation learning:** Learn low-dimensional embeddings that capture node/graph structure for downstream tasks
+- **Message passing:** Propagate and aggregate information across the graph to compute node representations
+
+Most biological applications involve **node prediction** (gene function, disease association) or **link prediction** (protein interactions, regulatory edges). Graph-level prediction is more common in molecular property prediction where each molecule is a separate graph.
 :::
 
 The practical implications are substantial. Disease gene prioritization leverages the observation that genes causing similar diseases cluster in network neighborhoods. A GNN can learn to propagate disease signals across protein interaction networks, but effectiveness depends critically on node feature quality. When those features come from protein language models encoding evolutionary constraint and structural propensity, the GNN gains access to sequence-level biological knowledge unavailable from simpler features like expression levels alone. Drug-target interaction prediction similarly benefits: *ESM* **embeddings** capture what makes a protein druggable, while network context reveals which targets sit in therapeutically relevant pathways.
@@ -37,7 +70,7 @@ Graph neural networks can only learn from relationships encoded in their input g
 
 ### Landscape of Biological Graphs {#sec-ch22-landscape}
 
-Before examining **graph neural network** architectures, it is essential to understand what biological networks exist and where they come from. The choice of network fundamentally shapes what a model can learn, and the biases inherent in network construction propagate through all downstream analyses.
+Before examining **graph neural network** architectures, it is essential to understand what biological networks exist and where they come from. The choice of network fundamentally determines what topology a model can exploit, influencing what patterns it can learn. The biases inherent in network construction propagate through all downstream analyses.
 
 :::{.callout-note title="Predict Before You Look"}
 Current protein-protein interaction databases are estimated to capture only 20-30% of true human interactions. Before reading further, predict: How might this incompleteness affect which types of proteins have more documented interactions? What factors might determine whether a protein's interactions get discovered and catalogued?
@@ -47,7 +80,23 @@ Physical associations between proteins constitute perhaps the most widely used n
 
 Transcriptional control relationships require a different network structure. Unlike PPIs, gene regulatory networks are inherently directed: a transcription factor activates or represses its targets, not vice versa. Sources include **chromatin immunoprecipitation sequencing (ChIP-seq)** experiments that identify transcription factor binding sites, **chromatin accessibility** data (assay for transposase-accessible chromatin sequencing (ATAC-seq), DNase-seq) that reveals active regulatory regions, and chromosome conformation capture (Hi-C) that maps enhancer-promoter contacts (@sec-ch21-3d-genome). Databases like ENCODE and the Roadmap Epigenomics Project provide **regulatory annotations** across cell types, though coverage varies dramatically by tissue (@sec-ch02-data). Computational methods infer regulatory edges from expression correlations or sequence motifs, but such predictions contain substantial false positives and miss context-specific interactions.
 
-Organized biochemical knowledge takes yet another form. KEGG, Reactome, and WikiPathways curate reactions, enzymatic steps, and signaling cascades into hierarchical **pathway and metabolic networks** where nodes can represent genes, proteins, metabolites, or abstract pathway concepts. These networks encode decades of molecular biology knowledge but reflect historical research priorities: metabolism and signal transduction are well-characterized, while more recently discovered processes like autophagy or RNA modification have sparser coverage.
+Organized biochemical knowledge takes yet another form. **KEGG (Kyoto Encyclopedia of Genes and Genomes)** provides comprehensive pathway maps covering metabolism, genetic information processing, environmental information processing, cellular processes, and disease-specific pathways across thousands of organisms. Reactome offers deeply curated human pathway data with explicit reaction-level detail. WikiPathways provides community-curated pathways with particular strength in specialized and emerging biology. Together, these databases curate reactions, enzymatic steps, and signaling cascades into hierarchical **pathway and metabolic networks** where nodes can represent genes, proteins, metabolites, or abstract pathway concepts. These networks encode decades of molecular biology knowledge but reflect historical research priorities: metabolism and signal transduction are well-characterized, while more recently discovered processes like autophagy or RNA modification have sparser coverage.
+
+::: {.callout-note}
+## Graph Types in Biological Applications
+
+Biological networks come in several structural varieties:
+
+- **Simple graphs:** One edge type, one node type (e.g., basic PPI networks)
+- **Directed graphs:** Edges have direction (e.g., gene regulatory networks where TF → target)
+- **Weighted graphs:** Edges carry numerical values (e.g., interaction confidence scores)
+- **Heterogeneous graphs:** Multiple node and/or edge types (e.g., knowledge graphs with genes, diseases, drugs)
+- **Multi-graphs:** Multiple edges between the same node pair (e.g., proteins connected by both physical binding and co-expression)
+- **Bipartite graphs:** Two distinct node sets with edges only between sets (e.g., drug-target networks)
+- **Hypergraphs:** Edges connect arbitrary numbers of nodes (e.g., protein complexes, pathways)
+
+The choice of graph type encodes assumptions about biological relationships. Multi-relational and heterogeneous graphs capture richer semantics but require specialized GNN architectures.
+:::
 
 Beyond molecular interactions, relationships among genes, diseases, drugs, phenotypes, and other biomedical entities require heterogeneous representations. Unlike protein interaction networks, which contain a single node type and edge type, **knowledge graphs** are inherently heterogeneous: nodes represent diverse entity classes, and edges capture semantically distinct relationship types. This heterogeneity enables richer reasoning but demands architectures capable of handling multiple node and edge embeddings.
 
@@ -81,7 +130,14 @@ Landscape of biological networks. (A) Protein-protein interaction networks: undi
 
 The power of knowledge graphs lies in their support for multi-hop reasoning. A query asking whether a drug might treat a disease can traverse multiple edge types: drug inhibits protein A, protein A interacts with protein B, protein B is implicated in disease. Each hop contributes evidence, and the combination of paths provides signal that no single edge contains. Graph neural networks learn to aggregate across such paths, weighting different relationship types and path lengths according to their predictive value for specific tasks.
 
-Spatially resolved transcriptomics and imaging data give rise to graphs capturing tissue organization invisible to bulk or even single-cell measurements (@sec-ch20-single-cell). In these **spatial and cell-cell interaction graphs**, nodes represent cells or spatial locations, while edges encode physical proximity or inferred ligand-receptor communication. Such graphs enable questions about how spatial context influences cell behavior.
+Spatially resolved transcriptomics and imaging data give rise to graphs capturing tissue organization invisible to bulk or even single-cell measurements (@sec-ch20-single-cell). In these **spatial and cell-cell interaction graphs**, nodes represent cells or spatial locations, while edges encode relationships derived from spatial coordinates. Common edge construction strategies include:
+
+- **k-nearest neighbors (kNN):** Connect each cell to its k closest neighbors by Euclidean distance
+- **Delaunay triangulation:** Create edges between cells that share a face in the Voronoi tessellation, producing a planar graph that respects local density
+- **Distance threshold:** Connect cells within a fixed radius (e.g., 50 μm), reflecting biologically meaningful interaction ranges
+- **Ligand-receptor communication:** Infer edges from co-expression of cognate ligand-receptor pairs between spatially adjacent cells
+
+The resulting graphs capture tissue architecture: tumor-stroma boundaries, immune infiltration patterns, and spatial niches where specific cell types co-localize. Edge weights often encode distance or communication strength, enabling GNNs to learn that nearby cells influence each other more than distant ones. Such graphs enable questions about how spatial context influences cell behavior and how tissue microenvironment affects cellular phenotypes.
 
 :::{.callout-note}
 ## Knowledge Check: Network Bias
@@ -112,7 +168,7 @@ The distinction between physical and functional associations matters for interpr
 
 ## Graph Neural Network Fundamentals {#sec-ch22-gnn-fundamentals}
 
-The mathematical machinery underlying graph neural networks differs fundamentally from the architectures examined in previous chapters. Where convolutional and transformer models operate on regular structures (sequences, grids), GNNs must handle irregular topology with variable-degree nodes, no inherent ordering, and arbitrary connectivity (@sec-ch06-cnn, @sec-ch07-attention). This section develops the message passing framework that addresses these challenges, then surveys the canonical architectures that have become standard tools for biological applications.
+The mathematical machinery underlying graph neural networks differs fundamentally from the convolutional networks (@sec-ch06-cnn) and transformer architectures (@sec-ch07-attention) examined in previous chapters. Where those models operate on regular structures (sequences, grids), GNNs must handle irregular topology with variable-degree nodes, no inherent ordering, and arbitrary connectivity. This section develops the message passing framework that addresses these challenges, then surveys the canonical architectures that have become standard tools for biological applications.
 
 ### Message Passing Principles {#sec-ch22-message-passing}
 
@@ -248,7 +304,17 @@ For each biological scenario, which GNN architecture would you choose?
 :::
 :::
 
-The expressiveness of GNNs is bounded by their ability to distinguish different graph structures. Theoretical analysis connects standard message passing to the Weisfeiler-Lehman graph isomorphism test, revealing that certain graph structures remain indistinguishable regardless of the number of layers [@xu_how_2019; @morris_weisfeiler_2019]. For most biological applications, this theoretical limitation is less constraining than practical issues of data quality, training efficiency, and **interpretability** (@sec-ch25-interpretability).
+The expressiveness of GNNs is bounded by their ability to distinguish different graph structures. Theoretical analysis connects standard message passing to the **Weisfeiler-Lehman (WL) graph isomorphism test**, a classical algorithm for determining whether two graphs have identical structure.
+
+::: {.callout-note}
+## The Weisfeiler-Lehman Test
+
+The WL test iteratively refines node labels by aggregating neighbor labels. Initially, all nodes receive the same label. At each iteration, a node's new label is computed by hashing its current label together with the multiset of its neighbors' labels. Two graphs are considered potentially isomorphic if they produce identical label histograms after sufficient iterations.
+
+Standard message passing GNNs are provably no more powerful than the 1-WL test: any two graphs that 1-WL cannot distinguish will also produce identical GNN embeddings, regardless of depth or learned parameters. This means certain symmetric structures (e.g., regular graphs where all nodes have identical neighborhoods) cannot be differentiated. More expressive variants (higher-order WL tests, subgraph GNNs) exist but increase computational cost.
+:::
+
+For most biological applications, this theoretical limitation is less constraining than practical issues of data quality, training efficiency, and **interpretability** (@sec-ch25-interpretability). Biological networks typically have sufficient heterogeneity in node features and local structure that the WL expressiveness bound rarely limits performance [@xu_how_2019; @morris_weisfeiler_2019].
 
 
 ## Foundation Model Embeddings as Node Features {#sec-ch22-fm-embeddings}
@@ -512,7 +578,7 @@ Graph neural networks inherit the biases and limitations of their input networks
 
 ### Study Bias Problem {#sec-ch22-study-bias}
 
-Network-based methods inherit the biases of their input networks. Well-studied genes appear as hubs; poorly characterized genes are peripheral or disconnected. GNNs trained on such networks learn to propagate signals toward well-characterized genes, effectively recapitulating rather than extending existing knowledge.
+Network-based methods inherit the biases of their input networks. Well-studied genes appear as hubs; poorly characterized genes are peripheral or disconnected. GNNs trained on such networks tend to propagate signals toward well-characterized genes, effectively recapitulating rather than extending existing knowledge.
 
 This creates particular problems for disease gene discovery, where the goal is often to identify previously unrecognized genes. A model that consistently ranks known disease genes highly may simply be exploiting their network prominence rather than learning generalizable disease biology. Careful evaluation on temporal holdouts (genes characterized after training data was assembled) or stratified by network degree can reveal whether models truly generalize (@sec-ch12-eval). The systematic approaches for detecting and quantifying such confounding patterns are detailed in @sec-ch13-detection.
 

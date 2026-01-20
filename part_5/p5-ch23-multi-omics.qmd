@@ -41,7 +41,7 @@ The integration strategy matters as much as the data itself. **Early fusion** co
 
 Each molecular layer tells an incomplete story. DNA sequence is static; it encodes potential but not state. A variant's presence says nothing about whether the gene is expressed, whether the protein is active, or whether the pathway is perturbed. Transcriptomic data captures expression state but misses post-transcriptional regulation, protein modifications, and metabolic flux. Proteomic measurements reveal protein abundance but not necessarily activity or localization. Methylation profiles indicate epigenetic state but require expression data to understand functional consequences.
 
-The incompleteness becomes concrete when modeling complex traits. Genome-wide association studies explain perhaps 10-20% of **heritability** for most common diseases through identified variants . Adding **expression quantitative trait loci (eQTLs)** improves **fine-mapping** by suggesting which variants affect gene expression (see @sec-ch03-fine-mapping), but many causal mechanisms operate through splicing, translation, or post-translational modification rather than expression level. **Single-cell RNA sequencing** reveals cellular heterogeneity invisible to bulk measurements, but the same cell cannot simultaneously undergo RNA-seq and **assay for transposase-accessible chromatin sequencing (ATAC-seq)**, forcing computational integration across modalities measured in different cells (see @sec-ch20-single-cell for approaches to this challenge).
+The incompleteness becomes concrete when modeling complex traits. Genome-wide association studies (see @sec-ch03-gwas for GWAS methodology) explain a fraction of total **heritability** for most common diseases through currently identified variants, with the gap between explained and estimated heritability forming the **missing heritability problem** [@manolio_finding_2009]. Adding **expression quantitative trait loci (eQTLs)** improves **fine-mapping** by suggesting which variants affect gene expression (see @sec-ch03-fine-mapping), but many causal mechanisms operate through splicing, translation, or post-translational modification rather than expression level. **Single-cell RNA sequencing** reveals cellular heterogeneity invisible to bulk measurements, but the same cell cannot simultaneously undergo RNA-seq and **assay for transposase-accessible chromatin sequencing (ATAC-seq)**, forcing computational integration across modalities measured in different cells (see @sec-ch20-single-cell for approaches to this challenge).
 
 ::: {.callout-tip}
 ## Stop and Think
@@ -94,7 +94,13 @@ Despite these limitations, early fusion remains appropriate when sample sizes ar
 
 What if each modality truly provides independent information, like separate witnesses to the same event? Late fusion bets that combining final verdicts outperforms forcing witnesses to deliberate together from the start. This independence assumption buys you robustness to missing data but costs you the ability to detect when witnesses are describing the same thing from different angles.
 
-Late fusion trains separate models for each modality and combines their predictions at the output level. A genomics model produces a risk score; a transcriptomics model produces another risk score; an ensemble method or meta-learner combines these modality-specific predictions into a final output.
+Late fusion trains separate models for each modality and combines their predictions at the output level. A genomics model produces a risk score; a transcriptomics model produces another risk score; these modality-specific predictions are then combined into a final output.
+
+::: {.callout-note}
+## Late Fusion vs. Ensemble Learning
+
+Late fusion is related to but distinct from **ensemble learning**. Traditional ensembles combine multiple models trained on the *same* data to reduce variance and improve robustness: bagging averages diverse trees, boosting sequences weak learners, and stacking learns optimal combination weights. Late fusion, by contrast, combines models trained on *different* data modalities. Each model sees fundamentally different features (genomic variants vs. expression levels vs. protein abundance), not just different views or subsets of the same features. The modality-specific models may themselves be ensembles, and the combination layer may use ensemble techniques (weighted averaging, stacking), but the defining characteristic of late fusion is the separation of modalities during model training. This distinction matters because ensemble theory (bias-variance decomposition, diversity requirements) does not directly transfer: late fusion's value comes from information complementarity across modalities rather than from variance reduction through model diversity.
+:::
 
 This approach handles missing modalities gracefully. If a patient lacks proteomic data, the proteomics model simply does not contribute to the ensemble. Sample sizes for each modality-specific model can differ, since training requires only samples with that modality rather than complete multi-omics profiles. Each modality can use whatever architecture works best for its data type: deep networks for imaging, gradient boosting for tabular omics, convolutional architectures for sequence.
 
@@ -253,6 +259,22 @@ Integrating EHR with genomics poses distinct challenges. The data types differ f
 
 Foundation models for EHR data learn representations from the longitudinal event sequences. These models, often based on transformer architectures that process sequences of medical codes (see @sec-ch07-attention), capture temporal dependencies and co-occurrence patterns in clinical trajectories. The resulting patient embeddings encode disease state and prognosis in a form amenable to integration with molecular data.
 
+::: {.callout-note}
+## Handling the Time Series Nature of EHR Data
+
+EHR data presents distinct time series challenges that affect multi-omics integration:
+
+**Irregular sampling.** Clinical events occur at irregular intervals driven by patient visits, not a fixed measurement schedule. Lab values might be measured daily during hospitalization, monthly during stable periods, and not at all when patients feel healthy. Standard time series methods assuming regular intervals require adaptation.
+
+**Event sequences vs. continuous signals.** EHR contains both discrete events (diagnoses, procedures) and continuous measurements (vital signs, lab values). Effective architectures must handle both: transformers that process event sequences, recurrent networks that interpolate continuous signals, or hybrid approaches.
+
+**Variable-length histories.** Patients have clinical histories spanning days to decades. Encoding must handle this variability, whether through truncation to recent windows, hierarchical summarization, or attention mechanisms that learn which distant events remain relevant.
+
+**Censoring and outcome timing.** For survival analysis and risk prediction, the timing of outcome events matters as much as their occurrence. Integration with molecular data requires careful alignment: when was the molecular sample collected relative to the clinical trajectory? Predictions should not use future clinical events that post-date the molecular measurement.
+
+For specialized EHR modeling architectures including BEHRT, Med-BERT, and clinical transformer variants, see the clinical risk modeling discussion in @sec-ch28-ehr-integration.
+:::
+
 ::: {.callout-important}
 ## Key Insight
 
@@ -363,6 +385,8 @@ The bottleneck concept provides practical guidance for integration strategy. If 
 ### Causal vs. Correlational Integration {#sec-ch23-causal-correlational}
 
 Multi-omics data are pervasively correlated. Genes in the same pathway have correlated expression. Methylation and expression are anti-correlated at many promoters. Clinical variables cluster by disease category. These correlations can improve prediction even without causal understanding.
+
+When integrating high-dimensional multi-omics features, controlling false discoveries becomes critical. **Model-X knockoffs** provide a framework for variable selection with false discovery rate (FDR) control, applicable to any covariate matrix regardless of the response type [@candes_panning_2018]. The approach constructs synthetic "knockoff" variables that mimic the correlation structure of original features without containing signal, then selects only features whose importance exceeds their knockoffs. This is particularly valuable for multi-omics integration where thousands of correlated features across modalities could generate spurious associations. For genomics specifically, knockoffs have been applied to fine-mapping, identifying causal variants with FDR guarantees. The statistical foundations and genomic applications are discussed in @sec-ch26-knockoffs.
 
 Causal integration seeks to identify the mechanistic relationships between molecular layers. If a variant causes reduced expression, which causes protein deficiency, which causes metabolic dysfunction, this causal chain suggests intervention targets: expression restoration or enzyme supplementation might address the downstream effects. Correlational integration might achieve the same predictive performance without identifying this chain, since all layers correlate with the phenotype.
 

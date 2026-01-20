@@ -72,7 +72,7 @@ Homology-aware splitting prevents sequence similarity leakage. Step 1: Start wit
 
 ### Clustering Tools and Workflows {#sec-ch12-clustering-tools}
 
-Two tools dominate homology-aware splitting in practice. CD-HIT clusters sequences by greedy incremental clustering, assigning each sequence to an existing cluster if it exceeds a similarity threshold to the cluster representative, or creating a new cluster otherwise [@li_cd-hit_2006]. Why greedy incremental rather than optimal clustering? Computing all-versus-all pairwise similarities for millions of sequences would require billions of comparisons, making optimal clustering computationally infeasible. The greedy approach processes sequences one at a time, comparing each new sequence only to existing cluster representatives rather than to all sequences. This reduces complexity from quadratic to roughly linear in the number of sequences, enabling practical application to genomic-scale datasets. The tradeoff is that cluster assignments depend on input order and may not be globally optimal, but for splitting purposes this approximation suffices. The algorithm is fast and scales to millions of sequences. For proteins, a typical workflow clusters at 40% sequence identity for stringent splitting or 70% for moderate splitting. For nucleotide sequences, thresholds are typically higher (80-95%) due to different evolutionary rates.
+Two tools dominate homology-aware splitting in practice. CD-HIT clusters sequences by greedy incremental clustering, assigning each sequence to an existing cluster if it exceeds a similarity threshold to the cluster representative, or creating a new cluster otherwise [@li_cd-hit_2006]. Why greedy incremental rather than optimal clustering? Computing all-versus-all pairwise similarities for millions of sequences would require billions of comparisons, making optimal clustering computationally infeasible. The greedy approach processes sequences one at a time, comparing each new sequence only to existing cluster representatives rather than to all sequences. This reduces complexity from quadratic to roughly linear in the number of sequences, enabling practical application to genomic-scale datasets. The tradeoff is that cluster assignments depend on input order and may not be globally optimal, but for splitting purposes this approximation suffices. The algorithm is fast and scales to millions of sequences. For proteins, a typical workflow clusters at 40% sequence identity for stringent splitting or 70% for moderate splitting. For nucleotide sequences, thresholds are typically higher (80-95%) because DNA evolves more slowly than protein sequences: synonymous mutations and purifying selection allow DNA to retain high similarity even across distant species, so 80% nucleotide identity may represent functional divergence comparable to 30-40% protein identity.
 
 MMseqs2 offers faster clustering with similar sensitivity, becoming essential for large-scale analyses [@steinegger_mmseqs2_2017]. The tool supports multiple clustering modes and can handle databases with hundreds of millions of sequences. For foundation model pretraining where deduplication affects billions of sequences, MMseqs2 is often the only practical option.
 
@@ -205,7 +205,7 @@ Label leakage occurs when target labels are derived from information that the mo
 
 The ClinVar circularity problem represents a particularly insidious form of label leakage. When computational predictions contributed to the pathogenicity classifications that later become training labels, new models learn to replicate their predecessors rather than discover independent signal. This circularity propagates through generations of models, each inheriting and reinforcing the biases of earlier predictors. The circularity problem for classical variant effect predictors is examined in @sec-ch04-circularity, with broader treatment of how such label contamination creates confounded evaluations in @sec-ch13-label-bias.
 
-Expression models face analogous challenges when trained on features derived from the same samples used to define expression labels. The information flow becomes circular: labels inform features, which predict labels, creating apparent performance that would not generalize to independent samples.
+Expression models face analogous challenges when features and labels are derived from the same samples. For example, if a model predicts gene expression from chromatin accessibility measured in the same cells, and those accessibility measurements were selected or normalized based on expression levels, the model may learn associations that reflect sample-specific technical variation rather than regulatory biology. Such circular dependencies inflate apparent performance because the model exploits information that would not be available when predicting expression in new samples.
 
 ### Feature Leakage {#sec-ch12-feature-leakage}
 
@@ -217,11 +217,9 @@ Feature leakage also arises when features encode information about data partitio
 
 ### Temporal Leakage {#sec-ch12-temporal-leakage}
 
-Temporal leakage violates the causal structure of prediction by using future information to predict past events. A model trained on ClinVar annotations from 2023 and tested on annotations that were uncertain in 2020 may perform well because new annotations were informed by model-like predictions. The apparent validation is circular: the model predicts labels that were partially derived from model-like reasoning applied after the prediction timepoint.
+Temporal leakage violates the causal structure of prediction by using future information to predict past events. A model trained on ClinVar annotations from 2023 and tested on variants that were uncertain in 2020 may perform well because: (1) the 2023 annotations were informed by model-like predictions made after 2020, creating circular validation, and (2) the model learns from reclassification patterns rather than intrinsic variant properties. In both cases, the model exploits the trajectory of scientific knowledge rather than underlying biology.
 
 Clinical outcome prediction faces similar risks when laboratory values, imaging results, or clinical notes recorded after the prediction timepoint enter the feature set. A model predicting 30-day mortality that includes vital signs from day 15 has trivial access to outcome-correlated information. Proper temporal splits must respect not only when samples were collected but when each feature became available.
-
-Training on variants classified in 2023 to predict classifications that were uncertain in 2020 allows models to learn from reclassification patterns rather than intrinsic variant properties. The model exploits the trajectory of scientific knowledge rather than the underlying biology.
 
 ### Benchmark Leakage {#sec-ch12-benchmark-leakage}
 
@@ -312,6 +310,23 @@ Metric selection depends on task characteristics and deployment requirements. Bi
 ### Discrimination Metrics {#sec-ch12-discrimination-metrics}
 
 For binary outcomes (pathogenic versus benign, bound versus unbound, accessible versus closed), discrimination metrics assess how well the model separates classes. The auROC measures the probability that a randomly selected positive example is ranked above a randomly selected negative example. auROC is threshold-independent and widely reported but can be misleading when classes are highly imbalanced.
+
+::: {.callout-note}
+## Terminology: ML vs. Clinical Statistics
+
+The same metrics carry different names across machine learning and clinical statistics literature. When reading papers or communicating across disciplines, these equivalences help:
+
+| Machine Learning | Clinical Statistics | Definition |
+|------------------|---------------------|------------|
+| Precision | Positive predictive value (PPV) | TP / (TP + FP) |
+| Recall | Sensitivity, True positive rate | TP / (TP + FN) |
+| Specificity | Specificity, True negative rate | TN / (TN + FP) |
+| F1 score | (no common equivalent) | Harmonic mean of precision and recall |
+| auROC | AUC, C-statistic | Area under ROC curve |
+| auPRC | Average precision | Area under precision-recall curve |
+
+: Cross-discipline terminology for binary classification metrics. {#tbl-ml-stats-terms}
+:::
 
 The auPRC better reflects performance when positives are rare. For variant pathogenicity prediction, where perhaps 1% of variants are truly pathogenic, a model achieving 0.95 auROC might still have poor precision at useful recall levels. auPRC directly captures the **precision**-**recall** trade-off that matters for applications requiring both high sensitivity and manageable false positive rates.
 
@@ -440,7 +455,7 @@ Readers from biostatistics may find this chapter's evaluation paradigm unfamilia
 
 **Predictive modeling** asks whether a model generalizes beyond training data. A variant effect predictor reports auROC on held-out variants because the goal is accurate classification, not mechanistic understanding. Model complexity is constrained only by overfitting: if a billion-parameter transformer predicts better, use it.
 
-Foundation models are fundamentally predictive. They optimize for generalization, not inference. This explains why this chapter emphasizes held-out test performance rather than hypothesis testing---and why readers trained in classical biostatistics may need to shift their evaluation intuitions.
+Foundation models are fundamentally predictive. They optimize for generalization, not inference. This explains why this chapter emphasizes held-out test performance rather than hypothesis testing, and why readers trained in classical biostatistics may need to shift their evaluation intuitions.
 
 The cultures are not opposed. Mendelian randomization (@sec-ch26-mendelian-randomization) uses predictive models (genetic instruments) to answer inferential questions (causal effects). Polygenic risk scores use inferential results (GWAS effect sizes) for predictive applications. But understanding which culture a method belongs to clarifies what its evaluation metrics actually measure.
 :::
@@ -482,7 +497,7 @@ Foundation model evaluation paradigms test different capabilities. (A) Zero-shot
 
 ### Zero-Shot Evaluation {#sec-ch12-zero-shot-eval}
 
-In **zero-shot evaluation**, the pretrained model is applied without any task-specific training. For masked language models, this typically means using token probabilities to score variants or classify sequences. A variant that disrupts a position the model predicts with high confidence may indicate functional importance.
+In **zero-shot evaluation**, the pretrained model is applied without any task-specific training (@sec-ch10-zero-shot introduces the conceptual foundations). For masked language models, this typically means using token probabilities to score variants or classify sequences. A variant that disrupts a position the model predicts with high confidence may indicate functional importance.
 
 Zero-shot performance tests whether pretraining captures task-relevant structure without explicit supervision. Strong zero-shot performance suggests the pretraining objective aligned with the evaluation task; weak zero-shot performance suggests misalignment. Comparing zero-shot performance to simple baselines (e.g., conservation scores for variant effects) calibrates whether the foundation model provides value beyond what simpler approaches achieve.
 
@@ -500,7 +515,7 @@ Comparing fine-tuned foundation models to equivalently architected models traine
 
 ### Transfer Across Tasks {#sec-ch12-transfer-tasks}
 
-Foundation models justify their "foundation" designation by transferring to diverse downstream tasks. Evaluating on a single task, however well-designed, cannot assess breadth of transfer. Multi-task evaluation across regulatory prediction, variant effects, protein properties, and other applications reveals whether foundation models provide general-purpose representations or excel only on tasks similar to their pretraining objective.
+Foundation models justify their "foundation" designation by transferring to diverse downstream tasks (@sec-ch09-transfer covers the theoretical foundations of transfer learning). Evaluating on a single task, however well-designed, cannot assess breadth of transfer. Multi-task evaluation across regulatory prediction, variant effects, protein properties, and other applications reveals whether foundation models provide general-purpose representations or excel only on tasks similar to their pretraining objective.
 
 Transfer across species, tissues, and experimental modalities provides additional evidence of generalization. A DNA language model that transfers from human to mouse, or from blood cells to neurons, demonstrates that its representations capture biological principles rather than species-specific or tissue-specific patterns.
 
